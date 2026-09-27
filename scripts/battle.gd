@@ -9,7 +9,7 @@ extends Control
 @onready var mana_value_label: Label = $BarsBox/ManaRow/ManaBar/ManaValueLabel
 @onready var xp_bar: ProgressBar = $BarsBox/XPRow/XPBar
 @onready var xp_value_label: Label = $BarsBox/XPRow/XPBar/XPValueLabel
-@onready var ice_blast_reserve_overlay: ColorRect = $BarsBox/HPRow/HPBar/IceBlastReserveOverlay
+@onready var return_to_the_void_reserve_overlay: ColorRect = $BarsBox/HPRow/HPBar/ReturnToTheVoidReserveOverlay
 @onready var frost_status_icon: PanelContainer = $BarsBox/HPRow/StatusIconRow/FrostIcon
 @onready var curse_status_icon: PanelContainer = $BarsBox/HPRow/StatusIconRow/CurseIcon
 @onready var root_status_icon: PanelContainer = $BarsBox/HPRow/StatusIconRow/RootIcon
@@ -66,9 +66,18 @@ const ANIMATED_CREATURE_PROFILES := {
 	"kingdom_of_morvain_melee": "morvain_melee",
 	"kingdom_of_morvain_melee_2": "morvain_melee",
 	"kingdom_of_morvain_range": "morvain_range",
+	"kaelen_varr": "kaelen_varr",
+	"the_ironbound_isles_melee": "ironbound_melee",
+	"the_ironbound_isles_melee_2": "ironbound_melee",
+	"the_ironbound_isles_range": "ironbound_range",
+	"nhal": "nhal",
+	"the_primordial_hunger": "the_primordial_hunger",
+	"frostspire_melee": "frostspire_melee",
+	"frostspire_melee_2": "frostspire_melee",
+	"frostspire_range": "frostspire_range",
 	# A rival Erynd's own bear; the player's is attached in
 	# _elderwild_companion() (it isn't spawned through _spawn_enemy()).
-	"enemy_spirit_bear": "spirit_bear",
+	"enemy_elderwild_companion": "elderwild_companion",
 }
 
 const BATTLE_ATMOSPHERE := preload("res://scripts/BattleAtmosphere.gd")
@@ -98,10 +107,10 @@ const GRID_COLUMNS := 10
 # a moment to read it before it was already fading away.
 const MESSAGE_READ_HOLD_DURATION := 1.0
 
-# Tidebringer's proc callout (see _show_rising_message_over()): deep
+# Pull of the Abyss's proc callout (see _show_rising_message_over()): deep
 # blue text, with a light outline so the dark blue stays readable.
-const TIDEBRINGER_TEXT_COLOR := Color(0.05, 0.2, 0.8, 1)
-const TIDEBRINGER_TEXT_OUTLINE_COLOR := Color(0.85, 0.93, 1, 1)
+const PULL_OF_THE_ABYSS_TEXT_COLOR := Color(0.05, 0.2, 0.8, 1)
+const PULL_OF_THE_ABYSS_TEXT_OUTLINE_COLOR := Color(0.85, 0.93, 1, 1)
 
 # Every _start_X_targeting() function marks its valid targets with this
 # highlight (see _highlight_valid_targets()) instead of each picking its
@@ -130,7 +139,7 @@ const BOUNCE_HIT_FLASH_COLOR := Color(1.8, 0.25, 0.25, 1)
 const THORNBIND_FLASH_COLOR := Color(0.5, 1.8, 0.4, 1)
 
 # The "empowered" enlargement (see _set_hero_enlarged()) - Spirit
-# Link's and Arctic Burn's own visual while either is active: the
+# Link's and Frostbound Fangs' own visual while either is active: the
 # sprite grows to this scale. The enlarged scale is stored as the
 # node's "base_scale" meta, which _pulse_caster_sprite()/
 # _flash_bounce_hit() return to instead of a hard-coded Vector2.ONE.
@@ -145,25 +154,6 @@ const LIFESTEAL_MOTE_COLOR := Color(1.0, 0.2, 0.15, 1.0)
 # overbright teal flash its target gets when the mist tendril strikes
 # (same trick as BOUNCE_HIT_FLASH_COLOR).
 const WHISPER_OF_THE_VEIL_FLASH_COLOR := Color(0.7, 1.8, 1.7, 1)
-
-# Ice Blast's projectile (see _play_ice_blast_effect()): a big pale-ice
-# ball with a white rim - the shared orb projectile
-# (_play_orb_projectile()), just scaled up. Its flash on impact reuses
-# COLD_FEET_FLASH_COLOR, and the lingering frost is the same one Cold
-# Feet/Ice Vortex use (_refresh_cold_feet_frost()).
-const ICE_BLAST_BALL_COLOR := Color(0.6, 0.85, 1.0, 1.0)
-const ICE_BLAST_RIM_COLOR := Color(0.95, 0.98, 1.0, 1.0)
-const ICE_BLAST_BALL_SIZE := 46.0
-
-# Splinter Blast's visual (see _play_splinter_shards()): an ice
-# explosion on the blast's target, then big ice chunks flung from it to
-# every unit its splinters hit.
-const SPLINTER_SHARD_COLOR := Color(0.75, 0.92, 1.0, 1.0)
-const SPLINTER_SHARDS_PER_TARGET := 4
-# The explosion on the target (in units of Whisper of the Veil's own impact
-# burst - see _play_orb_impact()) and the flung chunks' size in px.
-const SPLINTER_EXPLOSION_SCALE := 3.0
-const SPLINTER_CHUNK_SIZE := 18.0
 
 # Freezing Field's snowballs (see _play_snowball_barrage()): how many
 # fall on each unit a tick hits, their size range in px, their colors,
@@ -229,25 +219,36 @@ const THE_MIST_REMEMBERS_INFLOW_NAME := "MistRemembersInflow"
 const THE_MIST_REMEMBERS_SURGE_SECONDS := 1.8
 const THE_MIST_REMEMBERS_STEADY_INTENSITY := 0.45
 
-# Cold Feet's/Ice Vortex's frost on a marked unit (see
-# _set_cold_feet_frost()/_play_ice_vortex_swirl()): the
+# The Hollow Cold's wound in the air (hollow_cold_tear.gdshader): a
+# ragged tear opening onto a swirling nebula, torn open behind the unit
+# it's cast on and left there for as long as the skill's DoT lasts (see
+# _open_hollow_cold_tear()), with frost motes being drawn into it from
+# across the skill's radius. Its rect's size relative to that unit's
+# sprite, and how far it sits above the sprite's centre (in sprite
+# heights).
+const HOLLOW_COLD_TEAR_SHADER := preload("res://shaders/hollow_cold_tear.gdshader")
+const HOLLOW_COLD_TEAR_SIZE := Vector2(0.8, 1.45)
+const HOLLOW_COLD_TEAR_LIFT := 0.06
+
+# Mark of Stillness's/The Hollow Cold's frost on a marked unit (see
+# _set_mark_of_stillness_frost()/_play_the_hollow_cold_swirl()): the
 # additive icy sheen over the sprite, the snowflakes, and the one-shot
 # flash on cast (same overbright trick as BOUNCE_HIT_FLASH_COLOR). The
-# frost is a child node named COLD_FEET_FROST_NAME, so - like The Mist
+# frost is a child node named MARK_OF_STILLNESS_FROST_NAME, so - like The Mist
 # Remembers's glow - it never touches the sprite's own modulate/
 # self_modulate, which the hit flashes and Thornbind's tint own.
-const COLD_FEET_SHEEN_COLOR := Color(0.35, 0.6, 0.95, 1.0)
-const COLD_FEET_FLAKE_COLOR := Color(0.85, 0.95, 1.0, 1.0)
-const COLD_FEET_FLASH_COLOR := Color(0.7, 1.3, 1.9, 1)
-const COLD_FEET_FROST_NAME := "ColdFeetFrost"
+const MARK_OF_STILLNESS_SHEEN_COLOR := Color(0.35, 0.6, 0.95, 1.0)
+const MARK_OF_STILLNESS_FLAKE_COLOR := Color(0.85, 0.95, 1.0, 1.0)
+const MARK_OF_STILLNESS_FLASH_COLOR := Color(0.7, 1.3, 1.9, 1)
+const MARK_OF_STILLNESS_FROST_NAME := "MarkOfStillnessFrost"
 
 # How long Crystal Nova's frost lingers on everything it hit (see
 # _flash_frost_briefly()) - it's a single burst with no DoT to keep the
-# frost up, unlike Cold Feet/Ice Vortex/Ice Blast/Frostbite.
+# frost up, unlike Mark of Stillness/The Hollow Cold/Return to the Void/Frostbite.
 const CRYSTAL_NOVA_FROST_SECONDS := 2.5
 
-# Torrent's water spray color (see _play_torrent_splash()).
-const TORRENT_SPRAY_COLOR := Color(0.55, 0.8, 1.0, 1.0)
+# Drowned Surge's water spray color (see _play_drowned_surge_splash()).
+const DROWNED_SURGE_SPRAY_COLOR := Color(0.55, 0.8, 1.0, 1.0)
 
 # Same pulsing treatment as TARGET_HIGHLIGHT_COLOR/_PULSE_COLOR above,
 # just in green rather than gold - marks the hero's own portrait as a
@@ -262,7 +263,7 @@ const HERO_TARGET_HIGHLIGHT_PULSE_COLOR := Color(0.6, 2.0, 0.8, 1)
 
 # Erynd's Elderwild Companion (elderwild_companion) always uses this art,
 # regardless of skill level.
-const SPIRIT_BEAR_IMAGE_PATH := "res://assets/heroes/Erynd Bear.png"
+const ELDERWILD_COMPANION_IMAGE_PATH := "res://assets/heroes/Erynd Bear.png"
 # Beast of the Elderwild's transformed portrait, likewise fixed regardless of level.
 const BEAST_OF_THE_ELDERWILD_IMAGE_PATH := "res://assets/heroes/Erynd Ultimate.png"
 
@@ -273,14 +274,12 @@ const CREATURE_BASE_ASPECT := 1.5
 # _apply_bear_death_penalty()).
 const BEAR_DEATH_HP_PENALTY_PCT := 0.2
 
-# Kunkka's Ghostship (see _play_ghostship_animation()) always uses this
-# art, regardless of skill level - a purely visual flourish, played
-# alongside the instant, already-resolved damage (_resolve_ghostship_
-# cast()) rather than gating it.
-const GHOSTSHIP_IMAGE_PATH := "res://assets/heroes skills/Kunkka_Ghostship.png"
-# How long the ship's flight from Kunkka's column to the target's takes
-# to visually cross the screen.
-const GHOSTSHIP_TRAVEL_DURATION := 0.6
+# While a rival skill whose damage lands only when its visual effect
+# connects is still playing out - Kaelen Varr's The Sunken One
+# broadside (see _cast_enemy_the_sunken_one()), Nhal's Touch of the
+# First Cold (see _cast_enemy_touch_of_the_first_cold()) - the player
+# can't act yet.
+var _rival_fx_in_flight: bool = false
 
 # Timbersaw's planted Chakram (see _spawn_chakram_marker()): drawn as a
 # spinning circular saw blade rather than loaded from an image - its
@@ -299,17 +298,16 @@ const CHAKRAM_SPIN_SECONDS := 0.45
 # hero still reads clearly among his own decoys.
 const HERO_ILLUSION_ALPHA := 0.45
 
-# Winter Wyvern's Cold Embrace (see _activate_cold_embrace()) always
+# The Primordial Hunger's The Test of Time (see _activate_the_test_of_time()) always
 # uses this art for the hero's portrait while it's active, regardless
 # of skill level - reverted back to the hero's own normal image
-# (_hero_static.image) once it ends (see _end_cold_embrace()).
-const COLD_EMBRACE_IMAGE_PATH := "res://assets/heroes skills/Winter_Wyvern_Cold_Embrace.png"
+# (_hero_static.image) once it ends (see _end_the_test_of_time()).
 
 # Tusk's Snowball (see _resolve_snowball_cast()) shows this art for the
 # hero's portrait while he's charging across the board, reverted back
 # to his own normal image once he lands on the target (see
 # _end_snowball_animation()) - a purely visual flourish, same "instant,
-# already-resolved damage, cosmetic animation on top" split Ghostship's
+# already-resolved damage, cosmetic animation on top" split The Sunken One's
 # own travel already uses.
 const SNOWBALL_IMAGE_PATH := "res://assets/heroes skills/Tusk_Snowball.png"
 # How long the charge takes to visually cross the screen.
@@ -320,7 +318,7 @@ const SNOWBALL_TRAVEL_DURATION := 0.4
 # moonlight-colored ColorRect that grows downward from above the target
 # onto it, purely cosmetic and played alongside the instant,
 # already-resolved damage (_resolve_lucent_beam_cast()) rather than
-# gating it, same split as Ghostship's/Snowball's own animation above.
+# gating it, same split as The Sunken One's/Snowball's own animation above.
 const LUCENT_BEAM_COLOR := Color(1.5, 1.6, 2.0, 0.85)
 const LUCENT_BEAM_WIDTH := 14.0
 const LUCENT_BEAM_FALL_HEIGHT := 220.0
@@ -394,7 +392,7 @@ const SLITHEREEN_CRUSH_WAVE_SECONDS := 0.35
 const SACRED_ARROW_DURATION_PER_COLUMN := 0.025
 
 # Tusk's Walrus Punch (see _resolve_walrus_punch_cast()) deliberately
-# flips Snowball's/Ghostship's own "instant, already-resolved outcome,
+# flips Snowball's/The Sunken One's own "instant, already-resolved outcome,
 # cosmetic animation layered on top" split: the knockback slide plays
 # FIRST, then damage/death/stun are only resolved once it finishes (see
 # _resolve_walrus_punch_damage()) - so a lethal punch still visibly
@@ -567,51 +565,52 @@ var _guardian_sprint_duration_pending_start: bool = false
 var _reactive_armor_stack_turns: Array[int] = []
 
 # ------------------------------------------------------------------
-# Winter Wyvern's Arctic Burn: while active, the hero's plain Attacks
+# The Primordial Hunger's Frostbound Fangs: while active, the hero's plain Attacks
 # get a flat bonus_damage (folded into _roll_hero_damage(), same slot
 # Leeching Hunger's/Depthsveil's/Beast of the Elderwild's own bonus damage use) and
 # extra reach (folded into _hero_attack_column_range(), so ranged
 # targeting opens further out too), for this level's own `attacks`
 # count of Attacks or `duration` turns - whichever runs out first, same
 # two-limits race as Leeching Hunger's attacks_remaining/turns_remaining
-# (see _apply_arctic_burn_attack()/_tick_arctic_burn()). Recasting
+# (see _apply_frostbound_fangs_attack()/_tick_frostbound_fangs()). Recasting
 # while a previous activation is still running just overwrites it
 # outright - there's nothing borrowed to give back first, unlike
 # Leeching Hunger.
 # ------------------------------------------------------------------
-var _arctic_burn_active: bool = false
-var _arctic_burn_bonus_damage: float = 0.0
-var _arctic_burn_bonus_range: int = 0
-var _arctic_burn_attacks_remaining: int = 0
-var _arctic_burn_turns_remaining: int = 0
-var _arctic_burn_duration_pending_start: bool = false
+var _frostbound_fangs_active: bool = false
+var _frostbound_fangs_bonus_damage: float = 0.0
+var _frostbound_fangs_bonus_range: int = 0
+var _frostbound_fangs_attacks_remaining: int = 0
+var _frostbound_fangs_turns_remaining: int = 0
+var _frostbound_fangs_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
-# Winter Wyvern's Cold Embrace: a defensive self-cast that swaps the
-# hero's portrait to COLD_EMBRACE_IMAGE_PATH, makes him fully immune to
+# The Primordial Hunger's The Test of Time: a defensive self-cast that lifts
+# the hero into the air under a ticking clock (TimeStillFX), makes him
+# fully immune to
 # damage (see apply_damage()), heals him once per turn, and locks out
 # EVERY other action - move, attack, skill, or item (see _hero_move()/
 # _on_attack_pressed()/_on_skill_pressed()/_on_item_pressed()) - for the
 # duration, same "casting turn doesn't count" pattern as every other
-# buff (see _tick_cold_embrace()). With no action possible, the turn
+# buff (see _tick_the_test_of_time()). With no action possible, the turn
 # auto-skips straight through to the next one (_end_turn()'s own tail),
 # the same way a stunned turn does. Casting it also dispels every OTHER
 # effect currently on the hero, good or bad, before establishing itself
-# (see _dispel_all_hero_effects(), called from _activate_cold_embrace()).
+# (see _dispel_all_hero_effects(), called from _activate_the_test_of_time()).
 # ------------------------------------------------------------------
-var _cold_embrace_active: bool = false
-var _cold_embrace_heal_per_turn: float = 0.0
-var _cold_embrace_turns_remaining: int = 0
-var _cold_embrace_duration_pending_start: bool = false
+var _the_test_of_time_active: bool = false
+var _the_test_of_time_heal_per_turn: float = 0.0
+var _the_test_of_time_turns_remaining: int = 0
+var _the_test_of_time_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
 # Snapfire's ultimate, Mortimer Kisses: a targeted channel, not a
-# self-cast buff like Cold Embrace above, but locked out the same way -
+# self-cast buff like The Test of Time above, but locked out the same way -
 # move, attack, skill, and item are all disabled for its whole
-# duration (same 7 check sites Cold Embrace already touches: _populate_
+# duration (same 7 check sites The Test of Time already touches: _populate_
 # item_grid(), _on_item_pressed(), _on_skill_pressed(), _hero_move(),
 # _on_attack_pressed(), _update_action_buttons(), _apply_tutorial_
-# gate()). Unlike Cold Embrace, an unable-to-act turn here doesn't just
+# gate()). Unlike The Test of Time, an unable-to-act turn here doesn't just
 # skip - it AUTO-FIRES one shot instead, from _end_turn()'s own tail
 # (see the block right before it reopens the action buttons), for
 # level_data.hits total shots counting the cast turn's own immediate
@@ -658,12 +657,12 @@ var _illusions_turns_remaining: int = 0
 var _illusions_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
-# Winter Wyvern's ultimate, Winter's Curse: freezes a target enemy
-# (target["stun_turns_left"], same shared per-enemy field Torrent's/
-# Ice Blast's own stun already uses) for `level_data.duration` of its
+# The Primordial Hunger's ultimate, The Hunger Calls: freezes a target enemy
+# (target["stun_turns_left"], same shared per-enemy field Drowned Surge's/
+# Return to the Void's own stun already uses) for `level_data.duration` of its
 # own turns. There's no separate duration counter for the "nearby
 # enemies pile onto it instead of the hero" half of the effect either -
-# _is_winters_curse_active() derives it straight from that same stun
+# _is_the_hunger_calls_active() derives it straight from that same stun
 # counter, so both halves always wear off together. _enemy_turn()
 # captures whether the curse is active once at the very top of each
 # full enemy-turn pass (see its own `curse_active`/`curse_target_pos`
@@ -671,9 +670,15 @@ var _illusions_duration_pending_start: bool = false
 # sees the same answer even though the target's own stun_turns_left
 # ticks down partway through that same pass.
 # ------------------------------------------------------------------
-var _winter_curse_target: Dictionary = {}
-var _winter_curse_bonus_damage_pct: float = 0.0
-var _winter_curse_range: int = 0
+var _hunger_calls_target: Dictionary = {}
+var _hunger_calls_bonus_damage_pct: float = 0.0
+var _hunger_calls_range: int = 0
+# Its look (HungerCallsFX) while it holds - the player's cast, and a
+# rival's cast on the player or his Elderwild Companion. Kept in sync
+# with the curse's state by _refresh_hunger_calls_fx().
+var _hunger_calls_fx: HungerCallsFX = null
+var _enemy_hunger_calls_fx: HungerCallsFX = null
+var _enemy_hunger_calls_fx_on_bear: bool = false
 
 # ------------------------------------------------------------------
 # Crystal Maiden's ultimate, Freezing Field: a self-cast that deals
@@ -730,8 +735,8 @@ var _chakram: Dictionary = {}
 # _enemy_hero_turn()). Fixed at cast time, unlike Freezing Field's own
 # radius - the wall doesn't follow the hero if he moves afterward.
 # Recasting while a previous wall is still up simply replaces it
-# outright - there's nothing to give back, same as Arctic Burn/Winter's
-# Curse.
+# outright - there's nothing to give back, same as Frostbound Fangs/The Hunger
+# Calls.
 # ------------------------------------------------------------------
 var _ice_shards_active: bool = false
 var _ice_shards_blocked_columns: Array[int] = []
@@ -761,8 +766,8 @@ var _ice_shards_wall_nodes: Dictionary = {}
 # ------------------------------------------------------------------
 # Tusk's Tag Team: a self-cast that adds a flat bonus_damage to the
 # hero's own Attacks (folded into _roll_hero_damage(), same slot
-# Arctic Burn's/Leeching Hunger's/Beast of the Elderwild's own bonus damage use) for
-# the duration - no attack-count cap, unlike Arctic Burn, just a plain
+# Frostbound Fangs'/Leeching Hunger's/Beast of the Elderwild's own bonus damage use) for
+# the duration - no attack-count cap, unlike Frostbound Fangs, just a plain
 # turn-based buff. Same "casting turn doesn't count" pattern as every
 # other duration-based buff (see _tick_tag_team()).
 # ------------------------------------------------------------------
@@ -791,14 +796,14 @@ var _bear: Dictionary = {}
 # _choose_enemy_skill_on_bear() for how the AI picks between the two,
 # and each skill's own _cast_enemy_*_on_bear() for what it does to the
 # bear. Skills left out are either about the player's own position
-# (X Marks the Spot, Ghostship/Timber Chain's line, Chakram's/Ice
+# (Undertow, The Sunken One/Timber Chain's line, Chakram's/Ice
 # Shards' placement, Mortimer Kisses' channel, Crystal Nova's area) or
 # not targeted at all; those still reach the bear through their own
 # AoE collateral, same as before.
 const ENEMY_BEAR_TARGETABLE_SKILLS: Array[String] = [
-	"thornbind", "whisper_of_the_veil", "torrent", "corrosive_haze", "sacred_arrow",
-	"lucent_beam", "ensnare", "cold_feet", "ice_vortex", "chilling_touch",
-	"ice_blast", "splinter_blast", "winter's_curse", "frostbite", "snowball",
+	"thornbind", "whisper_of_the_veil", "drowned_surge", "corrosive_haze", "sacred_arrow",
+	"lucent_beam", "ensnare", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold",
+	"return_to_the_void", "maddening_roar", "the_hunger_calls", "frostbite", "snowball",
 	"walrus_punch", "leech_seed", "lil_shredder",
 ]
 
@@ -924,16 +929,16 @@ var _the_mist_remembers_heal_conversion_pct: float = 0.0
 var _the_mist_remembers_turns_remaining: int = 0
 var _the_mist_remembers_duration_pending_start: bool = false
 
-# Kunkka's Tidebringer: a passive counter of plain Attacks landed (see
-# _maybe_consume_tidebringer_stack(), called from _apply_hero_attack())
+# Kaelen Varr's Pull of the Abyss: a passive counter of plain Attacks landed (see
+# _maybe_consume_pull_of_the_abyss_stack(), called from _apply_hero_attack())
 # - never reset by a turn going by without attacking, only by another
 # empowered hit consuming it once this level's own hits_to_activate is
 # reached. No duration, no on/off state to track - unlike every buff
 # above, so just the one counter.
-var _tidebringer_attack_count: int = 0
+var _pull_of_the_abyss_attack_count: int = 0
 
 # Slardar's Bash of the Deep - same "count plain Attacks toward a
-# threshold, consume them all once reached" idiom as Tidebringer's own
+# threshold, consume them all once reached" idiom as Pull of the Abyss's own
 # counter just above (see _maybe_consume_bash_of_the_deep_stack(),
 # called from _apply_hero_attack()).
 var _bash_of_the_deep_attack_count: int = 0
@@ -1050,15 +1055,15 @@ var _enemy_the_mist_remembers_heal_conversion_pct: float = 0.0
 var _enemy_the_mist_remembers_turns_remaining: int = 0
 var _enemy_the_mist_remembers_duration_pending_start: bool = false
 
-# Kunkka's Tidebringer, on the rival - same plain-Attack counter as the
+# Kaelen Varr's Pull of the Abyss, on the rival - same plain-Attack counter as the
 # player's own copy, just counting the rival's own Attacks on the
-# player instead (see _maybe_consume_enemy_tidebringer_stack(), called
+# player instead (see _maybe_consume_enemy_pull_of_the_abyss_stack(), called
 # from _resolve_enemy_hero_attack()).
-var _enemy_tidebringer_attack_count: int = 0
+var _enemy_pull_of_the_abyss_attack_count: int = 0
 
 # Slardar's Bash of the Deep, on the rival - same "count plain Attacks
 # toward a threshold, consume them all once reached" idiom as
-# Tidebringer's own counter just above (see
+# Pull of the Abyss's own counter just above (see
 # _maybe_consume_enemy_bash_of_the_deep_stack(), called from
 # _resolve_enemy_hero_attack()).
 var _enemy_bash_of_the_deep_attack_count: int = 0
@@ -1106,29 +1111,29 @@ var _enemy_eclipse_radius: int = 0
 var _enemy_eclipse_beams_remaining: int = 0
 var _enemy_eclipse_duration_pending_start: bool = false
 
-# Kunkka's X Marks the Spot, on the rival - unlike the player's own
+# Kaelen Varr's Undertow, on the rival - unlike the player's own
 # copy, the target is always the player (the only other participant in
-# a hero fight, same simplification Abyssal Spasm/Whisper of the Veil/Torrent already
+# a hero fight, same simplification Abyssal Spasm/Whisper of the Veil/Drowned Surge already
 # use), so there's nothing to hold onto but a single pending flag - see
-# _cast_enemy_xmarks()/_enemy_hero_turn()'s own teleport check at its
+# _cast_enemy_undertow()/_enemy_hero_turn()'s own teleport check at its
 # very top.
-var _enemy_xmarks_pending: bool = false
+var _enemy_undertow_pending: bool = false
 
-# Winter Wyvern's Arctic Burn, cast by the rival on themselves - mirrors
-# the player's own _activate_arctic_burn()/_apply_arctic_burn_attack()/
-# _tick_arctic_burn()/_end_arctic_burn(): bonus damage/range for this
+# The Primordial Hunger's Frostbound Fangs, cast by the rival on themselves - mirrors
+# the player's own _activate_frostbound_fangs()/_apply_frostbound_fangs_attack()/
+# _tick_frostbound_fangs()/_end_frostbound_fangs(): bonus damage/range for this
 # level's own `attacks` count of Attacks, or `duration` turns, whichever
 # runs out first.
-var _enemy_arctic_burn_active: bool = false
-var _enemy_arctic_burn_bonus_damage: float = 0.0
-var _enemy_arctic_burn_bonus_range: int = 0
-var _enemy_arctic_burn_attacks_remaining: int = 0
-var _enemy_arctic_burn_turns_remaining: int = 0
-var _enemy_arctic_burn_duration_pending_start: bool = false
+var _enemy_frostbound_fangs_active: bool = false
+var _enemy_frostbound_fangs_bonus_damage: float = 0.0
+var _enemy_frostbound_fangs_bonus_range: int = 0
+var _enemy_frostbound_fangs_attacks_remaining: int = 0
+var _enemy_frostbound_fangs_turns_remaining: int = 0
+var _enemy_frostbound_fangs_duration_pending_start: bool = false
 
-# Winter Wyvern's Cold Embrace, cast by the rival on themselves - mirrors
-# the player's own _activate_cold_embrace()/_tick_cold_embrace()/
-# _end_cold_embrace(): full damage immunity (see
+# The Primordial Hunger's The Test of Time, cast by the rival on themselves - mirrors
+# the player's own _activate_the_test_of_time()/_tick_the_test_of_time()/
+# _end_the_test_of_time(): full damage immunity (see
 # _deal_fixed_damage_to_enemy()) plus a heal every turn, for the
 # duration - during which the rival can't move or attack (see
 # _enemy_hero_turn()'s own lockout) but CAN still cast another skill,
@@ -1136,10 +1141,10 @@ var _enemy_arctic_burn_duration_pending_start: bool = false
 # _on_skill_pressed(). Casting it also dispels every other effect
 # currently on the rival, good or bad - see
 # _dispel_all_enemy_hero_effects().
-var _enemy_cold_embrace_active: bool = false
-var _enemy_cold_embrace_heal_per_turn: float = 0.0
-var _enemy_cold_embrace_turns_remaining: int = 0
-var _enemy_cold_embrace_duration_pending_start: bool = false
+var _enemy_the_test_of_time_active: bool = false
+var _enemy_the_test_of_time_heal_per_turn: float = 0.0
+var _enemy_the_test_of_time_turns_remaining: int = 0
+var _enemy_the_test_of_time_duration_pending_start: bool = false
 
 # Crystal Maiden's Freezing Field, cast by the rival on herself - mirrors
 # the player's own _activate_freezing_field()/_tick_freezing_field()/
@@ -1172,7 +1177,7 @@ var _enemy_ice_shards_duration_pending_start: bool = false
 # Tusk's Tag Team, cast by the rival on himself - mirrors the player's
 # own _activate_tag_team()/_tick_tag_team()/_end_tag_team(): a flat
 # bonus_damage added to _roll_enemy_hero_damage() for the duration, same
-# "add to the bonus sum" spot Arctic Burn's own bonus_damage already
+# "add to the bonus sum" spot Frostbound Fangs' own bonus_damage already
 # occupies there.
 var _enemy_tag_team_active: bool = false
 var _enemy_tag_team_bonus_damage: float = 0.0
@@ -1314,13 +1319,13 @@ var _player_thornbind_dot_turns_left: int = 0
 var _player_stun_turns_left: int = 0
 
 # Set alongside _player_stun_turns_left specifically by
-# _cast_enemy_winters_curse() (see that function's own comment on why
+# _cast_enemy_the_hunger_calls() (see that function's own comment on why
 # it collapses onto the shared stun field) - purely cosmetic, so the
-# frost screen tint/status icon can tell "frozen by Winter's Curse"
-# apart from a Torrent/Barbed Lunge/Ice Blast/Frostbite stun, all of which
+# frost screen tint/status icon can tell "frozen by The Hunger Calls"
+# apart from a Drowned Surge/Barbed Lunge/Return to the Void/Frostbite stun, all of which
 # also just set the same field. Cleared wherever the stun itself is
 # (a fresh dispel or the stun's own natural countdown reaching 0).
-var _player_winters_curse_active: bool = false
+var _player_the_hunger_calls_active: bool = false
 
 # Mark of the Mist's stacks/DoT on the player, built by the rival's own
 # plain Attacks - the mirror of the same fields _apply_mark_of_the_mist_
@@ -1335,33 +1340,41 @@ var _player_curse_dot_damage: float = 0.0
 var _player_curse_dot_turns_left: int = 0
 var _player_curse_last_hit_turn: int = 0
 
-# Ancient Apparition's Cold Feet/Ice Vortex, cast by the rival on the
+# Nhal's Mark of Stillness/The Hollow Cold, cast by the rival on the
 # player - both are plain damage-over-time, so both mirror Thornbind's
 # own _player_thornbind_dot_* fields exactly, just held separately (each
 # under its own dedicated pair of fields) since a different skill's DoT
 # shouldn't silently share or clobber another's counters, the same
-# reasoning the player-side per-enemy cold_feet_dot_*/ice_vortex_dot_*
+# reasoning the player-side per-enemy mark_of_stillness_dot_*/the_hollow_cold_dot_*
 # fields already follow.
-var _player_cold_feet_dot_damage: float = 0.0
-var _player_cold_feet_dot_turns_left: int = 0
-var _player_ice_vortex_dot_damage: float = 0.0
-var _player_ice_vortex_dot_turns_left: int = 0
+var _player_mark_of_stillness_dot_damage: float = 0.0
+var _player_mark_of_stillness_dot_turns_left: int = 0
+var _player_the_hollow_cold_dot_damage: float = 0.0
+var _player_the_hollow_cold_dot_turns_left: int = 0
 
-# Ancient Apparition's Ice Blast, cast by the rival on the player -
-# mirrors the player-side per-enemy ice_blast_dot_damage/ice_blast_dot_
-# turns_left/ice_blast_execute_pct fields (see _resolve_ice_blast_
+# Every The Hollow Cold tear currently open (see _open_hollow_cold_tear()),
+# each {"tear": ColorRect, "motes": CPUParticles2D, "pos_index": int,
+# "turns_left": int, "hits_player_side": bool}. A tear counts down at the
+# same moment its DoT ticks - the start of the enemy turn for the
+# player's casts, the start of the player's turn for the rival's (see
+# _tick_hollow_cold_tears()) - and seals shut once it runs out.
+var _hollow_cold_tears: Array[Dictionary] = []
+
+# Nhal's Return to the Void, cast by the rival on the player -
+# mirrors the player-side per-enemy return_to_the_void_dot_damage/return_to_the_void_dot_
+# turns_left/return_to_the_void_execute_pct fields (see _resolve_return_to_the_void_
 # cast()), just held as battle-local vars since there's only one player
 # to track them on. The stun shares _player_stun_turns_left above, same
-# as Torrent's own stun does.
-var _player_ice_blast_dot_damage: float = 0.0
-var _player_ice_blast_dot_turns_left: int = 0
-var _player_ice_blast_execute_pct: float = 0.0
+# as Drowned Surge's own stun does.
+var _player_return_to_the_void_dot_damage: float = 0.0
+var _player_return_to_the_void_dot_turns_left: int = 0
+var _player_return_to_the_void_execute_pct: float = 0.0
 
 # Crystal Maiden's Frostbite, cast by the rival on the player - mirrors
 # the player-side per-enemy frostbite_dot_damage/frostbite_dot_turns_
 # left fields (see _resolve_frostbite_cast()), just held as battle-local
 # vars since there's only one player to track them on. The stun shares
-# _player_stun_turns_left above, same as Torrent's/Ice Blast's own stun
+# _player_stun_turns_left above, same as Drowned Surge's/Return to the Void's own stun
 # does.
 var _player_frostbite_dot_damage: float = 0.0
 var _player_frostbite_dot_turns_left: int = 0
@@ -1449,21 +1462,21 @@ var _pending_thornbind_level_data: Dictionary = {}
 # (_resolve_whisper_of_the_veil_enemy_cast()/_resolve_whisper_of_the_veil_self_cast()).
 var _pending_whisper_of_the_veil_level_data: Dictionary = {}
 
-# Kunkka's Torrent, held the same way as Thornbind's/Whisper of the Veil's own
-# pending level data above, from the moment _start_torrent_targeting()
+# Kaelen Varr's Drowned Surge, held the same way as Thornbind's/Whisper of the Veil's own
+# pending level data above, from the moment _start_drowned_surge_targeting()
 # opens targeting until a target is actually clicked
-# (_resolve_torrent_cast()).
-var _pending_torrent_level_data: Dictionary = {}
+# (_resolve_drowned_surge_cast()).
+var _pending_drowned_surge_level_data: Dictionary = {}
 
-# Kunkka's X Marks the Spot, held the same way while its own targeting
-# is open (_start_xmarks_targeting()) until a target is clicked
-# (_resolve_xmarks_cast()).
-var _pending_xmarks_level_data: Dictionary = {}
+# Kaelen Varr's Undertow, held the same way while its own targeting
+# is open (_start_undertow_targeting()) until a target is clicked
+# (_resolve_undertow_cast()).
+var _pending_undertow_level_data: Dictionary = {}
 
-# X Marks the Spot's actual mark, set once _resolve_xmarks_cast() spends
+# Undertow's actual mark, set once _resolve_undertow_cast() spends
 # the cast and held until the hero's own NEXT turn opens (_end_turn()),
 # at which point he teleports onto the marked enemy's CURRENT position
-# (see _resolve_xmarks_teleport()) - wherever it's moved to by then -
+# (see _resolve_undertow_teleport()) - wherever it's moved to by then -
 # for free, without spending that turn's action. `target` is the marked
 # enemy's own Dictionary reference (live - its "pos_index" updates as it
 # moves, so reading it later reads wherever it ended up), {} meaning no
@@ -1471,15 +1484,9 @@ var _pending_xmarks_level_data: Dictionary = {}
 # of marking, so a stage transition/hero fight change in between (a
 # fresh _enemies array, making `target` a stale reference into a fight
 # that's already over) fizzles the mark instead of teleporting into
-# nothing - see _resolve_xmarks_teleport().
-var _pending_xmarks_target: Dictionary = {}
-var _pending_xmarks_stage_generation: int = -1
-
-# Kunkka's Ghostship, held the same way as Torrent's/X Marks the Spot's
-# own pending level data above, from the moment _start_ghostship_
-# targeting() opens targeting until a target is actually clicked
-# (_resolve_ghostship_cast()).
-var _pending_ghostship_level_data: Dictionary = {}
+# nothing - see _resolve_undertow_teleport().
+var _pending_undertow_target: Dictionary = {}
+var _pending_undertow_stage_generation: int = -1
 
 # Timbersaw's Timber Chain, held the same way as every other targeted
 # skill's own pending level data above, from the moment _start_timber_
@@ -1529,41 +1536,41 @@ var _pending_sacred_arrow_level_data: Dictionary = {}
 # (_resolve_lucent_beam_cast()).
 var _pending_lucent_beam_level_data: Dictionary = {}
 
-# Ancient Apparition's Cold Feet, held the same way as every other
+# Nhal's Mark of Stillness, held the same way as every other
 # targeted skill's own pending level data above, from the moment
-# _start_cold_feet_targeting() opens targeting until a target is
-# actually clicked (_resolve_cold_feet_cast()).
-var _pending_cold_feet_level_data: Dictionary = {}
+# _start_mark_of_stillness_targeting() opens targeting until a target is
+# actually clicked (_resolve_mark_of_stillness_cast()).
+var _pending_mark_of_stillness_level_data: Dictionary = {}
 
-# Ancient Apparition's Ice Vortex, held the same way as every other
+# Nhal's The Hollow Cold, held the same way as every other
 # targeted skill's own pending level data above, from the moment
-# _start_ice_vortex_targeting() opens targeting until a target is
-# actually clicked (_resolve_ice_vortex_cast()).
-var _pending_ice_vortex_level_data: Dictionary = {}
+# _start_the_hollow_cold_targeting() opens targeting until a target is
+# actually clicked (_resolve_the_hollow_cold_cast()).
+var _pending_the_hollow_cold_level_data: Dictionary = {}
 
-# Ancient Apparition's Chilling Touch, held the same way as every other
+# Nhal's Touch of the First Cold, held the same way as every other
 # targeted skill's own pending level data above, from the moment
-# _start_chilling_touch_targeting() opens targeting until a target is
-# actually clicked (_resolve_chilling_touch_cast()).
-var _pending_chilling_touch_level_data: Dictionary = {}
+# _start_touch_of_the_first_cold_targeting() opens targeting until a target is
+# actually clicked (_resolve_touch_of_the_first_cold_cast()).
+var _pending_touch_of_the_first_cold_level_data: Dictionary = {}
 
-# Ancient Apparition's Ice Blast, held the same way as every other
+# Nhal's Return to the Void, held the same way as every other
 # targeted skill's own pending level data above, from the moment
-# _start_ice_blast_targeting() opens targeting until a target is
-# actually clicked (_resolve_ice_blast_cast()).
-var _pending_ice_blast_level_data: Dictionary = {}
+# _start_return_to_the_void_targeting() opens targeting until a target is
+# actually clicked (_resolve_return_to_the_void_cast()).
+var _pending_return_to_the_void_level_data: Dictionary = {}
 
-# Winter Wyvern's Splinter Blast, held the same way as every other
+# The Primordial Hunger's Maddening Roar, held the same way as every other
 # targeted skill's own pending level data above, from the moment
-# _start_splinter_blast_targeting() opens targeting until a target is
-# actually clicked (_resolve_splinter_blast_cast()).
-var _pending_splinter_blast_level_data: Dictionary = {}
+# _start_maddening_roar_targeting() opens targeting until a target is
+# actually clicked (_resolve_maddening_roar_cast()).
+var _pending_maddening_roar_level_data: Dictionary = {}
 
-# Winter Wyvern's ultimate, Winter's Curse, held the same way as every
+# The Primordial Hunger's ultimate, The Hunger Calls, held the same way as every
 # other targeted skill's own pending level data above, from the moment
-# _start_winters_curse_targeting() opens targeting until a target is
-# actually clicked (_resolve_winters_curse_cast()).
-var _pending_winters_curse_level_data: Dictionary = {}
+# _start_the_hunger_calls_targeting() opens targeting until a target is
+# actually clicked (_resolve_the_hunger_calls_cast()).
+var _pending_the_hunger_calls_level_data: Dictionary = {}
 
 # Crystal Maiden's Crystal Nova, held the same way as every other
 # targeted skill's own pending level data above, from the moment
@@ -1612,20 +1619,20 @@ const RANGE_ENEMY_FLEE_DISTANCE := 1
 # This is no longer a priority order - see EnemySkillAI.HERO_TIE_BREAK
 # for each hero's own tie-break fallback order, only ever consulted
 # when two skills' scores are too close to call outright. Blood of the Wild,
-# Mark of the Mist, The Mist Remembers, and Tidebringer aren't here - none
+# Mark of the Mist, The Mist Remembers, and Pull of the Abyss aren't here - none
 # of them are ever "cast" or scored: Blood of the Wild and The Mist Remembers turn
 # themselves on/off automatically off the rival's own HP% (see
 # _update_enemy_blood_of_the_wild_state()/
 # _maybe_auto_activate_enemy_the_mist_remembers()), and Mark of the Mist/
-# Tidebringer only ever build off the rival's own plain Attacks (see
+# Pull of the Abyss only ever build off the rival's own plain Attacks (see
 # _apply_enemy_mark_of_the_mist_stack()/
-# _maybe_consume_enemy_tidebringer_stack()).
+# _maybe_consume_enemy_pull_of_the_abyss_stack()).
 const ENEMY_KNOWN_SKILL_IDS: Array[String] = [
 	"abyssal_spasm", "barbed_lunge", "leeching_hunger", "depthsveil",
 	"thornbind", "elderwild_companion", "wildbond", "beast_of_the_elderwild",
-	"whisper_of_the_veil", "veil_of_the_forgotten", "torrent", "x_marks_the_spot", "ghostship",
-	"cold_feet", "ice_vortex", "chilling_touch", "ice_blast",
-	"arctic_burn", "splinter_blast", "cold_embrace", "winter's_curse",
+	"whisper_of_the_veil", "veil_of_the_forgotten", "drowned_surge", "undertow", "the_sunken_one",
+	"mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold", "return_to_the_void",
+	"frostbound_fangs", "maddening_roar", "the_test_of_time", "the_hunger_calls",
 	"crystal_nova", "frostbite", "freezing_field",
 	"ice_shards", "snowball", "tag_team", "walrus_punch",
 	"nature's_guise", "leech_seed", "living_armor", "overgrowth",
@@ -1707,6 +1714,8 @@ func _ready() -> void:
 	_fx_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	enemies_layer.add_sibling(_fx_layer)
 
+	_build_level_up_input_blocker()
+
 	_recruited = PlayerManager.get_recruited_hero()
 	if _recruited.is_empty():
 		print("ERROR: No recruited hero found - accept a hero in a zone first.")
@@ -1731,6 +1740,7 @@ func _ready() -> void:
 
 	_load_battle_background()
 	_load_hero_image()
+	_attach_hero_attack_prop(_hero_static, hero_image)
 	_build_bar_styles()
 	_refresh_bars()
 	_populate_skill_buttons()
@@ -1741,7 +1751,7 @@ func _ready() -> void:
 	_update_action_buttons()
 
 	if TutorialManager.is_active and TutorialManager.current_stage == 1:
-		_advance_tutorial_stage1_step("move_to_torrent_range")
+		_advance_tutorial_stage1_step("move_to_drowned_surge_range")
 	elif TutorialManager.is_active and TutorialManager.current_stage == 2:
 		_start_tutorial_stage2_battle()
 	elif TutorialManager.is_active and TutorialManager.current_stage == 3:
@@ -1750,6 +1760,7 @@ func _ready() -> void:
 
 func _load_battle_background() -> void:
 	var zone_data: Dictionary = GameManager.get_selected_zone()
+	_ground_offset = float(zone_data.get("battle_ground_offset", 0.0))
 	var battle_bg_path: String = zone_data.get("battle_background", "")
 	if battle_bg_path != "" and ResourceLoader.exists(battle_bg_path):
 		background.texture = load(battle_bg_path)
@@ -1771,9 +1782,16 @@ func _index_to_x(index: int) -> float:
 	return index * _grid_unit()
 
 
+# How much lower than standard (fraction of the screen height) the
+# current arena's fighters stand - its "battle_ground_offset", for art
+# whose platform sits lower than the usual ground line. Set by
+# _load_battle_background().
+var _ground_offset: float = 0.0
+
+
 func _creature_y() -> float:
 	var target_height: float = get_viewport_rect().size.y / 4.0
-	return (get_viewport_rect().size.y - target_height) / 2.0
+	return (get_viewport_rect().size.y - target_height) / 2.0 + get_viewport_rect().size.y * _ground_offset
 
 
 ## On-screen size for a hero's (or hero-fight boss's) art. The standard
@@ -1781,9 +1799,11 @@ func _creature_y() -> float:
 ## tall. Narrower art (e.g. Erynd's portrait-shaped standing figure)
 ## is scaled up to cover that same area instead, so a tall figure
 ## isn't dwarfed by the wide creep art beside it. Wider art is left at
-## the standard height.
-func _creature_size(texture: Texture2D) -> Vector2:
-	var base_height: float = get_viewport_rect().size.y / 4.0
+## the standard height. `scale` is the hero's own "battle_scale" (hero
+## data, default 1) on top of that - for a creature meant to loom larger
+## than its art alone would make it (e.g. The Primordial Hunger).
+func _creature_size(texture: Texture2D, scale: float = 1.0) -> Vector2:
+	var base_height: float = get_viewport_rect().size.y / 4.0 * scale
 	var tex_size: Vector2 = texture.get_size()
 	var aspect: float = tex_size.x / tex_size.y
 	var height: float = base_height * maxf(1.0, sqrt(CREATURE_BASE_ASPECT / aspect))
@@ -1799,7 +1819,7 @@ func _creature_top_y(height: float) -> float:
 ## Re-sizes a hero-fight boss's node to its current texture (e.g. after
 ## Beast of the Elderwild swaps the art) and re-seats it on the ground line.
 func _refit_creature_node(node: TextureRect, pos_index: int) -> void:
-	node.size = _creature_size(node.texture)
+	node.size = _creature_size(node.texture, float(node.get_meta("battle_scale", 1.0)))
 	node.position = Vector2(_index_to_x(pos_index), _creature_top_y(node.size.y))
 
 
@@ -1938,7 +1958,7 @@ func _set_hero_image(image_path: String) -> void:
 
 	# Standard art is 1/4 of the screen tall; see _creature_size() for
 	# how narrower art is scaled.
-	hero_image.size = _creature_size(texture)
+	hero_image.size = _creature_size(texture, float(_hero_static.get("battle_scale", 1.0)))
 	_update_hero_position()
 
 
@@ -1983,7 +2003,7 @@ func _load_enemies() -> void:
 	# for reinforcements, cast the ultimate, mop up). Opens with stage
 	# 1's smaller count instead - reinforcements (still sized for the
 	# real stage 3, see _spawn_reinforcements()) bring the numbers back
-	# up right as Ghostship becomes available to deal with them.
+	# up right as The Sunken One becomes available to deal with them.
 	if TutorialManager.is_active and TutorialManager.current_stage == 3:
 		counts = GameManager.get_stage_enemy_counts(1)
 
@@ -2037,7 +2057,8 @@ func _spawn_enemy(enemy_def: Dictionary) -> void:
 		return
 
 	var texture: Texture2D = load(image_path)
-	var target_size: Vector2 = _creature_size(texture)
+	var battle_scale: float = float(enemy_def.get("battle_scale", 1.0))
+	var target_size: Vector2 = _creature_size(texture, battle_scale)
 	var y_pos: float = _creature_top_y(target_size.y)
 
 	var tex_rect := TextureRect.new()
@@ -2046,6 +2067,8 @@ func _spawn_enemy(enemy_def: Dictionary) -> void:
 	tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
 	tex_rect.size = target_size
 	tex_rect.mouse_filter = Control.MOUSE_FILTER_STOP
+	# Kept for _refit_creature_node(), when a swap of art resizes it.
+	tex_rect.set_meta("battle_scale", battle_scale)
 
 	# Hero art is drawn facing right (toward the enemy side, where the
 	# player's own hero always stands) - a hero fight puts that same
@@ -2153,7 +2176,7 @@ const ENEMY_STATUS_LABEL_COLOR := Color(1, 0.55, 0.3, 1)
 ## as a comma-separated string ("" if none) - one entry per distinct
 ## effect a player skill (or a wall the player's own Ice Shards put
 ## under its feet) can inflict directly on an enemy Dictionary. Mirrors
-## _enemy_has_harmful_debuff()'s own field list (used for Cold Embrace's
+## _enemy_has_harmful_debuff()'s own field list (used for The Test of Time's
 ## AI scoring) plus the effects that helper doesn't need for that
 ## purpose - stun, Frostbite's/Leech Seed's/Overgrowth's own DoTs, and
 ## an Ice-Shards-blocked column, which isn't a Dictionary field at all
@@ -2198,12 +2221,12 @@ func _enemy_status_effect_text(enemy: Dictionary) -> String:
 		effects.append("Silenced")
 	if cursed:
 		effects.append("Cursed")
-	if enemy.get("cold_feet_dot_turns_left", 0) > 0:
-		effects.append("Cold Feet")
-	if enemy.get("ice_vortex_dot_turns_left", 0) > 0:
-		effects.append("Ice Vortex")
-	if enemy.get("ice_blast_dot_turns_left", 0) > 0:
-		effects.append("Ice Blast")
+	if enemy.get("mark_of_stillness_dot_turns_left", 0) > 0:
+		effects.append("Mark of Stillness")
+	if enemy.get("the_hollow_cold_dot_turns_left", 0) > 0:
+		effects.append("The Hollow Cold")
+	if enemy.get("return_to_the_void_dot_turns_left", 0) > 0:
+		effects.append("Return to the Void")
 	if enemy.get("frostbite_dot_turns_left", 0) > 0:
 		effects.append("Frostbitten")
 	if enemy.get("leech_seed_dot_turns_left", 0) > 0:
@@ -2268,6 +2291,10 @@ func _refresh_enemy_overhead_labels() -> void:
 			var slot_bottom: float = base_y - float(i) * (ENEMY_HP_LABEL_HEIGHT + ENEMY_HP_LABEL_GAP)
 			var label_top: float = slot_bottom - ENEMY_HP_LABEL_HEIGHT
 			label.position = Vector2(center_x - ENEMY_HP_LABEL_WIDTH / 2.0, label_top)
+			# Return to the Void's execute threshold, while it's armed.
+			var threshold: float = float(enemy.get("return_to_the_void_execute_pct", 0.0))
+			ReturnToVoidFX.update_threshold_bar(label, threshold > 0.0 and int(enemy.get("return_to_the_void_dot_turns_left", 0)) > 0,
+					current_hp / maxf(max_hp, 1.0), threshold)
 
 			var status_label: Label = enemy.get("status_label")
 			if status_label != null:
@@ -2364,15 +2391,15 @@ func _populate_item_grid() -> void:
 
 			if is_consumable:
 				btn.mouse_filter = Control.MOUSE_FILTER_STOP
-				# Items are locked out for as long as Cold Embrace is
-				# active on the hero (see _cold_embrace_active), or while
+				# Items are locked out for as long as The Test of Time is
+				# active on the hero (see _the_test_of_time_active), or while
 				# he's stunned/frozen (_player_stun_turns_left > 0 - set
-				# by Torrent's/Barbed Lunge's/Ice Blast's/Frostbite's/Winter's
-				# Curse's own stun, whether cast by the player or a rival
+				# by Drowned Surge's/Barbed Lunge's/Return to the Void's/Frostbite's/The Hunger
+				# Calls's own stun, whether cast by the player or a rival
 				# hero) - a stunned hero loses the turn entirely, same as
 				# a stunned enemy loses its own (see _enemy_turn()'s stun
 				# check), so there's nothing left for him to spend it on.
-				btn.disabled = _battle_over or _has_acted_this_turn or _cold_embrace_active or _player_stun_turns_left > 0 or _mortimer_kisses_active
+				btn.disabled = _battle_over or _has_acted_this_turn or _rival_fx_in_flight or _the_test_of_time_active or _player_stun_turns_left > 0 or _mortimer_kisses_active
 				btn.pressed.connect(_on_item_pressed.bind(item_id))
 				# Lets _apply_tutorial_gate() find this button again by
 				# item id without needing its own tracking dict, the way
@@ -2400,7 +2427,7 @@ func _refresh_gold_label() -> void:
 
 
 func _on_item_pressed(item_id: String) -> void:
-	if _battle_over or _has_acted_this_turn or _cold_embrace_active or _player_stun_turns_left > 0 or _mortimer_kisses_active:
+	if _battle_over or _has_acted_this_turn or _rival_fx_in_flight or _the_test_of_time_active or _player_stun_turns_left > 0 or _mortimer_kisses_active:
 		return
 	if not PlayerManager.use_item(item_id):
 		return
@@ -2489,7 +2516,9 @@ func _refresh_bars() -> void:
 	_refresh_overgrowth_roots()
 	_refresh_siren_lullabies()
 	_refresh_corrosive_haze()
-	_refresh_cold_feet_frost()
+	_refresh_mark_of_stillness_frost()
+	_refresh_void_marks()
+	_refresh_hunger_calls_fx()
 
 	# Called this pervasively (after nearly every action/tick in the
 	# game - see _refresh_bars()'s own many call sites) so an enemy's
@@ -2504,19 +2533,19 @@ func _refresh_bars() -> void:
 ## each one just reflects current state rather than being toggled from
 ## every individual cast/tick/dispel site.
 func _refresh_status_effects() -> void:
-	# Ice Blast's execute mechanic (see _tick_player_turn_start_effects())
+	# Return to the Void's execute mechanic (see _tick_player_turn_start_effects())
 	# reserves execute_pct of the player's OWN max HP as a fixed danger
 	# zone near the bottom of the bar, not a chunk of current HP - so
 	# this is a static width fraction of the bar, not tied to hp_bar's
 	# own value.
-	var reserving: bool = _player_ice_blast_execute_pct > 0.0 and _player_ice_blast_dot_turns_left > 0
-	ice_blast_reserve_overlay.visible = reserving
+	var reserving: bool = _player_return_to_the_void_execute_pct > 0.0 and _player_return_to_the_void_dot_turns_left > 0
+	return_to_the_void_reserve_overlay.visible = reserving
 	if reserving:
-		ice_blast_reserve_overlay.anchor_right = clampf(_player_ice_blast_execute_pct, 0.0, 1.0)
+		return_to_the_void_reserve_overlay.anchor_right = clampf(_player_return_to_the_void_execute_pct, 0.0, 1.0)
 
-	var frost_active: bool = _player_ice_blast_dot_turns_left > 0 or _player_frostbite_dot_turns_left > 0 \
-		or _player_cold_feet_dot_turns_left > 0 or _player_ice_vortex_dot_turns_left > 0 \
-		or _player_winters_curse_active
+	var frost_active: bool = _player_return_to_the_void_dot_turns_left > 0 or _player_frostbite_dot_turns_left > 0 \
+		or _player_mark_of_stillness_dot_turns_left > 0 or _player_the_hollow_cold_dot_turns_left > 0 \
+		or _player_the_hunger_calls_active
 	_set_status_icon_visible(frost_status_icon, frost_active)
 
 	var curse_active: bool = _player_curse_active or _player_thornbind_dot_turns_left > 0
@@ -2526,7 +2555,7 @@ func _refresh_status_effects() -> void:
 	_set_status_icon_visible(root_status_icon, root_active)
 
 	# The frost skills' own ambient reminder - a persistent tint while
-	# any of Winter's Curse/Frostbite/Ice Blast's own effects are still
+	# any of The Hunger Calls/Frostbite/Return to the Void's own effects are still
 	# on the player, fading out the instant they all are (a win, a
 	# flee, or the effect just running out all reach this the same way
 	# - every one of them already ends up back through _refresh_bars()).
@@ -2689,11 +2718,10 @@ func _skill_name_button_text(skill_name: String) -> String:
 
 
 func _on_skill_pressed(skill: Dictionary) -> void:
-	if _battle_over or _has_acted_this_turn:
+	if _battle_over or _has_acted_this_turn or _rival_fx_in_flight:
 		return
 
-	if _cold_embrace_active:
-		_show_message_over_hero("Encased in ice!")
+	if _the_test_of_time_active:
 		return
 
 	if _mortimer_kisses_active:
@@ -2721,7 +2749,7 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 	if _recruited.get("current_mana", 0) < mana_cost:
 		_show_message_over_hero("Not enough mana")
 		if TutorialManager.is_active and TutorialManager.current_stage == 3 \
-		and skill_id == "ghostship" and _tutorial_stage3_step == "cast_ultimate":
+		and skill_id == "the_sunken_one" and _tutorial_stage3_step == "cast_ultimate":
 			_advance_tutorial_stage3_step("need_mana_potion")
 		return
 
@@ -2837,7 +2865,7 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 			# Pressing the button again while its own targeting is still
 			# open self-casts - the hero's portrait can be fully covered
 			# by a melee creep sharing his column, leaving no spot to
-			# click it (same double-tap self-cast as Dota's Mist Coil).
+			# click it.
 			if _targeting_mode and _targeting_purpose == "whisper_of_the_veil":
 				_resolve_whisper_of_the_veil_self_cast(_pending_whisper_of_the_veil_level_data)
 				return
@@ -2856,10 +2884,10 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 			_activate_depthsveil(level_data)
 		"nature's_guise":
 			_activate_natures_guise(level_data)
-		"arctic_burn":
-			_activate_arctic_burn(level_data)
-		"cold_embrace":
-			_activate_cold_embrace(level_data)
+		"frostbound_fangs":
+			_activate_frostbound_fangs(level_data)
+		"the_test_of_time":
+			_activate_the_test_of_time(level_data)
 		"elderwild_companion":
 			_elderwild_companion(level_data)
 		"wildbond":
@@ -2878,78 +2906,79 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 			# resolves (_resolve_thornbind_cast), not here, so bail out
 			# of this function without falling through to it.
 			return
-		"torrent":
-			if not _start_torrent_targeting(level_data):
+		"drowned_surge":
+			if not _start_drowned_surge_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as Thornbind/Whisper of the Veil - the
 			# mana/cooldown/turn spend happens once the click resolves
-			# (_resolve_torrent_cast), not here.
+			# (_resolve_drowned_surge_cast), not here.
 			return
-		"x_marks_the_spot":
-			if not _start_xmarks_targeting(level_data):
+		"undertow":
+			if not _start_undertow_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_xmarks_cast), not here.
+			# click resolves (_resolve_undertow_cast), not here.
 			return
-		"ghostship":
-			if not _start_ghostship_targeting(level_data):
+		"the_sunken_one":
+			if not _cast_the_sunken_one(level_data):
+				# No enemy in the line of fire - nothing happened, so
+				# don't spend mana, the turn, or start the cooldown.
+				return
+			# No target to pick: it fires the way Kaelen Varr faces.
+			# _cast_the_sunken_one() spends the mana and starts the
+			# cooldown itself, and ends the turn once the broadside lands.
+			return
+		"mark_of_stillness":
+			if not _start_mark_of_stillness_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_ghostship_cast), not here.
+			# click resolves (_resolve_mark_of_stillness_cast), not here.
 			return
-		"cold_feet":
-			if not _start_cold_feet_targeting(level_data):
+		"the_hollow_cold":
+			if not _start_the_hollow_cold_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_cold_feet_cast), not here.
+			# click resolves (_resolve_the_hollow_cold_cast), not here.
 			return
-		"ice_vortex":
-			if not _start_ice_vortex_targeting(level_data):
+		"touch_of_the_first_cold":
+			if not _start_touch_of_the_first_cold_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_ice_vortex_cast), not here.
+			# click resolves (_resolve_touch_of_the_first_cold_cast), not here.
 			return
-		"chilling_touch":
-			if not _start_chilling_touch_targeting(level_data):
-				# No enemy in range - nothing happened, same as above.
-				return
-			# Same deferred-spend pattern as every other targeted skill
-			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_chilling_touch_cast), not here.
-			return
-		"ice_blast":
-			if not _start_ice_blast_targeting(level_data):
+		"return_to_the_void":
+			if not _start_return_to_the_void_targeting(level_data):
 				# No living enemy anywhere on the field - nothing
 				# happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_ice_blast_cast), not here.
+			# click resolves (_resolve_return_to_the_void_cast), not here.
 			return
-		"splinter_blast":
-			if not _start_splinter_blast_targeting(level_data):
+		"maddening_roar":
+			if not _start_maddening_roar_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_splinter_blast_cast), not here.
+			# click resolves (_resolve_maddening_roar_cast), not here.
 			return
-		"winter's_curse":
-			if not _start_winters_curse_targeting(level_data):
+		"the_hunger_calls":
+			if not _start_the_hunger_calls_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_winters_curse_cast), not here.
+			# click resolves (_resolve_the_hunger_calls_cast), not here.
 			return
 		"crystal_nova":
 			if not _start_crystal_nova_targeting(level_data):
@@ -3174,7 +3203,7 @@ func _cast_whirling_death(level_data: Dictionary) -> bool:
 
 
 ## Slardar's Slithereen Crush: deals `level_data.damage` and stuns
-## (target["stun_turns_left"], same shared field Barbed Lunge's/Torrent's own
+## (target["stun_turns_left"], same shared field Barbed Lunge's/Drowned Surge's own
 ## stun use) every enemy within `level_data.radius` columns of Slardar -
 ## same shape as _cast_whirling_death() above, just with a stun folded
 ## in and only ever stunning a hit that actually left the target alive.
@@ -3212,7 +3241,7 @@ func _cast_slithereen_crush(level_data: Dictionary) -> bool:
 	# illusion (Naga Siren's Mirror Image) can be in range independently
 	# of whether the boss itself currently is. The rival's own Spirit
 	# Bear needs no equivalent call - it's a genuine _enemies entry
-	# (see _summon_enemy_spirit_bear()), so the `targets` loop above
+	# (see _summon_enemy_elderwild_companion()), so the `targets` loop above
 	# already caught it, stun included.
 	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, radius, crush_damage)
 
@@ -3255,7 +3284,7 @@ func _cast_starstorm(level_data: Dictionary) -> bool:
 	# illusion (Naga Siren's Mirror Image) can be in range independently
 	# of whether the boss itself currently is. The rival's own Spirit
 	# Bear needs no equivalent call - it's a genuine _enemies entry
-	# (see _summon_enemy_spirit_bear()), so the `targets` loop above
+	# (see _summon_enemy_elderwild_companion()), so the `targets` loop above
 	# already caught it.
 	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, radius, starstorm_damage)
 
@@ -3263,7 +3292,7 @@ func _cast_starstorm(level_data: Dictionary) -> bool:
 
 
 ## Naga Siren's ultimate, Song of the Siren: stuns (target["stun_turns_
-## left"], same shared field Barbed Lunge's/Torrent's/Firesnap Cookie's own
+## left"], same shared field Barbed Lunge's/Drowned Surge's/Firesnap Cookie's own
 ## stun use) and shreds the armor (target["armor_reduction"]/
 ## "armor_reduction_turns_left", the same per-instance runtime fields
 ## Lil' Shredder's own shred uses - stacking additively with any
@@ -3352,7 +3381,7 @@ func _cast_scatterblast(level_data: Dictionary) -> bool:
 ## it (the player's own hero_image, or a rival's own node). The damage
 ## above has already fully resolved by the time this plays; it never
 ## gates on this. First particle-based effect in this file - every
-## other one-shot visual (Ghostship's flight, Elderwild Companion's summon) is
+## other one-shot visual (The Sunken One's flight, Elderwild Companion's summon) is
 ## a plain TextureRect tween instead, since there's no shotgun-pellet
 ## art asset to tween in the same way.
 func _play_scatterblast_effect(origin_node: Control, direction: int, range_columns: int) -> void:
@@ -3443,7 +3472,7 @@ func _activate_leap(level_data: Dictionary) -> void:
 
 ## Resolves an Ensnare cast on `target`: `level_data.damage` (mitigated
 ## by the target's own armor via _deal_fixed_damage_to_enemy(), same
-## helper Abyssal Spasm/Torrent/Ghostship use) plus a root for this level's
+## helper Abyssal Spasm/Drowned Surge/The Sunken One use) plus a root for this level's
 ## own `root_turns` - reusing _apply_root() with no `silence_turns`/
 ## `dot_damage`/`dot_duration` keys in `level_data` (all default to 0
 ## there), so unlike Thornbind this only ever roots, never silences or
@@ -3513,12 +3542,12 @@ func _resolve_corrosive_haze_cast(target: Dictionary, level_data: Dictionary) ->
 ## base_damage plus bonus_per_column for every column between Mirana
 ## and `target` at the moment it was clicked (mitigated by the target's
 ## own armor via _deal_fixed_damage_to_enemy(), same helper Abyssal Spasm/
-## Torrent/Ghostship use) - since `target` was only ever a valid click
+## Drowned Surge/The Sunken One use) - since `target` was only ever a valid click
 ## within this level's own `range` in the first place (see
 ## _start_sacred_arrow_targeting()), the farthest it can ever reach is
 ## exactly the table's own "Max Damage" column, reached at max range.
 ## Then stuns it (target["stun_turns_left"], same shared field Barbed Lunge's/
-## Torrent's own stun use) for this level's own stun_turns, only if the
+## Drowned Surge's own stun use) for this level's own stun_turns, only if the
 ## hit left it alive. _play_sacred_arrow_flight() plays the actual
 ## flight alongside this already-resolved damage, same "cosmetic only,
 ## never gates the outcome" split Lucent Beam's own impact uses.
@@ -3549,7 +3578,7 @@ func _resolve_sacred_arrow_cast(target: Dictionary, level_data: Dictionary) -> v
 ## `damage` (mitigated by the target's own armor via
 ## _deal_fixed_damage_to_enemy(), same helper Sacred Arrow uses above),
 ## then stuns it (target["stun_turns_left"], same shared field Sacred
-## Arrow's/Barbed Lunge's/Torrent's own stun use) for this level's own
+## Arrow's/Barbed Lunge's/Drowned Surge's own stun use) for this level's own
 ## stun_turns, only if the hit left it alive.
 func _resolve_lucent_beam_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
@@ -3631,21 +3660,21 @@ func _resolve_whisper_of_the_veil_enemy_cast(target: Dictionary, level_data: Dic
 	_mark_turn_used()
 
 
-## Resolves a Torrent cast on `target`: deals `level_data.damage`
+## Resolves a Drowned Surge cast on `target`: deals `level_data.damage`
 ## (mitigated by the target's own armor, via _deal_fixed_damage_to_
 ## enemy() - same helper Abyssal Spasm/Whisper of the Veil use) and stuns it for
 ## `level_data.stun_turns` if it survives, exactly like Barbed Lunge's own
 ## stun. At max level (level_data.radius > 0), also splashes every
 ## OTHER living, targetable enemy within that radius of `target`'s own
 ## column for the same damage - centered on the target rather than the
-## hero, unlike Abyssal Spasm's radius (which is centered on Kunkka
+## hero, unlike Abyssal Spasm's radius (which is centered on Kaelen Varr
 ## himself) - so the splash never re-hits `target` a second time.
-func _resolve_torrent_cast(target: Dictionary, level_data: Dictionary) -> void:
+func _resolve_drowned_surge_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	var damage: float = float(level_data.get("damage", 0))
 	# Played before the hit, which may kill (and free) the target.
-	_play_torrent_splash(target.get("node"))
+	_play_drowned_surge_splash(target.get("node"))
 	_deal_fixed_damage_to_enemy(target, damage)
 	if target.get("current_hp", 0) > 0:
 		target["stun_turns_left"] = int(level_data.get("stun_turns", 1))
@@ -3657,26 +3686,26 @@ func _resolve_torrent_cast(target: Dictionary, level_data: Dictionary) -> void:
 			if is_same(enemy, target) or _is_target_hidden(enemy):
 				continue
 			if _distance(enemy["pos_index"], target_pos) <= radius:
-				_play_torrent_splash(enemy.get("node"))
+				_play_drowned_surge_splash(enemy.get("node"))
 				_deal_fixed_damage_to_enemy(enemy, damage)
 		# Centered on the target's own column, same as the splash above -
 		# a rival's own illusion (Naga Siren's Mirror Image) can be in
 		# range independently of whether the boss itself currently is.
-		_play_torrent_splash_on_illusions(_enemy_illusions, target_pos, radius)
+		_play_drowned_surge_splash_on_illusions(_enemy_illusions, target_pos, radius)
 		_deal_aoe_damage_to_enemy_illusions(target_pos, radius, damage)
 
 	# No Depthsveil check here, unlike Thornbind's own resolve - that
-	# only ever matters for Veyrik's own kit, and Torrent belongs to
-	# Kunkka (same reasoning as Whisper of the Veil's enemy-cast, Morvael's own
+	# only ever matters for Veyrik's own kit, and Drowned Surge belongs to
+	# Kaelen Varr (same reasoning as Whisper of the Veil's enemy-cast, Morvael's own
 	# skill, right above/below this).
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["torrent"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("torrent", _skill_cooldowns["torrent"])
+	_skill_cooldowns["drowned_surge"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("drowned_surge", _skill_cooldowns["drowned_surge"])
 	_refresh_skill_cooldown_labels()
 
 	if TutorialManager.is_active and TutorialManager.current_stage == 1 \
-	and (_tutorial_stage1_step == "cast_torrent_on_range" or _tutorial_stage1_step == "recast_torrent_on_range"):
+	and (_tutorial_stage1_step == "cast_drowned_surge_on_range" or _tutorial_stage1_step == "recast_drowned_surge_on_range"):
 		# A recast (see "melee_in_range"'s own check below) can land while
 		# the hero isn't actually standing next to a melee creep yet - a
 		# reinforcement's melee creep spawns at its own fixed column,
@@ -3695,24 +3724,24 @@ func _resolve_torrent_cast(target: Dictionary, level_data: Dictionary) -> void:
 	_mark_turn_used()
 
 
-## Resolves an X Marks the Spot cast on `target`: no damage, no
+## Resolves an Undertow cast on `target`: no damage, no
 ## immediate effect at all beyond setting the mark itself - see
-## _pending_xmarks_target's own comment above and _resolve_xmarks_
+## _pending_undertow_target's own comment above and _resolve_undertow_
 ## teleport() (called from _end_turn()) for what actually happens with
 ## it, on the hero's own next turn. Recasting (marking a different
 ## target before the first one ever triggers) simply overwrites the
 ## pending mark outright, same as Leeching Hunger/Beast of the Elderwild being
 ## recast - there's nothing to "give back" from the old one.
-func _resolve_xmarks_cast(target: Dictionary, level_data: Dictionary) -> void:
+func _resolve_undertow_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
-	_pending_xmarks_target = target
-	_pending_xmarks_stage_generation = _stage_generation
+	_pending_undertow_target = target
+	_pending_undertow_stage_generation = _stage_generation
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["x_marks_the_spot"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("x_marks_the_spot", _skill_cooldowns["x_marks_the_spot"])
+	_skill_cooldowns["undertow"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("undertow", _skill_cooldowns["undertow"])
 	_refresh_skill_cooldown_labels()
 
 	if _battle_over or _stage_generation != generation_before:
@@ -3722,91 +3751,145 @@ func _resolve_xmarks_cast(target: Dictionary, level_data: Dictionary) -> void:
 
 
 ## Called once per _end_turn() call, right as the hero's new turn opens
-## (see its own call site) - resolves whatever X Marks the Spot mark is
+## (see its own call site) - resolves whatever Undertow mark is
 ## pending, if any. Teleports the hero onto the marked enemy's CURRENT
 ## pos_index (it may well have moved since it was marked) and clears
 ## the mark either way; no-ops (a silent fizzle, no teleport) if the
 ## mark's target died in the meantime or the stage/hero fight moved on
-## since it was placed (_pending_xmarks_stage_generation mismatch,
+## since it was placed (_pending_undertow_stage_generation mismatch,
 ## meaning `target` is a stale reference into a fight that's already
 ## over). Never spends the hero's turn - _end_turn() calls this before
 ## reopening the action buttons, not in response to one of them.
-func _resolve_xmarks_teleport() -> void:
-	if _pending_xmarks_target.is_empty():
+func _resolve_undertow_teleport() -> void:
+	if _pending_undertow_target.is_empty():
 		return
 
-	var target: Dictionary = _pending_xmarks_target
-	var stage_generation: int = _pending_xmarks_stage_generation
-	_pending_xmarks_target = {}
-	_pending_xmarks_stage_generation = -1
+	var target: Dictionary = _pending_undertow_target
+	var stage_generation: int = _pending_undertow_stage_generation
+	_pending_undertow_target = {}
+	_pending_undertow_stage_generation = -1
 
 	if stage_generation != _stage_generation or target.get("current_hp", 0) <= 0:
 		return
 
+	var from_pos: Vector2 = hero_image.position
 	_hero_pos_index = target["pos_index"]
 	_update_hero_position()
-	_show_message_over_hero("X Marks the Spot!")
+	_show_message_over_hero("Undertow!")
+	_play_undertow_dive(hero_image, from_pos)
 
 
-## Resolves a Ghostship cast on `target`: the ship sails in a straight
-## line from Kunkka's own column to `target`'s, so every enemy
-## currently standing anywhere between the two (inclusive of both
-## ends) takes `level_data.damage` - not just `target` itself, unlike
-## every other single-target cast above. Each hit is still mitigated by
-## that enemy's own armor, via _deal_fixed_damage_to_enemy() (same
-## helper Abyssal Spasm/Torrent use to split one amount across several
-## targets). The whole path is snapshotted into `hit_targets` before
-## any damage is dealt, so a kill partway through the loop (removing
-## the dead enemy from _enemies) can't skip whoever comes after it in
-## the same pass. _play_ghostship_animation() is purely the visual
-## flourish of the ship's flight - the damage above has already fully
-## resolved by the time it's even called.
-func _resolve_ghostship_cast(target: Dictionary, level_data: Dictionary) -> void:
-	var generation_before: int = _stage_generation
+## Purely cosmetic: Undertow's jump - `node` (already moved) sinks into a
+## splash where it stood (`from_pos`) and surfaces out of a new one where
+## it landed (UndertowFX). Nothing to draw if it didn't actually move.
+func _play_undertow_dive(node: Variant, from_pos: Vector2) -> void:
+	if not is_instance_valid(node) or not (node is TextureRect) or from_pos.is_equal_approx(node.position):
+		return
+	# Its feet are on the ground line (see _creature_top_y()).
+	var ground_y: float = node.position.y + node.size.y
+	UndertowFX.play(node, from_pos, node.position, ground_y, _fx_layer)
 
-	var damage: float = float(level_data.get("damage", 0))
-	var start_col: int = mini(_hero_pos_index, target["pos_index"])
-	var end_col: int = maxi(_hero_pos_index, target["pos_index"])
 
+## Kaelen Varr's The Sunken One: the ghost ship surfaces behind him and
+## fires a broadside the way he's facing (hero_image.flip_h), out to
+## this level's `range` in columns. Every enemy standing anywhere in
+## that span - his own column included - takes `level_data.damage`,
+## each hit still mitigated by that enemy's armor via
+## _deal_fixed_damage_to_enemy(). There's no target to pick.
+##
+## Returns false (and shows a message) if nobody is in the line of fire,
+## so the cast isn't wasted. Otherwise it spends the mana and starts the
+## cooldown right away, locks the turn while SunkenOneFX plays, and deals
+## the damage when the first cannonball lands - then ends the turn. Who
+## gets hit is snapshotted now, so a kill partway through the loop
+## (removing the dead enemy from _enemies) can't skip anyone.
+func _cast_the_sunken_one(level_data: Dictionary) -> bool:
+	var dir: int = -1 if hero_image.flip_h else 1
+	var span: Vector2i = _the_sunken_one_span(_hero_pos_index, dir, level_data)
 	var hit_targets: Array = []
 	for enemy in _enemies:
 		if _is_target_hidden(enemy):
 			continue
 		var pos: int = enemy["pos_index"]
-		if pos >= start_col and pos <= end_col:
+		if pos >= span.x and pos <= span.y:
 			hit_targets.append(enemy)
-	for enemy in hit_targets:
-		_deal_fixed_damage_to_enemy(enemy, damage)
-	# The ship sails the whole line from the hero's own column to the
-	# target's - a rival's own illusion (Naga Siren's Mirror Image)
-	# standing anywhere along that path can still be caught in it.
-	_deal_line_aoe_damage_to_enemy_illusions(_hero_pos_index, target["pos_index"], damage)
+	if hit_targets.is_empty():
+		_show_message_over_hero("No enemy in range")
+		return false
 
-	_play_ghostship_animation(_hero_pos_index, target["pos_index"])
-
-	var mana_cost: float = float(level_data.get("mana_cost", 0))
-	spend_mana(mana_cost)
-	_skill_cooldowns["ghostship"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("ghostship", _skill_cooldowns["ghostship"])
+	var damage: float = float(level_data.get("damage", 0))
+	spend_mana(float(level_data.get("mana_cost", 0)))
+	_skill_cooldowns["the_sunken_one"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("the_sunken_one", _skill_cooldowns["the_sunken_one"])
 	_refresh_skill_cooldown_labels()
+	# Nothing else happens this turn while the ship is up.
+	_has_acted_this_turn = true
+	_update_action_buttons()
 
-	if TutorialManager.is_active and TutorialManager.current_stage == 3 and _tutorial_stage3_step == "cast_ultimate_ready":
-		_advance_tutorial_stage3_step("mop_up")
+	var landings: Array[Vector2] = []
+	for enemy in hit_targets:
+		var node: Control = enemy["node"]
+		if is_instance_valid(node):
+			landings.append(node.global_position + node.size * 0.5)
+	_pad_the_sunken_one_landings(landings, span)
 
-	if _battle_over or _stage_generation != generation_before:
-		return
+	var generation_before: int = _stage_generation
+	var fx: SunkenOneFX = SunkenOneFX.play(self, _fx_layer, hero_image.global_position + hero_image.size * 0.5,
+			_the_sunken_one_ground_y(), dir, landings, func() -> void:
+		if _battle_over or _stage_generation != generation_before:
+			return
+		for enemy in hit_targets:
+			if _enemies.any(func(e: Dictionary) -> bool: return is_same(e, enemy)):
+				_deal_fixed_damage_to_enemy(enemy, damage)
+		# A rival's own illusion (Naga Siren's Mirror Image) in the line
+		# of fire is caught in it too.
+		_deal_line_aoe_damage_to_enemy_illusions(span.x, span.y, damage)
+		_shake_screen()
+		if TutorialManager.is_active and TutorialManager.current_stage == 3 \
+		and (_tutorial_stage3_step == "cast_ultimate" or _tutorial_stage3_step == "cast_ultimate_ready"):
+			_advance_tutorial_stage3_step("mop_up")
+		if _battle_over or _stage_generation != generation_before:
+			return
+		_mark_turn_used()
+	)
+	# Behind every fighter, over the battle area.
+	move_child(fx, mini(hero_image.get_index(), enemies_layer.get_index()))
+	return true
 
-	_mark_turn_used()
+
+## The columns (low, high) The Sunken One's broadside covers, cast from
+## `from_pos` facing `dir`: the caster's own column out to this level's
+## `range`, clamped to the board.
+func _the_sunken_one_span(from_pos: int, dir: int, level_data: Dictionary) -> Vector2i:
+	var reach: int = int(level_data.get("range", 4))
+	var far: int = clampi(from_pos + dir * reach, 0, GRID_COLUMNS - 1)
+	return Vector2i(mini(from_pos, far), maxi(from_pos, far))
+
+
+## Where creatures stand - the ground line the ship rises out of.
+func _the_sunken_one_ground_y() -> float:
+	return _creature_y() + get_viewport_rect().size.y / 4.0
+
+
+## The ship has one ball per cannon port: after the ones aimed at whoever
+## is hit, the rest land spread across the span, so the whole range is
+## visibly raked.
+func _pad_the_sunken_one_landings(landings: Array[Vector2], span: Vector2i) -> void:
+	var y: float = _the_sunken_one_ground_y() - get_viewport_rect().size.y / 8.0
+	var i: int = 0
+	while landings.size() < SunkenOneFX.PORTS.size():
+		var col: int = span.x + (i * 2 + 1) * (span.y - span.x + 1) / (2 * SunkenOneFX.PORTS.size()) if span.y > span.x else span.x
+		landings.append(Vector2(_index_to_x(clampi(col, span.x, span.y)) + _grid_unit() * randf_range(0.2, 0.8), y + randf_range(-20.0, 20.0)))
+		i += 1
 
 
 ## Resolves a Timber Chain cast on `target`: chains a line from
 ## Timbersaw's own column to `target`'s, so every enemy currently
-## standing anywhere between the two (inclusive of both ends, same
-## convention as _resolve_ghostship_cast() above) takes
+## standing anywhere between the two (inclusive of both ends) takes
 ## `level_data.damage` - `target` itself takes the same amount, it's
 ## not a separate/bonus hit. The whole path is snapshotted into
-## `hit_targets` before any damage is dealt, same reasoning as
-## Ghostship's own snapshot. Timbersaw then pulls himself onto
+## `hit_targets` before any damage is dealt, so a kill partway through
+## can't skip anyone after it. Timbersaw then pulls himself onto
 ## `target`'s own pos_index (read after the damage above, but a dead
 ## enemy keeps its last "pos_index" around, so this still lands in the
 ## right spot even if the chain itself killed `target`) - UNLESS a
@@ -3982,7 +4065,7 @@ func _spawn_chakram_marker(pos_index: int) -> Node2D:
 ## stops its sparks and shrinks it away rather than just vanishing.
 ## Safe on a missing/already-freed node.
 func _dismiss_chakram_marker(marker: Variant) -> void:
-	if not (marker is Node2D) or not is_instance_valid(marker):
+	if not is_instance_valid(marker) or not (marker is Node2D):
 		return
 	for child in marker.get_children():
 		if child is CPUParticles2D:
@@ -4097,51 +4180,10 @@ func _despawn_chakram() -> void:
 	_chakram = {}
 
 
-## Purely cosmetic: spawns the ship art at `start_pos_index` and tweens
-## it across to `target_pos_index`'s, fading itself out once it arrives
-## - mirrors _elderwild_companion()'s own texture-loading/sizing
-## convention, just as a one-shot flight instead of a persistent ally.
-## No-op (with a console print, same as a missing bear image) if the
-## art asset isn't actually there. `start_pos_index` is the player's own
-## Kunkka casting on an enemy (_resolve_ghostship_cast() passes
-## _hero_pos_index) or a rival Kunkka casting on the player
-## (_cast_enemy_ghostship() passes the boss's own enemy["pos_index"]
-## instead) - either way this only draws the flight, the damage above
-## has already fully resolved by the time it's even called.
-func _play_ghostship_animation(start_pos_index: int, target_pos_index: int) -> void:
-	if not ResourceLoader.exists(GHOSTSHIP_IMAGE_PATH):
-		print("No Ghostship image found at: ", GHOSTSHIP_IMAGE_PATH)
-		return
-
-	var target_height: float = get_viewport_rect().size.y / 4.0
-	var texture: Texture2D = load(GHOSTSHIP_IMAGE_PATH)
-	var tex_size: Vector2 = texture.get_size()
-	var scale_factor: float = target_height / tex_size.y
-	var target_width: float = tex_size.x * scale_factor
-
-	var tex_rect := TextureRect.new()
-	tex_rect.texture = texture
-	tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
-	tex_rect.size = Vector2(target_width, target_height)
-	tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tex_rect.flip_h = target_pos_index < start_pos_index
-	tex_rect.position = Vector2(_index_to_x(start_pos_index), _creature_y())
-	add_child(tex_rect)
-	# Same reasoning as _elderwild_companion()'s own move_child() call -
-	# render at the hero/enemy layer, not on top of every UI panel.
-	move_child(tex_rect, enemies_layer.get_index() + 1)
-
-	var tween := create_tween()
-	tween.tween_property(tex_rect, "position:x", _index_to_x(target_pos_index), GHOSTSHIP_TRAVEL_DURATION)
-	tween.finished.connect(tex_rect.queue_free)
-
-
 ## Purely cosmetic: drops a thin beam of moonlight (LUCENT_BEAM_COLOR)
 ## from above straight down onto `target_node`'s own position, growing
-## into place top-down rather than flying in from the side - mirrors
-## _play_ghostship_animation()'s own "damage already resolved, this just
-## draws it" split (see that function's own comment). Once the beam
+## into place top-down rather than flying in from the side - the damage
+## has already been resolved; this only draws it. Once the beam
 ## reaches the target it flashes the struck sprite the same quick
 ## brightness pulse an enemy's own cast already gets
 ## (_pulse_caster_sprite()), so the hit itself reads as a clear impact,
@@ -4245,7 +4287,7 @@ func _play_sacred_arrow_flight(caster_node: Control, target_node: TextureRect, d
 ## wave. The sleep itself is shown per unit by _set_siren_lullaby().
 ## Same layering as _play_scatterblast_effect().
 func _play_siren_song_wave(caster_node: Variant, radius: int) -> void:
-	if not (caster_node is Control) or not is_instance_valid(caster_node):
+	if not is_instance_valid(caster_node) or not (caster_node is Control):
 		return
 	var center: Vector2 = caster_node.position + caster_node.size / 2.0
 	var reach: float = _grid_unit() * maxf(0.5, float(radius)) + caster_node.size.x * 0.3
@@ -4334,7 +4376,7 @@ func _build_music_note(size: float, color: Color) -> Node2D:
 ## _refresh_bars() (i.e. constantly), same approach as
 ## _refresh_thornbind_vines(). A mark only counts while the stun it rode
 ## in on is still running, and is cleared here once that stun is over -
-## so a later stun from anything else (Torrent, Frostbite...) never
+## so a later stun from anything else (Drowned Surge, Frostbite...) never
 ## shows a lullaby.
 func _refresh_siren_lullabies() -> void:
 	for enemy in _enemies:
@@ -4360,7 +4402,7 @@ func _refresh_siren_lullabies() -> void:
 ## scale/fades for free. Fades in/out; only does anything when the
 ## state actually changes (the child's presence is the marker).
 func _set_siren_lullaby(node: Variant, active: bool) -> void:
-	if not (node is TextureRect) or not is_instance_valid(node):
+	if not is_instance_valid(node) or not (node is TextureRect):
 		return
 	var lullaby: Control = node.get_node_or_null(SIREN_LULLABY_NAME)
 	if active == (lullaby != null):
@@ -4435,8 +4477,8 @@ func _set_siren_lullaby(node: Variant, active: bool) -> void:
 
 
 ## Purely cosmetic: Corrosive Haze's cast - a glob of murky ooze lobbed
-## from `from_node` (Slardar) to `to_node` (the marked target), the
-## same orb projectile Ice Blast uses (_play_orb_projectile()),
+## from `from_node` (Slardar) to `to_node` (the marked target) - the
+## orb projectile (_play_orb_projectile()) -
 ## in CORROSIVE_HAZE_OOZE_COLOR with a darker rim, bursting into a
 ## splatter of dark droplets and flashing the target sickly green. The
 ## lingering haze is _set_corrosive_haze()'s.
@@ -4471,7 +4513,7 @@ func _refresh_corrosive_haze() -> void:
 ## in/out; only does anything when the state actually changes (the
 ## child's presence is the marker).
 func _set_corrosive_haze(node: Variant, active: bool) -> void:
-	if not (node is Control) or not is_instance_valid(node):
+	if not is_instance_valid(node) or not (node is Control):
 		return
 	var haze: Control = node.get_node_or_null(CORROSIVE_HAZE_NAME)
 	if active == (haze != null):
@@ -4567,7 +4609,7 @@ func _set_corrosive_haze(node: Variant, active: bool) -> void:
 ## positions are captured up front, so a unit killed by the hit still
 ## gets its splash. Same layering as _play_scatterblast_effect().
 func _play_slithereen_crush(caster_node: Variant, radius: int, hit_nodes: Array) -> void:
-	if not (caster_node is Control) or not is_instance_valid(caster_node):
+	if not is_instance_valid(caster_node) or not (caster_node is Control):
 		return
 	var feet: Vector2 = caster_node.position + Vector2(caster_node.size.x / 2.0, caster_node.size.y * 0.9)
 	var reach: float = _grid_unit() * maxf(0.5, float(radius)) + caster_node.size.x * 0.3
@@ -4617,7 +4659,7 @@ func _play_slithereen_crush(caster_node: Variant, radius: int, hit_nodes: Array)
 	# Each unit hit: splash hit-flash + a small splash at its feet, as
 	# the wave reaches it.
 	for node in hit_nodes:
-		if not (node is Control) or not is_instance_valid(node):
+		if not is_instance_valid(node) or not (node is Control):
 			continue
 		var node_feet: Vector2 = node.position + Vector2(node.size.x / 2.0, node.size.y * 0.9)
 		var reach_fraction: float = clampf(absf(node_feet.x - feet.x) / reach, 0.0, 1.0)
@@ -4778,7 +4820,7 @@ func _build_net(radius: float) -> Node2D:
 func _play_starfall(nodes: Array) -> void:
 	var star_index: int = 0
 	for node in nodes:
-		if not (node is Control) or not is_instance_valid(node):
+		if not is_instance_valid(node) or not (node is Control):
 			continue
 		var center: Vector2 = node.position + node.size / 2.0
 
@@ -4903,9 +4945,9 @@ func _build_sacred_arrow(palette: Dictionary = {}) -> Node2D:
 	return arrow
 
 
-## Resolves a Cold Feet cast on `target`: no immediate damage, just
+## Resolves a Mark of Stillness cast on `target`: no immediate damage, just
 ## arms this level's own damage/duration onto `target`'s own
-## Dictionary (dedicated cold_feet_dot_damage/cold_feet_dot_turns_left
+## Dictionary (dedicated mark_of_stillness_dot_damage/mark_of_stillness_dot_turns_left
 ## fields, separate from Thornbind's/Mark of the Mist's own DoT fields
 ## even though the mechanism is identical, since a different skill's
 ## effect shouldn't silently share or clobber another's state) - ticked
@@ -4913,19 +4955,19 @@ func _build_sacred_arrow(palette: Dictionary = {}) -> Node2D:
 ## _tick_enemy_turn_start_effects(). Recasting on an already-frozen target simply
 ## overwrites its counters with this cast's fresh values, same as
 ## Thornbind's own recast rule.
-func _resolve_cold_feet_cast(target: Dictionary, level_data: Dictionary) -> void:
+func _resolve_mark_of_stillness_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
-	target["cold_feet_dot_damage"] = float(level_data.get("damage", 0))
-	target["cold_feet_dot_turns_left"] = int(level_data.get("duration", 0))
+	target["mark_of_stillness_dot_damage"] = float(level_data.get("damage", 0))
+	target["mark_of_stillness_dot_turns_left"] = int(level_data.get("duration", 0))
 	if is_instance_valid(target.get("node")):
-		_flash_bounce_hit(target["node"], COLD_FEET_FLASH_COLOR)
-	_refresh_cold_feet_frost()
+		_flash_bounce_hit(target["node"], MARK_OF_STILLNESS_FLASH_COLOR)
+	_refresh_mark_of_stillness_frost()
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["cold_feet"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("cold_feet", _skill_cooldowns["cold_feet"])
+	_skill_cooldowns["mark_of_stillness"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("mark_of_stillness", _skill_cooldowns["mark_of_stillness"])
 	_refresh_skill_cooldown_labels()
 
 	if _battle_over or _stage_generation != generation_before:
@@ -4934,18 +4976,18 @@ func _resolve_cold_feet_cast(target: Dictionary, level_data: Dictionary) -> void
 	_mark_turn_used()
 
 
-## Resolves an Ice Vortex cast on `target`: no immediate damage, just
+## Resolves a cast of The Hollow Cold on `target`: no immediate damage, just
 ## arms this level's own damage/duration onto EVERY enemy within
 ## this level's own radius of `target`'s column (`target` included -
 ## it's just the center of the AoE, not a special case) via dedicated
-## ice_vortex_dot_damage/ice_vortex_dot_turns_left fields, kept
-## separate from Cold Feet's/Thornbind's/Mark of the Mist's own DoT
-## fields for the same reason Cold Feet's are separate from theirs.
+## the_hollow_cold_dot_damage/the_hollow_cold_dot_turns_left fields, kept
+## separate from Mark of Stillness's/Thornbind's/Mark of the Mist's own DoT
+## fields for the same reason Mark of Stillness's are separate from theirs.
 ## Ticked once per turn, at the start of that enemy's own turn, by
 ## _tick_enemy_turn_start_effects(). Recasting overwrites whatever DoT
 ## an already-affected enemy was carrying, same as every other DoT
 ## skill's own recast rule.
-func _resolve_ice_vortex_cast(target: Dictionary, level_data: Dictionary) -> void:
+func _resolve_the_hollow_cold_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	var damage: float = float(level_data.get("damage", 0))
@@ -4957,23 +4999,24 @@ func _resolve_ice_vortex_cast(target: Dictionary, level_data: Dictionary) -> voi
 		if _is_target_hidden(enemy):
 			continue
 		if _distance(enemy["pos_index"], target_pos) <= radius:
-			enemy["ice_vortex_dot_damage"] = damage
-			enemy["ice_vortex_dot_turns_left"] = duration
+			enemy["the_hollow_cold_dot_damage"] = damage
+			enemy["the_hollow_cold_dot_turns_left"] = duration
 			if is_instance_valid(enemy.get("node")):
-				_flash_bounce_hit(enemy["node"], COLD_FEET_FLASH_COLOR)
+				_flash_bounce_hit(enemy["node"], MARK_OF_STILLNESS_FLASH_COLOR)
 	# The rival's own illusions (Naga Siren's Mirror Image) in the same
-	# area get the same DoT - ticked by _tick_enemy_illusions_ice_vortex()
+	# area get the same DoT - ticked by _tick_enemy_illusions_the_hollow_cold()
 	# at the start of the enemy turn. The rival's own Elderwild Companion needs
 	# nothing extra: it's a regular _enemies entry, already marked above.
-	_mark_illusions_ice_vortex(_enemy_illusions, target_pos, radius, damage, duration)
+	_mark_illusions_the_hollow_cold(_enemy_illusions, target_pos, radius, damage, duration)
 
-	_play_ice_vortex_swirl(target.get("node"), radius)
-	_refresh_cold_feet_frost()
+	_play_the_hollow_cold_swirl(target.get("node"), radius)
+	_open_hollow_cold_tear(target.get("node"), target_pos, radius, duration, false)
+	_refresh_mark_of_stillness_frost()
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["ice_vortex"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("ice_vortex", _skill_cooldowns["ice_vortex"])
+	_skill_cooldowns["the_hollow_cold"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("the_hollow_cold", _skill_cooldowns["the_hollow_cold"])
 	_refresh_skill_cooldown_labels()
 
 	if _battle_over or _stage_generation != generation_before:
@@ -4982,31 +5025,43 @@ func _resolve_ice_vortex_cast(target: Dictionary, level_data: Dictionary) -> voi
 	_mark_turn_used()
 
 
-## Resolves a Chilling Touch cast on `target`: one instant hit for the
+## Resolves a Touch of the First Cold cast on `target`: one hit for the
 ## hero's own rolled Attack damage (_roll_hero_damage(), the same roll
 ## a plain Attack uses) plus this level's own flat bonus_damage on top,
 ## mitigated by the target's own armor via _deal_fixed_damage_to_enemy()
-## - same helper Abyssal Spasm/Torrent/Ghostship use. This is SKILL damage,
+## - same helper Abyssal Spasm/Drowned Surge/The Sunken One use. This is SKILL damage,
 ## not the plain Attack action itself, so - same as every other skill
 ## here - it never triggers Leeching Hunger's steal, Wildbond's
 ## lifesteal, or Mark of the Mist's stacking; those are all scoped
 ## specifically to _apply_hero_attack().
-func _resolve_chilling_touch_cast(target: Dictionary, level_data: Dictionary) -> void:
+##
+## The hit lands when The Reaching Void's talons strike (see
+## _play_the_reaching_void()): mana and cooldown are spent right away,
+## the turn stays locked while the limb reaches, and the damage lands
+## (and the turn ends) at the touch - same flow as _cast_the_sunken_one().
+func _resolve_touch_of_the_first_cold_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	var damage: float = _roll_hero_damage() + float(level_data.get("bonus_damage", 0))
-	_deal_fixed_damage_to_enemy(target, damage)
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["chilling_touch"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("chilling_touch", _skill_cooldowns["chilling_touch"])
+	_skill_cooldowns["touch_of_the_first_cold"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("touch_of_the_first_cold", _skill_cooldowns["touch_of_the_first_cold"])
 	_refresh_skill_cooldown_labels()
+	# Nothing else happens this turn while the void reaches.
+	_has_acted_this_turn = true
+	_update_action_buttons()
 
-	if _battle_over or _stage_generation != generation_before:
-		return
-
-	_mark_turn_used()
+	_play_the_reaching_void(hero_image, target.get("node"), func() -> void:
+		if _battle_over or _stage_generation != generation_before:
+			return
+		if _enemies.any(func(e: Dictionary) -> bool: return is_same(e, target)):
+			_deal_fixed_damage_to_enemy(target, damage)
+		if _battle_over or _stage_generation != generation_before:
+			return
+		_mark_turn_used()
+	)
 
 
 ## Resolves a Lil' Shredder cast on `target`: fires this level's own
@@ -5482,7 +5537,7 @@ func _deal_aoe_damage_to_illusions(center_pos_index: int, radius: int, amount: f
 
 
 ## The line-shaped equivalent of _deal_aoe_damage_to_illusions() above -
-## for Ghostship's/Timber Chain's own "every column between the caster
+## for The Sunken One's/Timber Chain's own "every column between the caster
 ## and the target, inclusive of both ends" line, rather than a radius
 ## around one point. Same "amount is raw, each illusion mitigates it
 ## separately via the hero's own armor" contract.
@@ -5521,17 +5576,23 @@ func _deal_directional_aoe_damage_to_illusions(origin_pos_index: int, direction:
 			_deal_damage_to_illusion(illusion, mitigated)
 
 
-## Resolves an Ice Blast cast on `target`: `level_data.damage` to
+## Resolves a Return to the Void cast on `target`: `level_data.damage` to
 ## `target` and every OTHER living, targetable enemy within
-## `level_data.radius` columns of it (mirroring Abyssal Spasm's/Torrent's
+## `level_data.radius` columns of it (mirroring Abyssal Spasm's/Drowned Surge's
 ## own "one rolled amount, many separately-mitigated hits" pattern),
 ## then arms this level's own DoT (dot_damage/dot_duration) AND execute
 ## threshold (execute_pct, the "reserved %" of max HP - see
 ## _tick_enemy_turn_start_effects() for how that's actually enforced) on every
 ## one of them that survived the initial hit. `target` alone also gets
-## stunned, mirroring Torrent's own "only the primary target" rule for
+## stunned, mirroring Drowned Surge's own "only the primary target" rule for
 ## its stun.
-func _resolve_ice_blast_cast(target: Dictionary, level_data: Dictionary) -> void:
+##
+## All of it lands when the world is erased (see _play_return_to_the_void()):
+## mana and cooldown are spent right away, the turn stays locked while the
+## sigil brands the target and the world holds its breath, and the hits
+## land (and the turn ends) at the erasure - same flow as
+## _cast_the_sunken_one(). Who's caught is snapshotted now.
+func _resolve_return_to_the_void_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	var damage: float = float(level_data.get("damage", 0))
@@ -5542,120 +5603,148 @@ func _resolve_ice_blast_cast(target: Dictionary, level_data: Dictionary) -> void
 	var target_pos: int = target["pos_index"]
 
 	var hit_targets: Array = []
+	var struck: Array = []
 	for enemy in _enemies:
 		if _is_target_hidden(enemy):
 			continue
 		if _distance(enemy["pos_index"], target_pos) <= radius:
 			hit_targets.append(enemy)
-
-	# Launched before the hits land - they may kill (and free) the target.
-	_play_ice_blast_effect(hero_image, target.get("node"))
-
-	for enemy in hit_targets:
-		_deal_fixed_damage_to_enemy(enemy, damage)
-		if enemy.get("current_hp", 0) > 0:
-			enemy["ice_blast_dot_damage"] = dot_damage
-			enemy["ice_blast_dot_turns_left"] = dot_duration
-			enemy["ice_blast_execute_pct"] = execute_pct
-	_refresh_cold_feet_frost()
-	# Centered on the target's own column, same as the check above - a
-	# rival's own illusion (Naga Siren's Mirror Image) can be in range
-	# independently of whether the boss itself currently is.
-	_deal_aoe_damage_to_enemy_illusions(target_pos, radius, damage)
-
-	if target.get("current_hp", 0) > 0:
-		target["stun_turns_left"] = int(level_data.get("stun_turns", 1))
+			struck.append(enemy.get("node"))
+	for illusion in _enemy_illusions:
+		if _distance(illusion["pos_index"], target_pos) <= radius:
+			struck.append(illusion.get("node"))
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["ice_blast"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("ice_blast", _skill_cooldowns["ice_blast"])
+	_skill_cooldowns["return_to_the_void"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("return_to_the_void", _skill_cooldowns["return_to_the_void"])
 	_refresh_skill_cooldown_labels()
+	# Nothing else happens this turn while the world is unmade.
+	_has_acted_this_turn = true
+	_update_action_buttons()
 
-	if _battle_over or _stage_generation != generation_before:
-		return
+	_play_return_to_the_void(target.get("node"), radius, struck, func() -> void:
+		if _battle_over or _stage_generation != generation_before:
+			return
+		for enemy in hit_targets:
+			if not _enemies.any(func(e: Dictionary) -> bool: return is_same(e, enemy)):
+				continue
+			_deal_fixed_damage_to_enemy(enemy, damage)
+			if enemy.get("current_hp", 0) > 0:
+				enemy["return_to_the_void_dot_damage"] = dot_damage
+				enemy["return_to_the_void_dot_turns_left"] = dot_duration
+				enemy["return_to_the_void_execute_pct"] = execute_pct
+		_refresh_mark_of_stillness_frost()
+		# Centered on the target's own column, same as the check above - a
+		# rival's own illusion (Naga Siren's Mirror Image) can be in range
+		# independently of whether the boss itself currently is.
+		_deal_aoe_damage_to_enemy_illusions(target_pos, radius, damage)
 
-	_mark_turn_used()
+		if target.get("current_hp", 0) > 0:
+			target["stun_turns_left"] = int(level_data.get("stun_turns", 1))
+		_refresh_bars()
+
+		if _battle_over or _stage_generation != generation_before:
+			return
+		_mark_turn_used()
+	)
 
 
-## Resolves a Splinter Blast cast on `target`: `level_data.damage` to
-## `target` alone, then `level_data.splinter_damage` - a separate,
+## Resolves a Maddening Roar cast on `target`: `level_data.damage` to
+## `target` alone, then `level_data.shatter_damage` - a separate,
 ## lighter amount, not a fraction of the main hit - to every OTHER
-## living, targetable enemy within `level_data.splinter_range` columns
-## of `target`'s own position, mirroring Torrent's own "splash centered
-## on the target, never re-hitting it" radius (_resolve_torrent_cast()),
+## living, targetable enemy within `level_data.shatter_range` columns
+## of `target`'s own position, mirroring Drowned Surge's own "splash centered
+## on the target, never re-hitting it" radius (_resolve_drowned_surge_cast()),
 ## just with the splash using its own flat damage figure instead of
 ## reusing the primary hit's.
-func _resolve_splinter_blast_cast(target: Dictionary, level_data: Dictionary) -> void:
+##
+## Both land with the roar (see _play_maddening_roar()): mana and cooldown
+## are spent right away and the turn stays locked while it plays; the
+## main hit lands when the roar strikes the target, the shatter damage
+## when its rings have spread to the others - then the turn ends. Who's
+## caught is snapshotted now.
+func _resolve_maddening_roar_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	var damage: float = float(level_data.get("damage", 0))
-	var splinter_damage: float = float(level_data.get("splinter_damage", 0))
-	var splinter_range: int = int(level_data.get("splinter_range", 0))
+	var shatter_damage: float = float(level_data.get("shatter_damage", 0))
+	var shatter_range: int = int(level_data.get("shatter_range", 0))
 	var target_pos: int = target["pos_index"]
 
-	# Every unit the splinters will reach, gathered (and their shards
-	# launched) before any damage lands - a kill frees its node.
-	var splinter_targets: Array = []
-	var shard_nodes: Array = []
+	var shatter_targets: Array = []
+	var shatter_nodes: Array = []
 	for enemy in _enemies:
 		if is_same(enemy, target) or _is_target_hidden(enemy):
 			continue
-		if _distance(enemy["pos_index"], target_pos) <= splinter_range:
-			splinter_targets.append(enemy)
-			shard_nodes.append(enemy.get("node"))
+		if _distance(enemy["pos_index"], target_pos) <= shatter_range:
+			shatter_targets.append(enemy)
+			shatter_nodes.append(enemy.get("node"))
 	for illusion in _enemy_illusions:
-		if _distance(illusion["pos_index"], target_pos) <= splinter_range:
-			shard_nodes.append(illusion.get("node"))
-	_play_splinter_shards(target.get("node"), shard_nodes)
-
-	_deal_fixed_damage_to_enemy(target, damage)
-	for enemy in splinter_targets:
-		_deal_fixed_damage_to_enemy(enemy, splinter_damage)
-	# Centered on the target's own column, same as the check above - a
-	# rival's own illusion (Naga Siren's Mirror Image) can be in range
-	# independently of whether the boss itself currently is.
-	_deal_aoe_damage_to_enemy_illusions(target_pos, splinter_range, splinter_damage)
+		if _distance(illusion["pos_index"], target_pos) <= shatter_range:
+			shatter_nodes.append(illusion.get("node"))
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["splinter_blast"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("splinter_blast", _skill_cooldowns["splinter_blast"])
+	_skill_cooldowns["maddening_roar"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("maddening_roar", _skill_cooldowns["maddening_roar"])
 	_refresh_skill_cooldown_labels()
+	# Nothing else happens this turn while the roar plays out.
+	_has_acted_this_turn = true
+	_update_action_buttons()
 
-	if _battle_over or _stage_generation != generation_before:
-		return
+	var still_here := func(enemy: Dictionary) -> bool:
+		return _enemies.any(func(e: Dictionary) -> bool: return is_same(e, enemy))
+	var on_target_hit := func() -> void:
+		if _battle_over or _stage_generation != generation_before:
+			return
+		if still_here.call(target):
+			_deal_fixed_damage_to_enemy(target, damage)
+	var on_shatter := func() -> void:
+		if _battle_over or _stage_generation != generation_before:
+			return
+		for enemy in shatter_targets:
+			if still_here.call(enemy):
+				_deal_fixed_damage_to_enemy(enemy, shatter_damage)
+		# Centered on the target's own column, same as the check above - a
+		# rival's own illusion (Naga Siren's Mirror Image) can be in range
+		# independently of whether the boss itself currently is.
+		_deal_aoe_damage_to_enemy_illusions(target_pos, shatter_range, shatter_damage)
+		if _battle_over or _stage_generation != generation_before:
+			return
+		_mark_turn_used()
+	_play_maddening_roar(hero_image, _hero_static, target.get("node"), shatter_nodes, on_target_hit, on_shatter)
 
-	_mark_turn_used()
 
-
-## Resolves a Winter's Curse cast on `target`: freezes it in place for
+## Resolves a cast of The Hunger Calls on `target`: freezes it in place for
 ## `level_data.duration` of its own turns (target["stun_turns_left"],
-## the same shared per-enemy field Torrent's/Ice Blast's own stun
+## the same shared per-enemy field Drowned Surge's/Return to the Void's own stun
 ## already uses - see _enemy_turn()'s stun check), then marks it as the
 ## hero's current curse target so _enemy_turn() redirects every OTHER
 ## enemy within `level_data.curse_range` columns of it for as long as
-## that freeze holds (see _is_winters_curse_active()). Recasting while a
+## that freeze holds (see _is_the_hunger_calls_active()). Recasting while a
 ## previous curse is still running simply overwrites it outright -
 ## there's nothing to give back the way Leeching Hunger's borrowed stats
 ## need.
-func _resolve_winters_curse_cast(target: Dictionary, level_data: Dictionary) -> void:
+func _resolve_the_hunger_calls_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	target["stun_turns_left"] = int(level_data.get("duration", 0))
-	_winter_curse_target = target
-	_winter_curse_bonus_damage_pct = float(level_data.get("bonus_damage_pct", 0.0))
-	_winter_curse_range = int(level_data.get("curse_range", 0))
+	_hunger_calls_target = target
+	_hunger_calls_bonus_damage_pct = float(level_data.get("bonus_damage_pct", 0.0))
+	_hunger_calls_range = int(level_data.get("curse_range", 0))
 
-	_show_message_over_hero("Winter's Curse!")
-	if is_instance_valid(target.get("node")):
-		_flash_bounce_hit(target["node"], COLD_FEET_FLASH_COLOR)
-	_refresh_cold_feet_frost()
+	_show_message_over_hero("The Hunger Calls!")
+	if _hunger_calls_fx != null:
+		_hunger_calls_fx.end()
+	_hunger_calls_fx = _play_the_hunger_calls(hero_image, _hero_static, target.get("node"), _hunger_calls_range)
+	_refresh_mark_of_stillness_frost()
+	_refresh_hunger_calls_fx()
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["winter's_curse"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("winter's_curse", _skill_cooldowns["winter's_curse"])
+	_skill_cooldowns["the_hunger_calls"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("the_hunger_calls", _skill_cooldowns["the_hunger_calls"])
 	_refresh_skill_cooldown_labels()
 
 	if _battle_over or _stage_generation != generation_before:
@@ -5664,7 +5753,7 @@ func _resolve_winters_curse_cast(target: Dictionary, level_data: Dictionary) -> 
 	_mark_turn_used()
 
 
-## Whether Winter's Curse is still actively redirecting enemies toward
+## Whether The Hunger Calls is still actively redirecting enemies toward
 ## its target right now: there's a target at all, it's still part of
 ## the current fight (_is_enemy_still_active() - the same "hasn't died
 ## or been cleared by a stage/hero-fight transition" check Essence
@@ -5673,21 +5762,84 @@ func _resolve_winters_curse_cast(target: Dictionary, level_data: Dictionary) -> 
 ## curse's "pile onto the target" half rides on exactly the same clock
 ## as the freeze itself, by design (see the state-var block's own
 ## comment above).
-func _is_winters_curse_active() -> bool:
-	if _winter_curse_target.is_empty():
+func _is_the_hunger_calls_active() -> bool:
+	if _hunger_calls_target.is_empty():
 		return false
-	if not _is_enemy_still_active(_winter_curse_target):
+	if not _is_enemy_still_active(_hunger_calls_target):
 		return false
-	return _winter_curse_target.get("stun_turns_left", 0) > 0
+	return _hunger_calls_target.get("stun_turns_left", 0) > 0
+
+
+## Purely cosmetic: The Hunger Calls (HungerCallsFX) - a gust of wind from
+## `caster`'s jaws (its hero data's "roar_origin", mirrored when it faces
+## left) to `target_node`, opening a vortex on the ground under it as wide
+## as `curse_range` columns either side, the target pulsing. Returns the
+## running effect (null if either sprite is already gone) for
+## _refresh_hunger_calls_fx() to keep in sync with the curse.
+func _play_the_hunger_calls(caster: Variant, hero_static: Dictionary, target_node: Variant, curse_range: int) -> HungerCallsFX:
+	if not is_instance_valid(caster) or not is_instance_valid(target_node) or not is_instance_valid(_fx_layer) \
+			or not (caster is Control) or not (target_node is Control):
+		return null
+	var origin: Vector2 = hero_static.get("roar_origin", Vector2(0.5, 0.3))
+	if caster.flip_h:
+		origin.x = 1.0 - origin.x
+	var from: Vector2 = caster.global_position + caster.size * origin
+	var radius: float = _grid_unit() * (float(curse_range) + 0.5)
+	# The vortex goes behind every fighter, over the battle background.
+	return HungerCallsFX.cast(_fx_layer, self, hero_image.get_index(), from, target_node, radius)
+
+
+## Keeps The Hunger Calls' look in step with the curse: the player's own
+## cast marks every other enemy it's currently driving at the frozen
+## target (the same "within curse_range of it" rule _enemy_turn() uses)
+## with the hunger's red, and any running effect ends once its freeze
+## does - worn off, dispelled, or its target gone. Called from
+## _refresh_bars(), so it just follows current state.
+func _refresh_hunger_calls_fx() -> void:
+	if _hunger_calls_fx != null:
+		if not is_instance_valid(_hunger_calls_fx) or not _is_the_hunger_calls_active():
+			if is_instance_valid(_hunger_calls_fx):
+				_hunger_calls_fx.end()
+			_hunger_calls_fx = null
+		else:
+			var target_pos: int = _hunger_calls_target["pos_index"]
+			var hungry: Array = []
+			for enemy in _enemies:
+				if is_same(enemy, _hunger_calls_target) or _is_target_hidden(enemy):
+					continue
+				if _distance(enemy["pos_index"], target_pos) <= _hunger_calls_range:
+					hungry.append(enemy.get("node"))
+			_hunger_calls_fx.set_hungry_nodes(hungry)
+	if _enemy_hunger_calls_fx != null:
+		var held: bool
+		if _enemy_hunger_calls_fx_on_bear:
+			held = _is_bear_alive() and bool(_bear.get("the_hunger_calls_active", false)) and int(_bear.get("stun_turns_left", 0)) > 0
+		else:
+			held = _player_the_hunger_calls_active and _player_stun_turns_left > 0
+		if not is_instance_valid(_enemy_hunger_calls_fx) or not held:
+			if is_instance_valid(_enemy_hunger_calls_fx):
+				_enemy_hunger_calls_fx.end()
+			_enemy_hunger_calls_fx = null
+
+
+## Ends every running The Hunger Calls look at once - a new stage or hero
+## fight starts from a clean field.
+func _end_hunger_calls_fx() -> void:
+	if _hunger_calls_fx != null and is_instance_valid(_hunger_calls_fx):
+		_hunger_calls_fx.end()
+	_hunger_calls_fx = null
+	if _enemy_hunger_calls_fx != null and is_instance_valid(_enemy_hunger_calls_fx):
+		_enemy_hunger_calls_fx.end()
+	_enemy_hunger_calls_fx = null
 
 
 ## Resolves a Crystal Nova cast on `target`: `level_data.damage` to
 ## `target`, then - once level_data.radius rises above 0, starting at
 ## level 3 - that same damage to every OTHER living, targetable enemy
 ## within `level_data.radius` columns of `target`'s own position too,
-## mirroring Torrent's own "splash centered on the target, never
+## mirroring Drowned Surge's own "splash centered on the target, never
 ## re-hitting it, same amount as the primary hit" radius
-## (_resolve_torrent_cast()).
+## (_resolve_drowned_surge_cast()).
 func _resolve_crystal_nova_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
@@ -5727,13 +5879,13 @@ func _resolve_crystal_nova_cast(target: Dictionary, level_data: Dictionary) -> v
 
 ## Resolves a Frostbite cast on `target`: freezes it in place for
 ## `level_data.stun_turns` of its own turns (target["stun_turns_left"],
-## the same shared per-enemy field Torrent's/Ice Blast's/Winter's
-## Curse's own stun already uses), then arms its own damage-over-time
+## the same shared per-enemy field Drowned Surge's/Return to the Void's/The Hunger
+## Calls's own stun already uses), then arms its own damage-over-time
 ## (target["frostbite_dot_damage"]/["frostbite_dot_turns_left"], ticked
 ## by _tick_enemy_turn_start_effects() at the start of that enemy's own
 ## turn, alongside every other DoT) - a
-## dedicated pair of fields rather than reusing Cold Feet's/Ice
-## Vortex's/Ice Blast's own, so a different skill's DoT never silently
+## dedicated pair of fields rather than reusing Mark of Stillness's/Ice
+## Vortex's/Return to the Void's own, so a different skill's DoT never silently
 ## shares or clobbers another's counters on the same target.
 func _resolve_frostbite_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
@@ -5742,8 +5894,8 @@ func _resolve_frostbite_cast(target: Dictionary, level_data: Dictionary) -> void
 	target["frostbite_dot_damage"] = float(level_data.get("dot_damage", 0))
 	target["frostbite_dot_turns_left"] = int(level_data.get("dot_duration", 0))
 	if is_instance_valid(target.get("node")):
-		_flash_bounce_hit(target["node"], COLD_FEET_FLASH_COLOR)
-	_refresh_cold_feet_frost()
+		_flash_bounce_hit(target["node"], MARK_OF_STILLNESS_FLASH_COLOR)
+	_refresh_mark_of_stillness_frost()
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
@@ -5759,23 +5911,23 @@ func _resolve_frostbite_cast(target: Dictionary, level_data: Dictionary) -> void
 
 
 # ------------------------------------------------------------------
-# Kunkka's Tidebringer - a passive, so unlike Torrent above there's no
+# Kaelen Varr's Pull of the Abyss - a passive, so unlike Drowned Surge above there's no
 # button/cast/mana/cooldown for it (see _populate_skill_buttons()'s
 # "passive" branch); it just triggers off the hero's own plain Attacks
 # (_apply_hero_attack()), exactly the way Mark of the Mist's stacking
 # does for Morvael.
 # ------------------------------------------------------------------
 
-## Tidebringer's level data for whatever level the player has it at
+## Pull of the Abyss's level data for whatever level the player has it at
 ## right now - {} if it isn't learned at all (level 0), the same
 ## "empty means locked" convention every other auto-triggered skill's
 ## own _get_*_level_data() helper uses.
-func _get_tidebringer_level_data() -> Dictionary:
-	var level: int = PlayerManager.get_skill_level("tidebringer")
+func _get_pull_of_the_abyss_level_data() -> Dictionary:
+	var level: int = PlayerManager.get_skill_level("pull_of_the_abyss")
 	if level <= 0:
 		return {}
 	for skill in _hero_static.get("skills", []):
-		if skill.get("id", "") == "tidebringer":
+		if skill.get("id", "") == "pull_of_the_abyss":
 			return GameManager.get_skill_level_data(skill, level)
 	return {}
 
@@ -5786,31 +5938,31 @@ func _get_tidebringer_level_data() -> Dictionary:
 ## (only consuming the count resets it, never time) - and, once that
 ## threshold is reached, consumes the count and returns this level's
 ## data for _apply_hero_attack() to fold bonus_damage into the roll and
-## then cleave with (_apply_tidebringer_cleave()). Returns {} (an
-## ordinary Attack, no bonus) if the hero hasn't learned Tidebringer or
+## then cleave with (_apply_pull_of_the_abyss_cleave()). Returns {} (an
+## ordinary Attack, no bonus) if the hero hasn't learned Pull of the Abyss or
 ## hasn't reached the threshold yet.
-func _maybe_consume_tidebringer_stack() -> Dictionary:
-	var level_data: Dictionary = _get_tidebringer_level_data()
+func _maybe_consume_pull_of_the_abyss_stack() -> Dictionary:
+	var level_data: Dictionary = _get_pull_of_the_abyss_level_data()
 	if level_data.is_empty():
 		return {}
 
-	_tidebringer_attack_count += 1
-	if _tidebringer_attack_count < int(level_data.get("hits_to_activate", 1)):
+	_pull_of_the_abyss_attack_count += 1
+	if _pull_of_the_abyss_attack_count < int(level_data.get("hits_to_activate", 1)):
 		return {}
 
-	_tidebringer_attack_count = 0
-	_show_rising_message_over(hero_image, "Tidebringer!", TIDEBRINGER_TEXT_COLOR)
+	_pull_of_the_abyss_attack_count = 0
+	_show_rising_message_over(hero_image, "Pull of the Abyss!", PULL_OF_THE_ABYSS_TEXT_COLOR)
 	return level_data
 
 
-## Tidebringer's cleave: every OTHER living, targetable enemy within
+## Pull of the Abyss's cleave: every OTHER living, targetable enemy within
 ## this level's cleave_columns of `target`'s own column takes
 ## cleave_damage_pct of `attack_damage` - the same raw, pre-mitigation
 ## roll `target` was just hit with (bonus damage already folded in by
 ## _apply_hero_attack()), each still mitigated by ITS OWN armor via
 ## _deal_fixed_damage_to_enemy(), mirroring Abyssal Spasm's own "one rolled
 ## amount, many separately-mitigated hits" pattern (_cast_abyssal_spasm()).
-func _apply_tidebringer_cleave(target: Dictionary, attack_damage: float, level_data: Dictionary) -> void:
+func _apply_pull_of_the_abyss_cleave(target: Dictionary, attack_damage: float, level_data: Dictionary) -> void:
 	var cleave_damage: float = attack_damage * float(level_data.get("cleave_damage_pct", 0.0))
 	if cleave_damage <= 0.0:
 		return
@@ -5843,11 +5995,11 @@ const HUNTERS_BOW_ARROW_PALETTE := {
 var _hunters_bow_charge: int = 0
 
 
-## The Cleaver item's own passive: identical shape to Tidebringer's
+## The Cleaver item's own passive: identical shape to Pull of the Abyss's
 ## cleave just above (same "% of the attack's own raw damage, before
 ## the main target's own armor reduces it, splashed to every OTHER
 ## living enemy within `radius` columns, each mitigated by its own
-## armor separately" rule - see _apply_tidebringer_cleave()) but a
+## armor separately" rule - see _apply_pull_of_the_abyss_cleave()) but a
 ## flat, always-on item bonus rather than a levelled, stack-consuming
 ## skill proc. Gated on actually owning one - a no-op the instant it's
 ## sold, same as every other passive "stat" item's own bonus (see
@@ -5923,7 +6075,7 @@ func _find_hunters_bow_second_target(target: Dictionary) -> Dictionary:
 # ------------------------------------------------------------------
 # Naga Siren's Rip Tide - a passive, so unlike every cast skill above
 # there's no button/cast/mana/cooldown for it. Two independent halves:
-# a Tidebringer/Cleaver-style AoE splash off the hero's own plain
+# a Pull of the Abyss/Cleaver-style AoE splash off the hero's own plain
 # Attacks (_apply_rip_tide_cleave(), called from _apply_hero_attack()),
 # and a set of flat bonuses folded into Mirror Image's own cast
 # (_activate_mirror_image() reads _get_rip_tide_level_data() itself -
@@ -5945,13 +6097,13 @@ func _get_rip_tide_level_data() -> Dictionary:
 	return {}
 
 
-## Rip Tide's own AoE splash: identical shape to Tidebringer's/
+## Rip Tide's own AoE splash: identical shape to Pull of the Abyss's/
 ## Cleaver's own cleave above (% of the attack's own raw damage, before
 ## the main target's own armor reduces it, splashed to every OTHER
 ## living enemy within `radius` columns, each mitigated by its own
 ## armor separately) but keyed off this level's own aoe_damage_pct/
 ## radius rather than a flat item bonus or a consumed stack - independent
-## of and stacks with Tidebringer's/Cleaver's, same as those two already
+## of and stacks with Pull of the Abyss's/Cleaver's, same as those two already
 ## stack with each other. A no-op while the skill isn't learned.
 func _apply_rip_tide_cleave(target: Dictionary, attack_damage: float) -> void:
 	var level_data: Dictionary = _get_rip_tide_level_data()
@@ -5976,7 +6128,7 @@ func _apply_rip_tide_cleave(target: Dictionary, attack_damage: float) -> void:
 ## follows. The boss's own Elderwild Companion needs nothing extra: it's a
 ## regular _enemies entry, so the loop reaches it like any other enemy.
 ##
-## Shared by Tidebringer, the Cleaver item and Rip Tide - any future
+## Shared by Pull of the Abyss, the Cleaver item and Rip Tide - any future
 ## cleave/splash should route through here too, so they all behave and
 ## look the same.
 func _apply_splash_damage(target: Dictionary, splash_damage: float, radius: int) -> void:
@@ -6001,7 +6153,7 @@ func _apply_splash_damage(target: Dictionary, splash_damage: float, radius: int)
 
 # ------------------------------------------------------------------
 # Luna's Moon Glaives - a passive, so unlike every cast skill above
-# there's no button/cast/mana/cooldown for it. Unlike Tidebringer's/
+# there's no button/cast/mana/cooldown for it. Unlike Pull of the Abyss's/
 # Cleaver's/Rip Tide's cleave above (every OTHER enemy within radius,
 # uncapped), this caps at this level's own `bounces` count - see
 # _apply_moon_glaives_bounces()'s own comment.
@@ -6026,7 +6178,7 @@ func _get_moon_glaives_level_data() -> Dictionary:
 ## column each take `bounce_damage_pct` of `attack_damage` - the same
 ## raw, pre-mitigation roll `target` was just hit with - still mitigated
 ## by their own armor separately via _deal_fixed_damage_to_enemy(),
-## mirroring Tidebringer's/Cleaver's/Rip Tide's own "one rolled amount,
+## mirroring Pull of the Abyss's/Cleaver's/Rip Tide's own "one rolled amount,
 ## many separately-mitigated hits" pattern, just capped at `bounces`
 ## targets (nearest first) instead of hitting everyone in range. Any
 ## enemy illusion within that same radius is ALSO hit, via
@@ -6034,7 +6186,7 @@ func _get_moon_glaives_level_data() -> Dictionary:
 ## collateral on any AoE splash, never counted toward the bounce cap
 ## (see that function's own comment). The boss's own Elderwild Companion needs
 ## no separate call: it's a regular _enemies entry (see
-## _get_enemy_spirit_bear()), so the loop below already reaches it like
+## _get_enemy_elderwild_companion()), so the loop below already reaches it like
 ## any other enemy. Each bounced enemy also gets _flash_bounce_hit()'s
 ## own quick scale/red-flash, so a bounce reads as a distinct hit
 ## instead of a damage number appearing on an enemy that was never
@@ -6100,7 +6252,7 @@ func _get_lunar_blessing_level_data() -> Dictionary:
 # above there's no button/cast/mana/cooldown for it. Counts the hero's
 # own plain Attacks toward this level's own attacks_required threshold
 # (same "build a stack, consume it all once the threshold's reached"
-# idiom Tidebringer's own _maybe_consume_tidebringer_stack() uses,
+# idiom Pull of the Abyss's own _maybe_consume_pull_of_the_abyss_stack() uses,
 # just under its own counter rather than a per-enemy one - there's
 # only one hero to track this on), then _apply_hero_attack() itself
 # folds the returned level data's own bonus_damage_pct into that SAME
@@ -6218,8 +6370,8 @@ func _get_arcane_aura_level_data() -> Dictionary:
 ## hero's own passive mana regen (_apply_passive_hero_regen(), called
 ## right after this in _end_turn()) rather than replacing it - once at
 ## the very start of every hero turn, regardless of whether the player
-## actually gets to act that turn (e.g. still stunned or encased in
-## Cold Embrace). A no-op while the skill isn't learned.
+## actually gets to act that turn (e.g. still stunned or held in The
+## Test of Time). A no-op while the skill isn't learned.
 func _apply_arcane_aura_regen() -> void:
 	var level_data: Dictionary = _get_arcane_aura_level_data()
 	if level_data.is_empty():
@@ -6289,7 +6441,7 @@ func _tick_freezing_field() -> void:
 	_freezing_field_turns_remaining -= 1
 	if _freezing_field_turns_remaining <= 0:
 		_end_freezing_field()
-	_refresh_cold_feet_frost()
+	_refresh_mark_of_stillness_frost()
 
 
 ## Purely cosmetic: Freezing Field's tick - FREEZING_FIELD_SNOWBALLS_PER_
@@ -6303,7 +6455,7 @@ func _tick_freezing_field() -> void:
 ## _play_scatterblast_effect().
 func _play_snowball_barrage(nodes: Array) -> void:
 	for node in nodes:
-		if not (node is Control) or not is_instance_valid(node):
+		if not is_instance_valid(node) or not (node is Control):
 			continue
 		var center: Vector2 = node.position + node.size / 2.0
 
@@ -6350,7 +6502,7 @@ func _end_freezing_field() -> void:
 	_freezing_field_radius = 0
 	_freezing_field_turns_remaining = 0
 	_freezing_field_duration_pending_start = false
-	_refresh_cold_feet_frost()
+	_refresh_mark_of_stillness_frost()
 
 	_show_message_over_hero("Freezing Field fades")
 
@@ -6628,7 +6780,7 @@ func _play_ice_shards_hit(from_node: Variant, to_node: Variant) -> void:
 			tween.tween_callback(func() -> void:
 				_play_orb_impact(end, ICE_SHARDS_FACET_COLOR, 1.4)
 				if is_instance_valid(to_node) and to_node is TextureRect:
-					_flash_bounce_hit(to_node, COLD_FEET_FLASH_COLOR)
+					_flash_bounce_hit(to_node, MARK_OF_STILLNESS_FLASH_COLOR)
 				_play_ice_spike(feet, target_width)
 			)
 		tween.tween_property(shard, "modulate:a", 0.0, 0.06)
@@ -6710,7 +6862,7 @@ func _build_ice_block(width: float, height: float) -> Node2D:
 ## `height` is the block's own height (defaults to a full wall block's).
 ## Safe on a missing/already-freed node.
 func _shatter_ice_block(block: Variant, height: float = -1.0, burst_scale: float = 1.8) -> void:
-	if not (block is Node2D) or not is_instance_valid(block):
+	if not is_instance_valid(block) or not (block is Node2D):
 		return
 	if height < 0.0:
 		height = get_viewport_rect().size.y / 4.0 * ICE_SHARDS_HEIGHT_RATIO
@@ -6723,10 +6875,10 @@ func _shatter_ice_block(block: Variant, height: float = -1.0, burst_scale: float
 
 ## Whether `col` is currently walled off by Ice Shards - checked from
 ## every PLAIN movement decision in _enemy_turn()/_enemy_hero_turn()
-## (flee, "close in", Winter's Curse's own redirect) so an enemy
+## (flee, "close in", The Hunger Calls's own redirect) so an enemy
 ## standing in a blocked column can't move at all and one standing
 ## outside it can't step into one, i.e. can't move past it. A true
-## teleport (X Marks the Spot) still isn't checked against this - it
+## teleport (Undertow) still isn't checked against this - it
 ## doesn't travel through the columns in between at all, unlike a jump
 ## (Barbed Lunge, Snowball) or a pull (Timber Chain), which now ARE stopped
 ## by a wall in their path on both sides (see _cast_barbed_lunge()/
@@ -6748,12 +6900,12 @@ func _is_column_ice_shards_blocked(col: int) -> bool:
 ## action, so anything checked right after (range, _stage_generation,
 ## etc.) already sees him there - then deals
 ## `level_data.damage` and stuns it for `level_data.stun_turns` if it
-## survives, same stun mechanism Torrent's/Ice Blast's/Frostbite's own
+## survives, same stun mechanism Drowned Surge's/Return to the Void's/Frostbite's own
 ## use. The charge itself (portrait swap to SNOWBALL_IMAGE_PATH, a
 ## tween sliding his VISUAL position across to match) is purely
 ## cosmetic and layered on top afterward, same "instant, already-
 ## resolved outcome, cosmetic animation played alongside it" split
-## Ghostship's own travel already uses - see _end_snowball_animation()
+## The Sunken One's own travel already uses - see _end_snowball_animation()
 ## for the revert.
 func _resolve_snowball_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
@@ -6767,7 +6919,7 @@ func _resolve_snowball_cast(target: Dictionary, level_data: Dictionary) -> void:
 		target["stun_turns_left"] = int(level_data.get("stun_turns", 1))
 
 	# The charge physically carries the hero across every column in
-	# between (unlike X Marks the Spot's true teleport), so a rival's
+	# between (unlike Undertow's true teleport), so a rival's
 	# Ice Shards wall in its path stops it one column short of
 	# target_pos_index, same rule Barbed Lunge's own leap and Timber Chain's
 	# own pull now follow.
@@ -6924,7 +7076,7 @@ func _resolve_walrus_punch_cast(target: Dictionary, level_data: Dictionary) -> v
 ## playing: deals the punch's own damage, shows "Wall hit!" if it fell
 ## short of its full knockback distance, and - if the target survived -
 ## stuns it in place for `level_data.stun_turns`, the same shared
-## stun_turns_left field Torrent's/Ice Blast's/Frostbite's/Snowball's
+## stun_turns_left field Drowned Surge's/Return to the Void's/Frostbite's/Snowball's
 ## own stun already uses. Bails out first if a stage/hero-fight
 ## transition already happened while the slide was playing - the same
 ## generation guard every other targeted cast checks before spending
@@ -6960,7 +7112,7 @@ func _resolve_walrus_punch_damage(target: Dictionary, punch_damage: float, hit_w
 ## Resolves a Leech Seed cast on `target`: no immediate damage, just
 ## arms this level's own dot_damage/heal_per_turn onto `target`'s own
 ## dedicated leech_seed_dot_turns_left counter - a separate pair of
-## fields from Cold Feet's/Ice Vortex's/Ice Blast's/Frostbite's own
+## fields from Mark of Stillness's/The Hollow Cold's/Return to the Void's/Frostbite's own
 ## DoTs, same "never silently shares or clobbers another skill's
 ## counters on the same target" reasoning those already follow - ticked
 ## once per turn, at the start of that enemy's own turn, by
@@ -7051,7 +7203,7 @@ func _end_living_armor() -> void:
 ## outward when it ends. Only does anything when the state actually
 ## changes (the child's presence is the "currently on" marker).
 func _set_living_armor_leaves(node: Variant, active: bool) -> void:
-	if not (node is Control) or not is_instance_valid(node):
+	if not is_instance_valid(node) or not (node is Control):
 		return
 	var ring: Control = node.get_node_or_null(LIVING_ARMOR_LEAVES_NAME)
 	if active == (ring != null):
@@ -7200,7 +7352,7 @@ func _apply_reactive_armor_regen() -> void:
 ## Activates Overgrowth: every living, targetable enemy within
 ## `level_data.radius` columns of the hero's CURRENT position gets
 ## rooted (target["root_turns_left"], the same shared per-enemy field
-## Thornbind's/Nature's Guise's/Ice Shards'/Winter's Curse's own root/
+## Thornbind's/Nature's Guise's/Ice Shards'/The Hunger Calls's own root/
 ## freeze effects already use - it can still attack and cast skills
 ## while rooted, same as any other rooted enemy) for `level_data.
 ## root_duration` turns, and armed with that same level's own DoT
@@ -7297,8 +7449,8 @@ func _apply_root(target: Dictionary, level_data: Dictionary) -> void:
 ## (ending the curse once its own duration runs out - stack decay for a
 ## NOT-yet-activated curse is a separate, turn-count-based check handled
 ## by _tick_mark_of_the_mist_effects() instead, since it isn't a DoT),
-## Cold Feet's/Ice Vortex's/Frostbite's/Leech Seed's own DoTs (Leech
-## Seed also healing the hero back), Ice Blast's DoT plus its own
+## Mark of Stillness's/The Hollow Cold's/Frostbite's/Leech Seed's own DoTs (Leech
+## Seed also healing the hero back), Return to the Void's DoT plus its own
 ## execute-threshold check, and Treant Protector's Overgrowth DoT -
 ## each a dedicated pair of fields so none of them ever clobber each
 ## other on the same enemy. Every damage instance is still mitigated by
@@ -7370,40 +7522,40 @@ func _tick_enemy_turn_start_effects(enemy: Dictionary) -> void:
 			enemy["curse_active"] = false
 			enemy["curse_dot_damage"] = 0.0
 
-	if enemy.get("cold_feet_dot_turns_left", 0) > 0:
-		enemy["cold_feet_dot_turns_left"] -= 1
-		var cold_feet_dot: float = float(enemy.get("cold_feet_dot_damage", 0))
-		if cold_feet_dot > 0.0:
-			_deal_fixed_damage_to_enemy(enemy, cold_feet_dot, false, false)
+	if enemy.get("mark_of_stillness_dot_turns_left", 0) > 0:
+		enemy["mark_of_stillness_dot_turns_left"] -= 1
+		var mark_of_stillness_dot: float = float(enemy.get("mark_of_stillness_dot_damage", 0))
+		if mark_of_stillness_dot > 0.0:
+			_deal_fixed_damage_to_enemy(enemy, mark_of_stillness_dot, false, false)
 			if _battle_over or enemy.get("current_hp", 0) <= 0:
 				return
 
-	if enemy.get("ice_vortex_dot_turns_left", 0) > 0:
-		enemy["ice_vortex_dot_turns_left"] -= 1
-		var ice_vortex_dot: float = float(enemy.get("ice_vortex_dot_damage", 0))
-		if ice_vortex_dot > 0.0:
-			_deal_fixed_damage_to_enemy(enemy, ice_vortex_dot, false, false)
+	if enemy.get("the_hollow_cold_dot_turns_left", 0) > 0:
+		enemy["the_hollow_cold_dot_turns_left"] -= 1
+		var the_hollow_cold_dot: float = float(enemy.get("the_hollow_cold_dot_damage", 0))
+		if the_hollow_cold_dot > 0.0:
+			_deal_fixed_damage_to_enemy(enemy, the_hollow_cold_dot, false, false)
 			if _battle_over or enemy.get("current_hp", 0) <= 0:
 				return
 
-	if enemy.get("ice_blast_dot_turns_left", 0) > 0:
-		enemy["ice_blast_dot_turns_left"] -= 1
-		var ice_blast_dot: float = float(enemy.get("ice_blast_dot_damage", 0))
-		if ice_blast_dot > 0.0:
-			_deal_fixed_damage_to_enemy(enemy, ice_blast_dot, false, false)
+	if enemy.get("return_to_the_void_dot_turns_left", 0) > 0:
+		enemy["return_to_the_void_dot_turns_left"] -= 1
+		var return_to_the_void_dot: float = float(enemy.get("return_to_the_void_dot_damage", 0))
+		if return_to_the_void_dot > 0.0:
+			_deal_fixed_damage_to_enemy(enemy, return_to_the_void_dot, false, false)
 			if _battle_over or enemy.get("current_hp", 0) <= 0:
 				return
 
 		if enemy.get("current_hp", 0) > 0:
-			var execute_pct: float = float(enemy.get("ice_blast_execute_pct", 0.0))
+			var execute_pct: float = float(enemy.get("return_to_the_void_execute_pct", 0.0))
 			var max_hp: float = float(enemy["static"].get("hp", 1))
 			if execute_pct > 0.0 and enemy["current_hp"] <= max_hp * execute_pct:
-				_kill_enemy(enemy)
+				_kill_enemy(enemy, true)
 				if _battle_over:
 					return
 
-		if enemy.get("ice_blast_dot_turns_left", 0) <= 0:
-			enemy["ice_blast_execute_pct"] = 0.0
+		if enemy.get("return_to_the_void_dot_turns_left", 0) <= 0:
+			enemy["return_to_the_void_execute_pct"] = 0.0
 
 		if enemy.get("current_hp", 0) <= 0:
 			return
@@ -7446,7 +7598,7 @@ func _tick_enemy_turn_start_effects(enemy: Dictionary) -> void:
 ## Dictionary - Thornbind's root/silence counters and DoT, Mark of the
 ## Mist's DoT (stack decay lives in _tick_enemy_mark_of_the_mist_
 ## effects() instead, same "not a DoT" reasoning as the enemy-side
-## version), Cold Feet's/Ice Vortex's/Frostbite's own DoTs, Ice Blast's
+## version), Mark of Stillness's/The Hollow Cold's/Frostbite's own DoTs, Return to the Void's
 ## DoT plus its own execute-threshold check, Treant Protector's Leech
 ## Seed (unlike every other DoT here, its own healing half goes to the
 ## CASTER - the rival - not the player, so this heals the boss directly
@@ -7482,34 +7634,35 @@ func _tick_player_turn_start_effects() -> void:
 			_player_curse_active = false
 			_player_curse_dot_damage = 0.0
 
-	if _player_cold_feet_dot_turns_left > 0:
-		_player_cold_feet_dot_turns_left -= 1
-		if _player_cold_feet_dot_damage > 0.0:
-			apply_damage(_player_cold_feet_dot_damage)
+	if _player_mark_of_stillness_dot_turns_left > 0:
+		_player_mark_of_stillness_dot_turns_left -= 1
+		if _player_mark_of_stillness_dot_damage > 0.0:
+			apply_damage(_player_mark_of_stillness_dot_damage)
 
-	if _player_ice_vortex_dot_turns_left > 0:
-		_player_ice_vortex_dot_turns_left -= 1
-		if _player_ice_vortex_dot_damage > 0.0:
-			apply_damage(_player_ice_vortex_dot_damage)
+	if _player_the_hollow_cold_dot_turns_left > 0:
+		_player_the_hollow_cold_dot_turns_left -= 1
+		if _player_the_hollow_cold_dot_damage > 0.0:
+			apply_damage(_player_the_hollow_cold_dot_damage)
 	# His illusions caught in the same vortex tick right here too,
 	# independently of whether the hero himself still is - and so does
 	# every DoT a rival has put on his Elderwild Companion.
-	_tick_player_allies_ice_vortex()
+	_tick_player_allies_the_hollow_cold()
+	_tick_hollow_cold_tears(true)
 	_tick_bear_turn_start_effects()
 
-	if _player_ice_blast_dot_turns_left > 0:
-		_player_ice_blast_dot_turns_left -= 1
-		if _player_ice_blast_dot_damage > 0.0:
-			apply_damage(_player_ice_blast_dot_damage)
+	if _player_return_to_the_void_dot_turns_left > 0:
+		_player_return_to_the_void_dot_turns_left -= 1
+		if _player_return_to_the_void_dot_damage > 0.0:
+			apply_damage(_player_return_to_the_void_dot_damage)
 
-		if _recruited.get("current_hp", 0) > 0 and _player_ice_blast_execute_pct > 0.0:
+		if _recruited.get("current_hp", 0) > 0 and _player_return_to_the_void_execute_pct > 0.0:
 			var max_hp: float = _hero_max_hp()
-			if max_hp > 0.0 and float(_recruited.get("current_hp", 0)) <= max_hp * _player_ice_blast_execute_pct:
+			if max_hp > 0.0 and float(_recruited.get("current_hp", 0)) <= max_hp * _player_return_to_the_void_execute_pct:
 				PlayerManager.damage_hero(float(_recruited.get("current_hp", 0)))
 				_refresh_bars()
 
-		if _player_ice_blast_dot_turns_left <= 0:
-			_player_ice_blast_execute_pct = 0.0
+		if _player_return_to_the_void_dot_turns_left <= 0:
+			_player_return_to_the_void_execute_pct = 0.0
 
 	if _player_frostbite_dot_turns_left > 0:
 		_player_frostbite_dot_turns_left -= 1
@@ -7756,117 +7909,116 @@ func _is_enemy_still_active(enemy_ref: Dictionary) -> bool:
 
 
 # ------------------------------------------------------------------
-# Winter Wyvern's Arctic Burn.
+# The Primordial Hunger's Frostbound Fangs.
 # ------------------------------------------------------------------
 
-## Activates Arctic Burn: arms this level's own bonus_damage/bonus_range
+## Activates Frostbound Fangs: arms this level's own bonus_damage/bonus_range
 ## for the next `level_data.attacks` plain Attacks, or `level_data.
 ## duration` turns - whichever runs out first (see
-## _apply_arctic_burn_attack()/_tick_arctic_burn()). Always "succeeds" -
+## _apply_frostbound_fangs_attack()/_tick_frostbound_fangs()). Always "succeeds" -
 ## no target or range requirement to cast it, same as Leeching Hunger/
 ## Depthsveil.
-func _activate_arctic_burn(level_data: Dictionary) -> void:
-	_arctic_burn_active = true
-	_arctic_burn_bonus_damage = float(level_data.get("bonus_damage", 0))
-	_arctic_burn_bonus_range = int(level_data.get("bonus_range", 0))
-	_arctic_burn_attacks_remaining = int(level_data.get("attacks", 0))
-	_arctic_burn_turns_remaining = int(level_data.get("duration", 0))
+func _activate_frostbound_fangs(level_data: Dictionary) -> void:
+	_frostbound_fangs_active = true
+	_frostbound_fangs_bonus_damage = float(level_data.get("bonus_damage", 0))
+	_frostbound_fangs_bonus_range = int(level_data.get("bonus_range", 0))
+	_frostbound_fangs_attacks_remaining = int(level_data.get("attacks", 0))
+	_frostbound_fangs_turns_remaining = int(level_data.get("duration", 0))
 	# The casting turn itself doesn't count - duration only starts
-	# ticking from the turn after (see _tick_arctic_burn()), same as
+	# ticking from the turn after (see _tick_frostbound_fangs()), same as
 	# every other duration-based buff.
-	_arctic_burn_duration_pending_start = true
+	_frostbound_fangs_duration_pending_start = true
 	_set_hero_enlarged(hero_image, true)
 
 
 ## Called right after a plain Attack lands (see _apply_hero_attack()).
-## Spends one of Arctic Burn's banked attacks, if any are left, and ends
+## Spends one of Frostbound Fangs' banked attacks, if any are left, and ends
 ## the whole effect right there once the last one is used - the other
-## half of the attacks-or-duration race _tick_arctic_burn() runs on the
+## half of the attacks-or-duration race _tick_frostbound_fangs() runs on the
 ## turn-count side.
-func _apply_arctic_burn_attack() -> void:
-	if not _arctic_burn_active or _arctic_burn_attacks_remaining <= 0:
+func _apply_frostbound_fangs_attack() -> void:
+	if not _frostbound_fangs_active or _frostbound_fangs_attacks_remaining <= 0:
 		return
 
-	_arctic_burn_attacks_remaining -= 1
-	if _arctic_burn_attacks_remaining <= 0:
-		_end_arctic_burn()
+	_frostbound_fangs_attacks_remaining -= 1
+	if _frostbound_fangs_attacks_remaining <= 0:
+		_end_frostbound_fangs()
 
 
-## Ticks Arctic Burn's duration down once per End Turn, same timing (and
+## Ticks Frostbound Fangs' duration down once per End Turn, same timing (and
 ## same "the casting turn doesn't count" skip) as Leeching Hunger's own
 ## _tick_leeching_hunger().
-func _tick_arctic_burn() -> void:
-	if not _arctic_burn_active:
+func _tick_frostbound_fangs() -> void:
+	if not _frostbound_fangs_active:
 		return
 
-	if _arctic_burn_duration_pending_start:
-		_arctic_burn_duration_pending_start = false
+	if _frostbound_fangs_duration_pending_start:
+		_frostbound_fangs_duration_pending_start = false
 		return
 
-	_arctic_burn_turns_remaining -= 1
-	if _arctic_burn_turns_remaining <= 0:
-		_end_arctic_burn()
+	_frostbound_fangs_turns_remaining -= 1
+	if _frostbound_fangs_turns_remaining <= 0:
+		_end_frostbound_fangs()
 
 
-## Arctic Burn has run its course - either every banked Attack got used
-## (_apply_arctic_burn_attack()) or its duration ran out first
-## (_tick_arctic_burn()), whichever came first.
-func _end_arctic_burn() -> void:
-	_arctic_burn_active = false
-	_arctic_burn_bonus_damage = 0.0
-	_arctic_burn_bonus_range = 0
-	_arctic_burn_attacks_remaining = 0
-	_arctic_burn_turns_remaining = 0
-	_arctic_burn_duration_pending_start = false
+## Frostbound Fangs has run its course - either every banked Attack got used
+## (_apply_frostbound_fangs_attack()) or its duration ran out first
+## (_tick_frostbound_fangs()), whichever came first.
+func _end_frostbound_fangs() -> void:
+	_frostbound_fangs_active = false
+	_frostbound_fangs_bonus_damage = 0.0
+	_frostbound_fangs_bonus_range = 0
+	_frostbound_fangs_attacks_remaining = 0
+	_frostbound_fangs_turns_remaining = 0
+	_frostbound_fangs_duration_pending_start = false
 	_set_hero_enlarged(hero_image, false)
 
-	_show_message_over_hero("Arctic Burn wore off")
+	_show_message_over_hero("Frostbound Fangs wore off")
 
 
 # ------------------------------------------------------------------
-# Winter Wyvern's Cold Embrace.
+# The Primordial Hunger's The Test of Time.
 # ------------------------------------------------------------------
 
-## Activates Cold Embrace: dispels every OTHER effect currently on the
-## hero (see _dispel_all_hero_effects()), swaps his portrait to
-## COLD_EMBRACE_IMAGE_PATH, and arms this level's own heal_per_turn for
+## Activates The Test of Time: dispels every OTHER effect currently on the
+## hero (see _dispel_all_hero_effects()), lifts him into the air under a
+## ticking clock (TimeStillFX), and arms this level's own heal_per_turn for
 ## `level_data.duration` turns - during which apply_damage() blocks
 ## every hit outright and _hero_move()/_on_attack_pressed() refuse to
 ## act. Always "succeeds" - no target or range requirement to cast it,
 ## same as every other self-cast buff.
-func _activate_cold_embrace(level_data: Dictionary) -> void:
+func _activate_the_test_of_time(level_data: Dictionary) -> void:
 	_dispel_all_hero_effects()
 
-	_cold_embrace_active = true
-	_cold_embrace_heal_per_turn = float(level_data.get("heal", 0))
-	_cold_embrace_turns_remaining = int(level_data.get("duration", 0))
+	_the_test_of_time_active = true
+	_the_test_of_time_heal_per_turn = float(level_data.get("heal", 0))
+	_the_test_of_time_turns_remaining = int(level_data.get("duration", 0))
 	# The casting turn itself doesn't count - duration only starts
-	# ticking from the turn after (see _tick_cold_embrace()), same as
+	# ticking from the turn after (see _tick_the_test_of_time()), same as
 	# every other duration-based buff.
-	_cold_embrace_duration_pending_start = true
+	_the_test_of_time_duration_pending_start = true
 
-	_set_hero_image(COLD_EMBRACE_IMAGE_PATH)
-	_show_message_over_hero("Encased in ice!")
-	_flash_bounce_hit(hero_image, COLD_FEET_FLASH_COLOR)
-	_refresh_cold_feet_frost()
+	# Rises into the air under an ancient ticking clock (TimeStillFX).
+	TimeStillFX.begin(hero_image, _the_test_of_time_turns_remaining)
 
 
 ## Dispels every other effect currently on the hero, good or bad, right
-## before Cold Embrace establishes its own state (_activate_cold_
-## embrace()): every self-buff that could in principle be active - only
-## ever really Arctic Burn for Winter Wyvern's own kit, since the rest
+## before The Test of Time establishes its own state
+## (_activate_the_test_of_time()): every self-buff that could in principle
+## be active - only
+## ever really Frostbound Fangs for The Primordial Hunger's own kit, since the rest
 ## belong to other heroes, but this stays generic and correct regardless
 ## of whose battle it runs in - plus every debuff a rival hero fight
 ## boss could have inflicted (root, silence, Thornbind's/Mark of the
-## Mist's/Cold Feet's/Ice Vortex's/Ice Blast's/Frostbite's/Leech
+## Mist's/Mark of Stillness's/The Hollow Cold's/Return to the Void's/Frostbite's/Leech
 ## Seed's/Overgrowth's/Mortimer Kisses' burn damage-over-time, Ice
-## Blast's execute threshold, Barbed Lunge's/Torrent's stun, Lil' Shredder's
+## Blast's execute threshold, Barbed Lunge's/Drowned Surge's stun, Lil' Shredder's
 ## own armor reduction, and a hostile Leeching Hunger's stat penalty) -
 ## the same field list _reset_enemy_hero_state() clears fresh for each
 ## new hero fight.
 func _dispel_all_hero_effects() -> void:
-	if _arctic_burn_active:
-		_end_arctic_burn()
+	if _frostbound_fangs_active:
+		_end_frostbound_fangs()
 	if _leeching_hunger_active:
 		_end_leeching_hunger()
 	if _depthsveil_active:
@@ -7888,19 +8040,19 @@ func _dispel_all_hero_effects() -> void:
 	_player_thornbind_dot_damage = 0.0
 	_player_thornbind_dot_turns_left = 0
 	_player_stun_turns_left = 0
-	_player_winters_curse_active = false
+	_player_the_hunger_calls_active = false
 	_player_curse_stacks = 0
 	_player_curse_active = false
 	_player_curse_dot_damage = 0.0
 	_player_curse_dot_turns_left = 0
 	_player_curse_last_hit_turn = 0
-	_player_cold_feet_dot_damage = 0.0
-	_player_cold_feet_dot_turns_left = 0
-	_player_ice_vortex_dot_damage = 0.0
-	_player_ice_vortex_dot_turns_left = 0
-	_player_ice_blast_dot_damage = 0.0
-	_player_ice_blast_dot_turns_left = 0
-	_player_ice_blast_execute_pct = 0.0
+	_player_mark_of_stillness_dot_damage = 0.0
+	_player_mark_of_stillness_dot_turns_left = 0
+	_player_the_hollow_cold_dot_damage = 0.0
+	_player_the_hollow_cold_dot_turns_left = 0
+	_player_return_to_the_void_dot_damage = 0.0
+	_player_return_to_the_void_dot_turns_left = 0
+	_player_return_to_the_void_execute_pct = 0.0
 	_player_frostbite_dot_damage = 0.0
 	_player_frostbite_dot_turns_left = 0
 	_player_leech_seed_dot_damage = 0.0
@@ -7917,37 +8069,41 @@ func _dispel_all_hero_effects() -> void:
 	_refresh_bars()
 
 
-## Ticks Cold Embrace's duration down once per End Turn, same timing
+## Ticks The Test of Time's duration down once per End Turn, same timing
 ## (and same "the casting turn doesn't count" skip) as every other
 ## duration-based buff - healing the hero for this level's own
 ## heal_per_turn on every tick that actually counts against the
 ## duration (the skipped casting-turn one doesn't heal either).
-func _tick_cold_embrace() -> void:
-	if not _cold_embrace_active:
+func _tick_the_test_of_time() -> void:
+	if not _the_test_of_time_active:
 		return
 
-	if _cold_embrace_duration_pending_start:
-		_cold_embrace_duration_pending_start = false
+	if _the_test_of_time_duration_pending_start:
+		_the_test_of_time_duration_pending_start = false
 		return
 
-	heal(_cold_embrace_heal_per_turn)
-	_cold_embrace_turns_remaining -= 1
-	if _cold_embrace_turns_remaining <= 0:
-		_end_cold_embrace()
+	heal(_the_test_of_time_heal_per_turn)
+	_the_test_of_time_turns_remaining -= 1
+	var clock := TimeStillFX.of(hero_image)
+	if clock != null:
+		clock.set_turns(_the_test_of_time_turns_remaining)
+	if _the_test_of_time_turns_remaining <= 0:
+		_end_the_test_of_time()
 
 
-## Ends Cold Embrace once its duration runs out: reverts the hero's
+## Ends The Test of Time once its duration runs out: reverts the hero's
 ## portrait and drops his damage immunity/heal-per-turn/full-action
 ## lockout (see _update_action_buttons()/_end_turn()'s own auto-skip).
-func _end_cold_embrace() -> void:
-	_cold_embrace_active = false
-	_cold_embrace_heal_per_turn = 0.0
-	_cold_embrace_turns_remaining = 0
-	_cold_embrace_duration_pending_start = false
+func _end_the_test_of_time() -> void:
+	_the_test_of_time_active = false
+	_the_test_of_time_heal_per_turn = 0.0
+	_the_test_of_time_turns_remaining = 0
+	_the_test_of_time_duration_pending_start = false
 
-	_set_hero_image(_hero_static.get("image", ""))
-	_show_message_over_hero("Cold Embrace wears off")
-	_refresh_cold_feet_frost()
+	var clock := TimeStillFX.of(hero_image)
+	if clock != null:
+		clock.finish()
+	_show_message_over_hero("The Test of Time wears off")
 
 
 # ------------------------------------------------------------------
@@ -8163,14 +8319,14 @@ func _end_wildbond() -> void:
 
 
 ## Purely cosmetic: while an empowering self-buff is active - Spirit
-## Link (Erynd), Arctic Burn (Winter Wyvern) or Tag Team (Tusk) -
+## Link (Erynd), Frostbound Fangs (The Primordial Hunger) or Tag Team (Tusk) -
 ## `node` (the player's hero_image, or the rival's own node) grows to
 ## HERO_ENLARGED_SCALE. Shared because no hero has more than one of
 ## them, so they never overlap on one sprite. Only does anything when the state
 ## actually changes (the "base_scale" meta is the "currently on"
 ## marker), so a recast while it's already up just leaves it as is.
 func _set_hero_enlarged(node: Variant, active: bool) -> void:
-	if not (node is Control) or not is_instance_valid(node):
+	if not is_instance_valid(node) or not (node is Control):
 		return
 	var target_scale: Vector2 = Vector2.ONE * (HERO_ENLARGED_SCALE if active else 1.0)
 	if node.get_meta("base_scale", Vector2.ONE) == target_scale:
@@ -8309,12 +8465,12 @@ func _is_bear_alive() -> bool:
 func _elderwild_companion(level_data: Dictionary) -> void:
 	_despawn_bear()
 
-	if not ResourceLoader.exists(SPIRIT_BEAR_IMAGE_PATH):
-		print("No bear image found at: ", SPIRIT_BEAR_IMAGE_PATH)
+	if not ResourceLoader.exists(ELDERWILD_COMPANION_IMAGE_PATH):
+		print("No bear image found at: ", ELDERWILD_COMPANION_IMAGE_PATH)
 		return
 
 	var target_height: float = get_viewport_rect().size.y / 4.0
-	var texture: Texture2D = load(SPIRIT_BEAR_IMAGE_PATH)
+	var texture: Texture2D = load(ELDERWILD_COMPANION_IMAGE_PATH)
 	var tex_size: Vector2 = texture.get_size()
 	var scale_factor: float = target_height / tex_size.y
 	var target_width: float = tex_size.x * scale_factor
@@ -8360,7 +8516,7 @@ func _elderwild_companion(level_data: Dictionary) -> void:
 		"node": tex_rect,
 		"hp_label": hp_label,
 	}
-	CreatureAnimator.attach(tex_rect, "spirit_bear")
+	CreatureAnimator.attach(tex_rect, "elderwild_companion")
 	_refresh_bear_hp_label()
 
 
@@ -8452,7 +8608,7 @@ func _deal_aoe_damage_to_bear(center_pos_index: int, radius: int, amount: float,
 
 
 ## The line-shaped equivalent of _deal_aoe_damage_to_bear() above - for
-## Ghostship's/Timber Chain's own "every column between the caster and
+## The Sunken One's/Timber Chain's own "every column between the caster and
 ## the target, inclusive of both ends" line. Same "amount is raw, the
 ## bear mitigates it with its own armor" contract.
 ## `flash_hits` gives each one hit the standard splash hit-flash
@@ -8484,8 +8640,12 @@ func _deal_directional_aoe_damage_to_bear(origin_pos_index: int, direction: int,
 ## gold, since it's the hero's own summon rather than a foe. Losing it
 ## also costs the hero a chunk of his own HP (see
 ## _apply_bear_death_penalty()).
-func _kill_bear() -> void:
-	CreatureAnimator.spawn_death_ghost(_bear.get("node"), _fx_layer)
+## `claimed_by_void`: see _kill_enemy().
+func _kill_bear(claimed_by_void: bool = false) -> void:
+	if claimed_by_void:
+		ReturnToVoidFX.claim(_bear.get("node"), _fx_layer)
+	else:
+		CreatureAnimator.spawn_death_ghost(_bear.get("node"), _fx_layer)
 	_despawn_bear()
 	_apply_bear_death_penalty()
 
@@ -8524,8 +8684,8 @@ func _bear_turn() -> void:
 	if not _is_bear_alive() or _enemies.is_empty():
 		return
 
-	# A rival's stun (Torrent/Sacred Arrow/Lucent Beam/Ice Blast/
-	# Frostbite/Winter's Curse/Snowball/Walrus Punch aimed at the bear)
+	# A rival's stun (Drowned Surge/Sacred Arrow/Lucent Beam/Return to the Void/
+	# Frostbite/The Hunger Calls/Snowball/Walrus Punch aimed at the bear)
 	# costs it this whole turn; a root (Thornbind/Ensnare) still lets it
 	# attack what's already on its column, just not walk. Both are
 	# checked with their CURRENT value before ticking down - the same
@@ -8610,8 +8770,8 @@ func _refresh_skill_cooldown_labels() -> void:
 
 
 ## Ticks every tracked skill cooldown down by one turn, clamped at 0,
-## and ticks Leeching Hunger's, Depthsveil's, Arctic Burn's, Cold
-## Embrace's, Freezing Field's, Ice Shards', Tag Team's, Nature's
+## and ticks Leeching Hunger's, Depthsveil's, Frostbound Fangs', The Test of
+## Time's, Freezing Field's, Ice Shards', Tag Team's, Nature's
 ## Guise's, Living Armor's, Reactive Armor's (each stack independently),
 ## Chakram's, Wildbond's, Beast of the Elderwild's, Veil of the Forgotten's, and The Mist
 ## Remembers's durations, plus Mark of the Mist's own (enemy- and player-side)
@@ -8633,8 +8793,8 @@ func _tick_skill_cooldowns() -> void:
 	_tick_depthsveil()
 	_tick_natures_guise()
 	_tick_moonlight_shadow()
-	_tick_arctic_burn()
-	_tick_cold_embrace()
+	_tick_frostbound_fangs()
+	_tick_the_test_of_time()
 	_tick_freezing_field()
 	_tick_eclipse()
 	_tick_ice_shards()
@@ -8662,8 +8822,8 @@ func _tick_skill_cooldowns() -> void:
 		_tick_enemy_veil_of_the_forgotten()
 		_tick_enemy_the_mist_remembers()
 		_tick_enemy_mark_of_the_mist_effects()
-		_tick_enemy_arctic_burn()
-		_tick_enemy_cold_embrace()
+		_tick_enemy_frostbound_fangs()
+		_tick_enemy_the_test_of_time()
 		_tick_enemy_freezing_field()
 		_tick_enemy_ice_shards()
 		_tick_enemy_tag_team()
@@ -8776,7 +8936,7 @@ func _activate_veil_of_the_forgotten(level_data: Dictionary) -> void:
 	# Checked before the dispel below clears it all - only drives the
 	# cleanse sparks in _show_veil_shell().
 	var cleansed: bool = _player_root_turns_left > 0 or _player_thornbind_dot_turns_left > 0 \
-		or _player_stun_turns_left > 0 or _player_winters_curse_active
+		or _player_stun_turns_left > 0 or _player_the_hunger_calls_active
 	for penalty in _player_leeching_hunger_penalty.values():
 		if float(penalty) > 0.0:
 			cleansed = true
@@ -8785,7 +8945,7 @@ func _activate_veil_of_the_forgotten(level_data: Dictionary) -> void:
 	_player_thornbind_dot_damage = 0.0
 	_player_thornbind_dot_turns_left = 0
 	_player_stun_turns_left = 0
-	_player_winters_curse_active = false
+	_player_the_hunger_calls_active = false
 	_player_leeching_hunger_penalty = {"damage": 0.0, "hp": 0.0, "mana": 0.0, "armor": 0.0}
 
 	_show_message_over_hero("Shield up!")
@@ -8866,7 +9026,7 @@ func _end_veil_of_the_forgotten(exploded: bool) -> void:
 ## it drains. A recast replaces any existing shell outright, the same
 ## way the shield itself is replaced.
 func _show_veil_shell(node: Variant, shield_hp: float, cleansed: bool) -> void:
-	if not (node is TextureRect) or not is_instance_valid(node):
+	if not is_instance_valid(node) or not (node is TextureRect):
 		return
 
 	var old_shell: Node = node.get_node_or_null(VEIL_SHELL_NAME)
@@ -8909,7 +9069,7 @@ func _show_veil_shell(node: Variant, shield_hp: float, cleansed: bool) -> void:
 ## (dense when fresh, barely there just before it breaks), and puffs
 ## out and back so the absorbed hit visibly lands in it.
 func _update_veil_shell(node: Variant, remaining_hp: float) -> void:
-	if not (node is Control) or not is_instance_valid(node):
+	if not is_instance_valid(node) or not (node is Control):
 		return
 	var shell: ColorRect = node.get_node_or_null(VEIL_SHELL_NAME)
 	if shell == null:
@@ -8930,7 +9090,7 @@ func _update_veil_shell(node: Variant, remaining_hp: float) -> void:
 ## explosion's own reach) plus a light screen shake. The explosion's
 ## damage and hit flashes are the caller's.
 func _remove_veil_shell(node: Variant, shattered: bool, radius: int) -> void:
-	if not (node is Control) or not is_instance_valid(node):
+	if not is_instance_valid(node) or not (node is Control):
 		return
 	var shell: ColorRect = node.get_node_or_null(VEIL_SHELL_NAME)
 	if shell == null:
@@ -9205,7 +9365,7 @@ func _end_the_mist_remembers() -> void:
 ## Also starts or stops the mist pouring into it (see
 ## _set_the_mist_remembers_inflow()).
 func _set_the_mist_remembers_visual(node: Variant, active: bool) -> void:
-	if not (node is TextureRect) or not is_instance_valid(node):
+	if not is_instance_valid(node) or not (node is TextureRect):
 		return
 	var glow: TextureRect = node.get_node_or_null(THE_MIST_REMEMBERS_GLOW_NAME)
 	if active == (glow != null):
@@ -9306,12 +9466,12 @@ func _set_the_mist_remembers_inflow(node: TextureRect, active: bool) -> void:
 ## absorbed some/all by Veil of the Forgotten's own HP pool instead - so
 ## callers that need it (a rival hero's own Wildbond lifesteal, via
 ## _resolve_enemy_hero_attack()) don't have to re-derive it. While
-## Winter Wyvern's Cold Embrace is active the hero is fully immune -
+## The Primordial Hunger's The Test of Time is active the hero is fully immune -
 ## every hit (a creep's, a rival hero's skill, any ongoing DoT) is
 ## discarded outright before armor mitigation, The Mist Remembers, or Veil of the
 ## Forgotten ever get a look at it.
 func apply_damage(amount: float) -> float:
-	if _cold_embrace_active:
+	if _the_test_of_time_active:
 		return 0.0
 
 	# Slardar's Corrosive Haze: boosts every hit the player takes from the
@@ -9431,6 +9591,41 @@ func _show_level_up_popup(level_ups: Array) -> void:
 	level_up_popup.visible = true
 
 
+## Full-screen dim that swallows every click while the level-up flow
+## (LevelUpPopup -> SkillChoicePopup -> SkillChoiceDescPopup) is open,
+## so the player can't move/attack/cast/use items/end turn/flee or
+## click enemies until they've dealt with it. Sits directly beneath
+## LevelUpPopup in draw order - above every battle control, below the
+## popups themselves. The tutorial's own popups live on
+## TutorialManager's separate CanvasLayer, so they stay clickable.
+## Driven by the popups' own visibility_changed signals rather than
+## each call site, since their visibility is toggled in several places.
+var _level_up_input_blocker: ColorRect
+
+
+func _build_level_up_input_blocker() -> void:
+	_level_up_input_blocker = ColorRect.new()
+	_level_up_input_blocker.name = "LevelUpInputBlocker"
+	_level_up_input_blocker.color = Color(0, 0, 0, 0.4)
+	_level_up_input_blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_level_up_input_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	_level_up_input_blocker.visible = false
+	add_child(_level_up_input_blocker)
+	move_child(_level_up_input_blocker, level_up_popup.get_index())
+
+	for popup in [level_up_popup, skill_choice_popup, skill_choice_desc_popup]:
+		popup.visibility_changed.connect(_refresh_level_up_input_blocker)
+	_refresh_level_up_input_blocker()
+
+
+func _is_level_up_flow_open() -> bool:
+	return level_up_popup.visible or skill_choice_popup.visible or skill_choice_desc_popup.visible
+
+
+func _refresh_level_up_input_blocker() -> void:
+	_level_up_input_blocker.visible = _is_level_up_flow_open()
+
+
 func _set_stat_row(old_label: Label, new_label: Label, old_value, new_value) -> void:
 	old_label.text = _format_stat_value(old_value)
 	new_label.text = _format_stat_value(new_value)
@@ -9461,14 +9656,14 @@ func _maybe_show_skill_choice_popup() -> void:
 	skill_choice_popup.visible = true
 
 	match _tutorial_forced_skill_id():
-		"tidebringer":
+		"pull_of_the_abyss":
 			TutorialManager.show_popup(
-				"You've got a skill point to spend. Kunkka needs more damage output to clear every "
-				+ "enemy here in time - learn Tidebringer."
+				"You've got a skill point to spend. Kaelen Varr needs more damage output to clear every "
+				+ "enemy here in time - learn Pull of the Abyss."
 			)
-		"ghostship":
+		"the_sunken_one":
 			TutorialManager.show_popup(
-				"You've got a skill point to spend. Learn Ghostship - it's your ultimate, and the "
+				"You've got a skill point to spend. Learn The Sunken One - it's your ultimate, and the "
 				+ "single most powerful attack in your kit."
 			)
 
@@ -9564,20 +9759,20 @@ func _on_skill_choice_desc_ok_pressed() -> void:
 		# the next action, popping up its own explanation) - none of it
 		# should ever fire for a normal playthrough, so it's all gated
 		# behind TutorialManager.is_active. Without this, any player
-		# leveling up Kunkka's Tidebringer or Ghostship outside the
-		# tutorial would still get stage 3's "Ghostship is yours now..."
+		# leveling up Kaelen Varr's Pull of the Abyss or The Sunken One outside the
+		# tutorial would still get stage 3's "The Sunken One is yours now..."
 		# popup and its action lock, since TutorialManager.show_popup()/
 		# set_allowed_actions() don't check is_active themselves.
 		if TutorialManager.is_active:
-			if skill_id == "tidebringer":
-				_tutorial_taught_tidebringer = true
-			elif skill_id == "ghostship":
-				_tutorial_taught_ghostship = true
+			if skill_id == "pull_of_the_abyss":
+				_tutorial_taught_pull_of_the_abyss = true
+			elif skill_id == "the_sunken_one":
+				_tutorial_taught_the_sunken_one = true
 				# Starts the reinforcement countdown fresh from HERE rather
 				# than from stage 3's battle start - landing that first kill
 				# (to trigger this level-up) can itself take several attacks
 				# against a melee creep's real HP, so counting from turn 0
-				# let reinforcements arrive mid-leveling, before Ghostship
+				# let reinforcements arrive mid-leveling, before The Sunken One
 				# even existed to answer them - roughly doubling the enemy
 				# count on top of the original roster and proving fatal.
 				_next_reinforcement_turn = _turn_count + 2
@@ -9753,15 +9948,14 @@ func _end_guardian_sprint() -> void:
 
 
 func _hero_move(direction: int) -> void:
-	if _battle_over or _has_acted_this_turn:
+	if _battle_over or _has_acted_this_turn or _rival_fx_in_flight:
 		return
 
 	if _player_root_turns_left > 0:
 		_show_message_over_hero("Rooted!")
 		return
 
-	if _cold_embrace_active:
-		_show_message_over_hero("Encased in ice!")
+	if _the_test_of_time_active:
 		return
 
 	if _mortimer_kisses_active:
@@ -9831,11 +10025,10 @@ func _on_move_right_pressed() -> void:
 
 
 func _on_attack_pressed() -> void:
-	if _battle_over or _has_acted_this_turn:
+	if _battle_over or _has_acted_this_turn or _rival_fx_in_flight:
 		return
 
-	if _cold_embrace_active:
-		_show_message_over_hero("Encased in ice!")
+	if _the_test_of_time_active:
 		return
 
 	if _mortimer_kisses_active:
@@ -9858,13 +10051,13 @@ func _resolve_melee_attack() -> void:
 
 ## How many columns away a ranged hero can hit, from their Range
 ## stat: 200-300 -> 1 column, 300-400 -> 2 columns, and so on
-## (+100 range per extra column) - plus Winter Wyvern's Arctic Burn
+## (+100 range per extra column) - plus The Primordial Hunger's Frostbound Fangs
 ## bonus_range while it's active, folded straight in so it stretches
 ## every consumer of this helper (a plain ranged Attack, Chilling
 ## Touch's own "same as attack range" targeting) the same way.
 func _hero_attack_column_range() -> int:
 	var range_stat: float = float(_recruited.get("stats", {}).get("range", 200))
-	return maxi(1, floori((range_stat - 200.0) / 100.0) + 1) + _arctic_burn_bonus_range
+	return maxi(1, floori((range_stat - 200.0) / 100.0) + 1) + _frostbound_fangs_bonus_range
 
 
 func _start_ranged_targeting() -> void:
@@ -9955,14 +10148,14 @@ func _start_whisper_of_the_veil_targeting(level_data: Dictionary) -> bool:
 	return true
 
 
-## Kunkka's Torrent target picking: same column-range/highlight
+## Kaelen Varr's Drowned Surge target picking: same column-range/highlight
 ## mechanism as Thornbind/ranged Attack, but the range itself comes
 ## straight from this level's own `range` field (a constant 3 at every
 ## level per the design doc) rather than _hero_attack_column_range() -
-## Torrent lands where Kunkka calls it down, regardless of his Range
+## Drowned Surge lands where Kaelen Varr calls it down, regardless of his Range
 ## stat, the same way Whisper of the Veil's own fixed WHISPER_OF_THE_VEIL_RANGE does.
 ## Returns false (and shows a message) if nothing is in range.
-func _start_torrent_targeting(level_data: Dictionary) -> bool:
+func _start_drowned_surge_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = int(level_data.get("range", 3))
@@ -9977,17 +10170,17 @@ func _start_torrent_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "torrent"
-	_pending_torrent_level_data = level_data
+	_targeting_purpose = "drowned_surge"
+	_pending_drowned_surge_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
 
-## Kunkka's X Marks the Spot target picking: same column-range/
-## highlight mechanism as Torrent, using this level's own `range` field
-## (2-5 columns, growing with level, unlike Torrent's constant 3).
+## Kaelen Varr's Undertow target picking: same column-range/
+## highlight mechanism as Drowned Surge, using this level's own `range` field
+## (2-5 columns, growing with level, unlike Drowned Surge's constant 3).
 ## Returns false (and shows a message) if nothing is in range.
-func _start_xmarks_targeting(level_data: Dictionary) -> bool:
+func _start_undertow_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = int(level_data.get("range", 2))
@@ -10002,36 +10195,8 @@ func _start_xmarks_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "x_marks_the_spot"
-	_pending_xmarks_level_data = level_data
-	_highlight_valid_targets()
-	return true
-
-
-## Kunkka's Ghostship target picking: same column-range/highlight
-## mechanism as Torrent/X Marks the Spot, using this level's own
-## `range` field (4-6 columns, growing with level) - just for picking
-## where the ship sails TO; every enemy actually hit is worked out at
-## resolve time from the straight line between Kunkka and that pick
-## (see _resolve_ghostship_cast()), not from this range itself.
-## Returns false (and shows a message) if nothing is in range.
-func _start_ghostship_targeting(level_data: Dictionary) -> bool:
-	_cancel_targeting()
-
-	var col_range: int = int(level_data.get("range", 4))
-	for enemy in _enemies:
-		if _is_target_hidden(enemy):
-			continue
-		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
-			_valid_targets.append(enemy)
-
-	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
-		return false
-
-	_targeting_mode = true
-	_targeting_purpose = "ghostship"
-	_pending_ghostship_level_data = level_data
+	_targeting_purpose = "undertow"
+	_pending_undertow_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
@@ -10192,11 +10357,11 @@ func _start_chakram_targeting(level_data: Dictionary) -> bool:
 	return true
 
 
-## Ancient Apparition's Cold Feet target picking: same column-range/
+## Nhal's Mark of Stillness target picking: same column-range/
 ## highlight mechanism as every other targeted skill above, using this
 ## level's own `range` field (2-4 columns, growing with level).
 ## Returns false (and shows a message) if nothing is in range.
-func _start_cold_feet_targeting(level_data: Dictionary) -> bool:
+func _start_mark_of_stillness_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = int(level_data.get("range", 2))
@@ -10211,31 +10376,31 @@ func _start_cold_feet_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "cold_feet"
-	_pending_cold_feet_level_data = level_data
+	_targeting_purpose = "mark_of_stillness"
+	_pending_mark_of_stillness_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
 
-## Ice Vortex's own targeting range, in columns - fixed regardless of
-## level or the hero's Range stat (unlike Cold Feet's own per-level
+## The Hollow Cold's own targeting range, in columns - fixed regardless of
+## level or the hero's Range stat (unlike Mark of Stillness's own per-level
 ## range), since it's a cast point, not a stat-scaled attack.
-const ICE_VORTEX_RANGE := 3
+const THE_HOLLOW_COLD_RANGE := 3
 
 
-## Ancient Apparition's Ice Vortex target picking: same column-range/
+## Nhal's The Hollow Cold target picking: same column-range/
 ## highlight mechanism as every other targeted skill above, but always
-## at ICE_VORTEX_RANGE - the level only changes the AoE radius applied
-## around whichever enemy gets clicked (see _resolve_ice_vortex_cast()),
+## at THE_HOLLOW_COLD_RANGE - the level only changes the AoE radius applied
+## around whichever enemy gets clicked (see _resolve_the_hollow_cold_cast()),
 ## never the targeting range itself. Returns false (and shows a
 ## message) if nothing is in range.
-func _start_ice_vortex_targeting(level_data: Dictionary) -> bool:
+func _start_the_hollow_cold_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	for enemy in _enemies:
 		if _is_target_hidden(enemy):
 			continue
-		if _distance(enemy["pos_index"], _hero_pos_index) <= ICE_VORTEX_RANGE:
+		if _distance(enemy["pos_index"], _hero_pos_index) <= THE_HOLLOW_COLD_RANGE:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
@@ -10243,20 +10408,20 @@ func _start_ice_vortex_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "ice_vortex"
-	_pending_ice_vortex_level_data = level_data
+	_targeting_purpose = "the_hollow_cold"
+	_pending_the_hollow_cold_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
 
-## Ancient Apparition's Chilling Touch target picking: same column-
+## Nhal's Touch of the First Cold target picking: same column-
 ## range/highlight mechanism as every other targeted skill above, but
 ## using the hero's own normal attack range (_hero_attack_column_
 ## range(), the same stat-scaled helper a plain ranged Attack/Thornbind
-## use) rather than a skill-specific field - Chilling Touch is
+## use) rather than a skill-specific field - Touch of the First Cold is
 ## explicitly "attack range", not its own distance. Returns false (and
 ## shows a message) if nothing is in range.
-func _start_chilling_touch_targeting(level_data: Dictionary) -> bool:
+func _start_touch_of_the_first_cold_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = _hero_attack_column_range()
@@ -10271,19 +10436,19 @@ func _start_chilling_touch_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "chilling_touch"
-	_pending_chilling_touch_level_data = level_data
+	_targeting_purpose = "touch_of_the_first_cold"
+	_pending_touch_of_the_first_cold_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
 
-## Ancient Apparition's Ice Blast target picking: no range limit at
+## Nhal's Return to the Void target picking: no range limit at
 ## all, unlike every other targeted skill above - the design doc's own
 ## "targets an enemy anywhere on the field" - so every living,
 ## targetable enemy is a valid target regardless of column distance
 ## from the hero. Returns false (and shows a message) only if there's
 ## no enemy left to target at all.
-func _start_ice_blast_targeting(level_data: Dictionary) -> bool:
+func _start_return_to_the_void_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	for enemy in _enemies:
@@ -10296,19 +10461,19 @@ func _start_ice_blast_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "ice_blast"
-	_pending_ice_blast_level_data = level_data
+	_targeting_purpose = "return_to_the_void"
+	_pending_return_to_the_void_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
 
-## Winter Wyvern's Splinter Blast target picking: same column-range/
-## highlight mechanism as Chilling Touch - the hero's own normal attack
+## The Primordial Hunger's Maddening Roar target picking: same column-range/
+## highlight mechanism as Touch of the First Cold - the hero's own normal attack
 ## range (_hero_attack_column_range()), since the design doc calls for
 ## "an enemy in range (range of normal attack)" rather than a skill-
 ## specific distance. Returns false (and shows a message) if nothing is
 ## in range.
-func _start_splinter_blast_targeting(level_data: Dictionary) -> bool:
+func _start_maddening_roar_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = _hero_attack_column_range()
@@ -10323,18 +10488,18 @@ func _start_splinter_blast_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "splinter_blast"
-	_pending_splinter_blast_level_data = level_data
+	_targeting_purpose = "maddening_roar"
+	_pending_maddening_roar_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
 
-## Winter Wyvern's Winter's Curse target picking: same column-range/
-## highlight mechanism as Splinter Blast/Chilling Touch - the hero's own
+## The Primordial Hunger's The Hunger Calls target picking: same column-range/
+## highlight mechanism as Maddening Roar/Touch of the First Cold - the hero's own
 ## normal attack range (_hero_attack_column_range()), per the design
 ## doc's own "an enemy in range (normal attack range)". Returns false
 ## (and shows a message) if nothing is in range.
-func _start_winters_curse_targeting(level_data: Dictionary) -> bool:
+func _start_the_hunger_calls_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = _hero_attack_column_range()
@@ -10349,8 +10514,8 @@ func _start_winters_curse_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "winter's_curse"
-	_pending_winters_curse_level_data = level_data
+	_targeting_purpose = "the_hunger_calls"
+	_pending_the_hunger_calls_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
@@ -10435,7 +10600,7 @@ func _start_frostbite_targeting(level_data: Dictionary) -> bool:
 ## Tusk's Ice Shards target picking: unlike every "normal attack range"
 ## targeted skill above, this uses the skill's OWN level_data.range
 ## field instead of _hero_attack_column_range() - same reasoning as
-## Torrent's own targeting (_start_torrent_targeting()), since Tusk
+## Drowned Surge's own targeting (_start_drowned_surge_targeting()), since Tusk
 ## fights at melee range but Ice Shards is thrown well past it. Returns
 ## false (and shows a message) if nothing is in range.
 func _start_ice_shards_targeting(level_data: Dictionary) -> bool:
@@ -10670,7 +10835,7 @@ func _is_texture_rect_opaque_at(node: TextureRect, local_pos: Vector2) -> bool:
 
 
 func _on_enemy_clicked(enemy: Dictionary) -> void:
-	if not _targeting_mode or _battle_over or _has_acted_this_turn:
+	if not _targeting_mode or _battle_over or _has_acted_this_turn or _rival_fx_in_flight:
 		return
 	if not _valid_targets.has(enemy):
 		return
@@ -10691,9 +10856,8 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 	var purpose: String = _targeting_purpose
 	var thornbind_level_data: Dictionary = _pending_thornbind_level_data
 	var whisper_of_the_veil_level_data: Dictionary = _pending_whisper_of_the_veil_level_data
-	var torrent_level_data: Dictionary = _pending_torrent_level_data
-	var xmarks_level_data: Dictionary = _pending_xmarks_level_data
-	var ghostship_level_data: Dictionary = _pending_ghostship_level_data
+	var drowned_surge_level_data: Dictionary = _pending_drowned_surge_level_data
+	var undertow_level_data: Dictionary = _pending_undertow_level_data
 	var corrosive_haze_level_data: Dictionary = _pending_corrosive_haze_level_data
 	var sacred_arrow_level_data: Dictionary = _pending_sacred_arrow_level_data
 	var lucent_beam_level_data: Dictionary = _pending_lucent_beam_level_data
@@ -10702,12 +10866,12 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 	var chakram_level_data: Dictionary = _pending_chakram_level_data
 	var lil_shredder_level_data: Dictionary = _pending_lil_shredder_level_data
 	var mortimer_kisses_level_data: Dictionary = _pending_mortimer_kisses_level_data
-	var cold_feet_level_data: Dictionary = _pending_cold_feet_level_data
-	var ice_vortex_level_data: Dictionary = _pending_ice_vortex_level_data
-	var chilling_touch_level_data: Dictionary = _pending_chilling_touch_level_data
-	var ice_blast_level_data: Dictionary = _pending_ice_blast_level_data
-	var splinter_blast_level_data: Dictionary = _pending_splinter_blast_level_data
-	var winters_curse_level_data: Dictionary = _pending_winters_curse_level_data
+	var mark_of_stillness_level_data: Dictionary = _pending_mark_of_stillness_level_data
+	var the_hollow_cold_level_data: Dictionary = _pending_the_hollow_cold_level_data
+	var touch_of_the_first_cold_level_data: Dictionary = _pending_touch_of_the_first_cold_level_data
+	var return_to_the_void_level_data: Dictionary = _pending_return_to_the_void_level_data
+	var maddening_roar_level_data: Dictionary = _pending_maddening_roar_level_data
+	var the_hunger_calls_level_data: Dictionary = _pending_the_hunger_calls_level_data
 	var crystal_nova_level_data: Dictionary = _pending_crystal_nova_level_data
 	var frostbite_level_data: Dictionary = _pending_frostbite_level_data
 	var ice_shards_level_data: Dictionary = _pending_ice_shards_level_data
@@ -10720,12 +10884,10 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 		_resolve_thornbind_cast(enemy, thornbind_level_data)
 	elif purpose == "whisper_of_the_veil":
 		_resolve_whisper_of_the_veil_enemy_cast(enemy, whisper_of_the_veil_level_data)
-	elif purpose == "torrent":
-		_resolve_torrent_cast(enemy, torrent_level_data)
-	elif purpose == "x_marks_the_spot":
-		_resolve_xmarks_cast(enemy, xmarks_level_data)
-	elif purpose == "ghostship":
-		_resolve_ghostship_cast(enemy, ghostship_level_data)
+	elif purpose == "drowned_surge":
+		_resolve_drowned_surge_cast(enemy, drowned_surge_level_data)
+	elif purpose == "undertow":
+		_resolve_undertow_cast(enemy, undertow_level_data)
 	elif purpose == "corrosive_haze":
 		_resolve_corrosive_haze_cast(enemy, corrosive_haze_level_data)
 	elif purpose == "sacred_arrow":
@@ -10742,18 +10904,18 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 		_resolve_lil_shredder_cast(enemy, lil_shredder_level_data)
 	elif purpose == "mortimer_kisses":
 		_resolve_mortimer_kisses_cast(enemy, mortimer_kisses_level_data)
-	elif purpose == "cold_feet":
-		_resolve_cold_feet_cast(enemy, cold_feet_level_data)
-	elif purpose == "ice_vortex":
-		_resolve_ice_vortex_cast(enemy, ice_vortex_level_data)
-	elif purpose == "chilling_touch":
-		_resolve_chilling_touch_cast(enemy, chilling_touch_level_data)
-	elif purpose == "ice_blast":
-		_resolve_ice_blast_cast(enemy, ice_blast_level_data)
-	elif purpose == "splinter_blast":
-		_resolve_splinter_blast_cast(enemy, splinter_blast_level_data)
-	elif purpose == "winter's_curse":
-		_resolve_winters_curse_cast(enemy, winters_curse_level_data)
+	elif purpose == "mark_of_stillness":
+		_resolve_mark_of_stillness_cast(enemy, mark_of_stillness_level_data)
+	elif purpose == "the_hollow_cold":
+		_resolve_the_hollow_cold_cast(enemy, the_hollow_cold_level_data)
+	elif purpose == "touch_of_the_first_cold":
+		_resolve_touch_of_the_first_cold_cast(enemy, touch_of_the_first_cold_level_data)
+	elif purpose == "return_to_the_void":
+		_resolve_return_to_the_void_cast(enemy, return_to_the_void_level_data)
+	elif purpose == "maddening_roar":
+		_resolve_maddening_roar_cast(enemy, maddening_roar_level_data)
+	elif purpose == "the_hunger_calls":
+		_resolve_the_hunger_calls_cast(enemy, the_hunger_calls_level_data)
 	elif purpose == "crystal_nova":
 		_resolve_crystal_nova_cast(enemy, crystal_nova_level_data)
 	elif purpose == "frostbite":
@@ -10779,7 +10941,7 @@ func _on_hero_image_gui_input(event: InputEvent) -> void:
 ## hero's own portrait at any other time (or for any other skill) is a
 ## no-op, same as clicking a non-highlighted enemy while targeting.
 func _on_hero_image_clicked() -> void:
-	if not _targeting_mode or _battle_over or _has_acted_this_turn:
+	if not _targeting_mode or _battle_over or _has_acted_this_turn or _rival_fx_in_flight:
 		return
 	if _targeting_purpose != "whisper_of_the_veil":
 		return
@@ -10829,23 +10991,23 @@ func _apply_hero_attack(target: Dictionary) -> void:
 	# possibly _end_natures_guise()) below can change what _natures_
 	# guise_active reads.
 	var attacking_from_natures_guise: bool = _natures_guise_active
-	# Tidebringer counts this Attack toward its own threshold - once
+	# Pull of the Abyss counts this Attack toward its own threshold - once
 	# reached, THIS hit's roll gets its bonus damage folded in below
 	# (so the cleave that follows is based on the same empowered
 	# total), same as Depthsveil's own one-shot bonus above.
-	var tidebringer_level_data: Dictionary = _maybe_consume_tidebringer_stack()
-	var tidebringer_bonus: float = float(tidebringer_level_data.get("bonus_damage", 0.0))
+	var pull_of_the_abyss_level_data: Dictionary = _maybe_consume_pull_of_the_abyss_stack()
+	var pull_of_the_abyss_bonus: float = float(pull_of_the_abyss_level_data.get("bonus_damage", 0.0))
 	# Bash of the Deep counts this Attack toward its own threshold too,
-	# same idea as Tidebringer's stack just above - once reached, this
+	# same idea as Pull of the Abyss's stack just above - once reached, this
 	# hit's own damage is boosted by a PERCENTAGE of itself (folded in
-	# below, after the roll - unlike Tidebringer's flat pre-roll bonus),
+	# below, after the roll - unlike Pull of the Abyss's flat pre-roll bonus),
 	# and the target gets knocked back afterward (see
 	# _apply_bash_of_the_deep_knockback(), called once the target's
 	# final position actually matters again, after every cleave above
 	# that reads it has already resolved).
 	var bash_level_data: Dictionary = _maybe_consume_bash_of_the_deep_stack()
 
-	var attack_damage: float = _roll_hero_damage(depthsveil_bonus + tidebringer_bonus)
+	var attack_damage: float = _roll_hero_damage(depthsveil_bonus + pull_of_the_abyss_bonus)
 	if moonlight_shadow_active_bonus_pct > 0.0:
 		attack_damage += attack_damage * moonlight_shadow_active_bonus_pct
 	if not bash_level_data.is_empty():
@@ -10853,10 +11015,10 @@ func _apply_hero_attack(target: Dictionary) -> void:
 	var mitigated_damage: float = _deal_fixed_damage_to_enemy(target, attack_damage)
 	_deferred_hit_node = null
 	_apply_leeching_hunger_steal(target)
-	# Arctic Burn's bonus_damage is already folded into the roll above
+	# Frostbound Fangs' bonus_damage is already folded into the roll above
 	# (see _roll_hero_damage()) - this just spends one of its banked
 	# Attacks, ending the effect once the last one is used.
-	_apply_arctic_burn_attack()
+	_apply_frostbound_fangs_attack()
 	# Lifesteal only ever applies to this plain Attack action - never
 	# to skill damage (Barbed Lunge, Abyssal Spasm, Thornbind's DoT, etc.) - and
 	# uses the damage actually dealt, i.e. after the target's armor
@@ -10869,12 +11031,12 @@ func _apply_hero_attack(target: Dictionary) -> void:
 	# action builds toward it, never skill damage.
 	_apply_mark_of_the_mist_stack(target)
 
-	if not tidebringer_level_data.is_empty():
-		_apply_tidebringer_cleave(target, attack_damage, tidebringer_level_data)
+	if not pull_of_the_abyss_level_data.is_empty():
+		_apply_pull_of_the_abyss_cleave(target, attack_damage, pull_of_the_abyss_level_data)
 
 	# Cleaver's own cleave - a no-op unless the item is actually owned
 	# (see _apply_cleaver_cleave()'s own gate). Independent of
-	# Tidebringer's: both can splash off the same Attack if the player
+	# Pull of the Abyss's: both can splash off the same Attack if the player
 	# has both.
 	_apply_cleaver_cleave(target, attack_damage)
 	# Hunter's Bow's split shot - Cleaver's ranged counterpart, a no-op
@@ -10884,12 +11046,12 @@ func _apply_hero_attack(target: Dictionary) -> void:
 
 	# Rip Tide's own AoE splash - a no-op unless the skill is learned
 	# (see _apply_rip_tide_cleave()'s own gate). Independent of and
-	# stacks with Tidebringer's/Cleaver's above.
+	# stacks with Pull of the Abyss's/Cleaver's above.
 	_apply_rip_tide_cleave(target, attack_damage)
 
 	# Moon Glaives' own bounce - a no-op unless the skill is learned
 	# (see _apply_moon_glaives_bounces()'s own gate). Independent of and
-	# stacks with Tidebringer's/Cleaver's/Rip Tide's above.
+	# stacks with Pull of the Abyss's/Cleaver's/Rip Tide's above.
 	_apply_moon_glaives_bounces(target, attack_damage)
 
 	# Bash of the Deep's own knockback - after every cleave above that
@@ -10965,8 +11127,8 @@ func _deal_damage_to_enemy(target: Dictionary) -> void:
 ## skill call site (the overwhelming majority, so it defaults true),
 ## false only at the handful of calls that AREN'T the hero's own doing:
 ## a DoT tick (_tick_enemy_turn_start_effects()), the Elderwild Companion's own
-## attack (_bear_turn()), and another creep piling onto a Winter's
-## Curse target (_enemy_turn()'s own curse redirect).
+## attack (_bear_turn()), and another creep piling onto a The Hunger
+## Calls target (_enemy_turn()'s own curse redirect).
 func _deal_fixed_damage_to_enemy(target: Dictionary, amount: float, is_critical: bool = false, is_hero_action: bool = true) -> float:
 	# Slardar's Corrosive Haze: boosts every hit THIS specific marked
 	# target takes from the hero's own attacks/skills by this level's
@@ -11018,7 +11180,7 @@ func _deal_fixed_damage_to_enemy(target: Dictionary, amount: float, is_critical:
 	if is_boss:
 		mitigated *= (1.0 - _enemy_blood_of_the_wild_damage_reduction_pct)
 
-	if is_boss and _enemy_cold_embrace_active:
+	if is_boss and _enemy_the_test_of_time_active:
 		# Full immunity, same as the player's own apply_damage() check -
 		# no absorption pool to track the way Veil of the Forgotten has, the
 		# hit just never happens.
@@ -11120,8 +11282,8 @@ func _is_target_hidden(target: Dictionary) -> bool:
 
 
 ## Rolls a hero attack's damage, adding Leeching Hunger's ongoing
-## borrowed damage, Beast of the Elderwild's bonus damage, Winter Wyvern's Arctic
-## Burn bonus damage, and Tusk's Tag Team bonus damage (while each is
+## borrowed damage, Beast of the Elderwild's bonus damage, The Primordial Hunger's Frostbound
+## Fangs bonus damage, and Tusk's Tag Team bonus damage (while each is
 ## active) plus (for the single hit that triggers it) Depthsveil's
 ## one-shot `extra_bonus`, before mitigation. Luna's Lunar Blessing then
 ## scales the resulting total by its own bonus_damage_pct, same as a
@@ -11133,20 +11295,20 @@ func _roll_hero_damage(extra_bonus: float = 0.0) -> float:
 	var min_dmg: float = float(parts[0]) if parts.size() > 0 else 0.0
 	var max_dmg: float = float(parts[1]) if parts.size() > 1 else min_dmg
 
-	# Leeching Hunger's borrowed damage, Beast of the Elderwild's bonus damage, Arctic
-	# Burn's bonus damage, and Tag Team's bonus damage (while each is
+	# Leeching Hunger's borrowed damage, Beast of the Elderwild's bonus damage, Frostbound
+	# Fangs's bonus damage, and Tag Team's bonus damage (while each is
 	# active) apply on top of both ends of the roll, same as a permanent
 	# damage bonus would - Depthsveil's bonus (passed in by the
 	# caller, only for the specific hit that triggers it) stacks on top
 	# of that the same way.
-	var bonus_damage: float = _leeching_hunger_bonus.get("damage", 0.0) + _beast_of_the_elderwild_bonus_damage + _arctic_burn_bonus_damage + _tag_team_bonus_damage + extra_bonus - _player_leeching_hunger_penalty.get("damage", 0.0)
+	var bonus_damage: float = _leeching_hunger_bonus.get("damage", 0.0) + _beast_of_the_elderwild_bonus_damage + _frostbound_fangs_bonus_damage + _tag_team_bonus_damage + extra_bonus - _player_leeching_hunger_penalty.get("damage", 0.0)
 	min_dmg += bonus_damage
 	max_dmg += bonus_damage
 
 	# Lunar Blessing - read fresh off the player's current level every
 	# roll (see _get_lunar_blessing_level_data()) rather than tracked in
-	# a field, since it's never toggled on/off like Depthsveil/Arctic
-	# Burn/Tag Team above, just always-on once learned. Applied last so
+	# a field, since it's never toggled on/off like Depthsveil/Frostbound
+	# Fangs/Tag Team above, just always-on once learned. Applied last so
 	# it scales the whole roll (base weapon damage plus every flat bonus
 	# above), not just the hero's own base stat.
 	var lunar_blessing_bonus_pct: float = float(_get_lunar_blessing_level_data().get("bonus_damage_pct", 0.0))
@@ -11209,7 +11371,7 @@ func _show_message_over_hero(text: String) -> void:
 ## holding still first like _show_message_over_hero() - rising ~70px
 ## over 1.4s, fading out over the last part of the climb - over `node`
 ## (the hero_image or an enemy's node), in `color`. Used for passive
-## procs like Tidebringer's, where the text is flavor that doesn't need
+## procs like Pull of the Abyss's, where the text is flavor that doesn't need
 ## a still, readable hold.
 func _show_rising_message_over(node: Control, text: String, color: Color) -> void:
 	if not is_instance_valid(node):
@@ -11218,7 +11380,7 @@ func _show_rising_message_over(node: Control, text: String, color: Color) -> voi
 	var label := Label.new()
 	label.text = text
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", TIDEBRINGER_TEXT_OUTLINE_COLOR)
+	label.add_theme_color_override("font_outline_color", PULL_OF_THE_ABYSS_TEXT_OUTLINE_COLOR)
 	label.add_theme_constant_override("outline_size", 5)
 	label.add_theme_font_size_override("font_size", 20)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -11231,7 +11393,10 @@ func _show_rising_message_over(node: Control, text: String, color: Color) -> voi
 	tween.finished.connect(label.queue_free)
 
 
-func _kill_enemy(enemy: Dictionary) -> void:
+## `claimed_by_void`: killed by Return to the Void's execute threshold -
+## pulled into the void (ReturnToVoidFX.claim()) instead of the usual
+## death dissolve.
+func _kill_enemy(enemy: Dictionary, claimed_by_void: bool = false) -> void:
 	var xp_gain: float = float(enemy["static"].get("XP", 0))
 	gain_xp(xp_gain)
 
@@ -11240,7 +11405,10 @@ func _kill_enemy(enemy: Dictionary) -> void:
 	_refresh_gold_label()
 	_show_gold_gain(enemy["node"], gold_gain)
 
-	CreatureAnimator.spawn_death_ghost(enemy["node"], _fx_layer)
+	if claimed_by_void:
+		ReturnToVoidFX.claim(enemy["node"], _fx_layer)
+	else:
+		CreatureAnimator.spawn_death_ghost(enemy["node"], _fx_layer)
 	enemy["node"].queue_free()
 	if enemy.get("hp_label") != null:
 		enemy["hp_label"].queue_free()
@@ -11297,7 +11465,7 @@ func _show_gold_gain(target_node: Control, amount: int) -> void:
 func _handle_victory() -> void:
 	# Tutorial stage 1 ends here rather than rolling into the zone's own
 	# stage 2 - the next tutorial stage is a separately scripted scenario
-	# (Kunkka at level 5, mid-fight, low on resources - not a straight
+	# (Kaelen Varr at level 5, mid-fight, low on resources - not a straight
 	# continuation of this fight), so it needs its own checkpoint instead
 	# of _advance_to_next_stage()'s normal handoff.
 	if TutorialManager.is_active and TutorialManager.current_stage == 1 and _current_stage == 1:
@@ -11348,6 +11516,8 @@ func _finish_zone_victory() -> void:
 func _advance_to_next_stage() -> void:
 	_current_stage += 1
 	_stage_generation += 1
+	_close_all_hollow_cold_tears()
+	_end_hunger_calls_fx()
 	_update_stage_label()
 	_show_message_over_hero("Stage %d!" % _current_stage)
 
@@ -11426,6 +11596,8 @@ func _start_hero_fight(hero_static: Dictionary) -> void:
 	_in_hero_fight = true
 	_hero_fight_target_id = hero_static.get("id", "")
 	_stage_generation += 1
+	_close_all_hollow_cold_tears()
+	_end_hunger_calls_fx()
 
 	_update_stage_label()
 	_show_message_over_hero("%s challenges you!" % hero_static.get("name", "A rival hero"))
@@ -11445,6 +11617,7 @@ func _start_hero_fight(hero_static: Dictionary) -> void:
 
 	_reset_enemy_hero_state(hero_static)
 	_spawn_enemy(GameManager.build_hero_fight_enemy_def(hero_static))
+	_attach_hero_attack_prop(hero_static, _get_hero_fight_boss().get("node"))
 
 	_update_action_buttons()
 
@@ -11501,21 +11674,21 @@ func _reset_enemy_hero_state(hero_static: Dictionary) -> void:
 	_enemy_the_mist_remembers_duration_pending_start = false
 	_set_the_mist_remembers_visual(_get_hero_fight_boss().get("node"), false)
 
-	_enemy_tidebringer_attack_count = 0
-	_enemy_xmarks_pending = false
+	_enemy_pull_of_the_abyss_attack_count = 0
+	_enemy_undertow_pending = false
 
-	_enemy_arctic_burn_active = false
-	_enemy_arctic_burn_bonus_damage = 0.0
-	_enemy_arctic_burn_bonus_range = 0
-	_enemy_arctic_burn_attacks_remaining = 0
-	_enemy_arctic_burn_turns_remaining = 0
-	_enemy_arctic_burn_duration_pending_start = false
+	_enemy_frostbound_fangs_active = false
+	_enemy_frostbound_fangs_bonus_damage = 0.0
+	_enemy_frostbound_fangs_bonus_range = 0
+	_enemy_frostbound_fangs_attacks_remaining = 0
+	_enemy_frostbound_fangs_turns_remaining = 0
+	_enemy_frostbound_fangs_duration_pending_start = false
 	_set_hero_enlarged(_get_hero_fight_boss().get("node"), false)
 
-	_enemy_cold_embrace_active = false
-	_enemy_cold_embrace_heal_per_turn = 0.0
-	_enemy_cold_embrace_turns_remaining = 0
-	_enemy_cold_embrace_duration_pending_start = false
+	_enemy_the_test_of_time_active = false
+	_enemy_the_test_of_time_heal_per_turn = 0.0
+	_enemy_the_test_of_time_turns_remaining = 0
+	_enemy_the_test_of_time_duration_pending_start = false
 
 	_enemy_freezing_field_active = false
 	_enemy_freezing_field_damage_per_turn = 0.0
@@ -11569,19 +11742,19 @@ func _reset_enemy_hero_state(hero_static: Dictionary) -> void:
 	_player_thornbind_dot_damage = 0.0
 	_player_thornbind_dot_turns_left = 0
 	_player_stun_turns_left = 0
-	_player_winters_curse_active = false
+	_player_the_hunger_calls_active = false
 	_player_curse_stacks = 0
 	_player_curse_active = false
 	_player_curse_dot_damage = 0.0
 	_player_curse_dot_turns_left = 0
 	_player_curse_last_hit_turn = 0
-	_player_cold_feet_dot_damage = 0.0
-	_player_cold_feet_dot_turns_left = 0
-	_player_ice_vortex_dot_damage = 0.0
-	_player_ice_vortex_dot_turns_left = 0
-	_player_ice_blast_dot_damage = 0.0
-	_player_ice_blast_dot_turns_left = 0
-	_player_ice_blast_execute_pct = 0.0
+	_player_mark_of_stillness_dot_damage = 0.0
+	_player_mark_of_stillness_dot_turns_left = 0
+	_player_the_hollow_cold_dot_damage = 0.0
+	_player_the_hollow_cold_dot_turns_left = 0
+	_player_return_to_the_void_dot_damage = 0.0
+	_player_return_to_the_void_dot_turns_left = 0
+	_player_return_to_the_void_execute_pct = 0.0
 	_player_frostbite_dot_damage = 0.0
 	_player_frostbite_dot_turns_left = 0
 	_player_leech_seed_dot_damage = 0.0
@@ -11632,6 +11805,11 @@ func _update_stage_label() -> void:
 func _mark_turn_used() -> void:
 	if _battle_over:
 		return
+	# A lockout (stun/The Test of Time) that landed mid-action already
+	# scheduled this turn's end - a second _end_turn() would hand the
+	# enemies an extra turn.
+	if _auto_skip_pending and _auto_skip_generation == _stage_generation:
+		return
 	_has_acted_this_turn = true
 	_update_action_buttons()
 	get_tree().create_timer(0.9).timeout.connect(_end_turn)
@@ -11665,7 +11843,7 @@ func _end_turn() -> void:
 	# _handle_victory() for that on its own, which can set _battle_over
 	# and change scene outright (see _finish_zone_victory()) - so THIS
 	# needs its own bail-out too: without it, a hero fight the boss just
-	# lost would fall through to the stun/Cold Embrace check at the tail
+	# lost would fall through to the stun/The Test of Time check at the tail
 	# of this function and schedule another _end_turn() call via
 	# get_tree().create_timer() - a timer that fires after this node has
 	# already been removed from the tree by that scene change, crashing
@@ -11679,7 +11857,7 @@ func _end_turn() -> void:
 	if _player_stun_turns_left > 0:
 		_player_stun_turns_left -= 1
 		if _player_stun_turns_left <= 0:
-			_player_winters_curse_active = false
+			_player_the_hunger_calls_active = false
 
 	# Every DoT/root/silence/execute effect a rival hero could have
 	# inflicted on the player lands right here, at the very start of his
@@ -11693,11 +11871,11 @@ func _end_turn() -> void:
 		_handle_defeat()
 		return
 
-	# The hero's new turn is opening right here - if X Marks the Spot
+	# The hero's new turn is opening right here - if Undertow
 	# marked something last turn, this is "his next turn", so he
-	# teleports now, for free (see _resolve_xmarks_teleport() - it
+	# teleports now, for free (see _resolve_undertow_teleport() - it
 	# never spends the turn this function is about to reopen below).
-	_resolve_xmarks_teleport()
+	_resolve_undertow_teleport()
 
 	# Arcane Aura regenerates mana at the start of every hero turn,
 	# whether or not he actually gets to act on it (see
@@ -11716,11 +11894,11 @@ func _end_turn() -> void:
 	_apply_reactive_armor_regen()
 
 	# Mortimer Kisses' channel: the hero's new turn is opening right
-	# here, same point X Marks the Spot's own teleport claims for free
+	# here, same point Undertow's own teleport claims for free
 	# above - except this doesn't just do something for free, it
-	# consumes the ENTIRE turn on an automatic shot, same as a stunned/
-	# Cold-Embraced turn being skipped below, just with a shot fired
-	# instead of nothing happening. Never falls through to the normal
+	# consumes the ENTIRE turn on an automatic shot, same as a stunned
+	# turn, or one held in The Test of Time, being skipped below, just
+	# with a shot fired instead of nothing happening. Never falls through to the normal
 	# "reopen the action buttons" code beneath it while a shot remains -
 	# only once _fire_mortimer_kisses_shot() has fired the LAST one
 	# (_end_mortimer_kisses() clears _mortimer_kisses_active) does
@@ -11748,25 +11926,57 @@ func _end_turn() -> void:
 			get_tree().create_timer(0.9).timeout.connect(_end_turn)
 			return
 
+	# Reopens the turn - and if the player is still stunned or held in
+	# The Test of Time, _update_action_buttons() hands it straight back
+	# via _maybe_auto_skip_player_turn().
 	_has_acted_this_turn = false
 	_update_action_buttons()
 	_refresh_skill_cooldown_labels()
 
-	# Still stunned after that decrement, or still encased in Cold
-	# Embrace (already ticked - healed and counted down - by
-	# _tick_skill_cooldowns()/_tick_cold_embrace() above, so this just
-	# checks whether it's still active for the turn that was about to
-	# open): the player gets no action at all this "turn" - skip
-	# straight back to another _end_turn() call (Elderwild Companion + enemy
-	# turn again) after a short pause, the same way a stunned enemy
-	# just loses its own turn to the player's own Barbed Lunge, rather than
-	# opening the action buttons only to lock them again next turn. Name
-	# whichever effect is actually responsible so the player knows why,
-	# same as any other floating status message.
-	if _player_stun_turns_left > 0 or _cold_embrace_active:
-		var skip_reason: String = "Encased in ice" if _cold_embrace_active else "Stunned"
-		_show_message_over_hero(skip_reason + " - turn skipped")
-		get_tree().create_timer(0.9).timeout.connect(_end_turn)
+
+## Skips the player's turn automatically whenever it's open but he has
+## no way to act in it: stunned (_player_stun_turns_left), or held in
+## The Test of Time - straight back to another _end_turn() (Elderwild
+## Companion + enemy turn again) after a short pause, the same way a
+## stunned enemy just loses its own turn. Run from
+## _update_action_buttons() rather than only from _end_turn()'s tail,
+## since a lockout can also land AFTER the turn has already reopened:
+## a rival's delayed skill hit (Return to the Void's stun, resolved once
+## its animation finishes - see _rival_fx_in_flight) arrives mid-turn,
+## and nothing else would ever end that turn, leaving the player stuck
+## with every button locked. Marks the turn as used first, so repeated
+## _update_action_buttons() calls don't schedule the skip twice.
+func _maybe_auto_skip_player_turn() -> void:
+	if _battle_over or _has_acted_this_turn or _rival_fx_in_flight:
+		return
+	if _player_stun_turns_left <= 0 and not _the_test_of_time_active:
+		return
+
+	_has_acted_this_turn = true
+	_auto_skip_pending = true
+	_auto_skip_generation = _stage_generation
+	_cancel_targeting()
+	# The Test of Time speaks for itself (the floating, the clock) - only
+	# a stun gets a message.
+	if not _the_test_of_time_active:
+		_show_message_over_hero("Stunned - turn skipped")
+
+	var generation_before: int = _stage_generation
+	get_tree().create_timer(0.9).timeout.connect(func() -> void:
+		_auto_skip_pending = false
+		# A stage/hero-fight change in the meantime opened a fresh turn of
+		# its own - this skip belonged to the old one.
+		if _stage_generation != generation_before:
+			return
+		_end_turn()
+	)
+
+
+# True from the moment _maybe_auto_skip_player_turn() schedules a skip
+# until it fires - see _mark_turn_used()'s own check. Only counts for the
+# stage/hero fight it was scheduled in (_auto_skip_generation).
+var _auto_skip_pending: bool = false
+var _auto_skip_generation: int = -1
 
 
 ## Ranged enemies get exactly one action per turn too - flee, attack,
@@ -11810,28 +12020,29 @@ func _end_turn() -> void:
 ## _move_enemy() call that would land it there. Attacking, casting a
 ## skill, and using an item are all untouched either way, same as root.
 ##
-## Winter's Curse overrides all of the above for whichever OTHER
+## The Hunger Calls overrides all of the above for whichever OTHER
 ## enemies currently fall within its own curse_range of its frozen
-## target (see _is_winters_curse_active()): they ignore the hero (and
+## target (see _is_the_hunger_calls_active()): they ignore the hero (and
 ## the bear) entirely for as long as the freeze holds, piling onto the
 ## target instead - see the dedicated block right after `rooted` is
 ## computed below. `curse_active`/`curse_target`/`curse_target_pos` are
 ## captured once, right here at the top, rather than re-checked per
 ## enemy - the target's own stun_turns_left (what actually drives
-## _is_winters_curse_active()) ticks down partway through this same
+## _is_the_hunger_calls_active()) ticks down partway through this same
 ## loop once its own turn comes up, so every enemy this pass needs to
 ## see the same answer regardless of iteration order.
 func _enemy_turn() -> void:
-	var curse_active: bool = _is_winters_curse_active()
-	var curse_target: Dictionary = _winter_curse_target if curse_active else {}
+	var curse_active: bool = _is_the_hunger_calls_active()
+	var curse_target: Dictionary = _hunger_calls_target if curse_active else {}
 	var curse_target_pos: int = curse_target.get("pos_index", -1) if curse_active else -1
-	var curse_damage_multiplier: float = 1.0 + _winter_curse_bonus_damage_pct
+	var curse_damage_multiplier: float = 1.0 + _hunger_calls_bonus_damage_pct
 
-	# The rival's own illusions caught in the player's Ice Vortex tick
+	# The rival's own illusions caught in the player's The Hollow Cold tick
 	# at the start of the enemy turn, same as every enemy's own DoT
 	# does just below. Illusions never decide the battle, so no
 	# _battle_over bail-out is needed here.
-	_tick_enemy_illusions_ice_vortex()
+	_tick_enemy_illusions_the_hollow_cold()
+	_tick_hollow_cold_tears(false)
 
 	for enemy in _enemies.duplicate():
 		# Every DoT/execute effect currently on this enemy lands right
@@ -11886,7 +12097,7 @@ func _enemy_turn() -> void:
 		if enemy.get("silence_turns_left", 0) > 0:
 			enemy["silence_turns_left"] -= 1
 
-		if curse_active and not is_same(enemy, curse_target) and _distance(enemy["pos_index"], curse_target_pos) <= _winter_curse_range:
+		if curse_active and not is_same(enemy, curse_target) and _distance(enemy["pos_index"], curse_target_pos) <= _hunger_calls_range:
 			# Cursed: this enemy drops the hero/bear entirely for this
 			# turn and piles onto the frozen target instead - attacking
 			# it (for bonus damage) if already within its own normal
@@ -12025,14 +12236,14 @@ func _nearest_threat_pos(enemy_pos: int, hero_is_hidden: bool = false) -> int:
 # ------------------------------------------------------------------
 
 func _enemy_hero_turn(enemy: Dictionary) -> void:
-	# Encased in ice - no action at all this turn, not even a free
-	# X Marks the Spot teleport or a potion: move, attack, skill, and
+	# Held in The Test of Time - no action at all this turn, not even a free
+	# Undertow teleport or a potion: move, attack, skill, and
 	# item are ALL locked out for the duration, matching the player's
 	# own copy (_update_action_buttons()/_end_turn()'s auto-skip). Its
-	# immunity/heal-per-turn already run via _tick_enemy_cold_embrace()
+	# immunity/heal-per-turn already run via _tick_enemy_the_test_of_time()
 	# regardless of what this turn does, so this just needs to do
 	# nothing and let the turn pass.
-	if _enemy_cold_embrace_active:
+	if _enemy_the_test_of_time_active:
 		return
 
 	# Mortimer Kisses' channel: consumes this ENTIRE turn on an automatic
@@ -12048,15 +12259,17 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 			_end_enemy_mortimer_kisses()
 		return
 
-	# If X Marks the Spot marked the player last turn, this is the
+	# If Undertow marked the player last turn, this is the
 	# rival's own "next turn" - teleport now, for free, then fall
 	# straight through to everything below so it can still act (skill,
 	# attack, or move) this same turn, same as the player's own copy
-	# never spends the turn it teleports on (_resolve_xmarks_teleport()).
-	if _enemy_xmarks_pending:
-		_enemy_xmarks_pending = false
+	# never spends the turn it teleports on (_resolve_undertow_teleport()).
+	if _enemy_undertow_pending:
+		_enemy_undertow_pending = false
+		var from_pos: Vector2 = enemy["node"].position
 		_move_enemy(enemy, _hero_pos_index)
-		_show_message_over_hero("X Marks the Spot!")
+		_show_message_over_hero("Undertow!")
+		_play_undertow_dive(enemy["node"], from_pos)
 
 	_update_enemy_blood_of_the_wild_state(enemy)
 
@@ -12197,12 +12410,12 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 	# possibly _end_enemy_natures_guise()) below can change what
 	# _enemy_natures_guise_active reads.
 	var attacking_from_enemy_natures_guise: bool = _enemy_natures_guise_active
-	var tidebringer_level_data: Dictionary = _maybe_consume_enemy_tidebringer_stack()
-	var tidebringer_bonus: float = float(tidebringer_level_data.get("bonus_damage", 0.0))
+	var pull_of_the_abyss_level_data: Dictionary = _maybe_consume_enemy_pull_of_the_abyss_stack()
+	var pull_of_the_abyss_bonus: float = float(pull_of_the_abyss_level_data.get("bonus_damage", 0.0))
 	# Bash of the Deep counts this Attack toward its own threshold too,
-	# same idea as Tidebringer's stack just above - once reached, this
+	# same idea as Pull of the Abyss's stack just above - once reached, this
 	# hit's own damage is boosted by a PERCENTAGE of itself (folded in
-	# below, after the roll - unlike Tidebringer's flat pre-roll bonus),
+	# below, after the roll - unlike Pull of the Abyss's flat pre-roll bonus),
 	# and the player gets knocked back afterward (see
 	# _apply_enemy_bash_of_the_deep_knockback(), called once apply_
 	# damage() has already resolved).
@@ -12214,7 +12427,7 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 	# ever be active in a given fight (different heroes' own kits), so
 	# this never double-counts either way.
 	var moonlight_shadow_active_bonus_pct: float = _enemy_moonlight_shadow_bonus_damage_pct if _enemy_moonlight_shadow_active else 0.0
-	var attack_damage: float = _roll_enemy_hero_damage(enemy, shadow_bonus + tidebringer_bonus)
+	var attack_damage: float = _roll_enemy_hero_damage(enemy, shadow_bonus + pull_of_the_abyss_bonus)
 	if moonlight_shadow_active_bonus_pct > 0.0:
 		attack_damage += attack_damage * moonlight_shadow_active_bonus_pct
 	if not bash_level_data.is_empty():
@@ -12226,21 +12439,21 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 	_apply_enemy_leeching_hunger_steal(enemy)
 	_apply_enemy_wildbond_lifesteal(enemy, mitigated)
 	_apply_enemy_mark_of_the_mist_stack()
-	_apply_enemy_arctic_burn_attack()
+	_apply_enemy_frostbound_fangs_attack()
 	# Rip Tide's splash onto the player's illusions/bear near him - a
 	# no-op unless the skill is learned.
 	_apply_enemy_rip_tide_splash(attack_damage)
 
-	if not tidebringer_level_data.is_empty():
+	if not pull_of_the_abyss_level_data.is_empty():
 		# Its bonus damage is already folded into the roll above; the
 		# cleave reaches the player's own illusions/bear standing near
-		# him (see _apply_enemy_tidebringer_cleave()).
-		_show_rising_message_over(hero_image, "Tidebringer!", TIDEBRINGER_TEXT_COLOR)
-		_apply_enemy_tidebringer_cleave(attack_damage, tidebringer_level_data)
+		# him (see _apply_enemy_pull_of_the_abyss_cleave()).
+		_show_rising_message_over(hero_image, "Pull of the Abyss!", PULL_OF_THE_ABYSS_TEXT_COLOR)
+		_apply_enemy_pull_of_the_abyss_cleave(attack_damage, pull_of_the_abyss_level_data)
 
 	# Moon Glaives' own bounce - a no-op unless the skill is learned (see
 	# _apply_enemy_moon_glaives_bounces()'s own gate). Independent of
-	# Tidebringer's above.
+	# Pull of the Abyss's above.
 	_apply_enemy_moon_glaives_bounces(attack_damage)
 
 	# Bash of the Deep's own knockback - after leeching hunger/lifesteal/
@@ -12272,7 +12485,7 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 ## range.
 func _roll_enemy_hero_damage(enemy: Dictionary, extra_bonus: float = 0.0) -> float:
 	var base_damage: float = float(enemy["static"].get("damage", 0))
-	var bonus: float = _enemy_leeching_hunger_bonus.get("damage", 0.0) + _enemy_beast_of_the_elderwild_bonus_damage + _enemy_arctic_burn_bonus_damage + _enemy_tag_team_bonus_damage + extra_bonus
+	var bonus: float = _enemy_leeching_hunger_bonus.get("damage", 0.0) + _enemy_beast_of_the_elderwild_bonus_damage + _enemy_frostbound_fangs_bonus_damage + _enemy_tag_team_bonus_damage + extra_bonus
 	var total: float = maxf(0.0, base_damage + bonus)
 
 	# Luna's Lunar Blessing - read fresh off the rival's current level
@@ -12306,9 +12519,9 @@ func _get_hero_fight_boss() -> Dictionary:
 	return {}
 
 
-func _get_enemy_spirit_bear() -> Dictionary:
+func _get_enemy_elderwild_companion() -> Dictionary:
 	for enemy in _enemies:
-		if enemy["static"].get("is_enemy_spirit_bear", false):
+		if enemy["static"].get("is_enemy_elderwild_companion", false):
 			return enemy
 	return {}
 
@@ -12351,37 +12564,37 @@ func _enemy_skill_worth_casting(skill_id: String) -> bool:
 		"beast_of_the_elderwild":
 			return not _enemy_beast_of_the_elderwild_active
 		"elderwild_companion":
-			return _get_enemy_spirit_bear().is_empty()
+			return _get_enemy_elderwild_companion().is_empty()
 		"veil_of_the_forgotten":
 			return not _enemy_veil_of_the_forgotten_active
-		"x_marks_the_spot":
+		"undertow":
 			# Not worth recasting while a mark is already pending -
 			# there's only ever one possible target anyway (the
 			# player), so a second cast would just burn mana/cooldown
 			# on a mark that hasn't even resolved yet.
-			return not _enemy_xmarks_pending
-		"cold_feet":
+			return not _enemy_undertow_pending
+		"mark_of_stillness":
 			# Recasting on an already-frozen player just resets the
 			# same level's own damage/duration back to full - no extra
 			# total damage over just letting the existing DoT run out,
 			# so (same simplification as every buff above) it's simply
 			# not worth it while one is already ticking.
-			return _enemy_skill_worth_on_target("cold_feet", false) or (_is_bear_alive() and _enemy_skill_worth_on_target("cold_feet", true))
-		"ice_vortex":
+			return _enemy_skill_worth_on_target("mark_of_stillness", false) or (_is_bear_alive() and _enemy_skill_worth_on_target("mark_of_stillness", true))
+		"the_hollow_cold":
 			# Same "no benefit from resetting your own DoT" reasoning
-			# as Cold Feet above.
-			return _enemy_skill_worth_on_target("ice_vortex", false) or (_is_bear_alive() and _enemy_skill_worth_on_target("ice_vortex", true))
-		"arctic_burn":
-			return not _enemy_arctic_burn_active
-		"cold_embrace":
-			return not _enemy_cold_embrace_active
+			# as Mark of Stillness above.
+			return _enemy_skill_worth_on_target("the_hollow_cold", false) or (_is_bear_alive() and _enemy_skill_worth_on_target("the_hollow_cold", true))
+		"frostbound_fangs":
+			return not _enemy_frostbound_fangs_active
+		"the_test_of_time":
+			return not _enemy_the_test_of_time_active
 		"freezing_field":
 			return not _enemy_freezing_field_active
 		"frostbite":
 			# Recasting on an already-frostbitten player just resets the
 			# same level's own DoT back to full - no extra total damage
 			# over just letting it run out, same "no benefit from
-			# resetting your own DoT" reasoning as Cold Feet/Ice Vortex
+			# resetting your own DoT" reasoning as Mark of Stillness/The Hollow Cold
 			# above (there's only one possible target in a hero fight, so
 			# unlike the simulation's own copy - which always targets
 			# whichever living enemy is currently lowest-HP and so can't
@@ -12396,14 +12609,14 @@ func _enemy_skill_worth_casting(skill_id: String) -> bool:
 			return not _enemy_living_armor_active
 		"leech_seed":
 			# Same "no benefit from resetting your own DoT" reasoning as
-			# Cold Feet/Ice Vortex/Frostbite above - recasting on an
+			# Mark of Stillness/The Hollow Cold/Frostbite above - recasting on an
 			# already-seeded player just restarts the same level's own
 			# damage/healing back to full, no extra total value over
 			# letting the existing one run its course.
 			return _enemy_skill_worth_on_target("leech_seed", false) or (_is_bear_alive() and _enemy_skill_worth_on_target("leech_seed", true))
 		"mortimer_kisses":
-			# Purely defensive/documentation consistency, mirroring Cold
-			# Embrace's own case above - _enemy_hero_turn()'s own top-of-
+			# Purely defensive/documentation consistency, mirroring The Test of
+			# Time's own case above - _enemy_hero_turn()'s own top-of-
 			# function lockout already returns before this could ever be
 			# QUERIED while the channel is active in practice.
 			return not _enemy_mortimer_kisses_active
@@ -12414,8 +12627,8 @@ func _enemy_skill_worth_casting(skill_id: String) -> bool:
 ## True if `skill_id` is known, off cooldown, worth casting, and
 ## affordable right now - the same four gates _pick_enemy_ready_skill()
 ## always applied inline, factored out so combo scoring (see
-## _build_enemy_ai_context()'s "kunkka_torrent_combo_ready"/
-## "kunkka_ghostship_combo_ready") can ask "would this skill be usable
+## _build_enemy_ai_context()'s "kaelen_varr_drowned_surge_combo_ready"/
+## "kaelen_varr_the_sunken_one_combo_ready") can ask "would this skill be usable
 ## if range weren't the issue" via `ignore_range`, without duplicating
 ## the other four checks. `ignore_range` is only ever true for that
 ## combo-readiness question - the real candidate loop below always
@@ -12451,8 +12664,8 @@ func _is_enemy_skill_ready(skill_id: String, enemy_type: String, hero_distance: 
 ## affordable, in-range active skill the rival hero has right now (that
 ## is, every skill in ENEMY_KNOWN_SKILL_IDS that survives all of those
 ## checks), PLUS a plain Attack for whichever heroes EnemySkillAI.
-## basic_attack_participates() opts in (today: only Kunkka, whose
-## Tidebringer can make a plain Attack the better play - see
+## basic_attack_participates() opts in (today: only Kaelen Varr, whose
+## Pull of the Abyss can make a plain Attack the better play - see
 ## EnemySkillAI's own "basic_attack" scoring), is scored by
 ## EnemySkillAI.evaluate_skill()/evaluate_basic_attack(), and the
 ## highest-scoring one wins - ties within EnemySkillAI.
@@ -12544,40 +12757,40 @@ func _enemy_has_unaffordable_ready_skill(enemy_type: String, hero_distance: int,
 ## hps`/`living_target_max_hps` are the single-player mirror of the
 ## simulation's own living-enemy HP/max-HP lists - always one entry
 ## here, but kept under the same keys so EnemySkillAI's shared multi-
-## kill/execute scoring (see Kunkka's own Ghostship/Torrent modifiers
-## and Ancient Apparition's own Ice Blast modifier) doesn't need a
+## kill/execute scoring (see Kaelen Varr's own The Sunken One/Drowned Surge modifiers
+## and Nhal's own Return to the Void modifier) doesn't need a
 ## battle-vs-sim branch.
 ##
-## The three "kunkka_*"/"tidebringer_*" fields only ever matter for
-## Kunkka (every other hero's own modifier ignores them) - they're
+## The three "kaelen_varr_*"/"pull_of_the_abyss_*" fields only ever matter for
+## Kaelen Varr (every other hero's own modifier ignores them) - they're
 ## still computed unconditionally since that's cheap and keeps this
 ## function hero-agnostic, same as every other field here:
-##   - tidebringer_ready/tidebringer_cleave_targets/tidebringer_bonus_
+##   - pull_of_the_abyss_ready/pull_of_the_abyss_cleave_targets/pull_of_the_abyss_bonus_
 ##     damage: whether the rival's NEXT plain Attack would activate
-##     Tidebringer, and what that's worth - see
-##     _maybe_consume_enemy_tidebringer_stack() for the real activation
+##     Pull of the Abyss, and what that's worth - see
+##     _maybe_consume_enemy_pull_of_the_abyss_stack() for the real activation
 ##     this only ever previews. cleave_targets counts the player's own
 ##     illusions/Elderwild Companion within cleave_columns of him - the only
 ##     things besides the player himself the cleave can reach (see
-##     _apply_enemy_tidebringer_cleave()).
-##   - kunkka_torrent_combo_ready/kunkka_ghostship_combo_ready: whether
-##     Torrent/Ghostship would be castable right now if range weren't
+##     _apply_enemy_pull_of_the_abyss_cleave()).
+##   - kaelen_varr_drowned_surge_combo_ready/kaelen_varr_the_sunken_one_combo_ready: whether
+##     Drowned Surge/The Sunken One would be castable right now if range weren't
 ##     the issue (see _is_enemy_skill_ready()'s `ignore_range`) - X
 ##     Marks the Spot always closes the distance to 0 by the rival's own
 ##     next turn (see _enemy_hero_turn()'s teleport-consumption step),
 ##     so "everything else about it is ready" is the real question for
 ##     whether marking now sets up a real follow-up.
-##   - in_attack_range_now/in_attack_range_with_arctic_burn_bonus/
-##     arctic_burn_active: for Winter Wyvern's own Arctic Burn - whether
+##   - in_attack_range_now/in_attack_range_with_frostbound_fangs_bonus/
+##     frostbound_fangs_active: for The Primordial Hunger's own Frostbound Fangs - whether
 ##     the player is (or would be, with the bonus range folded in)
 ##     within the rival's own basic-attack reach right now, so casting
 ##     it only scores well when there's a realistic attack coming, not
 ##     just because it's off cooldown.
 ##   - has_harmful_debuff: whether the rival currently has anything the
 ##     player inflicted on it (root/silence/a DoT/Mark of the Mist) -
-##     for Winter Wyvern's own Cold Embrace, which dispels it.
-##   - redirect_candidate_count/avg_enemy_damage: for Winter Wyvern's own
-##     Winter's Curse. Always 0/0.0 here - a hero fight only ever has
+##     for The Primordial Hunger's own The Test of Time, which dispels it.
+##   - redirect_candidate_count/avg_enemy_damage: for The Primordial Hunger's own
+##     The Hunger Calls. Always 0/0.0 here - a hero fight only ever has
 ##     the player to curse, and nothing else on the rival's own side to
 ##     redirect onto the frozen target the way the simulation's other
 ##     living creeps can (see EnemyHeroManager's own _build_npc_ai_
@@ -12706,9 +12919,9 @@ func _build_enemy_ai_context(enemy: Dictionary, enemy_type: String, hero_distanc
 	var max_hp: float = _enemy_hero_effective_max_hp(enemy)
 	var current_hp: float = float(enemy.get("current_hp", 0.0))
 
-	var tidebringer_level_data: Dictionary = _get_enemy_tidebringer_level_data()
-	var tidebringer_ready: bool = not tidebringer_level_data.is_empty() \
-		and (_enemy_tidebringer_attack_count + 1) >= int(tidebringer_level_data.get("hits_to_activate", 1))
+	var pull_of_the_abyss_level_data: Dictionary = _get_enemy_pull_of_the_abyss_level_data()
+	var pull_of_the_abyss_ready: bool = not pull_of_the_abyss_level_data.is_empty() \
+		and (_enemy_pull_of_the_abyss_attack_count + 1) >= int(pull_of_the_abyss_level_data.get("hits_to_activate", 1))
 
 	var base_attack_range: int = RANGE_ENEMY_ATTACK_RANGE if enemy_type == "range" else 0
 
@@ -12758,17 +12971,17 @@ func _build_enemy_ai_context(enemy: Dictionary, enemy_type: String, hero_distanc
 		"target_hp": float(_recruited.get("current_hp", 0)),
 		"target_max_hp": _hero_max_hp(),
 		"target_distance": hero_distance,
-		"bear_active": not _get_enemy_spirit_bear().is_empty(),
+		"bear_active": not _get_enemy_elderwild_companion().is_empty(),
 		"living_target_hps": [float(_recruited.get("current_hp", 0))],
 		"living_target_max_hps": [_hero_max_hp()],
-		"tidebringer_ready": tidebringer_ready,
-		"tidebringer_bonus_damage": float(tidebringer_level_data.get("bonus_damage", 0.0)),
-		"tidebringer_cleave_targets": _count_player_allies_near_hero(int(tidebringer_level_data.get("cleave_columns", 1))) if tidebringer_ready else 0,
-		"kunkka_torrent_combo_ready": _is_enemy_skill_ready("torrent", enemy_type, hero_distance, enemy, true),
-		"kunkka_ghostship_combo_ready": _is_enemy_skill_ready("ghostship", enemy_type, hero_distance, enemy, true),
+		"pull_of_the_abyss_ready": pull_of_the_abyss_ready,
+		"pull_of_the_abyss_bonus_damage": float(pull_of_the_abyss_level_data.get("bonus_damage", 0.0)),
+		"pull_of_the_abyss_cleave_targets": _count_player_allies_near_hero(int(pull_of_the_abyss_level_data.get("cleave_columns", 1))) if pull_of_the_abyss_ready else 0,
+		"kaelen_varr_drowned_surge_combo_ready": _is_enemy_skill_ready("drowned_surge", enemy_type, hero_distance, enemy, true),
+		"kaelen_varr_the_sunken_one_combo_ready": _is_enemy_skill_ready("the_sunken_one", enemy_type, hero_distance, enemy, true),
 		"in_attack_range_now": hero_distance <= base_attack_range,
-		"in_attack_range_with_arctic_burn_bonus": hero_distance <= (base_attack_range + _enemy_arctic_burn_bonus_range),
-		"arctic_burn_active": _enemy_arctic_burn_active,
+		"in_attack_range_with_frostbound_fangs_bonus": hero_distance <= (base_attack_range + _enemy_frostbound_fangs_bonus_range),
+		"frostbound_fangs_active": _enemy_frostbound_fangs_active,
 		"has_harmful_debuff": _enemy_has_harmful_debuff(enemy),
 		"redirect_candidate_count": 0,
 		"avg_enemy_damage": 0.0,
@@ -12821,9 +13034,10 @@ func _build_enemy_ai_context(enemy: Dictionary, enemy_type: String, hero_distanc
 ## Whether `enemy` (a hero-fight boss) currently has anything the player
 ## inflicted on it - root, silence, or any of the DoTs a player skill
 ## can apply directly onto an enemy Dictionary (Thornbind's, Mark of the
-## Mist's, Cold Feet's, Ice Vortex's, Ice Blast's) - used by Winter
-## Wyvern's own Cold Embrace scoring (see EnemySkillAI's own "winter_
-## wyvern" modifier), since casting it dispels all of them at once.
+## Mist's, Mark of Stillness's, The Hollow Cold's, Return to the
+## Void's) - used by The Primordial Hunger's own The Test of Time scoring (see
+## EnemySkillAI's own "the_primordial_hunger" modifier), since casting it
+## dispels all of them at once.
 func _enemy_has_harmful_debuff(enemy: Dictionary) -> bool:
 	if enemy.get("root_turns_left", 0) > 0:
 		return true
@@ -12833,11 +13047,11 @@ func _enemy_has_harmful_debuff(enemy: Dictionary) -> bool:
 		return true
 	if enemy.get("curse_active", false) or enemy.get("curse_stacks", 0) > 0:
 		return true
-	if enemy.get("cold_feet_dot_turns_left", 0) > 0:
+	if enemy.get("mark_of_stillness_dot_turns_left", 0) > 0:
 		return true
-	if enemy.get("ice_vortex_dot_turns_left", 0) > 0:
+	if enemy.get("the_hollow_cold_dot_turns_left", 0) > 0:
 		return true
-	if enemy.get("ice_blast_dot_turns_left", 0) > 0:
+	if enemy.get("return_to_the_void_dot_turns_left", 0) > 0:
 		return true
 	return false
 
@@ -12870,14 +13084,14 @@ func _enemy_skill_in_range(skill_id: String, enemy_type: String, hero_distance: 
 		var ahead: int = (_hero_pos_index - int(enemy["pos_index"])) * direction
 		return ahead >= 0 and ahead <= range_columns
 
-	# Torrent's/X Marks the Spot's/Ghostship's/Cold Feet's own targeting
-	# range lives in a "range" field rather than "radius" (Torrent's
+	# Drowned Surge's/Undertow's/The Sunken One's/Mark of Stillness's own targeting
+	# range lives in a "range" field rather than "radius" (Drowned Surge's
 	# separate, level-4-only splash radius); Barbed Lunge's own leap reach
 	# lives in a "distance" field instead - see EnemySkillRange's
-	# "torrent"/"x_marks_the_spot"/"ghostship"/"barbed_lunge"/"cold_feet" case,
+	# "drowned_surge"/"undertow"/"the_sunken_one"/"barbed_lunge"/"mark_of_stillness" case,
 	# which compares distance against whichever of the three this
-	# resolves to. Ice Vortex is the one exception: its own targeting
-	# range is the FIXED constant ICE_VORTEX_RANGE, never part of its
+	# resolves to. The Hollow Cold is the one exception: its own targeting
+	# range is the FIXED constant THE_HOLLOW_COLD_RANGE, never part of its
 	# level data (which only carries its AoE radius, 1-2) - falling
 	# through the same generic chain would silently grab that AoE
 	# radius instead, so it's special-cased here first.
@@ -12893,7 +13107,7 @@ func _enemy_skill_reaches_distance(skill_id: String, enemy_type: String, distanc
 	if not EnemySkillRange.requires_range_check(skill_id):
 		return true
 	var level_data: Dictionary = _get_enemy_skill_level_data(skill_id)
-	var radius: int = ICE_VORTEX_RANGE if skill_id == "ice_vortex" else int(level_data.get("range", level_data.get("radius", level_data.get("distance", 0))))
+	var radius: int = THE_HOLLOW_COLD_RANGE if skill_id == "the_hollow_cold" else int(level_data.get("range", level_data.get("radius", level_data.get("distance", 0))))
 	var attack_range: int = RANGE_ENEMY_ATTACK_RANGE if enemy_type == "range" else 0
 	return EnemySkillRange.is_in_range(skill_id, distance, radius, attack_range)
 
@@ -12927,7 +13141,7 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 		"thornbind":
 			_cast_enemy_thornbind(level_data)
 		"elderwild_companion":
-			_summon_enemy_spirit_bear(level_data)
+			_summon_enemy_elderwild_companion(level_data)
 		"wildbond":
 			_activate_enemy_wildbond(level_data)
 		"beast_of_the_elderwild":
@@ -12936,28 +13150,28 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 			_cast_enemy_whisper_of_the_veil(enemy, level_data)
 		"veil_of_the_forgotten":
 			_activate_enemy_veil_of_the_forgotten(enemy, level_data)
-		"torrent":
-			_cast_enemy_torrent(level_data)
-		"x_marks_the_spot":
-			_cast_enemy_xmarks()
-		"ghostship":
-			_cast_enemy_ghostship(enemy, level_data)
-		"cold_feet":
-			_cast_enemy_cold_feet(level_data)
-		"ice_vortex":
-			_cast_enemy_ice_vortex(level_data)
-		"chilling_touch":
-			_cast_enemy_chilling_touch(enemy, level_data)
-		"ice_blast":
-			_cast_enemy_ice_blast(level_data)
-		"arctic_burn":
-			_cast_enemy_arctic_burn(level_data)
-		"splinter_blast":
-			_cast_enemy_splinter_blast(level_data)
-		"cold_embrace":
-			_cast_enemy_cold_embrace(level_data)
-		"winter's_curse":
-			_cast_enemy_winters_curse(level_data)
+		"drowned_surge":
+			_cast_enemy_drowned_surge(level_data)
+		"undertow":
+			_cast_enemy_undertow()
+		"the_sunken_one":
+			_cast_enemy_the_sunken_one(enemy, level_data)
+		"mark_of_stillness":
+			_cast_enemy_mark_of_stillness(level_data)
+		"the_hollow_cold":
+			_cast_enemy_the_hollow_cold(level_data)
+		"touch_of_the_first_cold":
+			_cast_enemy_touch_of_the_first_cold(enemy, level_data)
+		"return_to_the_void":
+			_cast_enemy_return_to_the_void(level_data)
+		"frostbound_fangs":
+			_cast_enemy_frostbound_fangs(level_data)
+		"maddening_roar":
+			_cast_enemy_maddening_roar(level_data)
+		"the_test_of_time":
+			_cast_enemy_the_test_of_time(level_data)
+		"the_hunger_calls":
+			_cast_enemy_the_hunger_calls(level_data)
 		"crystal_nova":
 			_cast_enemy_crystal_nova(level_data)
 		"frostbite":
@@ -13051,7 +13265,7 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 # ------------------------------------------------------------------
 # Enemy hero skill cast feedback - a scale/brightness pulse on the
 # caster, a floating cast-name banner over it, a frost screen tint for
-# Winter's Curse/Frostbite/Ice Blast specifically (their own lingering
+# The Hunger Calls/Frostbite/Return to the Void specifically (their own lingering
 # "ambient reminder" while still active lives in _refresh_status_
 # effects() instead, since that has to persist past this one moment),
 # and extra weight (a bigger pulse plus a screen shake) for ultimates.
@@ -13059,7 +13273,7 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 # this for free.
 # ------------------------------------------------------------------
 
-const FROST_TINT_SKILL_IDS := ["winter's_curse", "frostbite", "ice_blast"]
+const FROST_TINT_SKILL_IDS := ["the_hunger_calls", "frostbite", "return_to_the_void"]
 const FROST_TINT_COLOR := Color(0.55, 0.85, 1.0)
 
 
@@ -13182,7 +13396,7 @@ func _refresh_overgrowth_roots() -> void:
 ## fades for free. Only does anything when the state actually changes
 ## (the child's presence is the "currently on" marker).
 func _set_overgrowth_roots(node: Variant, active: bool) -> void:
-	if not (node is Control) or not is_instance_valid(node):
+	if not is_instance_valid(node) or not (node is Control):
 		return
 	var roots: Control = node.get_node_or_null(OVERGROWTH_ROOTS_NAME)
 	if active == (roots != null):
@@ -13335,19 +13549,17 @@ func _refresh_thornbind_vines() -> void:
 		_set_thornbind_vines(_bear.get("node"), int(_bear.get("root_turns_left", 0)) > 0 and int(_bear.get("thornbind_dot_turns_left", 0)) > 0)
 
 
-## Keeps the frost in sync with who's currently frozen by Cold Feet's,
-## Ice Vortex's, Ice Blast's OR Frostbite's DoT, or held by Winter's
-## Curse's freeze (for as long as its stun lasts), encased by their
-## own Cold Embrace (the caster - the player or the rival - for as long
-## as it's active), or standing inside the other side's active Freezing
-## Field - every enemy (their own cold_feet_dot_turns_left/
-## ice_vortex_dot_turns_left) and the player's hero (the matching
+## Keeps the frost in sync with who's currently frozen by Mark of Stillness's,
+## The Hollow Cold's, Return to the Void's OR Frostbite's DoT, or held by The Hunger
+## Calls's freeze (for as long as its stun lasts), or standing inside the other side's active Freezing
+## Field - every enemy (their own mark_of_stillness_dot_turns_left/
+## the_hollow_cold_dot_turns_left) and the player's hero (the matching
 ## _player_* counters, from a rival's cast). Both skills share the one
 ## frost look, so being marked by both never stacks two. Called from
 ## _refresh_bars() (i.e. constantly), same approach as
 ## _refresh_thornbind_vines(), so the frost just follows current state
 ## instead of being toggled at every cast/tick/dispel site.
-func _refresh_cold_feet_frost() -> void:
+func _refresh_mark_of_stillness_frost() -> void:
 	# Freezing Field's zones: every unit standing inside an active field
 	# is frosted, from its first damaging tick on (the casting turn
 	# itself doesn't hit anything yet - see _tick_freezing_field()), so
@@ -13362,46 +13574,46 @@ func _refresh_cold_feet_frost() -> void:
 			rival_field_center = field_boss["pos_index"]
 
 	for enemy in _enemies:
-		var frozen: bool = enemy.get("cold_feet_dot_turns_left", 0) > 0 or enemy.get("ice_vortex_dot_turns_left", 0) > 0 \
-			or enemy.get("ice_blast_dot_turns_left", 0) > 0 or enemy.get("frostbite_dot_turns_left", 0) > 0 \
-			or (is_same(enemy, _winter_curse_target) and _is_winters_curse_active()) \
-			or (_enemy_cold_embrace_active and enemy["static"].get("is_hero_fight_boss", false)) \
+		var frozen: bool = enemy.get("mark_of_stillness_dot_turns_left", 0) > 0 or enemy.get("the_hollow_cold_dot_turns_left", 0) > 0 \
+			or enemy.get("return_to_the_void_dot_turns_left", 0) > 0 or enemy.get("frostbite_dot_turns_left", 0) > 0 \
+			or (is_same(enemy, _hunger_calls_target) and _is_the_hunger_calls_active()) \
+			or (_enemy_the_test_of_time_active and enemy["static"].get("is_hero_fight_boss", false)) \
 			or (player_field_center >= 0 and not _is_target_hidden(enemy) and _distance(enemy["pos_index"], player_field_center) <= _freezing_field_radius)
-		_set_cold_feet_frost(enemy.get("node"), frozen)
-	_set_cold_feet_frost(hero_image, _player_cold_feet_dot_turns_left > 0 or _player_ice_vortex_dot_turns_left > 0 \
-		or _player_ice_blast_dot_turns_left > 0 or _player_frostbite_dot_turns_left > 0 or _player_winters_curse_active \
-		or _cold_embrace_active \
+		_set_mark_of_stillness_frost(enemy.get("node"), frozen)
+	_set_mark_of_stillness_frost(hero_image, _player_mark_of_stillness_dot_turns_left > 0 or _player_the_hollow_cold_dot_turns_left > 0 \
+		or _player_return_to_the_void_dot_turns_left > 0 or _player_frostbite_dot_turns_left > 0 or _player_the_hunger_calls_active \
+		or _the_test_of_time_active \
 		or (rival_field_center >= 0 and _distance(_hero_pos_index, rival_field_center) <= _enemy_freezing_field_radius))
-	# Illusions (either side) can only ever carry Ice Vortex's DoT,
-	# never Cold Feet's - a single-target cast never lands on one - or
+	# Illusions (either side) can only ever carry The Hollow Cold's DoT,
+	# never Mark of Stillness's - a single-target cast never lands on one - or
 	# stand inside the opposing side's Freezing Field. The player's own
-	# Elderwild Companion can carry either DoT (a rival can aim Cold Feet at it -
-	# see _cast_enemy_cold_feet_on_bear()).
+	# Elderwild Companion can carry either DoT (a rival can aim Mark of Stillness at it -
+	# see _cast_enemy_mark_of_stillness_on_bear()).
 	for illusion in _illusions:
-		var illusion_frozen: bool = illusion.get("ice_vortex_dot_turns_left", 0) > 0 \
+		var illusion_frozen: bool = illusion.get("the_hollow_cold_dot_turns_left", 0) > 0 \
 			or (rival_field_center >= 0 and _distance(illusion["pos_index"], rival_field_center) <= _enemy_freezing_field_radius)
-		_set_cold_feet_frost(illusion.get("node"), illusion_frozen)
+		_set_mark_of_stillness_frost(illusion.get("node"), illusion_frozen)
 	for illusion in _enemy_illusions:
-		var enemy_illusion_frozen: bool = illusion.get("ice_vortex_dot_turns_left", 0) > 0 \
+		var enemy_illusion_frozen: bool = illusion.get("the_hollow_cold_dot_turns_left", 0) > 0 \
 			or (player_field_center >= 0 and _distance(illusion["pos_index"], player_field_center) <= _freezing_field_radius)
-		_set_cold_feet_frost(illusion.get("node"), enemy_illusion_frozen)
+		_set_mark_of_stillness_frost(illusion.get("node"), enemy_illusion_frozen)
 	if _is_bear_alive():
-		var bear_frozen: bool = int(_bear.get("cold_feet_dot_turns_left", 0)) > 0 or int(_bear.get("ice_vortex_dot_turns_left", 0)) > 0 \
-			or int(_bear.get("ice_blast_dot_turns_left", 0)) > 0 or int(_bear.get("frostbite_dot_turns_left", 0)) > 0 \
-			or (bool(_bear.get("winters_curse_active", false)) and int(_bear.get("stun_turns_left", 0)) > 0) \
+		var bear_frozen: bool = int(_bear.get("mark_of_stillness_dot_turns_left", 0)) > 0 or int(_bear.get("the_hollow_cold_dot_turns_left", 0)) > 0 \
+			or int(_bear.get("return_to_the_void_dot_turns_left", 0)) > 0 or int(_bear.get("frostbite_dot_turns_left", 0)) > 0 \
+			or (bool(_bear.get("the_hunger_calls_active", false)) and int(_bear.get("stun_turns_left", 0)) > 0) \
 			or (rival_field_center >= 0 and _distance(_bear["pos_index"], rival_field_center) <= _enemy_freezing_field_radius)
-		_set_cold_feet_frost(_bear.get("node"), bear_frozen)
+		_set_mark_of_stillness_frost(_bear.get("node"), bear_frozen)
 
 
-## Purely cosmetic: Ice Vortex's cast - a ring of ice crystals swirling
+## Purely cosmetic: The Hollow Cold's cast - a ring of ice crystals swirling
 ## outward from `center_node`, sized to reach about `radius` columns (at
 ## least half a column, so a radius-0 cast still reads), spinning as
 ## they go. The lingering frost on everyone caught is
-## _refresh_cold_feet_frost()'s. Same CPUParticles2D one-shot-burst
+## _refresh_mark_of_stillness_frost()'s. Same CPUParticles2D one-shot-burst
 ## recipe as _spawn_lil_shredder_impact(), with tangential acceleration
 ## for the swirl.
-func _play_ice_vortex_swirl(center_node: Variant, radius: int) -> void:
-	if not (center_node is Control) or not is_instance_valid(center_node):
+func _play_the_hollow_cold_swirl(center_node: Variant, radius: int) -> void:
+	if not is_instance_valid(center_node) or not (center_node is Control):
 		return
 
 	var lifetime: float = 0.9
@@ -13429,7 +13641,7 @@ func _play_ice_vortex_swirl(center_node: Variant, radius: int) -> void:
 	particles.angular_velocity_max = 270.0
 	particles.scale_amount_min = 2.5
 	particles.scale_amount_max = 5.5
-	particles.color = COLD_FEET_FLAKE_COLOR
+	particles.color = MARK_OF_STILLNESS_FLAKE_COLOR
 	particles.hue_variation_min = -0.04
 	particles.hue_variation_max = 0.04
 	add_child(particles)
@@ -13441,27 +13653,145 @@ func _play_ice_vortex_swirl(center_node: Variant, radius: int) -> void:
 	get_tree().create_timer(lifetime + 0.2).timeout.connect(particles.queue_free)
 
 
+## Purely cosmetic: tears The Hollow Cold's wound open in the air where
+## `center_node` (the unit it was cast on) stands - a ragged rift onto a
+## swirling nebula, drawn behind every unit so whoever stands there is
+## silhouetted against it - and keeps it open for `duration` turns (see
+## _tick_hollow_cold_tears()). Frost motes are drawn into it from about
+## `radius` columns around, the warmth being pulled out of everything
+## caught within. `hits_player_side` says whose turn it counts down on:
+## true for a rival's cast (it hurts the player's side), false for the
+## player's. A new tear on the same side and column replaces the old one
+## (a recast overwrites the DoT it stood for anyway).
+func _open_hollow_cold_tear(center_node: Variant, pos_index: int, radius: int, duration: int, hits_player_side: bool) -> void:
+	if not is_instance_valid(center_node) or not (center_node is Control) or duration <= 0:
+		return
+	for existing in _hollow_cold_tears.duplicate():
+		if existing["hits_player_side"] == hits_player_side and existing["pos_index"] == pos_index:
+			_close_hollow_cold_tear(existing)
+
+	var unit_size: Vector2 = center_node.size
+	var center: Vector2 = center_node.position + unit_size / 2.0 - Vector2(0.0, unit_size.y * HOLLOW_COLD_TEAR_LIFT)
+	var tear_size := Vector2(unit_size.x * HOLLOW_COLD_TEAR_SIZE.x, unit_size.y * HOLLOW_COLD_TEAR_SIZE.y)
+
+	var material := ShaderMaterial.new()
+	material.shader = HOLLOW_COLD_TEAR_SHADER
+	material.set_shader_parameter("aspect", tear_size.x / tear_size.y)
+	material.set_shader_parameter("seed", randf() * 10.0)
+	material.set_shader_parameter("rip", 0.0)
+	material.set_shader_parameter("gape", 0.0)
+	var tear := ColorRect.new()
+	tear.material = material
+	tear.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tear.size = tear_size
+	tear.position = center - tear_size / 2.0
+	add_child(tear)
+	# Behind the hero and every enemy, over the battle background.
+	move_child(tear, hero_image.get_index())
+
+	# Frost motes pulled in from the skill's reach, drawn over the units.
+	var reach: float = maxf(_grid_unit() * maxf(0.5, float(radius)), tear_size.y * 0.5)
+	var lifetime: float = 1.3
+	var motes := CPUParticles2D.new()
+	motes.position = center
+	motes.amount = 36
+	motes.lifetime = lifetime
+	motes.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE_SURFACE
+	motes.emission_sphere_radius = reach
+	motes.gravity = Vector2.ZERO
+	motes.initial_velocity_min = 0.0
+	motes.initial_velocity_max = 0.0
+	# Accelerating inward so they arrive at the tear by the end of
+	# their life, curving round a little on the way.
+	motes.radial_accel_min = -2.2 * reach / (lifetime * lifetime)
+	motes.radial_accel_max = -1.6 * reach / (lifetime * lifetime)
+	motes.tangential_accel_min = 20.0
+	motes.tangential_accel_max = 60.0
+	motes.scale_amount_min = 1.5
+	motes.scale_amount_max = 3.5
+	var ramp := Gradient.new()
+	ramp.offsets = PackedFloat32Array([0.0, 0.3, 0.85, 1.0])
+	ramp.colors = PackedColorArray([Color(MARK_OF_STILLNESS_FLAKE_COLOR, 0.0), MARK_OF_STILLNESS_FLAKE_COLOR,
+			Color(0.7, 0.8, 1.0, 0.9), Color(0.6, 0.7, 1.0, 0.0)])
+	motes.color_ramp = ramp
+	add_child(motes)
+	move_child(motes, enemies_layer.get_index() + 1)
+	motes.emitting = true
+
+	# Rips open top to bottom, then gapes wide with a little overshoot.
+	var open: Tween = tear.create_tween()
+	open.tween_property(material, "shader_parameter/rip", 1.0, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	open.tween_property(material, "shader_parameter/gape", 1.0, 0.55).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+	_hollow_cold_tears.append({
+		"tear": tear,
+		"motes": motes,
+		"pos_index": pos_index,
+		"turns_left": duration,
+		"hits_player_side": hits_player_side,
+	})
+
+
+## Counts down every open The Hollow Cold tear on the given side by one
+## turn, sealing any that run out. Called right where that side's The
+## Hollow Cold DoT ticks: _enemy_turn() (hits_player_side = false, the
+## player's casts) and _tick_player_turn_start_effects() (true, the
+## rival's).
+func _tick_hollow_cold_tears(hits_player_side: bool) -> void:
+	for entry in _hollow_cold_tears.duplicate():
+		if entry["hits_player_side"] != hits_player_side:
+			continue
+		entry["turns_left"] -= 1
+		if entry["turns_left"] <= 0:
+			_close_hollow_cold_tear(entry)
+
+
+## Seals a tear shut - it narrows to a line, then the line fades from
+## the ends in - and frees it, letting its last motes finish drifting in.
+func _close_hollow_cold_tear(entry: Dictionary) -> void:
+	_hollow_cold_tears.erase(entry)
+	var motes: Variant = entry.get("motes")
+	if is_instance_valid(motes):
+		motes.emitting = false
+		get_tree().create_timer(motes.lifetime + 0.1).timeout.connect(motes.queue_free)
+	var tear: Variant = entry.get("tear")
+	if not is_instance_valid(tear):
+		return
+	var material: ShaderMaterial = tear.material
+	var seal: Tween = tear.create_tween()
+	seal.tween_property(material, "shader_parameter/gape", 0.0, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	seal.tween_property(material, "shader_parameter/rip", 0.0, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	seal.tween_callback(tear.queue_free)
+
+
+## Seals every open tear at once - a new stage or hero fight starts from
+## a clean field.
+func _close_all_hollow_cold_tears() -> void:
+	for entry in _hollow_cold_tears.duplicate():
+		_close_hollow_cold_tear(entry)
+
+
 ## Purely cosmetic: frosts `node` (any unit's sprite) for `seconds`
-## regardless of any DoT - the icy flash plus the same frost Cold Feet/
-## Ice Vortex/Ice Blast/Frostbite leave, which then fades on its own.
+## regardless of any DoT - the icy flash plus the same frost Mark of Stillness/
+## The Hollow Cold/Return to the Void/Frostbite leave, which then fades on its own.
 ## Used by Crystal Nova, a single burst with nothing lingering to tie
 ## the frost to. If a DoT-driven frost is also on the unit, whichever
 ## lasts longer wins - the timed hold only ever keeps frost on, never
 ## takes it off early.
 func _flash_frost_briefly(node: Variant, seconds: float) -> void:
-	if not (node is TextureRect) or not is_instance_valid(node):
+	if not is_instance_valid(node) or not (node is TextureRect):
 		return
 	node.set_meta("frost_hold_until_msec", Time.get_ticks_msec() + int(seconds * 1000.0))
-	_flash_bounce_hit(node, COLD_FEET_FLASH_COLOR)
-	_set_cold_feet_frost(node, true)
+	_flash_bounce_hit(node, MARK_OF_STILLNESS_FLASH_COLOR)
+	_set_mark_of_stillness_frost(node, true)
 	# Re-evaluated once the hold runs out: stays frosted if a DoT is
 	# still holding it, otherwise fades. A tween bound to this node (not
 	# a SceneTree timer) so it dies with the battle scene if it closes
 	# first.
-	create_tween().tween_callback(_refresh_cold_feet_frost).set_delay(seconds + 0.05)
+	create_tween().tween_callback(_refresh_mark_of_stillness_frost).set_delay(seconds + 0.05)
 
 
-## Purely cosmetic: puts Cold Feet's frost on `node` - an enemy's node
+## Purely cosmetic: puts Mark of Stillness's frost on `node` - an enemy's node
 ## or the player's hero_image - (or takes it off):
 ## an additive icy-blue copy of the sprite for a frosty sheen that
 ## slowly shimmers, plus a few snowflakes drifting off it. Both live
@@ -13471,21 +13801,21 @@ func _flash_frost_briefly(node: Variant, seconds: float) -> void:
 ## the sprite, the same way The Mist Remembers's glow does. Only does
 ## anything when the state actually changes (the child's presence is
 ## the "currently on" marker).
-func _set_cold_feet_frost(node: Variant, active: bool) -> void:
-	if not (node is TextureRect) or not is_instance_valid(node):
+func _set_mark_of_stillness_frost(node: Variant, active: bool) -> void:
+	if not is_instance_valid(node) or not (node is TextureRect):
 		return
 	# A timed hold (Crystal Nova - see _flash_frost_briefly()) keeps the
 	# frost up even when no DoT is holding it anymore, until it expires.
 	if not active and Time.get_ticks_msec() < int(node.get_meta("frost_hold_until_msec", 0)):
 		active = true
-	var frost: Control = node.get_node_or_null(COLD_FEET_FROST_NAME)
+	var frost: Control = node.get_node_or_null(MARK_OF_STILLNESS_FROST_NAME)
 	if active == (frost != null):
 		return
 
 	if not active:
 		# Renamed right away so a quick re-mark during the fade creates a
 		# fresh frost instead of finding this dying one.
-		frost.name = COLD_FEET_FROST_NAME + "Fading"
+		frost.name = MARK_OF_STILLNESS_FROST_NAME + "Fading"
 		var shimmer: Variant = frost.get_meta("shimmer_tween", null)
 		if shimmer is Tween and shimmer.is_valid():
 			shimmer.kill()
@@ -13498,7 +13828,7 @@ func _set_cold_feet_frost(node: Variant, active: bool) -> void:
 		return
 
 	frost = Control.new()
-	frost.name = COLD_FEET_FROST_NAME
+	frost.name = MARK_OF_STILLNESS_FROST_NAME
 	frost.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	frost.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	frost.modulate.a = 0.0
@@ -13515,7 +13845,7 @@ func _set_cold_feet_frost(node: Variant, active: bool) -> void:
 	sheen.flip_h = node.flip_h
 	sheen.flip_v = node.flip_v
 	sheen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	sheen.self_modulate = COLD_FEET_SHEEN_COLOR
+	sheen.self_modulate = MARK_OF_STILLNESS_SHEEN_COLOR
 	frost.add_child(sheen)
 
 	var flakes := CPUParticles2D.new()
@@ -13535,7 +13865,7 @@ func _set_cold_feet_frost(node: Variant, active: bool) -> void:
 	flakes.angular_velocity_max = 90.0
 	flakes.scale_amount_min = 2.0
 	flakes.scale_amount_max = 4.0
-	flakes.color = COLD_FEET_FLAKE_COLOR
+	flakes.color = MARK_OF_STILLNESS_FLAKE_COLOR
 	frost.add_child(flakes)
 	flakes.emitting = true
 	frost.set_meta("flakes", flakes)
@@ -13561,7 +13891,7 @@ func _set_cold_feet_frost(node: Variant, active: bool) -> void:
 ## when that's already the state, so the constant _refresh_bars() calls
 ## don't keep restarting them.
 func _set_thornbind_vines(node: Variant, thornbound: bool) -> void:
-	if not (node is Control) or not is_instance_valid(node):
+	if not is_instance_valid(node) or not (node is Control):
 		return
 	if thornbound:
 		ThornbindVines.attach(node)
@@ -13855,16 +14185,16 @@ func _cast_enemy_thornbind(level_data: Dictionary) -> void:
 # way any other enemy sharing the field would keep a fight going.
 # ------------------------------------------------------------------
 
-func _summon_enemy_spirit_bear(level_data: Dictionary) -> void:
-	_despawn_enemy_spirit_bear()
+func _summon_enemy_elderwild_companion(level_data: Dictionary) -> void:
+	_despawn_enemy_elderwild_companion()
 
 	var damage_min: float = float(level_data.get("damage_min", 0))
 	var damage_max: float = float(level_data.get("damage_max", 0))
 
 	_spawn_enemy({
-		"id": "enemy_spirit_bear",
+		"id": "enemy_elderwild_companion",
 		"name": "Elderwild Companion",
-		"image": SPIRIT_BEAR_IMAGE_PATH,
+		"image": ELDERWILD_COMPANION_IMAGE_PATH,
 		"type": "melee",
 		"hp": float(level_data.get("hp", 1)),
 		"damage": roundi((damage_min + damage_max) / 2.0),
@@ -13876,13 +14206,13 @@ func _summon_enemy_spirit_bear(level_data: Dictionary) -> void:
 		# side here, it needs the same left-facing flip hero portraits
 		# get - see _spawn_enemy()'s use of this flag.
 		"is_hero_fight": true,
-		"is_enemy_spirit_bear": true,
+		"is_enemy_elderwild_companion": true,
 	})
 
 
-func _despawn_enemy_spirit_bear() -> void:
+func _despawn_enemy_elderwild_companion() -> void:
 	for existing in _enemies.duplicate():
-		if existing["static"].get("is_enemy_spirit_bear", false):
+		if existing["static"].get("is_enemy_elderwild_companion", false):
 			if is_instance_valid(existing["node"]):
 				existing["node"].queue_free()
 			if is_instance_valid(existing.get("hp_label")):
@@ -14082,13 +14412,13 @@ func _play_whisper_of_the_veil_effect(from_node: Variant, to_node: Variant) -> v
 	)
 
 
-## The shared glowing-ball projectile behind Ice Blast's and Corrosive
-## Haze's own visuals: a ball of `color` (rimmed in `rim_color`) flies
-## on a slight upward arc from `from_node` to `to_node`, trailing sparks,
-## then bursts (_play_orb_impact()) and flashes the target in
-## `flash_color`. Everything scales off `ball_size` - its glow, trail
-## and burst - so a bigger ball reads as a heavier hit. When both nodes
-## are the same it drops from above instead.
+## The glowing-ball projectile behind Corrosive Haze's visual: a ball
+## of `color` (rimmed in `rim_color`) flies on a slight upward arc from
+## `from_node` to `to_node`, trailing sparks, then bursts
+## (_play_orb_impact()) and flashes the target in `flash_color`.
+## Everything scales off `ball_size` - its glow, trail and burst - so a
+## bigger ball reads as a heavier hit. When both nodes are the same it
+## drops from above instead.
 ## Start/end points are captured up front, so a target killed by the
 ## hit still gets its ball and burst, just no flash.
 func _play_orb_projectile(from_node: Variant, to_node: Variant, color: Color, rim_color: Color, flash_color: Color, ball_size: float) -> void:
@@ -14203,78 +14533,6 @@ func _play_orb_impact(pos: Vector2, color: Color, size_scale: float) -> void:
 	get_tree().create_timer(lifetime + 0.2).timeout.connect(particles.queue_free)
 
 
-## Purely cosmetic: Splinter Blast bursting on `from_node` (the blast's
-## target) - an explosion of ice chunks and a cold flash right on it,
-## then SPLINTER_SHARDS_PER_TARGET big, spinning ice chunks flung from
-## there to each node in `to_nodes` (every unit its splinters hit),
-## slightly spread and staggered so each volley reads as several
-## pieces, shattering into a small burst on arrival. Positions are
-## captured up front, so a unit killed by its splinter still gets its
-## chunks. Same layering as _play_scatterblast_effect().
-func _play_splinter_shards(from_node: Variant, to_nodes: Array) -> void:
-	if not (from_node is Control) or not is_instance_valid(from_node):
-		return
-	var start: Vector2 = from_node.position + from_node.size / 2.0
-
-	# The explosion on the target itself - the same shard burst the orb
-	# projectile's impact uses, scaled well up.
-	_play_orb_impact(start, SPLINTER_SHARD_COLOR, SPLINTER_EXPLOSION_SCALE)
-	if from_node is TextureRect:
-		_flash_bounce_hit(from_node, COLD_FEET_FLASH_COLOR)
-
-	for to_node in to_nodes:
-		if not (to_node is Control) or not is_instance_valid(to_node):
-			continue
-		var end: Vector2 = to_node.position + to_node.size / 2.0
-		var travel: Vector2 = end - start
-		if travel.length() < 1.0:
-			continue
-		var flight_time: float = clampf(travel.length() / 900.0, 0.2, 0.45)
-		var normal: Vector2 = Vector2(-travel.y, travel.x).normalized()
-
-		for i in SPLINTER_SHARDS_PER_TARGET:
-			var chunk := ColorRect.new()
-			chunk.color = SPLINTER_SHARD_COLOR
-			var chunk_size: float = randf_range(SPLINTER_CHUNK_SIZE * 0.75, SPLINTER_CHUNK_SIZE * 1.15)
-			chunk.size = Vector2(chunk_size, chunk_size * 0.7)
-			chunk.pivot_offset = chunk.size / 2.0
-			chunk.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			chunk.rotation = randf_range(0.0, TAU)
-			# Each chunk aims at a slightly different spot on the target
-			# and starts from a slightly different spot in the explosion.
-			var chunk_start: Vector2 = start + Vector2(randf_range(-12.0, 12.0), randf_range(-12.0, 12.0))
-			var chunk_end: Vector2 = end + normal * randf_range(-22.0, 22.0)
-			chunk.position = chunk_start - chunk.pivot_offset
-			chunk.modulate.a = 0.0
-			add_child(chunk)
-			move_child(chunk, enemies_layer.get_index() + 1)
-
-			var tween: Tween = chunk.create_tween()
-			tween.tween_interval(0.08 + i * 0.05)
-			tween.tween_property(chunk, "modulate:a", 1.0, 0.03)
-			tween.tween_property(chunk, "position", chunk_end - chunk.pivot_offset, flight_time).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-			tween.parallel().tween_property(chunk, "rotation", chunk.rotation + randf_range(-1.0, 1.0) * TAU, flight_time)
-			# Only the last chunk of each volley shatters on arrival, so
-			# a volley makes one burst rather than several stacked ones.
-			if i == SPLINTER_SHARDS_PER_TARGET - 1:
-				tween.tween_callback(func() -> void:
-					_play_orb_impact(chunk_end, SPLINTER_SHARD_COLOR, 1.0)
-				)
-			tween.tween_property(chunk, "scale", Vector2(0.2, 0.2), 0.1)
-			tween.parallel().tween_property(chunk, "modulate:a", 0.0, 0.1)
-			tween.tween_callback(chunk.queue_free)
-
-
-## Purely cosmetic: Ice Blast's big ice ball, flying from the caster to
-## the blast's target - the shared orb projectile
-## (_play_orb_projectile()), scaled up to ICE_BLAST_BALL_SIZE in pale
-## ice with a white rim, bursting into ice shards and flashing the
-## target icy-blue on impact. The frost left on everyone the blast's
-## DoT landed on is _refresh_cold_feet_frost()'s.
-func _play_ice_blast_effect(from_node: Variant, to_node: Variant) -> void:
-	_play_orb_projectile(from_node, to_node, ICE_BLAST_BALL_COLOR, ICE_BLAST_RIM_COLOR, COLD_FEET_FLASH_COLOR, ICE_BLAST_BALL_SIZE)
-
-
 ## Activates (or, if already active, replaces outright, same as the
 ## player's own copy) Veil of the Forgotten on the rival, and dispels every
 ## negative effect currently on him - here that's whatever the
@@ -14362,53 +14620,53 @@ func _end_enemy_veil_of_the_forgotten(exploded: bool) -> void:
 
 
 # ------------------------------------------------------------------
-# Kunkka's Torrent, cast by the rival on the player - mirrors the
-# player's own _resolve_torrent_cast(). Simplification versus that
+# Kaelen Varr's Drowned Surge, cast by the rival on the player - mirrors the
+# player's own _resolve_drowned_surge_cast(). Simplification versus that
 # player-facing copy: like Abyssal Spasm/Whisper of the Veil, there's only one
 # possible target in a hero fight (no other enemy, and no bear/column
 # concept to splash onto), so the level-4 AoE radius has nothing extra
 # to reach here - this always resolves as a single hit.
 # ------------------------------------------------------------------
 
-func _cast_enemy_torrent(level_data: Dictionary) -> void:
+func _cast_enemy_drowned_surge(level_data: Dictionary) -> void:
 	if _enemy_skill_on_bear:
-		_cast_enemy_torrent_on_bear(level_data)
+		_cast_enemy_drowned_surge_on_bear(level_data)
 		return
 	var damage: float = float(level_data.get("damage", 0))
-	_play_torrent_splash(hero_image)
+	_play_drowned_surge_splash(hero_image)
 	apply_damage(damage)
-	# Torrent's own splash radius is centered on the impact point (the
+	# Drowned Surge's own splash radius is centered on the impact point (the
 	# player, the only possible target here) - an illusion near the
 	# player can still be caught in it even though the single-hit
 	# simplification above skips it for other creeps.
 	var radius: int = int(level_data.get("radius", 0))
-	_play_torrent_splash_on_illusions(_illusions, _hero_pos_index, radius)
+	_play_drowned_surge_splash_on_illusions(_illusions, _hero_pos_index, radius)
 	if _is_bear_alive() and _distance(_bear["pos_index"], _hero_pos_index) <= radius:
-		_play_torrent_splash(_bear.get("node"))
+		_play_drowned_surge_splash(_bear.get("node"))
 	_deal_aoe_damage_to_illusions(_hero_pos_index, radius, damage)
 	_deal_aoe_damage_to_bear(_hero_pos_index, radius, damage)
 	_player_stun_turns_left = int(level_data.get("stun_turns", 1))
 	_show_message_over_hero("Stunned!")
 
 
-## Torrent's spray under every illusion in `illusions` (either side's
+## Drowned Surge's spray under every illusion in `illusions` (either side's
 ## array - `_illusions` or `_enemy_illusions`) within `radius` columns
 ## of `center_pos_index` - the same area check the matching
 ## _deal_aoe_damage_to_*illusions() helper uses. Called just BEFORE
 ## that damage, since a killed illusion's node gets freed.
-func _play_torrent_splash_on_illusions(illusions: Array, center_pos_index: int, radius: int) -> void:
+func _play_drowned_surge_splash_on_illusions(illusions: Array, center_pos_index: int, radius: int) -> void:
 	for illusion in illusions:
 		if _distance(illusion["pos_index"], center_pos_index) <= radius:
-			_play_torrent_splash(illusion.get("node"))
+			_play_drowned_surge_splash(illusion.get("node"))
 
 
-## Purely cosmetic: Torrent erupting under `node` (an enemy hit by the
-## player's Torrent, or the player's own hero_image when a rival casts
+## Purely cosmetic: Drowned Surge erupting under `node` (an enemy hit by the
+## player's Drowned Surge, or the player's own hero_image when a rival casts
 ## it) - a geyser-like burst of water spray shooting up from its feet
 ## and falling back down. The position is captured up front, so a
 ## target killed by the hit still gets its splash.
-func _play_torrent_splash(node: Variant) -> void:
-	if not (node is Control) or not is_instance_valid(node):
+func _play_drowned_surge_splash(node: Variant) -> void:
+	if not is_instance_valid(node) or not (node is Control):
 		return
 
 	var feet: Vector2 = node.position + Vector2(node.size.x / 2.0, node.size.y * 0.9)
@@ -14433,7 +14691,7 @@ func _play_torrent_splash(node: Variant) -> void:
 	spray.initial_velocity_max = 380.0
 	spray.scale_amount_min = 3.0
 	spray.scale_amount_max = 6.0
-	spray.color = TORRENT_SPRAY_COLOR
+	spray.color = DROWNED_SURGE_SPRAY_COLOR
 	spray.hue_variation_min = -0.03
 	spray.hue_variation_max = 0.03
 	add_child(spray)
@@ -14446,75 +14704,103 @@ func _play_torrent_splash(node: Variant) -> void:
 
 
 # ------------------------------------------------------------------
-# Kunkka's Tidebringer, on the rival - same plain-Attack counter as the
+# Kaelen Varr's Pull of the Abyss, on the rival - same plain-Attack counter as the
 # player's own copy, just counting the rival's own Attacks on the
 # player (see _resolve_enemy_hero_attack()) instead. No cleave here -
-# same "only one possible target" simplification as Torrent's own
+# same "only one possible target" simplification as Drowned Surge's own
 # enemy-side copy above.
 # ------------------------------------------------------------------
 
-func _get_enemy_tidebringer_level_data() -> Dictionary:
+func _get_enemy_pull_of_the_abyss_level_data() -> Dictionary:
 	if _enemy_hero_id == "":
 		return {}
-	var level: int = PlayerManager.get_npc_skill_level(_enemy_hero_id, "tidebringer")
+	var level: int = PlayerManager.get_npc_skill_level(_enemy_hero_id, "pull_of_the_abyss")
 	if level <= 0:
 		return {}
-	var skill: Dictionary = _find_enemy_skill("tidebringer")
+	var skill: Dictionary = _find_enemy_skill("pull_of_the_abyss")
 	if skill.is_empty():
 		return {}
 	return GameManager.get_skill_level_data(skill, level)
 
 
-func _maybe_consume_enemy_tidebringer_stack() -> Dictionary:
-	var level_data: Dictionary = _get_enemy_tidebringer_level_data()
+func _maybe_consume_enemy_pull_of_the_abyss_stack() -> Dictionary:
+	var level_data: Dictionary = _get_enemy_pull_of_the_abyss_level_data()
 	if level_data.is_empty():
 		return {}
 
-	_enemy_tidebringer_attack_count += 1
-	if _enemy_tidebringer_attack_count < int(level_data.get("hits_to_activate", 1)):
+	_enemy_pull_of_the_abyss_attack_count += 1
+	if _enemy_pull_of_the_abyss_attack_count < int(level_data.get("hits_to_activate", 1)):
 		return {}
 
-	_enemy_tidebringer_attack_count = 0
+	_enemy_pull_of_the_abyss_attack_count = 0
 	return level_data
 
 
 # ------------------------------------------------------------------
-# Kunkka's X Marks the Spot, cast by the rival - marks the player (the
+# Kaelen Varr's Undertow, cast by the rival - marks the player (the
 # only other participant in a hero fight), so unlike the player's own
 # copy there's nothing to remember but the fact that a mark is pending
-# (_enemy_xmarks_pending) - see _enemy_hero_turn()'s own teleport check
+# (_enemy_undertow_pending) - see _enemy_hero_turn()'s own teleport check
 # at its very top, which resolves it on the rival's next turn without
-# spending that turn's action, mirroring _resolve_xmarks_teleport().
+# spending that turn's action, mirroring _resolve_undertow_teleport().
 # ------------------------------------------------------------------
 
-func _cast_enemy_xmarks() -> void:
-	_enemy_xmarks_pending = true
+func _cast_enemy_undertow() -> void:
+	_enemy_undertow_pending = true
 
 
 # ------------------------------------------------------------------
-# Kunkka's Ghostship, cast by the rival - mirrors the player's own
-# _resolve_ghostship_cast(). Simplification versus that player-facing
-# copy: the ship's whole path-of-enemies concept collapses to a single
-# hit here, same "only one possible target" simplification Abyssal Spasm/
-# Whisper of the Veil/Torrent already use - there's no bear-on-the-path concept
-# for the rival AI to consider either, matching how it never targets
-# the bear in the first place (see _enemy_hero_turn()'s own doc
-# comment). Still plays the same _play_ghostship_animation() visual
-# flourish as the player's own copy, just sailing from the boss's own
-# column (enemy["pos_index"]) to the player's (_hero_pos_index) instead
-# of the other way around.
+# Kaelen Varr's The Sunken One, cast by the rival - mirrors the player's
+# own _cast_the_sunken_one(): the ship surfaces behind the rival and
+# fires toward the player, out to this level's range. The player (if
+# he's in that span - the AI only picks it when he is), the player's
+# Elderwild Companion and any illusions standing in it all take the
+# damage when the first ball lands. Until then the player can't act
+# (_rival_fx_in_flight), since the rival's turn is already over by the
+# time the ship has even surfaced.
 # ------------------------------------------------------------------
 
-func _cast_enemy_ghostship(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_the_sunken_one(enemy: Dictionary, level_data: Dictionary) -> void:
+	var node: Control = enemy["node"]
+	var from_pos: int = enemy["pos_index"]
+	var dir: int = signi(_hero_pos_index - from_pos)
+	if dir == 0:
+		# Same column: fire the way the art faces (hero art faces right natively).
+		dir = -1 if node.flip_h else 1
+	var span: Vector2i = _the_sunken_one_span(from_pos, dir, level_data)
 	var damage: float = float(level_data.get("damage", 0))
-	apply_damage(damage)
-	# The ship sails the whole line from the rival's own column to the
-	# player's - an illusion standing anywhere along that path can still
-	# be caught in it, same as every enemy along the player's own
-	# Ghostship's path.
-	_deal_line_aoe_damage_to_illusions(enemy["pos_index"], _hero_pos_index, damage)
-	_deal_line_aoe_damage_to_bear(enemy["pos_index"], _hero_pos_index, damage)
-	_play_ghostship_animation(enemy["pos_index"], _hero_pos_index)
+
+	var landings: Array[Vector2] = []
+	if _hero_pos_index >= span.x and _hero_pos_index <= span.y:
+		landings.append(hero_image.global_position + hero_image.size * 0.5)
+	if not _bear.is_empty() and is_instance_valid(_bear.get("node")):
+		var bear_node: Control = _bear["node"]
+		var bear_pos: int = _bear.get("pos_index", -1)
+		if bear_pos >= span.x and bear_pos <= span.y:
+			landings.append(bear_node.global_position + bear_node.size * 0.5)
+	_pad_the_sunken_one_landings(landings, span)
+
+	_rival_fx_in_flight = true
+	_update_action_buttons()
+	var generation_before: int = _stage_generation
+	var fx: SunkenOneFX = SunkenOneFX.play(self, _fx_layer, node.global_position + node.size * 0.5,
+			_the_sunken_one_ground_y(), dir, landings, func() -> void:
+		_rival_fx_in_flight = false
+		if _battle_over or _stage_generation != generation_before:
+			_update_action_buttons()
+			return
+		if _hero_pos_index >= span.x and _hero_pos_index <= span.y:
+			apply_damage(damage)
+		_deal_line_aoe_damage_to_illusions(span.x, span.y, damage)
+		_deal_line_aoe_damage_to_bear(span.x, span.y, damage)
+		_shake_screen()
+		_refresh_bars()
+		if _recruited.get("current_hp", 0) <= 0:
+			_handle_defeat()
+			return
+		_update_action_buttons()
+	)
+	move_child(fx, mini(hero_image.get_index(), enemies_layer.get_index()))
 
 
 # ------------------------------------------------------------------
@@ -14648,280 +14934,410 @@ func _end_enemy_the_mist_remembers() -> void:
 
 
 # ------------------------------------------------------------------
-# Ancient Apparition's Cold Feet/Ice Vortex, cast by the rival on the
-# player - mirrors the player-side _resolve_cold_feet_cast()/
-# _resolve_ice_vortex_cast(), just arming the single-player _player_
-# cold_feet_dot_*/_player_ice_vortex_dot_* vars instead of per-enemy
+# Nhal's Mark of Stillness/The Hollow Cold, cast by the rival on the
+# player - mirrors the player-side _resolve_mark_of_stillness_cast()/
+# _resolve_the_hollow_cold_cast(), just arming the single-player _player_
+# mark_of_stillness_dot_*/_player_the_hollow_cold_dot_* vars instead of per-enemy
 # Dictionary fields, since there's only one player to track them on
 # (same simplification Thornbind's own _player_thornbind_dot_* fields
-# already use). Ice Vortex's own AoE has nothing else to reach in a
+# already use). The Hollow Cold's own AoE has nothing else to reach in a
 # hero fight (there's no other enemy besides the player), same "only
-# one possible target" simplification Abyssal Spasm/Torrent's splash
+# one possible target" simplification Abyssal Spasm/Drowned Surge's splash
 # already use for a rival.
 # ------------------------------------------------------------------
 
-func _cast_enemy_cold_feet(level_data: Dictionary) -> void:
+func _cast_enemy_mark_of_stillness(level_data: Dictionary) -> void:
 	if _enemy_skill_on_bear:
-		_cast_enemy_cold_feet_on_bear(level_data)
+		_cast_enemy_mark_of_stillness_on_bear(level_data)
 		return
-	_player_cold_feet_dot_damage = float(level_data.get("damage", 0))
-	_player_cold_feet_dot_turns_left = int(level_data.get("duration", 0))
-	_show_message_over_hero("Cold Feet!")
-	_flash_bounce_hit(hero_image, COLD_FEET_FLASH_COLOR)
-	_refresh_cold_feet_frost()
+	_player_mark_of_stillness_dot_damage = float(level_data.get("damage", 0))
+	_player_mark_of_stillness_dot_turns_left = int(level_data.get("duration", 0))
+	_show_message_over_hero("Mark of Stillness!")
+	_flash_bounce_hit(hero_image, MARK_OF_STILLNESS_FLASH_COLOR)
+	_refresh_mark_of_stillness_frost()
 
 
-func _cast_enemy_ice_vortex(level_data: Dictionary) -> void:
+func _cast_enemy_the_hollow_cold(level_data: Dictionary) -> void:
 	if _enemy_skill_on_bear:
-		_cast_enemy_ice_vortex_on_bear(level_data)
+		_cast_enemy_the_hollow_cold_on_bear(level_data)
 		return
 	var damage: float = float(level_data.get("damage", 0))
 	var duration: int = int(level_data.get("duration", 0))
-	# Same default as the player's own copy (_resolve_ice_vortex_cast()).
+	# Same default as the player's own copy (_resolve_the_hollow_cold_cast()).
 	var radius: int = int(level_data.get("radius", 1))
-	_player_ice_vortex_dot_damage = damage
-	_player_ice_vortex_dot_turns_left = duration
-	_show_message_over_hero("Ice Vortex!")
-	_flash_bounce_hit(hero_image, COLD_FEET_FLASH_COLOR)
+	_player_the_hollow_cold_dot_damage = damage
+	_player_the_hollow_cold_dot_turns_left = duration
+	_show_message_over_hero("The Hollow Cold!")
+	_flash_bounce_hit(hero_image, MARK_OF_STILLNESS_FLASH_COLOR)
 
 	# Centered on the player (the vortex's only possible target here) -
 	# his illusions and Elderwild Companion within that radius get the same DoT,
 	# ticked alongside his own in _tick_player_turn_start_effects().
-	_mark_illusions_ice_vortex(_illusions, _hero_pos_index, radius, damage, duration)
+	_mark_illusions_the_hollow_cold(_illusions, _hero_pos_index, radius, damage, duration)
 	if _is_bear_alive() and _distance(_bear["pos_index"], _hero_pos_index) <= radius:
-		_bear["ice_vortex_dot_damage"] = damage
-		_bear["ice_vortex_dot_turns_left"] = duration
+		_bear["the_hollow_cold_dot_damage"] = damage
+		_bear["the_hollow_cold_dot_turns_left"] = duration
 		if is_instance_valid(_bear.get("node")):
-			_flash_bounce_hit(_bear["node"], COLD_FEET_FLASH_COLOR)
+			_flash_bounce_hit(_bear["node"], MARK_OF_STILLNESS_FLASH_COLOR)
 
-	_play_ice_vortex_swirl(hero_image, radius)
-	_refresh_cold_feet_frost()
+	_play_the_hollow_cold_swirl(hero_image, radius)
+	_open_hollow_cold_tear(hero_image, _hero_pos_index, radius, duration, true)
+	_refresh_mark_of_stillness_frost()
 
 
-## Arms Ice Vortex's DoT (`damage` per turn for `duration` turns) onto
+## Arms The Hollow Cold's DoT (`damage` per turn for `duration` turns) onto
 ## every illusion in `illusions` - either side's array, `_illusions` or
 ## `_enemy_illusions` - within `radius` columns of `center_pos_index`,
 ## the same area check the enemy-side loop uses, and gives each one the
 ## cast's icy flash. Stored on the illusion's own Dictionary under the
-## same ice_vortex_dot_* keys an enemy uses; ticked by
-## _tick_enemy_illusions_ice_vortex()/_tick_player_allies_ice_vortex().
-func _mark_illusions_ice_vortex(illusions: Array, center_pos_index: int, radius: int, damage: float, duration: int) -> void:
+## same the_hollow_cold_dot_* keys an enemy uses; ticked by
+## _tick_enemy_illusions_the_hollow_cold()/_tick_player_allies_the_hollow_cold().
+func _mark_illusions_the_hollow_cold(illusions: Array, center_pos_index: int, radius: int, damage: float, duration: int) -> void:
 	for illusion in illusions:
 		if _distance(illusion["pos_index"], center_pos_index) <= radius:
-			illusion["ice_vortex_dot_damage"] = damage
-			illusion["ice_vortex_dot_turns_left"] = duration
+			illusion["the_hollow_cold_dot_damage"] = damage
+			illusion["the_hollow_cold_dot_turns_left"] = duration
 			if is_instance_valid(illusion.get("node")):
-				_flash_bounce_hit(illusion["node"], COLD_FEET_FLASH_COLOR)
+				_flash_bounce_hit(illusion["node"], MARK_OF_STILLNESS_FLASH_COLOR)
 
 
-## Ticks Ice Vortex's DoT on the rival's own illusions - once per enemy
+## Ticks The Hollow Cold's DoT on the rival's own illusions - once per enemy
 ## turn, at its very start (see _enemy_turn()), the same timing every
 ## enemy's own DoT ticks at. Each tick is mitigated by the boss's own
 ## effective armor, the same way every other hit on one of his
 ## illusions is (see _deal_aoe_damage_to_enemy_illusions()).
-func _tick_enemy_illusions_ice_vortex() -> void:
+func _tick_enemy_illusions_the_hollow_cold() -> void:
 	if _enemy_illusions.is_empty():
 		return
 	var boss: Dictionary = _get_hero_fight_boss()
 	var armor: float = _enemy_hero_effective_armor(boss) if not boss.is_empty() else 0.0
 	for illusion in _enemy_illusions.duplicate():
-		if illusion.get("ice_vortex_dot_turns_left", 0) <= 0:
+		if illusion.get("the_hollow_cold_dot_turns_left", 0) <= 0:
 			continue
-		illusion["ice_vortex_dot_turns_left"] -= 1
-		var dot: float = float(illusion.get("ice_vortex_dot_damage", 0))
+		illusion["the_hollow_cold_dot_turns_left"] -= 1
+		var dot: float = float(illusion.get("the_hollow_cold_dot_damage", 0))
 		if dot > 0.0:
 			_deal_damage_to_enemy_illusion(illusion, _apply_armor_reduction(dot, armor))
 
 
-## Ticks Ice Vortex's DoT on the player's own illusions - called from
+## Ticks The Hollow Cold's DoT on the player's own illusions - called from
 ## _tick_player_turn_start_effects(), right alongside the hero's own
 ## tick. Illusions mitigate with the hero's own armor (same as every
 ## other hit on them - see _deal_aoe_damage_to_illusions()).
-func _tick_player_allies_ice_vortex() -> void:
+func _tick_player_allies_the_hollow_cold() -> void:
 	var hero_armor: float = _hero_armor()
 	for illusion in _illusions.duplicate():
-		if illusion.get("ice_vortex_dot_turns_left", 0) <= 0:
+		if illusion.get("the_hollow_cold_dot_turns_left", 0) <= 0:
 			continue
-		illusion["ice_vortex_dot_turns_left"] -= 1
-		var dot: float = float(illusion.get("ice_vortex_dot_damage", 0))
+		illusion["the_hollow_cold_dot_turns_left"] -= 1
+		var dot: float = float(illusion.get("the_hollow_cold_dot_damage", 0))
 		if dot > 0.0:
 			_deal_damage_to_illusion(illusion, _apply_armor_reduction(dot, hero_armor))
 
-	# The Elderwild Companion's own Ice Vortex tick - along with every other DoT
+	# The Elderwild Companion's own The Hollow Cold tick - along with every other DoT
 	# a rival can put on it - lives in _tick_bear_turn_start_effects().
 
 
 # ------------------------------------------------------------------
-# Ancient Apparition's Chilling Touch, cast by the rival - mirrors the
-# player's own _resolve_chilling_touch_cast(): the rival's own rolled
+# Nhal's Touch of the First Cold, cast by the rival - mirrors the
+# player's own _resolve_touch_of_the_first_cold_cast(): the rival's own rolled
 # Attack damage (_roll_enemy_hero_damage(), the enemy-side mirror of
 # _roll_hero_damage()) plus this level's own flat bonus_damage on top.
 # Like the player's own copy, this is SKILL damage, not the plain
 # Attack action itself, so it never triggers Leeching Hunger's steal,
 # Wildbond's lifesteal, or Mark of the Mist's stacking - those stay
 # scoped specifically to _resolve_enemy_hero_attack().
+# The hit lands when The Reaching Void's talons strike (see
+# _play_the_reaching_void()), and until then the player can't act
+# (_rival_fx_in_flight) - same as the rival's The Sunken One.
 # ------------------------------------------------------------------
 
-func _cast_enemy_chilling_touch(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_touch_of_the_first_cold(enemy: Dictionary, level_data: Dictionary) -> void:
 	if _enemy_skill_on_bear:
-		_cast_enemy_chilling_touch_on_bear(enemy, level_data)
+		_cast_enemy_touch_of_the_first_cold_on_bear(enemy, level_data)
 		return
-	apply_damage(_roll_enemy_hero_damage(enemy) + float(level_data.get("bonus_damage", 0)))
+	var damage: float = _roll_enemy_hero_damage(enemy) + float(level_data.get("bonus_damage", 0))
+	_rival_fx_in_flight = true
+	_update_action_buttons()
+	var generation_before: int = _stage_generation
+	_play_the_reaching_void(enemy.get("node"), hero_image, func() -> void:
+		_rival_fx_in_flight = false
+		if _battle_over or _stage_generation != generation_before:
+			_update_action_buttons()
+			return
+		apply_damage(damage)
+		_refresh_bars()
+		if _recruited.get("current_hp", 0) <= 0:
+			_handle_defeat()
+			return
+		_update_action_buttons()
+	)
+
+
+## Purely cosmetic: Touch of the First Cold - The Reaching Void
+## (VoidReachFX). A shard of void forms at the front of `from_node` (the
+## side facing its target) and a limb of void reaches from it into
+## `to_node`'s middle; at the touch the target is hollowed out, thrown
+## back and frosted, and the screen shakes. `on_hit` (the damage) fires
+## at that moment - or right away if either node is already gone, so
+## the caller's turn flow never stalls.
+func _play_the_reaching_void(from_node: Variant, to_node: Variant, on_hit: Callable) -> void:
+	if not (from_node is Control) or not (to_node is Control) \
+			or not is_instance_valid(from_node) or not is_instance_valid(to_node) or not is_instance_valid(_fx_layer):
+		on_hit.call()
+		return
+	var end: Vector2 = to_node.global_position + to_node.size * Vector2(0.5, 0.45)
+	var center: Vector2 = from_node.global_position + from_node.size * 0.5
+	var facing: float = signf(end.x - center.x) if absf(end.x - center.x) > 1.0 else 1.0
+	var start: Vector2 = center + Vector2(facing * from_node.size.x * 0.25, -from_node.size.y * 0.1)
+	VoidReachFX.play(_fx_layer, start, end, to_node, func() -> void:
+		if is_instance_valid(to_node):
+			_flash_frost_briefly(to_node, 1.0)
+		_shake_screen()
+		on_hit.call()
+	)
 
 
 # ------------------------------------------------------------------
-# Ancient Apparition's Ice Blast, cast by the rival - mirrors the
-# player's own _resolve_ice_blast_cast().
-# Like Abyssal Spasm/Torrent/Ghostship's own rival copies, there's only one
+# Nhal's Return to the Void, cast by the rival - mirrors the
+# player's own _resolve_return_to_the_void_cast().
+# Like Abyssal Spasm/Drowned Surge/The Sunken One's own rival copies, there's only one
 # possible target in a hero fight (the player), so the "hit everyone
 # within radius" AoE collapses to a single hit; the DoT/execute state
-# lives in the single-player _player_ice_blast_* vars instead of a
-# per-enemy Dictionary field for the same reason Cold Feet's/Ice
+# lives in the single-player _player_return_to_the_void_* vars instead of a
+# per-enemy Dictionary field for the same reason Mark of Stillness's/Ice
 # Vortex's own rival copies do.
 # ------------------------------------------------------------------
 
-func _cast_enemy_ice_blast(level_data: Dictionary) -> void:
+func _cast_enemy_return_to_the_void(level_data: Dictionary) -> void:
 	if _enemy_skill_on_bear:
-		_cast_enemy_ice_blast_on_bear(level_data)
+		_cast_enemy_return_to_the_void_on_bear(level_data)
 		return
 	var damage: float = float(level_data.get("damage", 0))
-	_play_ice_blast_effect(_get_hero_fight_boss().get("node"), hero_image)
-	apply_damage(damage)
-	# Ice Blast's own splash radius is centered on the impact point (the
-	# player, the only possible target here) - an illusion near the
-	# player can still be caught in it.
-	_deal_aoe_damage_to_illusions(_hero_pos_index, int(level_data.get("radius", 0)), damage)
-	_deal_aoe_damage_to_bear(_hero_pos_index, int(level_data.get("radius", 0)), damage)
-	_player_ice_blast_dot_damage = float(level_data.get("dot_damage", 0))
-	_player_ice_blast_dot_turns_left = int(level_data.get("dot_duration", 0))
-	_player_ice_blast_execute_pct = float(level_data.get("execute_pct", 0.0))
-	_player_stun_turns_left = int(level_data.get("stun_turns", 1))
-	_show_message_over_hero("Ice Blast!")
-	_refresh_cold_feet_frost()
+	var radius: int = int(level_data.get("radius", 0))
+	var struck: Array = [hero_image]
+	for illusion in _illusions:
+		if _distance(illusion["pos_index"], _hero_pos_index) <= radius:
+			struck.append(illusion.get("node"))
+	if _is_bear_alive() and _distance(_bear["pos_index"], _hero_pos_index) <= radius:
+		struck.append(_bear.get("node"))
+	_show_message_over_hero("Return to the Void!")
+	# The player can't act until the world has been erased around him and
+	# the hit has landed - same as the rival's The Sunken One.
+	_rival_fx_in_flight = true
+	_update_action_buttons()
+	var generation_before: int = _stage_generation
+	_play_return_to_the_void(hero_image, radius, struck, func() -> void:
+		_rival_fx_in_flight = false
+		if _battle_over or _stage_generation != generation_before:
+			_update_action_buttons()
+			return
+		apply_damage(damage)
+		# Return to the Void's own splash radius is centered on the impact point (the
+		# player, the only possible target here) - an illusion near the
+		# player can still be caught in it.
+		_deal_aoe_damage_to_illusions(_hero_pos_index, radius, damage)
+		_deal_aoe_damage_to_bear(_hero_pos_index, radius, damage)
+		_player_return_to_the_void_dot_damage = float(level_data.get("dot_damage", 0))
+		_player_return_to_the_void_dot_turns_left = int(level_data.get("dot_duration", 0))
+		_player_return_to_the_void_execute_pct = float(level_data.get("execute_pct", 0.0))
+		_player_stun_turns_left = int(level_data.get("stun_turns", 1))
+		_refresh_mark_of_stillness_frost()
+		_refresh_bars()
+		if _recruited.get("current_hp", 0) <= 0:
+			_handle_defeat()
+			return
+		_update_action_buttons()
+	)
 
+
+## Purely cosmetic: Return to the Void - The Unmaking (ReturnToVoidFX). A
+## sigil brands itself onto `target_node`, the battlefield dims while
+## cracks of cold light spread across `radius` columns around it, then
+## the world inside that dome is erased into the void - every sprite in
+## `struck` hollowed out, the screen shaking - and knits back. `on_impact`
+## (the hits) fires at the erasure, or right away if the target's sprite
+## is already gone, so the caller's turn flow never stalls. The erasure
+## is drawn behind every fighter, over the battle background.
+func _play_return_to_the_void(target_node: Variant, radius: int, struck: Array, on_impact: Callable) -> void:
+	if not is_instance_valid(target_node) or not (target_node is Control) or not is_instance_valid(_fx_layer):
+		on_impact.call()
+		return
+	var radii := Vector2(_grid_unit() * (float(radius) + 0.5), target_node.size.y * 0.75)
+	ReturnToVoidFX.play(self, hero_image.get_index(), _fx_layer, target_node, radii, struck, func() -> void:
+		_shake_screen()
+		on_impact.call()
+	)
+
+
+## Keeps Return to the Void's lingering void mark (ReturnToVoidFX.
+## set_void_mark()) on everyone still under its DoT - every enemy, the
+## player's hero, and his Elderwild Companion - the same always-follow-
+## current-state way _refresh_mark_of_stillness_frost() handles frost.
+func _refresh_void_marks() -> void:
+	for enemy in _enemies:
+		ReturnToVoidFX.set_void_mark(enemy.get("node"), int(enemy.get("return_to_the_void_dot_turns_left", 0)) > 0)
+	ReturnToVoidFX.set_void_mark(hero_image, _player_return_to_the_void_dot_turns_left > 0)
+	if _is_bear_alive():
+		ReturnToVoidFX.set_void_mark(_bear.get("node"), int(_bear.get("return_to_the_void_dot_turns_left", 0)) > 0)
 
 
 # ------------------------------------------------------------------
-# Winter Wyvern's Arctic Burn, cast by the rival on themselves - mirrors
-# the player's own _activate_arctic_burn()/_apply_arctic_burn_attack()/
-# _tick_arctic_burn()/_end_arctic_burn(). _apply_enemy_arctic_burn_
+# The Primordial Hunger's Frostbound Fangs, cast by the rival on themselves - mirrors
+# the player's own _activate_frostbound_fangs()/_apply_frostbound_fangs_attack()/
+# _tick_frostbound_fangs()/_end_frostbound_fangs(). _apply_enemy_frostbound_fangs_
 # attack() is called from _resolve_enemy_hero_attack(), the enemy-side
-# mirror of _apply_hero_attack()'s own call to _apply_arctic_burn_
+# mirror of _apply_hero_attack()'s own call to _apply_frostbound_fangs_
 # attack().
 # ------------------------------------------------------------------
 
-func _cast_enemy_arctic_burn(level_data: Dictionary) -> void:
-	_enemy_arctic_burn_active = true
-	_enemy_arctic_burn_bonus_damage = float(level_data.get("bonus_damage", 0))
-	_enemy_arctic_burn_bonus_range = int(level_data.get("bonus_range", 0))
-	_enemy_arctic_burn_attacks_remaining = int(level_data.get("attacks", 0))
-	_enemy_arctic_burn_turns_remaining = int(level_data.get("duration", 0))
-	_enemy_arctic_burn_duration_pending_start = true
-	_show_message_over_hero("Arctic Burn!")
+func _cast_enemy_frostbound_fangs(level_data: Dictionary) -> void:
+	_enemy_frostbound_fangs_active = true
+	_enemy_frostbound_fangs_bonus_damage = float(level_data.get("bonus_damage", 0))
+	_enemy_frostbound_fangs_bonus_range = int(level_data.get("bonus_range", 0))
+	_enemy_frostbound_fangs_attacks_remaining = int(level_data.get("attacks", 0))
+	_enemy_frostbound_fangs_turns_remaining = int(level_data.get("duration", 0))
+	_enemy_frostbound_fangs_duration_pending_start = true
+	_show_message_over_hero("Frostbound Fangs!")
 	_set_hero_enlarged(_get_hero_fight_boss().get("node"), true)
 
 
-func _apply_enemy_arctic_burn_attack() -> void:
-	if not _enemy_arctic_burn_active or _enemy_arctic_burn_attacks_remaining <= 0:
+func _apply_enemy_frostbound_fangs_attack() -> void:
+	if not _enemy_frostbound_fangs_active or _enemy_frostbound_fangs_attacks_remaining <= 0:
 		return
-	_enemy_arctic_burn_attacks_remaining -= 1
-	if _enemy_arctic_burn_attacks_remaining <= 0:
-		_end_enemy_arctic_burn()
+	_enemy_frostbound_fangs_attacks_remaining -= 1
+	if _enemy_frostbound_fangs_attacks_remaining <= 0:
+		_end_enemy_frostbound_fangs()
 
 
-func _tick_enemy_arctic_burn() -> void:
-	if not _enemy_arctic_burn_active:
+func _tick_enemy_frostbound_fangs() -> void:
+	if not _enemy_frostbound_fangs_active:
 		return
-	if _enemy_arctic_burn_duration_pending_start:
-		_enemy_arctic_burn_duration_pending_start = false
+	if _enemy_frostbound_fangs_duration_pending_start:
+		_enemy_frostbound_fangs_duration_pending_start = false
 		return
-	_enemy_arctic_burn_turns_remaining -= 1
-	if _enemy_arctic_burn_turns_remaining <= 0:
-		_end_enemy_arctic_burn()
+	_enemy_frostbound_fangs_turns_remaining -= 1
+	if _enemy_frostbound_fangs_turns_remaining <= 0:
+		_end_enemy_frostbound_fangs()
 
 
-func _end_enemy_arctic_burn() -> void:
-	_enemy_arctic_burn_active = false
-	_enemy_arctic_burn_bonus_damage = 0.0
-	_enemy_arctic_burn_bonus_range = 0
-	_enemy_arctic_burn_attacks_remaining = 0
-	_enemy_arctic_burn_turns_remaining = 0
-	_enemy_arctic_burn_duration_pending_start = false
+func _end_enemy_frostbound_fangs() -> void:
+	_enemy_frostbound_fangs_active = false
+	_enemy_frostbound_fangs_bonus_damage = 0.0
+	_enemy_frostbound_fangs_bonus_range = 0
+	_enemy_frostbound_fangs_attacks_remaining = 0
+	_enemy_frostbound_fangs_turns_remaining = 0
+	_enemy_frostbound_fangs_duration_pending_start = false
 	_set_hero_enlarged(_get_hero_fight_boss().get("node"), false)
 
 
 # ------------------------------------------------------------------
-# Winter Wyvern's Splinter Blast, cast by the rival on the player -
-# mirrors the player's own _resolve_splinter_blast_cast(). Simplification
-# versus that player-facing copy: like Abyssal Spasm/Whisper of the Veil/Torrent,
+# The Primordial Hunger's Maddening Roar, cast by the rival on the player -
+# mirrors the player's own _resolve_maddening_roar_cast(). Simplification
+# versus that player-facing copy: like Abyssal Spasm/Whisper of the Veil/Drowned Surge,
 # there's only one possible target in a hero fight, so the splash onto
-# "every OTHER enemy within splinter_range" has nothing else to reach -
+# "every OTHER enemy within shatter_range" has nothing else to reach -
 # this always resolves as a single hit.
 # ------------------------------------------------------------------
 
-func _cast_enemy_splinter_blast(level_data: Dictionary) -> void:
+func _cast_enemy_maddening_roar(level_data: Dictionary) -> void:
 	if _enemy_skill_on_bear:
-		_cast_enemy_splinter_blast_on_bear(level_data)
+		_cast_enemy_maddening_roar_on_bear(level_data)
 		return
-	var splinter_range: int = int(level_data.get("splinter_range", 0))
-	var shard_nodes: Array = []
+	var damage: float = float(level_data.get("damage", 0))
+	var shatter_range: int = int(level_data.get("shatter_range", 0))
+	var shatter_damage: float = float(level_data.get("shatter_damage", 0))
+	var shatter_nodes: Array = []
 	for illusion in _illusions:
-		if _distance(illusion["pos_index"], _hero_pos_index) <= splinter_range:
-			shard_nodes.append(illusion.get("node"))
-	if _is_bear_alive() and _distance(_bear["pos_index"], _hero_pos_index) <= splinter_range:
-		shard_nodes.append(_bear.get("node"))
-	_play_splinter_shards(hero_image, shard_nodes)
-	apply_damage(float(level_data.get("damage", 0)))
-	# Splinter Blast's own splash (its lighter splinter_damage, not the
-	# main hit) is centered on the impact point (the player, the only
-	# possible target here) - an illusion near the player can still be
-	# caught in it.
-	_deal_aoe_damage_to_illusions(_hero_pos_index, int(level_data.get("splinter_range", 0)), float(level_data.get("splinter_damage", 0)))
-	_deal_aoe_damage_to_bear(_hero_pos_index, int(level_data.get("splinter_range", 0)), float(level_data.get("splinter_damage", 0)))
+		if _distance(illusion["pos_index"], _hero_pos_index) <= shatter_range:
+			shatter_nodes.append(illusion.get("node"))
+	if _is_bear_alive() and _distance(_bear["pos_index"], _hero_pos_index) <= shatter_range:
+		shatter_nodes.append(_bear.get("node"))
+	# The player can't act until the roar has landed - same as the
+	# rival's The Sunken One.
+	_rival_fx_in_flight = true
+	_update_action_buttons()
+	var generation_before: int = _stage_generation
+	var on_target_hit := func() -> void:
+		if _battle_over or _stage_generation != generation_before:
+			return
+		apply_damage(damage)
+		_refresh_bars()
+		if _recruited.get("current_hp", 0) <= 0:
+			_rival_fx_in_flight = false
+			_handle_defeat()
+	var on_shatter := func() -> void:
+		_rival_fx_in_flight = false
+		if _battle_over or _stage_generation != generation_before:
+			_update_action_buttons()
+			return
+		# Maddening Roar's own splash (its lighter shatter_damage, not the
+		# main hit) is centered on the impact point (the player, the only
+		# possible target here) - an illusion near the player can still be
+		# caught in it.
+		_deal_aoe_damage_to_illusions(_hero_pos_index, shatter_range, shatter_damage)
+		_deal_aoe_damage_to_bear(_hero_pos_index, shatter_range, shatter_damage)
+		_refresh_bars()
+		_update_action_buttons()
+	_play_maddening_roar(_get_hero_fight_boss().get("node"), _enemy_hero_static, hero_image, shatter_nodes, on_target_hit, on_shatter)
+
+
+## Purely cosmetic: Maddening Roar (RoarFX) - roared from `caster`'s jaws
+## (its hero data's "roar_origin", a point on its art, mirrored when it
+## faces left) at `target_node`, the rings then shattering every node in
+## `others`. `on_target_hit` (the main hit) fires when the roar strikes
+## the target and `on_shatter` (the splash) when the rings have reached
+## the others - both right away if either sprite is already gone, so the
+## caller's turn flow never stalls.
+func _play_maddening_roar(caster: Variant, hero_static: Dictionary, target_node: Variant, others: Array, on_target_hit: Callable, on_shatter: Callable) -> void:
+	if not is_instance_valid(caster) or not is_instance_valid(target_node) or not is_instance_valid(_fx_layer) \
+			or not (caster is Control) or not (target_node is Control):
+		on_target_hit.call()
+		on_shatter.call()
+		return
+	var origin: Vector2 = hero_static.get("roar_origin", Vector2(0.5, 0.3))
+	if caster.flip_h:
+		origin.x = 1.0 - origin.x
+	var mouth: Vector2 = caster.global_position + caster.size * origin
+	RoarFX.play(_fx_layer, caster, mouth, target_node, others, on_target_hit, on_shatter)
 
 
 # ------------------------------------------------------------------
-# Winter Wyvern's Cold Embrace, cast by the rival on themselves -
-# mirrors the player's own _activate_cold_embrace()/_dispel_all_hero_
-# effects()/_tick_cold_embrace()/_end_cold_embrace(), including swapping
-# the boss's own node texture to COLD_EMBRACE_IMAGE_PATH (and back once
-# it ends) the same way the player's portrait swaps - see
-# _activate_enemy_beast_of_the_elderwild()/_end_enemy_beast_of_the_elderwild() for the identical
-# pattern already used for Beast of the Elderwild's own bear portrait. Damage
+# The Primordial Hunger's The Test of Time, cast by the rival on themselves -
+# mirrors the player's own _activate_the_test_of_time()/_dispel_all_hero_
+# effects()/_tick_the_test_of_time()/_end_the_test_of_time(), including the
+# same floating and ticking clock (TimeStillFX) on the boss. Damage
 # immunity is enforced in _deal_fixed_damage_to_enemy() (checked before
 # The Mist Remembers/Veil of the Forgotten, same as the player's own apply_damage()
-# checks Cold Embrace before anything else); the full action lockout (no
+# checks The Test of Time before anything else); the full action lockout (no
 # move, attack, OR skill cast - stricter than the player's own copy,
-# which can still cast something else while encased) is enforced at the
+# which can still cast something else meanwhile) is enforced at the
 # very top of _enemy_hero_turn().
 # ------------------------------------------------------------------
 
-func _cast_enemy_cold_embrace(level_data: Dictionary) -> void:
+func _cast_enemy_the_test_of_time(level_data: Dictionary) -> void:
 	_dispel_all_enemy_hero_effects()
 
-	_enemy_cold_embrace_active = true
-	_enemy_cold_embrace_heal_per_turn = float(level_data.get("heal", 0))
-	_enemy_cold_embrace_turns_remaining = int(level_data.get("duration", 0))
-	_enemy_cold_embrace_duration_pending_start = true
-	_show_message_over_hero("Encased in ice!")
+	_enemy_the_test_of_time_active = true
+	_enemy_the_test_of_time_heal_per_turn = float(level_data.get("heal", 0))
+	_enemy_the_test_of_time_turns_remaining = int(level_data.get("duration", 0))
+	_enemy_the_test_of_time_duration_pending_start = true
 
 	var boss: Dictionary = _get_hero_fight_boss()
-	if not boss.is_empty() and ResourceLoader.exists(COLD_EMBRACE_IMAGE_PATH) and is_instance_valid(boss["node"]):
-		boss["node"].texture = load(COLD_EMBRACE_IMAGE_PATH)
-		_flash_bounce_hit(boss["node"], COLD_FEET_FLASH_COLOR)
-	_refresh_cold_feet_frost()
+	if not boss.is_empty() and is_instance_valid(boss["node"]):
+		TimeStillFX.begin(boss["node"], _enemy_the_test_of_time_turns_remaining)
 
 
 ## Dispels every other effect currently on the rival, good or bad, right
-## before Cold Embrace establishes its own state - the enemy-side mirror
+## before The Test of Time establishes its own state - the enemy-side mirror
 ## of the player's own _dispel_all_hero_effects(), enumerating the same
 ## kind of fields but from the "_enemy_*" block instead (this rival's
 ## own buffs) - there's nothing equivalent to the player's debuff-
 ## receiving fields to clear here, since nothing in this game currently
 ## lets a rival hero's own AI inflict a debuff on ITSELF.
 func _dispel_all_enemy_hero_effects() -> void:
-	if _enemy_arctic_burn_active:
-		_end_enemy_arctic_burn()
+	if _enemy_frostbound_fangs_active:
+		_end_enemy_frostbound_fangs()
 	if _enemy_leeching_hunger_active:
 		_end_enemy_leeching_hunger()
 	if _enemy_depthsveil_active:
@@ -14936,64 +15352,69 @@ func _dispel_all_enemy_hero_effects() -> void:
 		_end_enemy_the_mist_remembers()
 
 
-func _tick_enemy_cold_embrace() -> void:
-	if not _enemy_cold_embrace_active:
+func _tick_enemy_the_test_of_time() -> void:
+	if not _enemy_the_test_of_time_active:
 		return
 
-	if _enemy_cold_embrace_duration_pending_start:
-		_enemy_cold_embrace_duration_pending_start = false
+	if _enemy_the_test_of_time_duration_pending_start:
+		_enemy_the_test_of_time_duration_pending_start = false
 		return
 
 	var boss: Dictionary = _get_hero_fight_boss()
 	if not boss.is_empty():
 		var max_hp: float = _enemy_hero_effective_max_hp(boss)
-		boss["current_hp"] = minf(max_hp, float(boss.get("current_hp", 0.0)) + _enemy_cold_embrace_heal_per_turn)
+		boss["current_hp"] = minf(max_hp, float(boss.get("current_hp", 0.0)) + _enemy_the_test_of_time_heal_per_turn)
 
-	_enemy_cold_embrace_turns_remaining -= 1
-	if _enemy_cold_embrace_turns_remaining <= 0:
-		_end_enemy_cold_embrace()
+	_enemy_the_test_of_time_turns_remaining -= 1
+	if not boss.is_empty():
+		var clock := TimeStillFX.of(boss.get("node"))
+		if clock != null:
+			clock.set_turns(_enemy_the_test_of_time_turns_remaining)
+	if _enemy_the_test_of_time_turns_remaining <= 0:
+		_end_enemy_the_test_of_time()
 
 
-func _end_enemy_cold_embrace() -> void:
-	_enemy_cold_embrace_active = false
-	_enemy_cold_embrace_heal_per_turn = 0.0
-	_enemy_cold_embrace_turns_remaining = 0
-	_enemy_cold_embrace_duration_pending_start = false
-	_refresh_cold_feet_frost()
+func _end_enemy_the_test_of_time() -> void:
+	_enemy_the_test_of_time_active = false
+	_enemy_the_test_of_time_heal_per_turn = 0.0
+	_enemy_the_test_of_time_turns_remaining = 0
+	_enemy_the_test_of_time_duration_pending_start = false
 
 	var boss: Dictionary = _get_hero_fight_boss()
-	if boss.is_empty() or not is_instance_valid(boss["node"]):
-		return
-	var original_image: String = str(boss["static"].get("image", ""))
-	if original_image != "" and ResourceLoader.exists(original_image):
-		boss["node"].texture = load(original_image)
+	if not boss.is_empty():
+		var clock := TimeStillFX.of(boss.get("node"))
+		if clock != null:
+			clock.finish()
 
 
 # ------------------------------------------------------------------
-# Winter Wyvern's ultimate, Winter's Curse, cast by the rival - mirrors
-# the player's own _resolve_winters_curse_cast()/_is_winters_curse_
+# The Primordial Hunger's ultimate, The Hunger Calls, cast by the rival - mirrors
+# the player's own _resolve_the_hunger_calls_cast()/_is_the_hunger_calls_
 # active(). Simplification versus that player-facing copy: the "every
 # OTHER enemy within curse_range piles onto the frozen target instead
 # of the caster" half of the effect has nothing to redirect in a hero
 # fight - the rival's only possible "attacker" is the player himself,
 # controlled directly rather than by the same AI _enemy_turn() redirect
 # logic uses, so there's no second enemy to pull off of him. This
-# collapses Winter's Curse down to freezing the player outright
-# (reusing the shared _player_stun_turns_left field Torrent's/Barbed Lunge's/
-# Ice Blast's own stun already use), the same "AoE/redirect skill with
-# only one possible target" simplification Abyssal Spasm/Splinter Blast/
-# Ice Vortex already use for a rival.
+# collapses The Hunger Calls down to freezing the player outright
+# (reusing the shared _player_stun_turns_left field Drowned Surge's/Barbed Lunge's/
+# Return to the Void's own stun already use), the same "AoE/redirect skill with
+# only one possible target" simplification Abyssal Spasm/Maddening Roar/
+# The Hollow Cold already use for a rival.
 # ------------------------------------------------------------------
 
-func _cast_enemy_winters_curse(level_data: Dictionary) -> void:
+func _cast_enemy_the_hunger_calls(level_data: Dictionary) -> void:
 	if _enemy_skill_on_bear:
-		_cast_enemy_winters_curse_on_bear(level_data)
+		_cast_enemy_the_hunger_calls_on_bear(level_data)
 		return
 	_player_stun_turns_left = int(level_data.get("duration", 0))
-	_player_winters_curse_active = true
-	_show_message_over_hero("Winter's Curse!")
-	_flash_bounce_hit(hero_image, COLD_FEET_FLASH_COLOR)
-	_refresh_cold_feet_frost()
+	_player_the_hunger_calls_active = true
+	_show_message_over_hero("The Hunger Calls!")
+	if _enemy_hunger_calls_fx != null:
+		_enemy_hunger_calls_fx.end()
+	_enemy_hunger_calls_fx = _play_the_hunger_calls(_get_hero_fight_boss().get("node"), _enemy_hero_static, hero_image, int(level_data.get("curse_range", 0)))
+	_enemy_hunger_calls_fx_on_bear = false
+	_refresh_mark_of_stillness_frost()
 
 
 # ------------------------------------------------------------------
@@ -15003,7 +15424,7 @@ func _cast_enemy_winters_curse(level_data: Dictionary) -> void:
 # copies: there's only one possible target in a hero fight (the player),
 # so Crystal Nova's own "every other enemy within radius of the primary
 # target" splash has nothing else to reach - same "AoE skill with only
-# one possible target" simplification Abyssal Spasm/Splinter Blast/Ice
+# one possible target" simplification Abyssal Spasm/Maddening Roar/Ice
 # Vortex already use for a rival.
 # ------------------------------------------------------------------
 
@@ -15035,8 +15456,8 @@ func _cast_enemy_frostbite(level_data: Dictionary) -> void:
 	_player_frostbite_dot_turns_left = int(level_data.get("dot_duration", 0))
 	_player_stun_turns_left = int(level_data.get("stun_turns", 1))
 	_show_message_over_hero("Frostbite!")
-	_flash_bounce_hit(hero_image, COLD_FEET_FLASH_COLOR)
-	_refresh_cold_feet_frost()
+	_flash_bounce_hit(hero_image, MARK_OF_STILLNESS_FLASH_COLOR)
+	_refresh_mark_of_stillness_frost()
 
 
 
@@ -15045,7 +15466,7 @@ func _cast_enemy_frostbite(level_data: Dictionary) -> void:
 # herself - mirrors the player's own _activate_freezing_field()/_tick_
 # freezing_field()/_end_freezing_field(). Damage is applied straight to
 # the player via apply_damage() (which already checks the player's own
-# Cold Embrace immunity, same as every other rival hit) rather than
+# The Test of Time immunity, same as every other rival hit) rather than
 # _deal_fixed_damage_to_enemy() (an enemy-side helper, for damage FROM
 # the player), the same split every other "rival hits the player" cast
 # above already uses.
@@ -15102,7 +15523,7 @@ func _tick_enemy_freezing_field() -> void:
 	_enemy_freezing_field_turns_remaining -= 1
 	if _enemy_freezing_field_turns_remaining <= 0:
 		_end_enemy_freezing_field()
-	_refresh_cold_feet_frost()
+	_refresh_mark_of_stillness_frost()
 
 
 func _end_enemy_freezing_field() -> void:
@@ -15111,7 +15532,7 @@ func _end_enemy_freezing_field() -> void:
 	_enemy_freezing_field_radius = 0
 	_enemy_freezing_field_turns_remaining = 0
 	_enemy_freezing_field_duration_pending_start = false
-	_refresh_cold_feet_frost()
+	_refresh_mark_of_stillness_frost()
 
 
 # ------------------------------------------------------------------
@@ -15782,7 +16203,7 @@ func _cast_enemy_lil_shredder(enemy: Dictionary, level_data: Dictionary) -> void
 # context()'s own "rip_tide_*" fields. Its AoE splash (aoe_damage_pct/
 # radius) never has an actual second target to reach in a real hero fight
 # (there's only ever the one player to hit - same "no cleave" collapse
-# Abyssal Spasm's/Ghostship's/Whirling Death's own rival copies already have,
+# Abyssal Spasm's/The Sunken One's/Whirling Death's own rival copies already have,
 # see _cast_enemy_abyssal_spasm()'s own docstring), so unlike the player's
 # own _apply_rip_tide_cleave(), its splash off her plain Attack reaches
 # the player's own illusions and Elderwild Companion near him (see
@@ -15828,15 +16249,15 @@ func _apply_enemy_rip_tide_splash(attack_damage: float) -> void:
 	_deal_aoe_damage_to_bear(_hero_pos_index, radius, splash_damage, true)
 
 
-## The rival Kunkka's Tidebringer cleave off his empowered plain Attack
+## The rival Kaelen Varr's Pull of the Abyss cleave off his empowered plain Attack
 ## on the player - the mirror of the player's own
-## _apply_tidebringer_cleave(): `level_data`'s cleave_damage_pct of
-## `attack_damage` (the Attack's raw, pre-mitigation roll, Tidebringer's
+## _apply_pull_of_the_abyss_cleave(): `level_data`'s cleave_damage_pct of
+## `attack_damage` (the Attack's raw, pre-mitigation roll, Pull of the Abyss's
 ## own bonus already folded in) to every one of the player's illusions
 ## and his Elderwild Companion within cleave_columns of the player (the struck
 ## target, never hit twice), each mitigated by its own armor and given
 ## the standard splash hit-flash.
-func _apply_enemy_tidebringer_cleave(attack_damage: float, level_data: Dictionary) -> void:
+func _apply_enemy_pull_of_the_abyss_cleave(attack_damage: float, level_data: Dictionary) -> void:
 	var cleave_damage: float = attack_damage * float(level_data.get("cleave_damage_pct", 0.0))
 	if cleave_damage <= 0.0:
 		return
@@ -15848,7 +16269,7 @@ func _apply_enemy_tidebringer_cleave(attack_damage: float, level_data: Dictionar
 ## How many of the player's own illusions, plus his Elderwild Companion, stand
 ## within `radius` columns of him - what a rival's splash/cleave off an
 ## Attack on the player could also reach. Feeds the AI's own scoring
-## (e.g. Tidebringer's cleave target count).
+## (e.g. Pull of the Abyss's cleave target count).
 func _count_player_allies_near_hero(radius: int) -> int:
 	var count: int = 0
 	for illusion in _illusions:
@@ -16053,7 +16474,7 @@ func _deal_aoe_damage_to_enemy_illusions(center_pos_index: int, radius: int, amo
 
 
 ## The line-shaped equivalent of _deal_aoe_damage_to_enemy_illusions()
-## above - for Ghostship's/Timber Chain's own "every column between the
+## above - for The Sunken One's/Timber Chain's own "every column between the
 ## caster and the target, inclusive of both ends" line. Same "amount is
 ## raw, each illusion mitigates it separately via the boss's own
 ## effective armor" contract.
@@ -16123,7 +16544,7 @@ func _cast_enemy_ensnare(level_data: Dictionary) -> void:
 # ------------------------------------------------------------------
 # Naga Siren's ultimate, Song of the Siren, cast by the rival - mirrors
 # the player's own _cast_song_of_the_siren(): stuns (_player_stun_turns_
-# left, the same shared field Barbed Lunge's/Torrent's/Firesnap Cookie's own
+# left, the same shared field Barbed Lunge's/Drowned Surge's/Firesnap Cookie's own
 # stun already use) and shreds the armor (_player_armor_reduction/
 # _player_armor_reduction_turns_left, the same per-instance runtime
 # fields Lil' Shredder's own shred uses - stacking additively with any
@@ -16239,7 +16660,7 @@ func _end_enemy_guardian_sprint() -> void:
 # Slardar's Slithereen Crush, cast by the rival - mirrors the player's
 # own _cast_slithereen_crush(): this level's own `damage` (through normal
 # armor mitigation, via apply_damage()) plus a stun (_player_stun_turns_
-# left, the same shared field Barbed Lunge's/Torrent's/Song of the Siren's own
+# left, the same shared field Barbed Lunge's/Drowned Surge's/Song of the Siren's own
 # stun already use) for `stun_turns` of the player's own turns, if
 # they're within `radius` columns of the rival's CURRENT position -
 # there's only one possible target in a hero fight, so this collapses to
@@ -16363,7 +16784,7 @@ func _apply_enemy_bash_of_the_deep_knockback(enemy: Dictionary, level_data: Dict
 # timer" convention the player-side copy uses. There's only one possible
 # target in a hero fight, so - unlike the player's own copy, which needs
 # to pick one among several enemies - this needs no separate targeting
-# step at all, same simplification Thornbind's/Torrent's own enemy-side
+# step at all, same simplification Thornbind's/Drowned Surge's own enemy-side
 # copies already use. Deals no damage of its own - a pure debuff.
 # ------------------------------------------------------------------
 
@@ -16425,12 +16846,12 @@ func _cast_enemy_starstorm(enemy: Dictionary, level_data: Dictionary) -> void:
 # plus bonus_per_column for every column between the rival and the
 # player at the moment it's cast (through normal armor mitigation, via
 # apply_damage()), then stuns the player (_player_stun_turns_left, the
-# same shared field Barbed Lunge's/Torrent's/Song of the Siren's own stun
+# same shared field Barbed Lunge's/Drowned Surge's/Song of the Siren's own stun
 # already use) for this level's own stun_turns, only if the hit left him
 # alive. There's only one possible target in a hero fight, so - unlike
 # the player's own copy, which needs a separate targeting click - this
 # needs no separate targeting step at all, same simplification Thornbind's/
-# Torrent's own enemy-side copies already use.
+# Drowned Surge's own enemy-side copies already use.
 # ------------------------------------------------------------------
 
 func _cast_enemy_sacred_arrow(enemy: Dictionary, level_data: Dictionary) -> void:
@@ -16603,11 +17024,11 @@ func _get_enemy_lunar_blessing_level_data() -> Dictionary:
 # player's own _resolve_lucent_beam_cast(): this level's own flat
 # `damage` (through normal armor mitigation, via apply_damage()), then
 # stuns the player (_player_stun_turns_left, the same shared field
-# Barbed Lunge's/Torrent's/Sacred Arrow's own stun already use) for this
+# Barbed Lunge's/Drowned Surge's/Sacred Arrow's own stun already use) for this
 # level's own stun_turns, only if the hit left him alive. There's only
 # one possible target in a hero fight, so - unlike the player's own copy,
 # which needs a separate targeting click - this needs no separate
-# targeting step at all, same simplification Thornbind's/Torrent's own
+# targeting step at all, same simplification Thornbind's/Drowned Surge's own
 # enemy-side copies already use. No Moon Glaives bounce here - the
 # player-side copy never applies it to Lucent Beam either (only a plain
 # Attack triggers it - see _apply_hero_attack()'s own call site).
@@ -16928,14 +17349,19 @@ func _fire_enemy_projectile(enemy: Dictionary, target_node: Control) -> void:
 ##
 ## Like _fire_enemy_projectile(), call right BEFORE the damage and clear
 ## _deferred_hit_node right after it, so the target flinches when the
-## effect lands instead of the moment it starts. Skipped while
-## `transformed` (Beast of the Elderwild's bear has no hand to cast from).
+## effect lands instead of the moment it starts. Still plays while
+## `transformed` (Beast of the Elderwild) - the attack keeps its own look,
+## just launched from the bear art's own "transformed_attack_origin" (its
+## front paw) instead, falling back to "attack_origin" if none is set.
 func _play_hero_attack_effect(hero_static: Dictionary, caster: TextureRect, target_node: Control, transformed: bool) -> void:
 	var effect: String = hero_static.get("attack_effect", "")
-	if effect == "" or transformed or caster == null or not is_instance_valid(target_node):
+	if effect == "" or caster == null or not is_instance_valid(target_node):
 		return
 
 	var origin: Vector2 = hero_static.get("attack_origin", Vector2(0.5, 0.4))
+	if transformed:
+		origin = hero_static.get("transformed_attack_origin", origin)
+	var origin_art: Vector2 = origin
 	if caster.flip_h:
 		origin.x = 1.0 - origin.x
 	var from: Vector2 = caster.global_position + caster.size * origin
@@ -16949,6 +17375,22 @@ func _play_hero_attack_effect(hero_static: Dictionary, caster: TextureRect, targ
 		"vine_lash":
 			_deferred_hit_node = target_node
 			VineLashFX.play(_fx_layer, from, to, on_hit)
+		"ice_shard":
+			# Launched from the shard hanging beside him (IceShardFX), not
+			# from `from` - a fresh one starts forming as it leaves.
+			var shard := IceShardFX.of(caster)
+			if shard == null:
+				shard = IceShardFX.attach(caster, origin_art)
+			_deferred_hit_node = target_node
+			shard.fire(_fx_layer, to, on_hit)
+
+
+## Anything a hero's normal attack keeps on them between attacks - Nhal's
+## ice shard (IceShardFX), hanging beside `node` from the start of the
+## fight. Called when the player's hero and a rival hero are set up.
+func _attach_hero_attack_prop(hero_static: Dictionary, node: Variant) -> void:
+	if hero_static.get("attack_effect", "") == "ice_shard" and is_instance_valid(node) and node is TextureRect:
+		IceShardFX.attach(node, hero_static.get("attack_origin", Vector2(0.66, -0.02)))
 
 
 ## Picks a flee direction once and sticks with it - only flipping to
@@ -16976,13 +17418,14 @@ func _get_flee_position(enemy: Dictionary) -> int:
 
 
 ## The hero gets exactly one action per turn - move, attack, skill, or
-## item. Once any of them is used, all four lock until End Turn. Cold
-## Embrace locks all four too, same as a stun - see _cold_embrace_active
-## and _end_turn()'s own tail, which auto-skips the turn entirely while
-## either is still in effect rather than leaving these open with
+## item. Once any of them is used, all four lock until End Turn. The Test of
+## Time locks all four too, same as a stun - see _the_test_of_time_active
+## and _maybe_auto_skip_player_turn(), which auto-skips the turn entirely
+## while either is still in effect rather than leaving these open with
 ## nothing the player can actually do with them.
 func _update_action_buttons() -> void:
-	var locked: bool = _battle_over or _has_acted_this_turn or _player_stun_turns_left > 0 or _cold_embrace_active or _mortimer_kisses_active
+	_maybe_auto_skip_player_turn()
+	var locked: bool = _battle_over or _has_acted_this_turn or _rival_fx_in_flight or _player_stun_turns_left > 0 or _the_test_of_time_active or _mortimer_kisses_active
 	move_left_button.disabled = locked
 	move_right_button.disabled = locked
 	attack_button.disabled = locked
@@ -17022,8 +17465,8 @@ func _update_action_buttons() -> void:
 
 
 # ------------------------------------------------------------------
-# Tutorial support (TutorialManager's stage 1 script: recruit Kunkka
-# with Torrent on Zone.tscn, then this file walks through using Torrent
+# Tutorial support (TutorialManager's stage 1 script: recruit Kaelen Varr
+# with Drowned Surge on Zone.tscn, then this file walks through using Drowned Surge
 # on the ranged creep and closing in on the melee ones). Every function
 # here is a no-op unless TutorialManager.is_active, so none of it
 # affects a real playthrough.
@@ -17032,16 +17475,18 @@ func _update_action_buttons() -> void:
 # Which forced step stage 1's script is currently on - "" outside the
 # tutorial. Driving state for _check_tutorial_stage1_progress() (polled
 # after every action via _update_action_buttons()) and the explicit
-# advance from _resolve_torrent_cast() once the ranged creep is hit.
+# advance from _resolve_drowned_surge_cast() once the ranged creep is hit.
 var _tutorial_stage1_step: String = ""
 
-# One-shot flags so the reinforcements tip and the forced Tidebringer/
-# Ghostship picks each only ever interrupt the player once - a second
+# One-shot flags so the reinforcements tip and the forced Pull of the Abyss/
+# The Sunken One picks each only ever interrupt the player once - a second
 # reinforcement wave, or a second level-up's skill point, are the
 # player's own to handle freely from then on.
 var _tutorial_shown_reinforcement_tip: bool = false
-var _tutorial_taught_tidebringer: bool = false
-var _tutorial_taught_ghostship: bool = false
+var _tutorial_shown_melee_in_range_tip: bool = false
+var _tutorial_shown_recast_tip: bool = false
+var _tutorial_taught_pull_of_the_abyss: bool = false
+var _tutorial_taught_the_sunken_one: bool = false
 
 
 ## Which skill id (if any) the current tutorial stage is forcing the
@@ -17049,15 +17494,15 @@ var _tutorial_taught_ghostship: bool = false
 ## has already been made (or outside the tutorial entirely), meaning
 ## any further banked points are the player's own free choice again.
 ## Shared by _maybe_show_skill_choice_popup()/_refresh_skill_choice_
-## popup(), so stage 1 (Tidebringer) and stage 3 (Ghostship) both force
+## popup(), so stage 1 (Pull of the Abyss) and stage 3 (The Sunken One) both force
 ## their pick through the same one code path.
 func _tutorial_forced_skill_id() -> String:
 	if not TutorialManager.is_active:
 		return ""
-	if TutorialManager.current_stage == 1 and not _tutorial_taught_tidebringer:
-		return "tidebringer"
-	if TutorialManager.current_stage == 3 and not _tutorial_taught_ghostship:
-		return "ghostship"
+	if TutorialManager.current_stage == 1 and not _tutorial_taught_pull_of_the_abyss:
+		return "pull_of_the_abyss"
+	if TutorialManager.current_stage == 3 and not _tutorial_taught_the_sunken_one:
+		return "the_sunken_one"
 	return ""
 
 
@@ -17066,14 +17511,14 @@ func _tutorial_forced_skill_id() -> String:
 ## whatever _update_action_buttons() happened to set earlier, since
 ## this can be (and often is) called well outside that function's own
 ## call chain: _advance_tutorial_stageN_step() calls this directly from
-## spots like a failed skill cast (not enough mana) or a torrent/
-## ghostship cast resolving, neither of which goes through
+## spots like a failed skill cast (not enough mana) or a drowned_surge/
+## the_sunken_one cast resolving, neither of which goes through
 ## _update_action_buttons() at all. An earlier version only ever ADDED
 ## disables on top of the current button state, which happened to work
 ## while every call site ran with a stable allowed-list, but broke the
 ## moment a button was disabled under an OLD allowed-list and needed to
 ## become enabled again under a NEW one from a call outside that flow -
-## it had no way to undo a disable it hadn't just set (this hit Torrent,
+## it had no way to undo a disable it hadn't just set (this hit Drowned Surge,
 ## then Flee, then the Mana Potion, before landing on this fix). See
 ## TutorialManager.is_action_allowed() for the action id scheme
 ## ("move_left", "move_right", "attack", "flee", "skill:<id>",
@@ -17087,7 +17532,7 @@ func _apply_tutorial_gate() -> void:
 	# not dependent on that function having just run. Flee is
 	# deliberately excluded, same as _update_action_buttons() - it's
 	# never turn-locked in a real playthrough either.
-	var locked: bool = _battle_over or _has_acted_this_turn or _player_stun_turns_left > 0 or _cold_embrace_active or _mortimer_kisses_active
+	var locked: bool = _battle_over or _has_acted_this_turn or _rival_fx_in_flight or _player_stun_turns_left > 0 or _the_test_of_time_active or _mortimer_kisses_active
 
 	move_left_button.disabled = locked or not TutorialManager.is_action_allowed("move_left")
 	move_right_button.disabled = locked or not TutorialManager.is_action_allowed("move_right")
@@ -17186,16 +17631,16 @@ func _advance_tutorial_stage1_step(step_id: String) -> void:
 	_tutorial_stage1_step = step_id
 
 	match step_id:
-		"move_to_torrent_range":
+		"move_to_drowned_surge_range":
 			TutorialManager.set_allowed_actions(["move_right"])
 			TutorialManager.show_popup(
-				"The enemies are still out of range. Move toward them - Torrent reaches 3 columns, "
+				"The enemies are still out of range. Move toward them - Drowned Surge reaches few steps in front, "
 				+ "so you'll be able to use it well before you're close enough to be attacked back."
 			)
-		"cast_torrent_on_range":
-			TutorialManager.set_allowed_actions(["skill:torrent"])
+		"cast_drowned_surge_on_range":
+			TutorialManager.set_allowed_actions(["skill:drowned_surge"])
 			TutorialManager.show_popup(
-				"Torrent is in range now. Cast it on the ranged creep in the back - left alone, it'll "
+				"Drowned Surge is in range now. Cast it on the ranged creep in the back - left alone, it'll "
 				+ "keep its distance and shoot you from afar, or turn and flee if you close in on it "
 				+ "instead."
 			)
@@ -17217,29 +17662,36 @@ func _advance_tutorial_stage1_step(step_id: String) -> void:
 				+ "the melee creeps so you can start on them too."
 			)
 		"melee_in_range":
-			# Re-entered every time a Torrent cast finishes off a ranged
-			# creep (see _resolve_torrent_cast()) - the wording stays
+			# Re-entered every time a Drowned Surge cast finishes off a ranged
+			# creep (see _resolve_drowned_surge_cast()) - the wording stays
 			# generic enough to make sense on every visit, not just the
 			# first.
+			# The explanation only pops up on the first visit - after
+			# that, the gate (Attack alone, glowing) says it on its own.
 			TutorialManager.set_allowed_actions(["attack"])
-			TutorialManager.show_popup(
-				"The melee creeps are in range - keep attacking them. Use Torrent again the moment "
-				+ "it's ready if another ranged creep is still up."
-			)
-		"recast_torrent_on_range":
-			TutorialManager.set_allowed_actions(["skill:torrent"])
-			TutorialManager.show_popup(
-				"Torrent is ready again. Use it on the ranged creep to finish it off, so you can go "
-				+ "back to focusing entirely on the melee creeps."
-			)
+			if not _tutorial_shown_melee_in_range_tip:
+				_tutorial_shown_melee_in_range_tip = true
+				TutorialManager.show_popup(
+					"The melee creeps are in range - keep attacking them. Use Drowned Surge again the moment "
+					+ "it's ready if another ranged creep is still up."
+				)
+		"recast_drowned_surge_on_range":
+			# Same first-visit-only popup as "melee_in_range" above.
+			TutorialManager.set_allowed_actions(["skill:drowned_surge"])
+			if not _tutorial_shown_recast_tip:
+				_tutorial_shown_recast_tip = true
+				TutorialManager.show_popup(
+					"Drowned Surge is ready again. Use it on the ranged creep to finish it off, so you can go "
+					+ "back to focusing entirely on the melee creeps."
+				)
 		"stage_cleared":
 			_battle_over = true
 			TutorialManager.set_allowed_actions([])
 			_update_action_buttons()
 			TutorialManager.show_checkpoint(
-				"Stage cleared! That's the core loop: move into range, use skills the moment they're "
-				+ "ready, attack in between, and spend skill points on whatever gets you more damage "
-				+ "or more answers.\n\nContinue with the next tutorial stage, or stop here?",
+				"Stage cleared! Remember: move into range, use skills the moment they're "
+				+ "ready and attack in between. Spend skill points on whatever you think will benefit your "
+				+ "hero the best.\n\nContinue with the next tutorial stage, or stop here?",
 				TutorialManager.start_stage2
 			)
 
@@ -17248,30 +17700,30 @@ func _advance_tutorial_stage1_step(step_id: String) -> void:
 
 ## Polled from _update_action_buttons() (i.e. after every move/attack/
 ## skill this battle resolves) - advances stage 1's script once its
-## current step's own condition is met. The "cast Torrent on the ranged
-## creep" step advances explicitly instead, from _resolve_torrent_cast()
+## current step's own condition is met. The "cast Drowned Surge on the ranged
+## creep" step advances explicitly instead, from _resolve_drowned_surge_cast()
 ## right as that cast lands, not from here.
 func _check_tutorial_stage1_progress() -> void:
 	if not TutorialManager.is_active or TutorialManager.current_stage != 1:
 		return
 
 	match _tutorial_stage1_step:
-		"move_to_torrent_range":
+		"move_to_drowned_surge_range":
 			var range_enemy: Dictionary = _tutorial_find_enemy_by_type("range")
 			if not range_enemy.is_empty() and _distance(range_enemy["pos_index"], _hero_pos_index) <= 3:
-				_advance_tutorial_stage1_step("cast_torrent_on_range")
+				_advance_tutorial_stage1_step("cast_drowned_surge_on_range")
 		"approach_melee":
 			if not _get_enemy_at(_hero_pos_index).is_empty():
 				_advance_tutorial_stage1_step("melee_in_range")
 		"melee_in_range":
-			# Watches for Torrent coming off cooldown with a ranged
+			# Watches for Drowned Surge coming off cooldown with a ranged
 			# creep actually WITHIN its cast range - true for the
 			# original one (still alive after its first, non-lethal
 			# cast) and again for whichever ranged creep reinforcements
 			# bring in later. Checking range, not just "alive", matters:
 			# a reinforcement spawns at a fixed column regardless of
 			# where the hero is currently standing, so it can easily
-			# start out too far away - forcing "skill:torrent" only
+			# start out too far away - forcing "skill:drowned_surge" only
 			# with nothing valid to cast it on would hard-lock the
 			# battle, since Attack/Move would be the only way to let a
 			# turn pass at all for it to approach. Staying in this step
@@ -17279,9 +17731,9 @@ func _check_tutorial_stage1_progress() -> void:
 			# passes, so the ranged creep's own AI gets to close the
 			# distance on its own.
 			var range_enemy: Dictionary = _tutorial_find_enemy_by_type("range")
-			if _skill_cooldowns.get("torrent", 0) <= 0 and not range_enemy.is_empty() \
+			if _skill_cooldowns.get("drowned_surge", 0) <= 0 and not range_enemy.is_empty() \
 			and _distance(range_enemy["pos_index"], _hero_pos_index) <= 3:
-				_advance_tutorial_stage1_step("recast_torrent_on_range")
+				_advance_tutorial_stage1_step("recast_drowned_surge_on_range")
 
 
 func _tutorial_find_enemy_by_type(type: String) -> Dictionary:
@@ -17300,12 +17752,12 @@ func _tutorial_maybe_explain_reinforcements() -> void:
 		return
 	_tutorial_shown_reinforcement_tip = true
 	TutorialManager.show_popup(
-		"Reinforcements! Take too long to clear a stage and more enemies join the fight - so don't "
+		"Reinforcements! If you take too long to clear a stage more enemies will join the fight - so don't "
 		+ "hold skills back waiting for a 'perfect' moment. Use them as soon as they're ready."
 	)
 
 
-## While stage 1's script calls for a specific target (Torrent needs to
+## While stage 1's script calls for a specific target (Drowned Surge needs to
 ## land on the ranged creep specifically - by the time it's in range,
 ## the melee creeps usually are too, since they stand one column
 ## closer), rejects a click on anything else. The popup already says
@@ -17314,14 +17766,14 @@ func _tutorial_maybe_explain_reinforcements() -> void:
 ## any valid target, same as a real playthrough.
 func _tutorial_allows_enemy_click(enemy: Dictionary) -> bool:
 	if TutorialManager.is_active and TutorialManager.current_stage == 1 \
-	and (_tutorial_stage1_step == "cast_torrent_on_range" or _tutorial_stage1_step == "recast_torrent_on_range"):
+	and (_tutorial_stage1_step == "cast_drowned_surge_on_range" or _tutorial_stage1_step == "recast_drowned_surge_on_range"):
 		return enemy["static"].get("type", "") == "range"
 	return true
 
 
 # ------------------------------------------------------------------
 # Tutorial support (TutorialManager's stage 2 script: a manufactured
-# mid-run scenario - see TutorialManager.start_stage2() - where Kunkka
+# mid-run scenario - see TutorialManager.start_stage2() - where Kaelen Varr
 # is already at level 5, deep into this zone's hardest stage, and
 # critically low on HP/mana. Teaches attacking, taking a hit, and
 # fleeing before it's too late; the Map/Shop side of the flee (forcing
@@ -17348,14 +17800,14 @@ func _advance_tutorial_stage2_step(step_id: String) -> void:
 		"attack_while_low":
 			TutorialManager.set_allowed_actions(["attack"])
 			TutorialManager.show_popup(
-				"Kunkka's already taken a beating - level 5, deep into this zone's hardest stage, and "
-				+ "critically low on HP and mana with no potions in reserve. You're right on top of the "
+				"Kaelen Varr is level 5, but already taken a beating. He is deep into this zone's hardest stage, and "
+				+ "critically low on HP and mana, with no potions in reserve. You're right on top of the "
 				+ "melee creeps here - go ahead and attack, but keep an eye on that health bar."
 			)
 		"must_flee":
 			TutorialManager.set_allowed_actions(["flee"])
 			TutorialManager.show_popup(
-				"That hit brings you dangerously close to death. Staying to keep fighting isn't worth "
+				"That hit brings you dangerously close to death. Staying and keep fighting isn't worth "
 				+ "the risk - flee back to the map and restock on potions before pushing any further."
 			)
 
@@ -17412,15 +17864,15 @@ func _advance_tutorial_stage3_step(step_id: String) -> void:
 		"attack_before_reinforcements":
 			TutorialManager.set_allowed_actions(["attack"])
 			TutorialManager.show_popup(
-				"Ghostship is yours now - your single strongest hit. Keep attacking for the moment; "
+				"The Sunken One is yours now - your single strongest hit. Keep attacking for the moment; "
 				+ "you'll want it ready for when reinforcements show up."
 			)
 		"cast_ultimate":
-			TutorialManager.set_allowed_actions(["skill:ghostship"])
+			TutorialManager.set_allowed_actions(["skill:the_sunken_one"])
 			TutorialManager.show_popup(
-				"Reinforcements are here - exactly what Ghostship is for. It hits everything caught "
-				+ "between you and your target, so aim it at whichever enemy is farthest away to catch "
-				+ "as many as possible. Cast it now."
+				"Reinforcements are here - exactly what The Sunken One is for. Your ship fires his "
+				+ "cannons the way you're facing, hitting everything within its range - face the "
+				+ "enemies and cast it now."
 			)
 		"need_mana_potion":
 			TutorialManager.set_allowed_actions(["item:mana"])
@@ -17428,9 +17880,9 @@ func _advance_tutorial_stage3_step(step_id: String) -> void:
 				"Not enough mana to cast it yet - drink your Mana Potion first."
 			)
 		"cast_ultimate_ready":
-			TutorialManager.set_allowed_actions(["skill:ghostship"])
+			TutorialManager.set_allowed_actions(["skill:the_sunken_one"])
 			TutorialManager.show_popup(
-				"Mana's topped up - go ahead and cast Ghostship."
+				"Mana's topped up - go ahead and cast The Sunken One."
 			)
 		"mop_up":
 			TutorialManager.set_allowed_actions(["attack"])
@@ -17443,9 +17895,10 @@ func _advance_tutorial_stage3_step(step_id: String) -> void:
 			TutorialManager.set_allowed_actions([])
 			_update_action_buttons()
 			TutorialManager.show_popup(
-				"That's every stage of your home zone cleared! From here you're free to roam the world "
-				+ "and challenge other heroes to duels to prove yourself - each of them has their own "
-				+ "unique, dangerous skills, so stay sharp.\n\nGood luck out there.",
+				"That's every stage of your home zone cleared. From here the world is yours to explore. "
+				+ "Other lost souls wander its ruins, each carrying their own scars, secrets, and reasons to fight.\n"
+				+ "Some may be looking for you already.\n"
+				+ "The forgotten world is waiting.",
 				TutorialManager.exit_tutorial
 			)
 
@@ -17457,7 +17910,7 @@ func _advance_tutorial_stage3_step(step_id: String) -> void:
 ## separate one-shot flag) - called from _spawn_reinforcements()
 ## alongside its own normal banner. Unlike stage 1's version, this one
 ## DOES drive the script forward: reinforcements arriving is exactly
-## the cue to force Ghostship.
+## the cue to force The Sunken One.
 func _tutorial_maybe_advance_stage3_for_reinforcements() -> void:
 	if not TutorialManager.is_active or TutorialManager.current_stage != 3 \
 	or _tutorial_stage3_step != "attack_before_reinforcements":
@@ -17505,14 +17958,14 @@ func _handle_defeat() -> void:
 func _enemy_skill_worth_on_target(skill_id: String, on_bear: bool) -> bool:
 	var field: String = ""
 	match skill_id:
-		"cold_feet":
-			field = "cold_feet_dot_turns_left"
+		"mark_of_stillness":
+			field = "mark_of_stillness_dot_turns_left"
 			if not on_bear:
-				return _player_cold_feet_dot_turns_left <= 0
-		"ice_vortex":
-			field = "ice_vortex_dot_turns_left"
+				return _player_mark_of_stillness_dot_turns_left <= 0
+		"the_hollow_cold":
+			field = "the_hollow_cold_dot_turns_left"
 			if not on_bear:
-				return _player_ice_vortex_dot_turns_left <= 0
+				return _player_the_hollow_cold_dot_turns_left <= 0
 		"frostbite":
 			field = "frostbite_dot_turns_left"
 			if not on_bear:
@@ -17564,17 +18017,17 @@ func _choose_enemy_skill_on_bear(enemy: Dictionary, skill_id: String) -> bool:
 
 ## Roughly how much damage `skill_id`'s own immediate hit would do to
 ## the bear after its armor - only used to judge whether a cast would
-## finish it off. DoT-only skills (Thornbind/Cold Feet/Ice Vortex/
-## Frostbite/Leech Seed/Corrosive Haze/Winter's Curse) return 0.
+## finish it off. DoT-only skills (Thornbind/Mark of Stillness/The Hollow Cold/
+## Frostbite/Leech Seed/Corrosive Haze/The Hunger Calls) return 0.
 func _estimate_enemy_skill_hit_on_bear(enemy: Dictionary, skill_id: String, level_data: Dictionary) -> float:
 	var raw: float = 0.0
 	match skill_id:
-		"whisper_of_the_veil", "torrent", "ensnare", "lucent_beam", "ice_blast", "splinter_blast", "snowball":
+		"whisper_of_the_veil", "drowned_surge", "ensnare", "lucent_beam", "return_to_the_void", "maddening_roar", "snowball":
 			raw = float(level_data.get("damage", 0))
 		"sacred_arrow":
 			var distance: int = _distance(enemy["pos_index"], _bear["pos_index"])
 			raw = float(level_data.get("base_damage", 0)) + float(level_data.get("bonus_per_column", 0)) * distance
-		"chilling_touch":
+		"touch_of_the_first_cold":
 			raw = _roll_enemy_hero_damage(enemy) + float(level_data.get("bonus_damage", 0))
 		"walrus_punch":
 			raw = _roll_enemy_hero_damage(enemy) * float(level_data.get("damage_multiplier", 1.0))
@@ -17603,7 +18056,7 @@ func _tick_bear_turn_start_effects() -> void:
 	if not _is_bear_alive():
 		return
 
-	for key in ["thornbind", "cold_feet", "ice_vortex", "frostbite"]:
+	for key in ["thornbind", "mark_of_stillness", "the_hollow_cold", "frostbite"]:
 		var turns_key: String = key + "_dot_turns_left"
 		if int(_bear.get(turns_key, 0)) > 0:
 			_bear[turns_key] -= 1
@@ -17613,21 +18066,21 @@ func _tick_bear_turn_start_effects() -> void:
 				if not _is_bear_alive():
 					return
 
-	if int(_bear.get("ice_blast_dot_turns_left", 0)) > 0:
-		_bear["ice_blast_dot_turns_left"] -= 1
-		var ice_blast_dot: float = float(_bear.get("ice_blast_dot_damage", 0))
-		if ice_blast_dot > 0.0:
-			_deal_damage_to_bear(ice_blast_dot)
+	if int(_bear.get("return_to_the_void_dot_turns_left", 0)) > 0:
+		_bear["return_to_the_void_dot_turns_left"] -= 1
+		var return_to_the_void_dot: float = float(_bear.get("return_to_the_void_dot_damage", 0))
+		if return_to_the_void_dot > 0.0:
+			_deal_damage_to_bear(return_to_the_void_dot)
 			if not _is_bear_alive():
 				return
-		# Same execute rule the player's own Ice Blast tick uses.
-		var execute_pct: float = float(_bear.get("ice_blast_execute_pct", 0.0))
+		# Same execute rule the player's own Return to the Void tick uses.
+		var execute_pct: float = float(_bear.get("return_to_the_void_execute_pct", 0.0))
 		if execute_pct > 0.0 and float(_bear.get("current_hp", 0.0)) <= float(_bear.get("hp", 0.0)) * execute_pct:
-			_show_message_over_bear("Shattered!")
-			_kill_bear()
+			_show_message_over_bear("Claimed by the Void!")
+			_kill_bear(true)
 			return
-		if int(_bear.get("ice_blast_dot_turns_left", 0)) <= 0:
-			_bear["ice_blast_execute_pct"] = 0.0
+		if int(_bear.get("return_to_the_void_dot_turns_left", 0)) <= 0:
+			_bear["return_to_the_void_execute_pct"] = 0.0
 
 	if int(_bear.get("leech_seed_dot_turns_left", 0)) > 0:
 		_bear["leech_seed_dot_turns_left"] -= 1
@@ -17660,17 +18113,17 @@ func _tick_bear_turn_start_effects() -> void:
 func _stun_bear(turns: int) -> void:
 	if _is_bear_alive() and turns > 0:
 		_bear["stun_turns_left"] = turns
-		# A fresh stun from anything else replaces Winter's Curse's
-		# freeze / Song of the Siren's sleep - _cast_enemy_winters_curse_
+		# A fresh stun from anything else replaces The Hunger Calls's
+		# freeze / Song of the Siren's sleep - _cast_enemy_the_hunger_calls_
 		# on_bear()/_cast_enemy_song_of_the_siren() set theirs back right
 		# after calling here.
-		_bear["winters_curse_active"] = false
+		_bear["the_hunger_calls_active"] = false
 		_bear["siren_song_asleep"] = false
 		_show_message_over_bear("Stunned!")
 
 
-## The hero caught by an AoE centered on the bear (Torrent's splash,
-## Ice Blast's radius, Splinter Blast's splinters) - only while the
+## The hero caught by an AoE centered on the bear (Drowned Surge's splash,
+## Return to the Void's radius, Maddening Roar's shards) - only while the
 ## rival can actually see him, the same visibility rule every other
 ## rival cast follows.
 func _is_hero_in_bear_aoe(radius: int) -> bool:
@@ -17691,17 +18144,17 @@ func _cast_enemy_whisper_of_the_veil_on_bear(enemy: Dictionary, level_data: Dict
 	_deal_damage_to_bear(float(level_data.get("damage", 0)))
 
 
-func _cast_enemy_torrent_on_bear(level_data: Dictionary) -> void:
+func _cast_enemy_drowned_surge_on_bear(level_data: Dictionary) -> void:
 	var damage: float = float(level_data.get("damage", 0))
 	var radius: int = int(level_data.get("radius", 0))
 	var bear_pos: int = _bear["pos_index"]
-	_play_torrent_splash(_bear["node"])
+	_play_drowned_surge_splash(_bear["node"])
 	# The splash is centered on the bear - the hero and his illusions
 	# standing close enough get caught too.
 	if _is_hero_in_bear_aoe(radius):
-		_play_torrent_splash(hero_image)
+		_play_drowned_surge_splash(hero_image)
 		apply_damage(damage)
-	_play_torrent_splash_on_illusions(_illusions, bear_pos, radius)
+	_play_drowned_surge_splash_on_illusions(_illusions, bear_pos, radius)
 	_deal_aoe_damage_to_illusions(bear_pos, radius, damage)
 	_deal_damage_to_bear(damage)
 	_stun_bear(int(level_data.get("stun_turns", 1)))
@@ -17741,101 +18194,149 @@ func _cast_enemy_ensnare_on_bear(level_data: Dictionary) -> void:
 		_bear["root_turns_left"] = int(level_data.get("root_turns", 0))
 
 
-func _cast_enemy_cold_feet_on_bear(level_data: Dictionary) -> void:
-	_bear["cold_feet_dot_damage"] = float(level_data.get("damage", 0))
-	_bear["cold_feet_dot_turns_left"] = int(level_data.get("duration", 0))
-	_show_message_over_bear("Cold Feet!")
-	_flash_bounce_hit(_bear["node"], COLD_FEET_FLASH_COLOR)
-	_refresh_cold_feet_frost()
+func _cast_enemy_mark_of_stillness_on_bear(level_data: Dictionary) -> void:
+	_bear["mark_of_stillness_dot_damage"] = float(level_data.get("damage", 0))
+	_bear["mark_of_stillness_dot_turns_left"] = int(level_data.get("duration", 0))
+	_show_message_over_bear("Mark of Stillness!")
+	_flash_bounce_hit(_bear["node"], MARK_OF_STILLNESS_FLASH_COLOR)
+	_refresh_mark_of_stillness_frost()
 
 
-func _cast_enemy_ice_vortex_on_bear(level_data: Dictionary) -> void:
+func _cast_enemy_the_hollow_cold_on_bear(level_data: Dictionary) -> void:
 	var damage: float = float(level_data.get("damage", 0))
 	var duration: int = int(level_data.get("duration", 0))
-	# Same default as the player's own copy (_resolve_ice_vortex_cast()).
+	# Same default as the player's own copy (_resolve_the_hollow_cold_cast()).
 	var radius: int = int(level_data.get("radius", 1))
 	var bear_pos: int = _bear["pos_index"]
 
-	_bear["ice_vortex_dot_damage"] = damage
-	_bear["ice_vortex_dot_turns_left"] = duration
-	_flash_bounce_hit(_bear["node"], COLD_FEET_FLASH_COLOR)
-	_show_message_over_bear("Ice Vortex!")
+	_bear["the_hollow_cold_dot_damage"] = damage
+	_bear["the_hollow_cold_dot_turns_left"] = duration
+	_flash_bounce_hit(_bear["node"], MARK_OF_STILLNESS_FLASH_COLOR)
+	_show_message_over_bear("The Hollow Cold!")
 
 	# Centered on the bear - the hero and his illusions nearby are
 	# caught in it as well.
 	if _is_hero_in_bear_aoe(radius):
-		_player_ice_vortex_dot_damage = damage
-		_player_ice_vortex_dot_turns_left = duration
-		_flash_bounce_hit(hero_image, COLD_FEET_FLASH_COLOR)
-	_mark_illusions_ice_vortex(_illusions, bear_pos, radius, damage, duration)
+		_player_the_hollow_cold_dot_damage = damage
+		_player_the_hollow_cold_dot_turns_left = duration
+		_flash_bounce_hit(hero_image, MARK_OF_STILLNESS_FLASH_COLOR)
+	_mark_illusions_the_hollow_cold(_illusions, bear_pos, radius, damage, duration)
 
-	_play_ice_vortex_swirl(_bear["node"], radius)
-	_refresh_cold_feet_frost()
-
-
-func _cast_enemy_chilling_touch_on_bear(enemy: Dictionary, level_data: Dictionary) -> void:
-	_deal_damage_to_bear(_roll_enemy_hero_damage(enemy) + float(level_data.get("bonus_damage", 0)))
+	_play_the_hollow_cold_swirl(_bear["node"], radius)
+	_open_hollow_cold_tear(_bear["node"], bear_pos, radius, duration, true)
+	_refresh_mark_of_stillness_frost()
 
 
-func _cast_enemy_ice_blast_on_bear(level_data: Dictionary) -> void:
+func _cast_enemy_touch_of_the_first_cold_on_bear(enemy: Dictionary, level_data: Dictionary) -> void:
+	var damage: float = _roll_enemy_hero_damage(enemy) + float(level_data.get("bonus_damage", 0))
+	_rival_fx_in_flight = true
+	_update_action_buttons()
+	var generation_before: int = _stage_generation
+	_play_the_reaching_void(enemy.get("node"), _bear.get("node"), func() -> void:
+		_rival_fx_in_flight = false
+		if not _battle_over and _stage_generation == generation_before:
+			_deal_damage_to_bear(damage)
+		_update_action_buttons()
+	)
+
+
+func _cast_enemy_return_to_the_void_on_bear(level_data: Dictionary) -> void:
 	var damage: float = float(level_data.get("damage", 0))
 	var radius: int = int(level_data.get("radius", 0))
 	var bear_pos: int = _bear["pos_index"]
-	_play_ice_blast_effect(_get_hero_fight_boss().get("node"), _bear["node"])
-	_show_message_over_bear("Ice Blast!")
-	# The blast's radius is centered on the bear - the hero and his
-	# illusions nearby take its damage too (the DoT/execute/stun stay on
-	# the bear, the one it was aimed at - same as the player-aimed copy
-	# only arming them on the player).
+	var struck: Array = [_bear.get("node")]
 	if _is_hero_in_bear_aoe(radius):
-		apply_damage(damage)
-	_deal_aoe_damage_to_illusions(bear_pos, radius, damage)
-	_deal_damage_to_bear(damage)
-	if not _is_bear_alive():
-		return
-	_bear["ice_blast_dot_damage"] = float(level_data.get("dot_damage", 0))
-	_bear["ice_blast_dot_turns_left"] = int(level_data.get("dot_duration", 0))
-	_bear["ice_blast_execute_pct"] = float(level_data.get("execute_pct", 0.0))
-	_stun_bear(int(level_data.get("stun_turns", 1)))
-	_refresh_cold_feet_frost()
-
-
-func _cast_enemy_splinter_blast_on_bear(level_data: Dictionary) -> void:
-	var splinter_range: int = int(level_data.get("splinter_range", 0))
-	var splinter_damage: float = float(level_data.get("splinter_damage", 0))
-	var bear_pos: int = _bear["pos_index"]
-	var shard_nodes: Array = []
-	if _is_hero_in_bear_aoe(splinter_range):
-		shard_nodes.append(hero_image)
+		struck.append(hero_image)
 	for illusion in _illusions:
-		if _distance(illusion["pos_index"], bear_pos) <= splinter_range:
-			shard_nodes.append(illusion.get("node"))
-	_play_splinter_shards(_bear["node"], shard_nodes)
-	# Splinters fly out from the bear - the hero and his illusions
-	# nearby take the splinter damage.
-	if _is_hero_in_bear_aoe(splinter_range):
-		apply_damage(splinter_damage)
-	_deal_aoe_damage_to_illusions(bear_pos, splinter_range, splinter_damage)
-	_deal_damage_to_bear(float(level_data.get("damage", 0)))
+		if _distance(illusion["pos_index"], bear_pos) <= radius:
+			struck.append(illusion.get("node"))
+	_show_message_over_bear("Return to the Void!")
+	_rival_fx_in_flight = true
+	_update_action_buttons()
+	var generation_before: int = _stage_generation
+	_play_return_to_the_void(_bear.get("node"), radius, struck, func() -> void:
+		_rival_fx_in_flight = false
+		if _battle_over or _stage_generation != generation_before:
+			_update_action_buttons()
+			return
+		# The blast's radius is centered on the bear - the hero and his
+		# illusions nearby take its damage too (the DoT/execute/stun stay on
+		# the bear, the one it was aimed at - same as the player-aimed copy
+		# only arming them on the player).
+		if _is_hero_in_bear_aoe(radius):
+			apply_damage(damage)
+		_deal_aoe_damage_to_illusions(bear_pos, radius, damage)
+		_deal_damage_to_bear(damage)
+		if _is_bear_alive():
+			_bear["return_to_the_void_dot_damage"] = float(level_data.get("dot_damage", 0))
+			_bear["return_to_the_void_dot_turns_left"] = int(level_data.get("dot_duration", 0))
+			_bear["return_to_the_void_execute_pct"] = float(level_data.get("execute_pct", 0.0))
+			_stun_bear(int(level_data.get("stun_turns", 1)))
+			_refresh_mark_of_stillness_frost()
+		_refresh_bars()
+		if _recruited.get("current_hp", 0) <= 0:
+			_handle_defeat()
+			return
+		_update_action_buttons()
+	)
 
 
-func _cast_enemy_winters_curse_on_bear(level_data: Dictionary) -> void:
-	_show_message_over_bear("Winter's Curse!")
-	_flash_bounce_hit(_bear["node"], COLD_FEET_FLASH_COLOR)
+func _cast_enemy_maddening_roar_on_bear(level_data: Dictionary) -> void:
+	var damage: float = float(level_data.get("damage", 0))
+	var shatter_range: int = int(level_data.get("shatter_range", 0))
+	var shatter_damage: float = float(level_data.get("shatter_damage", 0))
+	var bear_pos: int = _bear["pos_index"]
+	var shatter_nodes: Array = []
+	if _is_hero_in_bear_aoe(shatter_range):
+		shatter_nodes.append(hero_image)
+	for illusion in _illusions:
+		if _distance(illusion["pos_index"], bear_pos) <= shatter_range:
+			shatter_nodes.append(illusion.get("node"))
+	_rival_fx_in_flight = true
+	_update_action_buttons()
+	var generation_before: int = _stage_generation
+	var on_target_hit := func() -> void:
+		if _battle_over or _stage_generation != generation_before:
+			return
+		_deal_damage_to_bear(damage)
+	# The rings spread out from the bear - the hero and his illusions
+	# nearby take the shatter damage.
+	var on_shatter := func() -> void:
+		_rival_fx_in_flight = false
+		if _battle_over or _stage_generation != generation_before:
+			_update_action_buttons()
+			return
+		if _is_hero_in_bear_aoe(shatter_range):
+			apply_damage(shatter_damage)
+		_deal_aoe_damage_to_illusions(bear_pos, shatter_range, shatter_damage)
+		_refresh_bars()
+		if _recruited.get("current_hp", 0) <= 0:
+			_handle_defeat()
+			return
+		_update_action_buttons()
+	_play_maddening_roar(_get_hero_fight_boss().get("node"), _enemy_hero_static, _bear.get("node"), shatter_nodes, on_target_hit, on_shatter)
+
+
+func _cast_enemy_the_hunger_calls_on_bear(level_data: Dictionary) -> void:
+	_show_message_over_bear("The Hunger Calls!")
+	if _enemy_hunger_calls_fx != null:
+		_enemy_hunger_calls_fx.end()
+	_enemy_hunger_calls_fx = _play_the_hunger_calls(_get_hero_fight_boss().get("node"), _enemy_hero_static, _bear["node"], int(level_data.get("curse_range", 0)))
+	_enemy_hunger_calls_fx_on_bear = true
 	_stun_bear(int(level_data.get("duration", 0)))
 	# Marks this stun as the curse's freeze (cleared by any other stun,
 	# see _stun_bear()) - drives the bear's frost for as long as it holds.
-	_bear["winters_curse_active"] = true
-	_refresh_cold_feet_frost()
+	_bear["the_hunger_calls_active"] = true
+	_refresh_mark_of_stillness_frost()
 
 
 func _cast_enemy_frostbite_on_bear(level_data: Dictionary) -> void:
 	_bear["frostbite_dot_damage"] = float(level_data.get("dot_damage", 0))
 	_bear["frostbite_dot_turns_left"] = int(level_data.get("dot_duration", 0))
 	_show_message_over_bear("Frostbite!")
-	_flash_bounce_hit(_bear["node"], COLD_FEET_FLASH_COLOR)
+	_flash_bounce_hit(_bear["node"], MARK_OF_STILLNESS_FLASH_COLOR)
 	_stun_bear(int(level_data.get("stun_turns", 1)))
-	_refresh_cold_feet_frost()
+	_refresh_mark_of_stillness_frost()
 
 
 func _cast_enemy_snowball_on_bear(enemy: Dictionary, level_data: Dictionary) -> void:

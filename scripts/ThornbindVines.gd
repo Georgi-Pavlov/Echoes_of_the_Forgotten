@@ -54,7 +54,7 @@ static func attach(node: Control) -> void:
 
 ## Unwinds `node`'s vines back into the ground (no-op if it has none).
 static func release(node: Variant) -> void:
-	if not (node is Control) or not is_instance_valid(node):
+	if not is_instance_valid(node) or not (node is Control):
 		return
 	var vines := (node as Control).get_node_or_null(NODE_NAME) as ThornbindVines
 	if vines != null:

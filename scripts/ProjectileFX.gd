@@ -13,8 +13,10 @@ extends RefCounted
 ## Every color/size a projectile needs. Any key a style leaves out
 ## falls back to DEFAULT_STYLE.
 const DEFAULT_STYLE := {
-	# "arrow" (shaft, head, fletching), "spike" (a tapering quill) or
-	# "skull" (a ghostly skull; "length" is its height).
+	# "arrow" (shaft, head, fletching), "spike" (a tapering quill),
+	# "ice_shard" (Nhal's ice crystal), "skull" (a ghostly skull) or
+	# "bubble" (a wobbling water bubble) - for the last two, "length" is
+	# its height.
 	"shape": "arrow",
 	# Where it leaves the attacker: x = how far forward of the art's
 	# center (fraction of its width, toward the way it faces), y = how
@@ -92,6 +94,31 @@ const STYLES := {
 		"base_duration": 0.22,
 		"per_100px_duration": 0.075,
 	},
+	# Ironbound Isles range creeps (the sea witch): the orb of water she
+	# holds, flung as a wobbling bubble trailing smaller ones, that bursts
+	# into a splash of droplets.
+	"water_bubble": {
+		"shape": "bubble",
+		"launch": Vector2(0.43, 0.26),
+		"length": 34.0,
+		"head_color": Color(0.55, 0.9, 1.0),
+		"glow_color": Color(0.3, 0.95, 1.0, 0.45),
+		"trail_color": Color(0.7, 0.95, 1.0, 0.75),
+		"impact_color": Color(0.6, 0.9, 1.0),
+		"arc": 0.1,
+		"max_arc": 45.0,
+		"base_duration": 0.2,
+		"per_100px_duration": 0.06,
+	},
+	# Frostspire range creeps (the frost wraith): a shard of ice flung from
+	# its outstretched claw - Nhal's own attack projectile
+	# (IceShardProjectile), trailing frost and bursting into ice. Only
+	# "launch" and "length" apply to it.
+	"frost_shard": {
+		"shape": "ice_shard",
+		"launch": Vector2(0.2, 0.37),
+		"length": 32.0,
+	},
 }
 
 
@@ -125,12 +152,19 @@ static func fire(host: Node, style_id: String, from: Vector2, to: Vector2, on_hi
 
 static func _fire_one(host: Node, style: Dictionary, from: Vector2, to: Vector2, delay: float, on_hit: Callable) -> void:
 	var shape: String = style["shape"]
+	# An ice shard is exactly Nhal's own attack projectile (IceShardProjectile):
+	# the same crystal, frost streak and burst of ice.
+	if shape == "ice_shard":
+		IceShardProjectile.launch(host, from, (to - from).angle() - PI * 0.5, to, float(style["length"]), on_hit)
+		return
 	var projectile: Node2D
 	match shape:
 		"spike":
 			projectile = _build_spike(style)
 		"skull":
 			projectile = _build_skull(style)
+		"bubble":
+			projectile = _build_bubble(style)
 		_:
 			projectile = _build_arrow(style)
 	host.add_child(projectile)
@@ -139,8 +173,8 @@ static func _fire_one(host: Node, style: Dictionary, from: Vector2, to: Vector2,
 
 	var trail := CPUParticles2D.new()
 	trail.local_coords = false
-	# Arrows and spikes trail from their tail; a skull from its middle.
-	trail.position = Vector2.ZERO if shape == "skull" else Vector2(-float(style["length"]), 0.0)
+	# Arrows and spikes trail from their tail; a skull or bubble from its middle.
+	trail.position = Vector2.ZERO if shape == "skull" or shape == "bubble" else Vector2(-float(style["length"]), 0.0)
 	trail.amount = 28
 	trail.lifetime = 0.28
 	trail.spread = 18.0
@@ -159,6 +193,17 @@ static func _fire_one(host: Node, style: Dictionary, from: Vector2, to: Vector2,
 		trail.spread = 180.0
 		trail.initial_velocity_min = 4.0
 		trail.initial_velocity_max = 14.0
+	if shape == "bubble":
+		# A string of little bubbles left behind, drifting up.
+		trail.amount = 26
+		trail.lifetime = 0.55
+		trail.spread = 180.0
+		trail.gravity = Vector2(0, -60)
+		trail.initial_velocity_min = 4.0
+		trail.initial_velocity_max = 20.0
+		trail.texture = _bubble_dot()
+		trail.scale_amount_min = 0.25
+		trail.scale_amount_max = 0.6
 	projectile.add_child(trail)
 	trail.emitting = style["trail_color"].a > 0.0 and delay <= 0.0
 
@@ -173,6 +218,12 @@ static func _fire_one(host: Node, style: Dictionary, from: Vector2, to: Vector2,
 			pos.y += sin(p * TAU * 1.5) * 5.0
 			projectile.global_position = pos
 			projectile.rotation = sin(p * TAU * 1.2) * 0.14
+			return
+		if shape == "bubble":
+			# A bubble wobbles as it flies, squashing and stretching.
+			projectile.global_position = pos
+			var w: float = sin(p * TAU * 3.0)
+			projectile.scale = Vector2(1.0 + 0.1 * w, 1.0 - 0.1 * w)
 			return
 		# Tangent of the arc, so the arrow noses up, then down.
 		var tangent: Vector2 = (to - from) + Vector2(0.0, -arc * 4.0 * (1.0 - 2.0 * p))
@@ -191,6 +242,8 @@ static func _fire_one(host: Node, style: Dictionary, from: Vector2, to: Vector2,
 	tween.tween_callback(func() -> void:
 		trail.emitting = false
 		_spawn_impact(host, to, style["impact_color"], style["mist"])
+		if shape == "bubble":
+			_spawn_pop(host, to, style)
 		if on_hit.is_valid():
 			on_hit.call()
 	)
@@ -440,3 +493,92 @@ static func _ellipse(center: Vector2, radii: Vector2, color: Color) -> Polygon2D
 		points.append(center + Vector2(cos(a) * radii.x, sin(a) * radii.y))
 	poly.polygon = points
 	return poly
+
+
+## A water bubble centered on the origin: a clear body tinted
+## "head_color", a bright rim, a glowing core like the orb the sea
+## witch holds, and a white glint up top. "length" is its height.
+static func _build_bubble(style: Dictionary) -> Node2D:
+	var bubble := Node2D.new()
+	var r: float = float(style["length"]) * 0.5
+	var tint: Color = style["head_color"]
+	var glow_color: Color = style["glow_color"]
+	var add_mat := CanvasItemMaterial.new()
+	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+
+	var glow := _ellipse(Vector2.ZERO, Vector2.ONE * r * 1.6, Color(glow_color, glow_color.a * 0.35))
+	glow.material = add_mat
+	bubble.add_child(glow)
+	bubble.add_child(_ellipse(Vector2.ZERO, Vector2.ONE * r, Color(tint, 0.28)))
+	var core := _ellipse(Vector2(0.0, r * 0.1), Vector2.ONE * r * 0.45, Color(0.5, 1.0, 0.95, 0.6))
+	core.material = add_mat
+	bubble.add_child(core)
+
+	var rim := Line2D.new()
+	rim.width = maxf(1.5, r * 0.12)
+	rim.default_color = Color(0.85, 0.98, 1.0, 0.85)
+	var pts := PackedVector2Array()
+	for i in 25:
+		var a := TAU * i / 24.0
+		pts.append(Vector2(cos(a), sin(a)) * r)
+	rim.points = pts
+	bubble.add_child(rim)
+
+	bubble.add_child(_ellipse(Vector2(-r * 0.38, -r * 0.42), Vector2(r * 0.22, r * 0.14), Color(1, 1, 1, 0.9)))
+	bubble.add_child(_ellipse(Vector2(r * 0.3, r * 0.45), Vector2(r * 0.08, r * 0.05), Color(1, 1, 1, 0.6)))
+	return bubble
+
+
+## The little bubbles the trail leaves behind: a ring with a clear middle.
+static func _bubble_dot() -> Texture2D:
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.6, 0.8, 1.0])
+	g.colors = PackedColorArray([Color(1, 1, 1, 0.12), Color(1, 1, 1, 0.2), Color(1, 1, 1, 0.95), Color(1, 1, 1, 0.0)])
+	var t := GradientTexture2D.new()
+	t.gradient = g
+	t.fill = GradientTexture2D.FILL_RADIAL
+	t.fill_from = Vector2(0.5, 0.5)
+	t.fill_to = Vector2(1.0, 0.5)
+	t.width = 32
+	t.height = 32
+	return t
+
+
+## A bubble bursting: its skin flashes out as an expanding ring while a
+## puff of spray drifts off (the droplets are _spawn_impact()'s).
+static func _spawn_pop(host: Node, at: Vector2, style: Dictionary) -> void:
+	if not is_instance_valid(host):
+		return
+	var r: float = float(style["length"]) * 0.5
+	var ring := Line2D.new()
+	ring.width = 3.0
+	ring.default_color = Color(0.85, 0.98, 1.0, 0.9)
+	host.add_child(ring)
+	ring.global_position = at
+	var grow := func(rad: float) -> void:
+		var pts := PackedVector2Array()
+		for i in 25:
+			var a := TAU * i / 24.0
+			pts.append(Vector2(cos(a), sin(a)) * rad)
+		ring.points = pts
+	grow.call(r)
+	var t := ring.create_tween().set_parallel()
+	t.tween_method(grow, r, r * 2.6, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.tween_property(ring, "modulate:a", 0.0, 0.25)
+	t.chain().tween_callback(ring.queue_free)
+
+	var spray := CPUParticles2D.new()
+	spray.one_shot = true
+	spray.explosiveness = 0.9
+	spray.amount = 16
+	spray.spread = 180.0
+	spray.gravity = Vector2(0, -20)
+	spray.initial_velocity_min = 20.0
+	spray.initial_velocity_max = 60.0
+	spray.damping_min = 40.0
+	spray.damping_max = 80.0
+	_make_misty(spray, Color(style["impact_color"], 0.55), 0.6)
+	host.add_child(spray)
+	spray.global_position = at
+	spray.emitting = true
+	spray.finished.connect(spray.queue_free)

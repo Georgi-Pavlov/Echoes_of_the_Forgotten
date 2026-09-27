@@ -49,7 +49,7 @@ const PROFILES := {
 		"glow_color": Color(0.45, 1.0, 0.45),
 		"edge_color": Color(0.55, 1.0, 0.4),
 	},
-	"spirit_bear": {
+	"elderwild_companion": {
 		"breath_amount": 0.022, "breath_speed": 1.15,
 		"sway_amount": 0.005, "sway_speed": 0.5,
 		"ripple_amount": 0.0,
@@ -87,12 +87,71 @@ const PROFILES := {
 		"glow_color": Color(0.3, 0.95, 0.9),
 		"edge_color": Color(0.35, 1.0, 0.9),
 	},
+	# The Ironbound Isles - drowned things dragged up from the sea: a
+	# heavy swaying roll like a deck in a swell, and a faint ripple as if
+	# still underwater. Kaelen Varr's tentacles and rags stir the most.
+	"kaelen_varr": {
+		"breath_amount": 0.012, "breath_speed": 1.1,
+		"sway_amount": 0.014, "sway_speed": 0.5,
+		"ripple_amount": 0.0035, "ripple_freq": 7.0, "ripple_speed": 1.3,
+		"glow_color": Color(0.35, 0.85, 1.0),
+		"edge_color": Color(0.4, 0.9, 1.0),
+	},
+	"ironbound_melee": {
+		"breath_amount": 0.02, "breath_speed": 1.8,
+		"sway_amount": 0.01, "sway_speed": 0.8,
+		"ripple_amount": 0.0025, "ripple_freq": 9.0, "ripple_speed": 1.7,
+		"glow_color": Color(0.3, 1.0, 0.85),
+		"edge_color": Color(0.35, 0.95, 0.9),
+	},
+	"ironbound_range": {
+		"breath_amount": 0.014, "breath_speed": 1.3,
+		"sway_amount": 0.015, "sway_speed": 0.6,
+		"ripple_amount": 0.004, "ripple_freq": 7.0, "ripple_speed": 1.4,
+		"glow_color": Color(0.35, 0.95, 1.0),
+		"edge_color": Color(0.4, 1.0, 1.0),
+	},
 	"morvain_range": {
 		"breath_amount": 0.012, "breath_speed": 1.2,
 		"sway_amount": 0.016, "sway_speed": 0.5,
 		"ripple_amount": 0.004, "ripple_freq": 6.0, "ripple_speed": 1.2,
 		"glow_color": Color(0.35, 1.0, 0.95),
 		"edge_color": Color(0.4, 1.0, 0.95),
+	},
+	# Frostspire - things of ice and the void before creation. Nhal drifts
+	# like something only half there, a faint shimmer of cold haze on him;
+	# the ice brute breathes heavily and barely sways; the frost wraith
+	# floats, its robes of ice stirring.
+	"nhal": {
+		"breath_amount": 0.012, "breath_speed": 1.0,
+		"sway_amount": 0.014, "sway_speed": 0.45,
+		"ripple_amount": 0.003, "ripple_freq": 6.0, "ripple_speed": 1.0,
+		"glow_color": Color(0.55, 0.65, 1.0),
+		"edge_color": Color(0.6, 0.78, 1.0),
+	},
+	"frostspire_melee": {
+		"breath_amount": 0.022, "breath_speed": 1.6,
+		"sway_amount": 0.007, "sway_speed": 0.8,
+		"ripple_amount": 0.0,
+		"glow_color": Color(0.45, 0.8, 1.0),
+		"edge_color": Color(0.5, 0.85, 1.0),
+	},
+	"frostspire_range": {
+		"breath_amount": 0.013, "breath_speed": 1.2,
+		"sway_amount": 0.016, "sway_speed": 0.5,
+		"ripple_amount": 0.003, "ripple_freq": 7.0, "ripple_speed": 1.2,
+		"glow_color": Color(0.5, 0.85, 1.0),
+		"edge_color": Color(0.55, 0.9, 1.0),
+	},
+	# The Primordial Hunger - a vast, ancient beast: slow, deep breaths that
+	# heave its whole bulk, barely any sway, and the faint shimmer of the
+	# cold coming off it.
+	"the_primordial_hunger": {
+		"breath_amount": 0.02, "breath_speed": 1.0,
+		"sway_amount": 0.006, "sway_speed": 0.4,
+		"ripple_amount": 0.002, "ripple_freq": 6.0, "ripple_speed": 0.9,
+		"glow_color": Color(0.5, 0.75, 1.0),
+		"edge_color": Color(0.55, 0.8, 1.0),
 	},
 }
 

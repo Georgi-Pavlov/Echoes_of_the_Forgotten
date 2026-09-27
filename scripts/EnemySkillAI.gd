@@ -25,33 +25,33 @@ class_name EnemySkillAI
 # fallback (a plain Attack) takes over, unchanged.
 #
 # Deliberately NOT covered as scored SKILL candidates here: Savage
-# Roar, The Mist Remembers, Mark of the Mist, and Tidebringer. All four
+# Roar, The Mist Remembers, Mark of the Mist, and Pull of the Abyss. All four
 # already auto-trigger off HP%/hits-landed outside of any skill-picking
 # loop (see battle.gd's _update_enemy_blood_of_the_wild_state()/
 # _maybe_auto_activate_enemy_the_mist_remembers()/
 # _apply_enemy_mark_of_the_mist_stack()/_maybe_consume_enemy_
-# tidebringer_stack(), and EnemyHeroManager.gd's own mirrors) - they're
+# pull_of_the_abyss_stack(), and EnemyHeroManager.gd's own mirrors) - they're
 # never "picked", so they have no business being scored candidates.
-# Tidebringer's current state DOES still feed into the AI, though - not
+# Pull of the Abyss's current state DOES still feed into the AI, though - not
 # as a candidate of its own, but as an input to how a plain Attack
 # itself scores (see BASIC_ATTACK_ID/basic_attack_participates()/
-# evaluate_basic_attack() and Kunkka's own "basic_attack" case in
-# _kunkka_modifier()), since a Tidebringer-empowered Attack can
-# genuinely be the better play than any of Kunkka's real skills.
+# evaluate_basic_attack() and Kaelen Varr's own "basic_attack" case in
+# _kaelen_varr_modifier()), since a Pull of the Abyss-empowered Attack can
+# genuinely be the better play than any of Kaelen Varr's real skills.
 #
 # Eleven heroes have real AI logic today: Veyrik, Erynd, Morvael,
-# Kunkka, Ancient Apparition, Winter Wyvern, Crystal Maiden, Tusk,
+# Kaelen Varr, Nhal, The Primordial Hunger, Crystal Maiden, Tusk,
 # Treant Protector, Timbersaw, and Snapfire - see resolve_hero_
 # archetype() for how a hero_static maps to one of them,
 # and each one's own _*_modifier() function below for its personality.
-# Ancient Apparition's Ice Blast in particular models an "execute"
+# Nhal's Return to the Void in particular models an "execute"
 # mechanic (a target dies outright once its HP drops to or below a
 # reserved % of its own max HP, regardless of remaining HP - see
-# _aa_ice_blast_execute_score()) that nothing else in this file has to
-# account for. Winter Wyvern's Winter's Curse models a redirect
+# _nhal_return_to_the_void_execute_score()) that nothing else in this file has to
+# account for. The Primordial Hunger's The Hunger Calls models a redirect
 # mechanic of its own (every OTHER living enemy ignores the caster and
 # piles onto the frozen target instead, for bonus damage - see
-# _ww_winters_curse_modifier()'s own "redirect_candidate_count" scoring
+# _hunger_calls_modifier()'s own "redirect_candidate_count" scoring
 # and battle.gd's/EnemyHeroManager.gd's own retaliation-loop hooks).
 # Crystal Maiden's Freezing Field is a self-cast AoE ultimate (centered
 # on HER OWN position, never a selected enemy's) rather than a targeted
@@ -69,8 +69,8 @@ class_name EnemySkillAI
 # data battle.gd's own _build_enemy_ai_context() supplies (never present
 # in the simulation - see EnemyHeroManager's own _build_npc_ai_context()
 # docstring - where a missing value falls back to a generic "more
-# enemies around, more this matters" proxy, same spirit as Winter's
-# Curse's own redirect_candidate_count). Walrus Punch's own damage is
+# enemies around, more this matters" proxy, same spirit as The Hunger
+# Calls's own redirect_candidate_count). Walrus Punch's own damage is
 # Tusk's actual (rolled) Attack damage times a multiplier, not a flat
 # number - see its own "walrus_punch" case in _estimate_skill_damage().
 # Treant Protector's Nature's Guise is "defensive" category, exactly
@@ -138,7 +138,7 @@ class_name EnemySkillAI
 # _naga_mirror_image_modifier() rather than any generic category term
 # (see that function's own docstring). Ensnare is "offensive" (a root,
 # not a stun - the target can still attack/cast while rooted, so unlike
-# Torrent's/Barbed Lunge's own stuns it gets no generic "stun_turns" bonus of
+# Drowned Surge's/Barbed Lunge's own stuns it gets no generic "stun_turns" bonus of
 # its own, only the movement-denial/kill-setup value
 # _naga_ensnare_modifier() adds). Song of the Siren, Naga's ultimate, is
 # also "offensive" despite dealing no direct damage of its own - see
@@ -190,7 +190,7 @@ class_name EnemySkillAI
 #
 # Luna is the fifteenth hero with real AI logic. Lucent Beam is
 # "offensive", same single-target-nuke-plus-stun shape as Sacred Arrow/
-# Torrent. Eclipse is "offensive" too, despite dealing spell damage that
+# Drowned Surge. Eclipse is "offensive" too, despite dealing spell damage that
 # has nothing to do with Luna's own attack roll - see _luna_eclipse_
 # modifier()'s/_luna_eclipse_expected_damage()'s own docstrings for how
 # its "no cap on hits per enemy" random-beam mechanic is actually
@@ -231,17 +231,17 @@ const SKILL_INFO := {
 	# so it rides the same HP-danger tiers every defensive skill does.
 	"whisper_of_the_veil_self": {"category": "defensive", "base_score": 25.0},
 	"veil_of_the_forgotten": {"category": "defensive", "base_score": 40.0},
-	"torrent": {"category": "offensive", "base_score": 45.0},
-	"x_marks_the_spot": {"category": "utility", "base_score": 35.0},
-	"ghostship": {"category": "offensive", "base_score": 55.0},
-	"cold_feet": {"category": "offensive", "base_score": 40.0},
-	"ice_vortex": {"category": "offensive", "base_score": 35.0},
-	"chilling_touch": {"category": "offensive", "base_score": 50.0},
-	"ice_blast": {"category": "offensive", "base_score": 65.0},
-	"arctic_burn": {"category": "utility", "base_score": 40.0},
-	"splinter_blast": {"category": "offensive", "base_score": 50.0},
-	"cold_embrace": {"category": "defensive", "base_score": 45.0},
-	"winter's_curse": {"category": "defensive", "base_score": 65.0},
+	"drowned_surge": {"category": "offensive", "base_score": 45.0},
+	"undertow": {"category": "utility", "base_score": 35.0},
+	"the_sunken_one": {"category": "offensive", "base_score": 55.0},
+	"mark_of_stillness": {"category": "offensive", "base_score": 40.0},
+	"the_hollow_cold": {"category": "offensive", "base_score": 35.0},
+	"touch_of_the_first_cold": {"category": "offensive", "base_score": 50.0},
+	"return_to_the_void": {"category": "offensive", "base_score": 65.0},
+	"frostbound_fangs": {"category": "utility", "base_score": 40.0},
+	"maddening_roar": {"category": "offensive", "base_score": 50.0},
+	"the_test_of_time": {"category": "defensive", "base_score": 45.0},
+	"the_hunger_calls": {"category": "defensive", "base_score": 65.0},
 	"crystal_nova": {"category": "offensive", "base_score": 45.0},
 	"frostbite": {"category": "offensive", "base_score": 50.0},
 	"freezing_field": {"category": "offensive", "base_score": 65.0},
@@ -284,8 +284,8 @@ const BASIC_ATTACK_ID := "basic_attack"
 # A plain Attack's baseline score for a hero that opts in - deliberately
 # a flat constant rather than running through _evaluate_offensive(): a
 # basic Attack has no kill-potential/AoE terms of its own here, only
-# whatever a hero-specific modifier adds on top (Tidebringer's own bonus
-# damage/cleave, for Kunkka).
+# whatever a hero-specific modifier adds on top (Pull of the Abyss's own bonus
+# damage/cleave, for Kaelen Varr).
 const BASELINE_BASIC_ATTACK_SCORE := 30.0
 
 # Whisper of the Veil cast on the caster himself (Morvael's self-heal: pay
@@ -304,9 +304,9 @@ const HERO_TIE_BREAK := {
 	"veyrik": ["barbed_lunge", "abyssal_spasm", "depthsveil", "leeching_hunger"],
 	"erynd": ["thornbind", "elderwild_companion", "wildbond", "beast_of_the_elderwild"],
 	"morvael": ["veil_of_the_forgotten", "whisper_of_the_veil_self", "whisper_of_the_veil"],
-	"kunkka": ["ghostship", "torrent", "x_marks_the_spot"],
-	"ancient_apparition": ["ice_blast", "chilling_touch", "cold_feet", "ice_vortex"],
-	"winter_wyvern": ["winter's_curse", "splinter_blast", "cold_embrace", "arctic_burn"],
+	"kaelen_varr": ["the_sunken_one", "drowned_surge", "undertow"],
+	"nhal": ["return_to_the_void", "touch_of_the_first_cold", "mark_of_stillness", "the_hollow_cold"],
+	"the_primordial_hunger": ["the_hunger_calls", "maddening_roar", "the_test_of_time", "frostbound_fangs"],
 	"crystal_maiden": ["freezing_field", "frostbite", "crystal_nova"],
 	"tusk": ["walrus_punch", "snowball", "ice_shards", "tag_team"],
 	"treant_protector": ["overgrowth", "leech_seed", "nature's_guise", "living_armor"],
@@ -341,12 +341,12 @@ static func resolve_hero_archetype(hero_static: Dictionary) -> String:
 		return "erynd"
 	if "the_mist_remembers" in skill_ids:
 		return "morvael"
-	if "torrent" in skill_ids:
-		return "kunkka"
-	if "ice_blast" in skill_ids:
-		return "ancient_apparition"
-	if "winter's_curse" in skill_ids:
-		return "winter_wyvern"
+	if "drowned_surge" in skill_ids:
+		return "kaelen_varr"
+	if "return_to_the_void" in skill_ids:
+		return "nhal"
+	if "the_hunger_calls" in skill_ids:
+		return "the_primordial_hunger"
 	if "freezing_field" in skill_ids:
 		return "crystal_maiden"
 	if "walrus_punch" in skill_ids:
@@ -393,13 +393,13 @@ static func evaluate_skill(skill_id: String, level_data: Dictionary, context: Di
 
 ## True if a plain Attack should be scored and compared directly
 ## against `archetype`'s real skills, rather than only ever being
-## whatever happens when no skill candidate was found. Kunkka opts in
-## because Tidebringer can make his next Attack genuinely worth more
-## than any of his three active skills (see _kunkka_modifier()'s own
-## "basic_attack" case); Winter Wyvern opts in for the same reason
-## Arctic Burn is worth using at all - an Attack made while it's active
+## whatever happens when no skill candidate was found. Kaelen Varr opts in
+## because Pull of the Abyss can make his next Attack genuinely worth more
+## than any of his three active skills (see _kaelen_varr_modifier()'s own
+## "basic_attack" case); The Primordial Hunger opts in for the same reason
+## Frostbound Fangs is worth using at all - an Attack made while it's active
 ## realizes its buff's value instead of banking a charge that might
-## expire unused (see _ww_basic_attack_modifier()). This stays a hero-
+## expire unused (see _hunger_basic_attack_modifier()). This stays a hero-
 ## gated switch rather than always-on so no other hero's existing
 ## behavior changes: for everyone else, a plain Attack is still purely
 ## the fallback for "nothing else qualified," exactly as before. Crystal
@@ -438,13 +438,13 @@ static func evaluate_skill(skill_id: String, level_data: Dictionary, context: Di
 ## own right, not just the fallback for "nothing else qualified" (see
 ## _luna_basic_attack_modifier()'s own docstring).
 static func basic_attack_participates(archetype: String) -> bool:
-	return archetype == "kunkka" or archetype == "winter_wyvern" or archetype == "crystal_maiden" or archetype == "tusk" or archetype == "treant_protector" or archetype == "timbersaw" or archetype == "snapfire" or archetype == "naga_siren" or archetype == "slardar" or archetype == "mirana" or archetype == "luna"
+	return archetype == "kaelen_varr" or archetype == "the_primordial_hunger" or archetype == "crystal_maiden" or archetype == "tusk" or archetype == "treant_protector" or archetype == "timbersaw" or archetype == "snapfire" or archetype == "naga_siren" or archetype == "slardar" or archetype == "mirana" or archetype == "luna"
 
 
 ## The score for a plain Attack, for a hero basic_attack_participates()
 ## opts in for. See BASELINE_BASIC_ATTACK_SCORE for why this doesn't
 ## route through _evaluate_offensive() - only the hero-specific modifier
-## (Tidebringer's own bonus, for Kunkka) gives this any situational
+## (Pull of the Abyss's own bonus, for Kaelen Varr) gives this any situational
 ## value at all.
 static func evaluate_basic_attack(context: Dictionary) -> float:
 	return BASELINE_BASIC_ATTACK_SCORE + _hero_specific_modifier(str(context.get("archetype", "")), BASIC_ATTACK_ID, {}, context)
@@ -458,9 +458,9 @@ static func evaluate_basic_attack(context: Dictionary) -> float:
 
 ## Offensive: rewards a target that's already hurt, a real chance to
 ## finish it off, and - for a true AoE like Abyssal Spasm - extra living
-## targets to hit at once. Torrent's own level-4 splash and Ghostship's
+## targets to hit at once. Drowned Surge's own level-4 splash and The Sunken One's
 ## whole "everyone the ship's path crosses" AoE get their own precise
-## tiered bonuses in _kunkka_torrent_modifier()/_kunkka_ghostship_
+## tiered bonuses in _kaelen_varr_drowned_surge_modifier()/_kaelen_varr_the_sunken_one_
 ## modifier() instead of this generic per-target formula, since the
 ## design calls for different, specific tiers for each rather than one
 ## shared curve.
@@ -555,31 +555,31 @@ static func _estimate_skill_damage(skill_id: String, level_data: Dictionary, con
 			return hero_damage
 		"thornbind":
 			return float(level_data.get("dot_damage", 0.0)) * float(level_data.get("dot_duration", 0.0))
-		"whisper_of_the_veil", "torrent", "ghostship":
+		"whisper_of_the_veil", "drowned_surge", "the_sunken_one":
 			return float(level_data.get("damage", 0.0))
-		"cold_feet", "ice_vortex":
+		"mark_of_stillness", "the_hollow_cold":
 			# Both are pure DoTs with no upfront hit at all - their
 			# entire value is damage x duration, never just the per-
 			# turn tick (see the design doc's own "damage x duration,
 			# not per-turn damage" note).
 			return float(level_data.get("damage", 0.0)) * float(level_data.get("duration", 0.0))
-		"chilling_touch":
+		"touch_of_the_first_cold":
 			return hero_damage + float(level_data.get("bonus_damage", 0.0))
-		"ice_blast":
+		"return_to_the_void":
 			return float(level_data.get("damage", 0.0)) + float(level_data.get("dot_damage", 0.0)) * float(level_data.get("dot_duration", 0.0))
-		"splinter_blast":
+		"maddening_roar":
 			return float(level_data.get("damage", 0.0))
 		"crystal_nova":
 			return float(level_data.get("damage", 0.0))
 		"frostbite":
-			# A pure DoT/control cast, same as Cold Feet/Ice Vortex above -
+			# A pure DoT/control cast, same as Mark of Stillness/The Hollow Cold above -
 			# its entire damage value is dot_damage x dot_duration, never
 			# just the per-turn tick.
 			return float(level_data.get("dot_damage", 0.0)) * float(level_data.get("dot_duration", 0.0))
 		"freezing_field":
 			# Also a pure damage-over-time cast (on herself, hitting
 			# whoever's in range each tick) - damage x duration, same
-			# reasoning as Cold Feet/Ice Vortex/Frostbite above.
+			# reasoning as Mark of Stillness/The Hollow Cold/Frostbite above.
 			return float(level_data.get("damage", 0.0)) * float(level_data.get("duration", 0.0))
 		"ice_shards", "snowball":
 			return float(level_data.get("damage", 0.0))
@@ -595,10 +595,10 @@ static func _estimate_skill_damage(skill_id: String, level_data: Dictionary, con
 			# _tusk_walrus_punch_modifier() (with real board data, or the
 			# simulation's own proxy) is in a position to judge; this
 			# stays the conservative no-collision baseline, same split
-			# Ice Blast's own execute bonus uses versus its base estimate.
+			# Return to the Void's own execute bonus uses versus its base estimate.
 			return float(context.get("hero_damage", 0.0)) * float(level_data.get("damage_multiplier", 1.0))
 		"leech_seed":
-			# A pure DoT/sustain cast, same as Cold Feet/Ice Vortex/
+			# A pure DoT/sustain cast, same as Mark of Stillness/The Hollow Cold/
 			# Frostbite above - its entire damage value is dot_damage x
 			# duration, never just the per-turn tick.
 			return float(level_data.get("dot_damage", 0.0)) * float(level_data.get("duration", 0.0))
@@ -672,12 +672,12 @@ static func _hero_specific_modifier(archetype: String, skill_id: String, level_d
 			return _erynd_modifier(skill_id, level_data, context)
 		"morvael":
 			return _morvael_modifier(skill_id, level_data, context)
-		"kunkka":
-			return _kunkka_modifier(skill_id, level_data, context)
-		"ancient_apparition":
-			return _ancient_apparition_modifier(skill_id, level_data, context)
-		"winter_wyvern":
-			return _winter_wyvern_modifier(skill_id, level_data, context)
+		"kaelen_varr":
+			return _kaelen_varr_modifier(skill_id, level_data, context)
+		"nhal":
+			return _nhal_modifier(skill_id, level_data, context)
+		"the_primordial_hunger":
+			return _the_primordial_hunger_modifier(skill_id, level_data, context)
 		"crystal_maiden":
 			return _crystal_maiden_modifier(skill_id, level_data, context)
 		"tusk":
@@ -779,33 +779,33 @@ static func _morvael_whisper_of_the_veil_self_modifier(level_data: Dictionary, c
 	return lerpf(-12.0, 8.0, clampf(efficiency, 0.0, 1.0))
 
 
-## Kunkka: offensive, control, burst, positioning, combo-oriented. Every
-## branch below is one piece of that: Torrent's own multi-target/stun
-## value, Ghostship's own AoE/multi-kill value, X Marks the Spot's value
+## Kaelen Varr: offensive, control, burst, positioning, combo-oriented. Every
+## branch below is one piece of that: Drowned Surge's own multi-target/stun
+## value, The Sunken One's own AoE/multi-kill value, Undertow's value
 ## as a setup move (worthless on its own, valuable only for what it
-## enables), and a plain Attack's value once Tidebringer is about to pay
+## enables), and a plain Attack's value once Pull of the Abyss is about to pay
 ## off - see BASIC_ATTACK_ID/basic_attack_participates().
-static func _kunkka_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
+static func _kaelen_varr_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
 	match skill_id:
-		"torrent":
-			return _kunkka_torrent_modifier(level_data, context)
-		"ghostship":
-			return _kunkka_ghostship_modifier(level_data, context)
-		"x_marks_the_spot":
-			return _kunkka_xmarks_modifier(context)
+		"drowned_surge":
+			return _kaelen_varr_drowned_surge_modifier(level_data, context)
+		"the_sunken_one":
+			return _kaelen_varr_the_sunken_one_modifier(level_data, context)
+		"undertow":
+			return _kaelen_varr_undertow_modifier(context)
 		BASIC_ATTACK_ID:
-			return _kunkka_basic_attack_modifier(context)
+			return _kaelen_varr_basic_attack_modifier(context)
 		_:
 			return 0.0
 
 
-## Torrent: on top of the generic offensive scoring every damage skill
+## Drowned Surge: on top of the generic offensive scoring every damage skill
 ## already gets (target value, kill potential), this adds the two
-## things unique to Torrent's own design - its level-4 splash (a
-## smaller, cheaper AoE than Ghostship's, so smaller bonuses) and its
+## things unique to Drowned Surge's own design - its level-4 splash (a
+## smaller, cheaper AoE than The Sunken One's, so smaller bonuses) and its
 ## stun, worth more at 2 turns than at 1 since it buys a full extra free
 ## hit rather than just a delayed one.
-static func _kunkka_torrent_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _kaelen_varr_drowned_surge_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var score: float = 0.0
 	var has_splash: bool = float(level_data.get("radius", 0.0)) > 0.0
 
@@ -837,14 +837,14 @@ static func _kunkka_torrent_modifier(level_data: Dictionary, context: Dictionary
 	return score
 
 
-## Ghostship: Kunkka's biggest single play, so it leans hardest on how
+## The Sunken One: Kaelen Varr's biggest single play, so it leans hardest on how
 ## many targets the ship's path actually reaches (every living target
 ## in this game's simplified "no columns" execution - see both
-## _cast_enemy_ghostship() and EnemyHeroManager's own "ghostship" case)
+## _cast_enemy_the_sunken_one() and EnemyHeroManager's own "the_sunken_one" case)
 ## and how many of them it can also kill outright, same "primary kill is
-## already generic, only extra kills add here" split Torrent's own
+## already generic, only extra kills add here" split Drowned Surge's own
 ## modifier uses.
-static func _kunkka_ghostship_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _kaelen_varr_the_sunken_one_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var living_hps: Array = context.get("living_target_hps", [])
 	var hit_count: int = living_hps.size()
 
@@ -869,87 +869,87 @@ static func _kunkka_ghostship_modifier(level_data: Dictionary, context: Dictiona
 	return score
 
 
-## X Marks the Spot deals no damage itself - its entire value is either
+## Undertow deals no damage itself - its entire value is either
 ## the guaranteed teleport closing distance, or (far more so) setting up
 ## a real follow-up next turn. Worthless (and a waste of mana/cooldown)
-## if Kunkka is already standing right on the target, so it's penalized
+## if Kaelen Varr is already standing right on the target, so it's penalized
 ## outright at melee range; otherwise a small flat value for closing
-## distance at all, plus a much larger combo bonus if Ghostship or
-## Torrent would actually be usable the moment the teleport lands (see
-## battle.gd's own "kunkka_torrent_combo_ready"/"kunkka_ghostship_combo_
+## distance at all, plus a much larger combo bonus if The Sunken One or
+## Drowned Surge would actually be usable the moment the teleport lands (see
+## battle.gd's own "kaelen_varr_drowned_surge_combo_ready"/"kaelen_varr_the_sunken_one_combo_
 ## ready" context fields - a REAL cooldown/mana/worth-casting check, not
-## just "is it off cooldown"). Ghostship's own combo bonus wins over
-## Torrent's when both are ready, matching Ghostship being the bigger
-## payoff. Neither combo field exists in the simulation (X Marks isn't
+## just "is it off cooldown"). The Sunken One's own combo bonus wins over
+## Drowned Surge's when both are ready, matching The Sunken One being the bigger
+## payoff. Neither combo field exists in the simulation (Undertow isn't
 ## even a candidate there - see KNOWN_ACTIVE_SKILL_IDS's own comment),
 ## so this only ever does anything in a real battle.
-static func _kunkka_xmarks_modifier(context: Dictionary) -> float:
+static func _kaelen_varr_undertow_modifier(context: Dictionary) -> float:
 	if int(context.get("target_distance", 0)) <= 0:
 		return -30.0
 
 	var score: float = 10.0
-	if bool(context.get("kunkka_ghostship_combo_ready", false)):
+	if bool(context.get("kaelen_varr_the_sunken_one_combo_ready", false)):
 		score += 35.0
-	elif bool(context.get("kunkka_torrent_combo_ready", false)):
+	elif bool(context.get("kaelen_varr_drowned_surge_combo_ready", false)):
 		score += 30.0
 	return score
 
 
 ## A plain Attack is only worth scoring above its flat baseline for
-## Kunkka when Tidebringer is actually about to pay off - see
-## BASIC_ATTACK_ID/basic_attack_participates(). `tidebringer_cleave_
+## Kaelen Varr when Pull of the Abyss is actually about to pay off - see
+## BASIC_ATTACK_ID/basic_attack_participates(). `pull_of_the_abyss_cleave_
 ## targets` is already 0 in a real hero fight (there's only ever the
 ## player to cleave onto - see battle.gd's own _build_enemy_ai_context()
 ## comment), so the cleave top-up only ever fires in the simulation.
-static func _kunkka_basic_attack_modifier(context: Dictionary) -> float:
-	if not bool(context.get("tidebringer_ready", false)):
+static func _kaelen_varr_basic_attack_modifier(context: Dictionary) -> float:
+	if not bool(context.get("pull_of_the_abyss_ready", false)):
 		return 0.0
 
 	var score: float = 20.0
-	var cleave_targets: int = int(context.get("tidebringer_cleave_targets", 0))
+	var cleave_targets: int = int(context.get("pull_of_the_abyss_cleave_targets", 0))
 	if cleave_targets > 0:
 		score += minf(float(cleave_targets), 3.0) * 15.0
 	return score
 
 
-## Ancient Apparition: ranged, DoT/execute-oriented caster. Cold Feet/
-## Ice Vortex lean on total-damage-over-time and how many targets are
+## Nhal: ranged, DoT/execute-oriented caster. Mark of Stillness/
+## The Hollow Cold lean on total-damage-over-time and how many targets are
 ## caught in it (see _estimate_skill_damage()'s own "damage x duration"
 ## cases for both, which already feeds the generic kill-potential
-## bonus); Chilling Touch is deliberately left to pure generic offensive
+## bonus); Touch of the First Cold is deliberately left to pure generic offensive
 ## scoring (it's just the hero's own attack damage plus a flat bonus -
-## nothing AA-specific to add on top); Ice Blast gets the most
+## nothing Nhal-specific to add on top); Return to the Void gets the most
 ## elaborate treatment of anything in this file, since its AoE and
 ## execute mechanic both need dedicated modeling - see
-## _aa_ice_blast_modifier().
-static func _ancient_apparition_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
+## _nhal_return_to_the_void_modifier().
+static func _nhal_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
 	match skill_id:
-		"cold_feet":
-			return _aa_cold_feet_modifier(context)
-		"ice_vortex":
-			return _aa_ice_vortex_modifier(level_data, context)
-		"chilling_touch":
+		"mark_of_stillness":
+			return _nhal_mark_of_stillness_modifier(context)
+		"the_hollow_cold":
+			return _nhal_the_hollow_cold_modifier(level_data, context)
+		"touch_of_the_first_cold":
 			# Its effective damage (hero_damage + bonus_damage) and the
 			# target-value/kill-potential terms that damage feeds are
 			# already fully covered by the shared _evaluate_offensive()
-			# - nothing AA-specific to add here.
+			# - nothing Nhal-specific to add here.
 			return 0.0
-		"ice_blast":
-			return _aa_ice_blast_modifier(level_data, context)
+		"return_to_the_void":
+			return _nhal_return_to_the_void_modifier(level_data, context)
 		_:
 			return 0.0
 
 
-## Cold Feet: on top of the generic offensive scoring (which already
+## Mark of Stillness: on top of the generic offensive scoring (which already
 ## uses damage x duration as its damage estimate - see
 ## _estimate_skill_damage() - so a long, high-level freeze already
 ## scores its kill potential correctly), a further top-up for an
 ## already-low-HP target, per the design doc's explicit "<30%/<20%"
 ## tiers. Not worth recasting on an already-frozen target at all - see
 ## _enemy_skill_worth_casting()'s/_npc_skill_worth_casting()'s own
-## "cold_feet" gate, which keeps it out of the candidate list entirely
+## "mark_of_stillness" gate, which keeps it out of the candidate list entirely
 ## rather than scoring it low here.
-static func _aa_cold_feet_modifier(context: Dictionary) -> float:
+static func _nhal_mark_of_stillness_modifier(context: Dictionary) -> float:
 	var target_hp: float = float(context.get("target_hp", 0.0))
 	var target_max_hp: float = float(context.get("target_max_hp", 0.0))
 	if target_max_hp <= 0.0:
@@ -963,7 +963,7 @@ static func _aa_cold_feet_modifier(context: Dictionary) -> float:
 	return 0.0
 
 
-## Ice Vortex: an AoE DoT, so - like Ghostship - it leans hardest on how
+## The Hollow Cold: an AoE DoT, so - like The Sunken One - it leans hardest on how
 ## many targets it actually reaches (every living target, in this
 ## game's own simplified "no columns" AoE execution) and how many of
 ## them its own total damage-over-time (damage x duration) would also
@@ -971,7 +971,7 @@ static func _aa_cold_feet_modifier(context: Dictionary) -> float:
 ## always just the one player, so this collapses to the "1 target: +5"
 ## tier plus whatever the generic kill-potential bonus already gives it
 ## - exactly like every other AoE skill's own rival-side simplification.
-static func _aa_ice_vortex_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _nhal_the_hollow_cold_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var enemy_count: int = int(context.get("enemy_count", 1))
 	var score: float = 0.0
 
@@ -992,22 +992,22 @@ static func _aa_ice_vortex_modifier(level_data: Dictionary, context: Dictionary)
 			extra_kills += 1
 	# The primary target's own kill is already scored generically (see
 	# _kill_potential_bonus(), fed by target_hp/_estimate_skill_damage's
-	# own "cold_feet"/"ice_vortex" case) - this only adds for kills
-	# BEYOND that one, same split Torrent's/Ghostship's own modifiers use.
+	# own "mark_of_stillness"/"the_hollow_cold" case) - this only adds for kills
+	# BEYOND that one, same split Drowned Surge's/The Sunken One's own modifiers use.
 	if extra_kills >= 2:
 		score += 35.0 * float(extra_kills - 1)
 
 	return score
 
 
-## Ice Blast: Ancient Apparition's highest-value play, and the most
+## Return to the Void: Nhal's highest-value play, and the most
 ## elaborate scoring in this file - it has to value THREE things a
 ## normal AoE nuke doesn't: how many targets its radius reaches, how
 ## many of them its raw damage would also kill (both handled the same
-## way Ghostship's own modifier does), and - the mechanic that matters
+## way The Sunken One's own modifier does), and - the mechanic that matters
 ## most here - how many of them its damage+DoT would push at or below
 ## their own execute threshold (max_hp x execute_pct) even without
-## fully depleting their HP. See _aa_ice_blast_execute_score() for how
+## fully depleting their HP. See _nhal_return_to_the_void_execute_score() for how
 ## that last one is actually worked out per-target. In a real hero
 ## fight `living_target_hps`/`living_target_max_hps` are always just
 ## the one player, so the AoE/multi-kill terms collapse to their own
@@ -1015,16 +1015,16 @@ static func _aa_ice_vortex_modifier(level_data: Dictionary, context: Dictionary)
 ## side simplification - only the execute term still does real work
 ## there.
 ##
-## Target selection: this project's own AoE skills (Abyssal Spasm, Torrent's
-## splash, Ghostship, Ice Vortex) already always hit either the single
+## Target selection: this project's own AoE skills (Abyssal Spasm, Drowned Surge's
+## splash, The Sunken One, The Hollow Cold) already always hit either the single
 ## player (a hero fight) or literally every living enemy (this sim's own
-## "no columns" simplification - see EnemyHeroManager's own "ice_blast"
+## "no columns" simplification - see EnemyHeroManager's own "return_to_the_void"
 ## case) rather than requiring a chosen center point that only reaches
 ## SOME of them. So there's no separate "which target produces the
 ## highest total value" search to run here the way a real multi-column
-## fight would need - every living target is already "the one Ice Blast
+## fight would need - every living target is already "the one Return to the Void
 ## would hit," and this modifier simply sums each of their contributions.
-static func _aa_ice_blast_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _nhal_return_to_the_void_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var living_hps: Array = context.get("living_target_hps", [])
 	var living_max_hps: Array = context.get("living_target_max_hps", living_hps)
 	var hit_count: int = living_hps.size()
@@ -1054,13 +1054,13 @@ static func _aa_ice_blast_modifier(level_data: Dictionary, context: Dictionary) 
 			continue
 
 		var max_hp: float = float(living_max_hps[i]) if i < living_max_hps.size() else hp
-		execute_score += _aa_ice_blast_execute_score(after_initial_hit, max_hp, level_data)
+		execute_score += _nhal_return_to_the_void_execute_score(after_initial_hit, max_hp, level_data)
 
 	# The primary target's own kill is already scored generically (see
 	# _kill_potential_bonus(), fed by target_hp/_estimate_skill_damage's
-	# own "ice_blast" case, which already folds the DoT into its own
+	# own "return_to_the_void" case, which already folds the DoT into its own
 	# kill-potential estimate) - this only adds for kills BEYOND that
-	# one, same split Torrent's/Ghostship's own modifiers use.
+	# one, same split Drowned Surge's/The Sunken One's own modifiers use.
 	if extra_kills >= 2:
 		score += 50.0 * float(extra_kills - 1)
 
@@ -1075,18 +1075,18 @@ static func _aa_ice_blast_modifier(level_data: Dictionary, context: Dictionary) 
 	return score
 
 
-## The execute mechanic, explicitly modeled: a target hit by Ice Blast
+## The execute mechanic, explicitly modeled: a target hit by Return to the Void
 ## reserves execute_pct of its OWN max HP for the DoT's duration - the
 ## instant its current HP ever drops to or below that reserved amount
 ## (checked once per tick, not continuously - see battle.gd's own
-## _tick_ice_blast_effects()), it dies outright regardless of how much
+## _tick_return_to_the_void_effects()), it dies outright regardless of how much
 ## HP is technically still there. `hp_after_initial_hit` is what a
-## target has left right after Ice Blast's own upfront `damage` (a
+## target has left right after Return to the Void's own upfront `damage` (a
 ## target already fully killed by that alone is handled by the caller's
 ## own `extra_kills`, never passed in here). This is deliberately one of
 ## the largest modifiers in the whole file, per the design doc's own
 ## "one of the strongest modifiers in the entire AI system" instruction.
-static func _aa_ice_blast_execute_score(hp_after_initial_hit: float, max_hp: float, level_data: Dictionary) -> float:
+static func _nhal_return_to_the_void_execute_score(hp_after_initial_hit: float, max_hp: float, level_data: Dictionary) -> float:
 	var execute_pct: float = float(level_data.get("execute_pct", 0.0))
 	if execute_pct <= 0.0 or max_hp <= 0.0:
 		return 0.0
@@ -1114,47 +1114,47 @@ static func _aa_ice_blast_execute_score(hp_after_initial_hit: float, max_hp: flo
 	return 0.0
 
 
-## Winter Wyvern: ranged, offensive/defensive/control, reaction-
-## oriented. Arctic Burn is a setup buff (only worth its base_score once
-## it can realistically turn into real damage - see _ww_arctic_burn_
-## modifier()); Splinter Blast is the main burst/AoE option (generic
+## The Primordial Hunger: ranged, offensive/defensive/control, reaction-
+## oriented. Frostbound Fangs is a setup buff (only worth its base_score once
+## it can realistically turn into real damage - see _hunger_frostbound_fangs_
+## modifier()); Maddening Roar is the main burst/AoE option (generic
 ## offensive scoring already handles its primary hit, this only adds
-## its own splash-specific terms); Cold Embrace and Winter's Curse are
+## its own splash-specific terms); The Test of Time and The Hunger Calls are
 ## both "defensive" category (see SKILL_INFO), so both already get the
 ## shared HP-ratio tiers _evaluate_defensive() provides for free - this
 ## only layers each skill's own extra factors on top (healing/buff-
-## removal for Cold Embrace, redirected-enemy count for Winter's Curse).
-static func _winter_wyvern_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
+## removal for The Test of Time, redirected-enemy count for The Hunger Calls).
+static func _the_primordial_hunger_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
 	match skill_id:
-		"arctic_burn":
-			return _ww_arctic_burn_modifier(level_data, context)
-		"splinter_blast":
-			return _ww_splinter_blast_modifier(level_data, context)
-		"cold_embrace":
-			return _ww_cold_embrace_modifier(level_data, context)
-		"winter's_curse":
-			return _ww_winters_curse_modifier(level_data, context)
+		"frostbound_fangs":
+			return _hunger_frostbound_fangs_modifier(level_data, context)
+		"maddening_roar":
+			return _hunger_maddening_roar_modifier(level_data, context)
+		"the_test_of_time":
+			return _hunger_the_test_of_time_modifier(level_data, context)
+		"the_hunger_calls":
+			return _hunger_calls_modifier(level_data, context)
 		BASIC_ATTACK_ID:
-			return _ww_basic_attack_modifier(context)
+			return _hunger_basic_attack_modifier(context)
 		_:
 			return 0.0
 
 
-## Arctic Burn's real value is buff_value x expected useful attacks
+## Frostbound Fangs' real value is buff_value x expected useful attacks
 ## within its own attacks-or-duration limit (whichever is smaller - see
 ## the skill's own design doc), not just its raw bonus_damage stat - a
 ## level with a huge bonus_damage but only 2 banked attacks isn't worth
 ## as much as the number alone suggests. Scores low if there's no
 ## realistic attack coming at all (context's own "in_attack_range_now"/
-## "in_attack_range_with_arctic_burn_bonus" - always true in the
+## "in_attack_range_with_frostbound_fangs_bonus" - always true in the
 ## simulation, real column distance in battle.gd), and a little extra if
 ## the bonus range specifically is what closes the gap - "already active"
 ## is gated at the candidacy level instead (see _enemy_skill_worth_
-## casting()'s/_npc_skill_worth_casting()'s own "arctic_burn" case), same
+## casting()'s/_npc_skill_worth_casting()'s own "frostbound_fangs" case), same
 ## as every other self-buff in this file.
-static func _ww_arctic_burn_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _hunger_frostbound_fangs_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var can_attack_now: bool = bool(context.get("in_attack_range_now", true))
-	var can_attack_with_bonus: bool = bool(context.get("in_attack_range_with_arctic_burn_bonus", true))
+	var can_attack_with_bonus: bool = bool(context.get("in_attack_range_with_frostbound_fangs_bonus", true))
 
 	if not can_attack_now and not can_attack_with_bonus:
 		return -25.0
@@ -1174,9 +1174,9 @@ static func _ww_arctic_burn_modifier(level_data: Dictionary, context: Dictionary
 	return score
 
 
-## Splinter Blast: on top of the generic offensive scoring the primary
+## Maddening Roar: on top of the generic offensive scoring the primary
 ## hit already gets (target value, kill potential - via _estimate_
-## skill_damage()'s own "splinter_blast" case), this adds the AoE tier
+## skill_damage()'s own "maddening_roar" case), this adds the AoE tier
 ## for however many total targets are in play and a bonus for each
 ## SECONDARY target (i.e. every living target except the primary, which
 ## is always the lowest-HP one - see _lowest_hp_enemy()'s established
@@ -1184,7 +1184,7 @@ static func _ww_arctic_burn_modifier(level_data: Dictionary, context: Dictionary
 ## only ever has the player as a possible target, so this collapses to
 ## the "1 target: +5" tier there, same as every other AoE skill's own
 ## rival-side simplification.
-static func _ww_splinter_blast_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _hunger_maddening_roar_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var living_hps: Array = context.get("living_target_hps", [])
 	var total_count: int = living_hps.size()
 
@@ -1198,12 +1198,12 @@ static func _ww_splinter_blast_modifier(level_data: Dictionary, context: Diction
 	elif total_count == 1:
 		score += 5.0
 
-	var splinter_damage: float = float(level_data.get("splinter_damage", 0.0))
+	var shatter_damage: float = float(level_data.get("shatter_damage", 0.0))
 	var sorted_hps: Array = living_hps.duplicate()
 	sorted_hps.sort()
 	var extra_kills: int = 0
 	for i in range(1, sorted_hps.size()):
-		if splinter_damage >= float(sorted_hps[i]) and float(sorted_hps[i]) > 0.0:
+		if shatter_damage >= float(sorted_hps[i]) and float(sorted_hps[i]) > 0.0:
 			extra_kills += 1
 	if extra_kills >= 1:
 		score += 35.0 * float(extra_kills)
@@ -1211,21 +1211,21 @@ static func _ww_splinter_blast_modifier(level_data: Dictionary, context: Diction
 	return score
 
 
-## Cold Embrace: on top of the shared defensive HP-ratio tiers
+## The Test of Time: on top of the shared defensive HP-ratio tiers
 ## (_evaluate_defensive(), already covering "large score increase when
 ## in danger" and the "healthy -> penalty" that stops it from being cast
 ## just because it's available - see that function's own docstring for
 ## why), this adds its own two extra factors: the healing itself (only
 ## worth anything once actually hurt - full HP has nothing to heal
 ## into), and the cost/benefit of what casting it would dispel - a
-## penalty if Arctic Burn is currently running (a real buff that would
+## penalty if Frostbound Fangs is currently running (a real buff that would
 ## be thrown away), a bonus if the rival currently has a harmful debuff
-## on it (which Cold Embrace would clear for free). The "can't move or
-## attack while encased" opportunity cost isn't a separate term here -
+## on it (which The Test of Time would clear for free). The "can't move or
+## attack while held" opportunity cost isn't a separate term here -
 ## it's already what the healthy-HP penalty in _evaluate_defensive()
 ## represents: safe and free to keep attacking is exactly when this
 ## skill scores worst.
-static func _ww_cold_embrace_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _hunger_the_test_of_time_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var score: float = 0.0
 
 	var hp_ratio: float = float(context.get("hero_hp_ratio", 1.0))
@@ -1234,7 +1234,7 @@ static func _ww_cold_embrace_modifier(level_data: Dictionary, context: Dictionar
 		var duration: int = int(level_data.get("duration", 0))
 		score += minf(heal * float(duration) * 0.05, 30.0)
 
-	if bool(context.get("arctic_burn_active", false)):
+	if bool(context.get("frostbound_fangs_active", false)):
 		score -= 15.0
 	if bool(context.get("has_harmful_debuff", false)):
 		score += 15.0
@@ -1242,13 +1242,13 @@ static func _ww_cold_embrace_modifier(level_data: Dictionary, context: Dictionar
 	return score
 
 
-## Winter's Curse: on top of the shared defensive HP-ratio tiers (see
-## Cold Embrace's own docstring above for why this skill benefits from
+## The Hunger Calls: on top of the shared defensive HP-ratio tiers (see
+## The Test of Time's own docstring above for why this skill benefits from
 ## them too - a curse that removes attackers is exactly the kind of
 ## "defensive value" those tiers already model), this adds the design
 ## doc's own redirect-count tiers (0/1/2/3/4+ redirected enemies) and an
 ## estimate of the bonus damage those redirected enemies would deal to
-## the frozen target instead of to Winter Wyvern - a simple, bounded
+## the frozen target instead of to The Primordial Hunger - a simple, bounded
 ## normalized estimate (redirect count x their own average damage stat x
 ## bonus_damage_pct x duration) rather than trying to predict exact
 ## future turns, per the design doc's own fallback guidance. A hero
@@ -1258,7 +1258,7 @@ static func _ww_cold_embrace_modifier(level_data: Dictionary, context: Dictionar
 ## +0" tier there - the ultimate still isn't wasted, since the shared
 ## HP-ratio tiers alone can make it worth using purely to freeze a
 ## dangerous player in place.
-static func _ww_winters_curse_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _hunger_calls_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var redirect_count: int = int(context.get("redirect_candidate_count", 0))
 	var score: float = 0.0
 
@@ -1277,21 +1277,21 @@ static func _ww_winters_curse_modifier(level_data: Dictionary, context: Dictiona
 	score += minf(float(redirect_count) * avg_enemy_damage * bonus_damage_pct * float(duration) * 0.1, 40.0)
 
 	if redirect_count >= 2 and float(context.get("hero_hp_ratio", 1.0)) < 0.5:
-		# Compounding value: pulling multiple attackers off Winter
-		# Wyvern while she's already in real danger, not just a
-		# comfortable AoE opportunity.
+		# Compounding value: pulling multiple attackers off The
+		# Primordial Hunger while it's already in real danger, not just
+		# a comfortable AoE opportunity.
 		score += 25.0
 
 	return score
 
 
 ## A plain Attack is only worth scoring above its flat baseline for
-## Winter Wyvern when Arctic Burn is currently active - attacking
+## The Primordial Hunger when Frostbound Fangs is currently active - attacking
 ## realizes the buff's value (bonus damage, and spends one of its banked
 ## charges) instead of leaving it to potentially expire unused. See
 ## BASIC_ATTACK_ID/basic_attack_participates().
-static func _ww_basic_attack_modifier(context: Dictionary) -> float:
-	return 25.0 if bool(context.get("arctic_burn_active", false)) else 0.0
+static func _hunger_basic_attack_modifier(context: Dictionary) -> float:
+	return 25.0 if bool(context.get("frostbound_fangs_active", false)) else 0.0
 
 
 ## Crystal Maiden: ranged, control/burst/AoE, mana-aware. Crystal Nova's
@@ -1327,8 +1327,8 @@ static func _crystal_maiden_modifier(skill_id: String, level_data: Dictionary, c
 ## generic offensive scoring above already covers it in full, so this
 ## adds nothing extra), and 1-2 at levels 3-4, at which point every
 ## other living target within it takes the same damage too. Target
-## count tiers mirror Winter's Splinter Blast/Ancient Apparition's Ice
-## Blast (see _ww_splinter_blast_modifier()/_aa_ice_blast_modifier());
+## count tiers mirror Winter's Maddening Roar/Nhal's Ice
+## Blast (see _hunger_maddening_roar_modifier()/_nhal_return_to_the_void_modifier());
 ## the multi-kill bonus below only counts kills BEYOND the primary
 ## target's own (already scored generically via _kill_potential_bonus()),
 ## same split those two use. A hero fight only ever has the player as a
@@ -1420,7 +1420,7 @@ static func _cm_frostbite_modifier(level_data: Dictionary, context: Dictionary) 
 ## low-HP/multi-kill tiers on top of the generic kill-potential/"already
 ## hurt" terms _evaluate_offensive() already provides (fed by this
 ## skill's own damage x duration _estimate_skill_damage() case) - the
-## same split Ice Blast's/Splinter Blast's own modifiers use for their
+## same split Return to the Void's/Maddening Roar's own modifiers use for their
 ## own multi-kill bonus. The survivability penalty is deliberately small
 ## and only fires when things are clearly dire (hero_hp_ratio < 30% AND
 ## multiple living enemies) - Freezing Field has no invented immunity/
@@ -1465,7 +1465,7 @@ static func _cm_freezing_field_modifier(level_data: Dictionary, context: Diction
 	# The primary target's own kill is already scored generically (see
 	# _kill_potential_bonus(), fed by _estimate_skill_damage()'s own
 	# "freezing_field" case) - this only adds for kills BEYOND that one,
-	# same split Torrent's/Ghostship's/Ice Blast's own modifiers use.
+	# same split Drowned Surge's/The Sunken One's/Return to the Void's own modifiers use.
 	if extra_kills >= 2:
 		score += 30.0 * float(extra_kills - 1)
 
@@ -1532,7 +1532,7 @@ static func _tusk_modifier(skill_id: String, level_data: Dictionary, context: Di
 ## 0 in the simulation - see EnemyHeroManager's own _build_npc_ai_
 ## context() docstring) gates whether real board math is even possible;
 ## without it this falls back to the same "more living enemies, more a
-## control effect is worth" proxy Winter's Curse's own sim-side
+## control effect is worth" proxy The Hunger Calls's own sim-side
 ## redirect_candidate_count uses. Deliberately does NOT reward
 ## blocked_columns just for being a big number (see the design doc's own
 ## "do not give Ice Shards a huge score merely because it blocks many
@@ -1647,8 +1647,8 @@ static func _tusk_snowball_modifier(level_data: Dictionary, context: Dictionary)
 ## the simulation, where every attack already reaches its target with no
 ## travel cost at all (see EnemyHeroManager's own _build_npc_ai_
 ## context() docstring, and its "in_attack_range_now"/"in_attack_range_
-## with_arctic_burn_bonus" fields making the same unconditional-true
-## call for Arctic Burn's own copy there).
+## with_frostbound_fangs_bonus" fields making the same unconditional-true
+## call for Frostbound Fangs' own copy there).
 static func _tusk_tag_team_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var bonus_damage: float = float(level_data.get("bonus_damage", 0.0))
 	var duration: int = int(level_data.get("duration", 0))
@@ -1736,7 +1736,7 @@ static func _tusk_walrus_punch_modifier(level_data: Dictionary, context: Diction
 		# The collision alone is what pushes this over the kill
 		# threshold - the generic kill bonus above (fed by the
 		# no-collision estimate) never sees this case, so it's credited
-		# here instead, same split Ice Blast's own execute bonus uses.
+		# here instead, same split Return to the Void's own execute bonus uses.
 		score += 50.0
 
 	var stun_turns: int = int(level_data.get("stun_turns", 0))
@@ -1995,7 +1995,7 @@ static func _tp_overgrowth_modifier(level_data: Dictionary, context: Dictionary)
 	# The primary target's own kill is already scored generically (see
 	# _kill_potential_bonus(), fed by _estimate_skill_damage()'s own
 	# "overgrowth" case) - this only adds for kills BEYOND that one, same
-	# split Torrent's/Ghostship's/Ice Blast's/Freezing Field's own
+	# split Drowned Surge's/The Sunken One's/Return to the Void's/Freezing Field's own
 	# modifiers use.
 	if extra_kills >= 2:
 		score += 30.0 * float(extra_kills - 1)
@@ -2089,7 +2089,7 @@ static func _timbersaw_sustain_factor(context: Dictionary) -> float:
 ## mirrors). The generic offensive scoring above already covers the
 ## primary target's own value/kill potential (fed by the flat-damage
 ## _estimate_skill_damage() case); this adds the shared AoE multi-target
-## tiers (see _aa_ice_blast_modifier()'s own tiers, reused verbatim
+## tiers (see _nhal_return_to_the_void_modifier()'s own tiers, reused verbatim
 ## rather than inventing a new curve - per the design doc's own "do not
 ## use arbitrary bonuses if the shared evaluator already has an AoE
 ## scoring helper" instruction) plus this skill's own extra-kill/hero-hit
@@ -2221,7 +2221,7 @@ static func _timbersaw_timber_chain_modifier(level_data: Dictionary, context: Di
 ## enemies are affected... the multi-target value can justify its high
 ## mana cost" instruction, a real multi-target opportunity is never
 ## penalized this way. Initial AoE reuses the same multi-target tiers
-## Whirling Death's/Ice Blast's own modifiers already use; persistent
+## Whirling Death's/Return to the Void's own modifiers already use; persistent
 ## damage is deliberately discounted rather than assumed at full uptime
 ## (see the design doc's own "do not automatically assume every enemy
 ## stays inside the radius for the full duration" instruction) - a
@@ -2673,7 +2673,7 @@ static func _naga_mirror_image_modifier(level_data: Dictionary, context: Diction
 
 ## Ensnare: a ROOT, not a stun - the target can still attack and cast
 ## while rooted (see the design doc's own explicit "does not prevent
-## attacking or skill usage" instruction), so unlike Torrent's/Barbed Lunge's
+## attacking or skill usage" instruction), so unlike Drowned Surge's/Barbed Lunge's
 ## own stuns this gets no generic "stun_turns" bonus at all - its whole
 ## value is movement denial/kill setup: securing a kill the upfront hit
 ## alone wouldn't, keeping a target that would otherwise create distance
@@ -3139,7 +3139,7 @@ static func _slardar_slithereen_crush_modifier(level_data: Dictionary, context: 
 	# The primary target's own kill is already scored generically (see
 	# _kill_potential_bonus(), fed by _estimate_skill_damage()'s own
 	# "slithereen_crush" case) - this only adds for kills BEYOND that
-	# one, same split Torrent's/Overgrowth's/Song of the Siren's own
+	# one, same split Drowned Surge's/Overgrowth's/Song of the Siren's own
 	# modifiers use.
 	if extra_kills >= 2:
 		score += 40.0 * float(extra_kills - 1)

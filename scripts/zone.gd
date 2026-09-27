@@ -134,14 +134,14 @@ func _ready() -> void:
 		_apply_tutorial_restrictions()
 
 
-## Tutorial support: The Ironbound Isles only has one hero (Kunkka) anyway, so
+## Tutorial support: The Ironbound Isles only has one hero (Kaelen Varr) anyway, so
 ## the picker already lands on him - this just locks the skill choice
-## down to Torrent (see GameManager's the_ironbound_isles hero data) and blocks
+## down to Drowned Surge (see GameManager's the_ironbound_isles hero data) and blocks
 ## leaving the screen any other way than the tutorial's own popups.
 func _apply_tutorial_restrictions() -> void:
 	back_button.disabled = true
 	for skill_id in _skill_buttons_by_id.keys():
-		if skill_id != "torrent":
+		if skill_id != "drowned_surge":
 			_skill_buttons_by_id[skill_id].disabled = true
 
 	# Same glowing treatment every forced button during the tutorial
@@ -149,14 +149,14 @@ func _apply_tutorial_restrictions() -> void:
 	# ever has the one forced target for its whole lifetime, so unlike
 	# battle.gd's it never needs to be torn down again; the scene
 	# changing to Battle.tscn once Accept is pressed takes it with it.
-	var torrent_button: Button = _skill_buttons_by_id["torrent"]
+	var drowned_surge_button: Button = _skill_buttons_by_id["drowned_surge"]
 	var glow_style: StyleBoxFlat = TutorialManager.make_glow_style()
-	torrent_button.add_theme_stylebox_override("normal", glow_style)
-	torrent_button.add_theme_stylebox_override("hover", glow_style)
+	drowned_surge_button.add_theme_stylebox_override("normal", glow_style)
+	drowned_surge_button.add_theme_stylebox_override("hover", glow_style)
 	TutorialManager.start_glow_pulse(glow_style, self)
 
 	TutorialManager.show_popup(
-		"Kunkka needs Torrent to safely deal with the ranged creep in this zone before it can "
+		"Kaelen Varr needs Drowned Surge to safely deal with the ranged creep in this zone before it can "
 		+ "peck away at him from a distance. Pick it, then press Accept."
 	)
 

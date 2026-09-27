@@ -76,10 +76,26 @@ func _ready() -> void:
 	_maybe_show_queued_events()
 
 	if TutorialManager.is_active and TutorialManager.current_stage == 2:
-		TutorialManager.show_popup(
-			"Head to the Shop and restock before going anywhere else.",
-			func(): get_tree().change_scene_to_file("res://scenes/Shop.tscn")
-		)
+		_tutorial_force_shop()
+		TutorialManager.show_popup("Head to the Shop and restock before going anywhere else.")
+
+
+## Tutorial stage 2: the Shop is the only way forward - every other
+## Map control (Back, World Status, every zone plate) is disabled, and
+## the Shop button gets the same pulsing glow the tutorial uses for its
+## forced actions elsewhere (see TutorialManager.make_glow_style()).
+## Leaving the Map takes the glow with it, so nothing needs undoing.
+func _tutorial_force_shop() -> void:
+	$BackButton.disabled = true
+	$WorldStatusButton.disabled = true
+	for child in $RegionButtons.get_children():
+		if child is Button:
+			child.disabled = true
+
+	var glow_style: StyleBoxFlat = TutorialManager.make_glow_style()
+	$ShopButton.add_theme_stylebox_override("normal", glow_style)
+	$ShopButton.add_theme_stylebox_override("hover", glow_style)
+	TutorialManager.start_glow_pulse(glow_style, self)
 
 func _style_legend_dots() -> void:
 	for pair in [[$Legend/ReadyRow/ReadyDot, "ready"], [$Legend/EmptyRow/EmptyDot, "empty"], [$Legend/LockedRow/LockedDot, "locked"]]:

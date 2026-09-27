@@ -6,9 +6,12 @@ extends Control
 # input and never touches game state. zone.gd calls
 # show_for_background() whenever the shown hero changes; effects only
 # exist for backgrounds that have them (currently Veyrik's Iron Abyss,
-# Erynd's Elderwild and Morvael's Kingdom of Morvain) and are torn down
-# again when switching to any other hero. Morvain's effects live in
-# their own script, MorvainAtmosphere.gd, run as a child of this node.
+# Erynd's Elderwild, Morvael's Kingdom of Morvain, Kaelen Varr's
+# Ironbound Isles and Nhal's and The Primordial Hunger's Frostspire) and are
+# torn down again when switching to any other hero. Morvain's, the
+# Ironbound Isles' and Frostspire's effects live in their own scripts
+# (MorvainAtmosphere.gd, IronboundAtmosphere.gd, FrostspireAtmosphere.gd),
+# run as a child of this node.
 #
 # Iron Abyss:
 #   - Veyrik's eye: a cold glow that breathes, flaring every few seconds
@@ -113,6 +116,13 @@ const BUBBLE_FADE_IN := 0.5
 const MORVAIN_BG := "res://assets/zones/kingdom_of_morvain.jpg"
 # Morvain runs in its own child node - see MorvainAtmosphere.gd.
 const MORVAIN_FX := preload("res://scripts/MorvainAtmosphere.gd")
+const IRONBOUND_BG := "res://assets/zones/the_ironbound_isles.jpg"
+# The Ironbound Isles also run in their own child - see IronboundAtmosphere.gd.
+const IRONBOUND_FX := preload("res://scripts/IronboundAtmosphere.gd")
+const FROSTSPIRE_BG := "res://assets/zones/frostspire_nhal.jpg"
+const FROSTSPIRE_HUNGER_BG := "res://assets/zones/frostspire_the_primordial_hunger.jpg"
+# Frostspire too, for both of its heroes - see FrostspireAtmosphere.gd.
+const FROSTSPIRE_FX := preload("res://scripts/FrostspireAtmosphere.gd")
 
 const ELDERWILD_BG := "res://assets/zones/The Elderwild.jpg"
 const ELDERWILD_SHADER := preload("res://shaders/elderwild_background.gdshader")
@@ -231,7 +241,7 @@ func _ready() -> void:
 ## Called by zone.gd after it has set the background for the shown hero.
 func show_for_background(path: String) -> void:
 	_clear()
-	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG]:
+	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG]:
 		return
 	# Guards against a hero switch landing during the await below.
 	_build_id += 1
@@ -244,6 +254,12 @@ func show_for_background(path: String) -> void:
 		_build_iron_abyss()
 	elif path == MORVAIN_BG:
 		_build_morvain()
+	elif path == IRONBOUND_BG:
+		_build_ironbound()
+	elif path == FROSTSPIRE_BG:
+		_build_frostspire("nhal")
+	elif path == FROSTSPIRE_HUNGER_BG:
+		_build_frostspire("the_primordial_hunger")
 	else:
 		_build_elderwild()
 
@@ -946,3 +962,21 @@ func _build_morvain() -> void:
 	add_child(fx)
 	fx.build(self, _background)
 	_zone = "morvain"
+
+
+# --- The Ironbound Isles --------------------------------------------
+
+func _build_ironbound() -> void:
+	var fx: Control = IRONBOUND_FX.new()
+	add_child(fx)
+	fx.build(self, _background)
+	_zone = "ironbound"
+
+
+# --- Frostspire -----------------------------------------------------
+
+func _build_frostspire(hero: String) -> void:
+	var fx: Control = FROSTSPIRE_FX.new()
+	add_child(fx)
+	fx.build(self, _background, hero)
+	_zone = "frostspire"

@@ -272,7 +272,7 @@ func get_stage_cumulative_gold_bonus(stage: int) -> int:
 # ZONE DATA
 # ============================================================
 # "background" is optional per zone - point it at a texture path
-# (e.g. "res://assets/zones/azura.jpg") once you have per-region art.
+# (e.g. "res://assets/zones/the_veiled_reach.jpg") once you have per-region art.
 # Leave it "" to just use the plain background already in Zone.tscn.
 
 var zones: Dictionary = {
@@ -309,8 +309,7 @@ var zones: Dictionary = {
 					"mana": 260,
 					"armor": 1.5,
 					"damage": "55-61",
-					"speed": 1,
-					"XP": 0
+					"speed": 1
 				},
 				"skills": [
 					{
@@ -436,6 +435,8 @@ var zones: Dictionary = {
 				"main_stat": "Agility",
 				"attack_effect": "vine_lash",
 				"attack_origin": Vector2(0.85, 0.31),
+				# Beast of the Elderwild's bear art: its raised front paw.
+				"transformed_attack_origin": Vector2(0.90, 0.43),
 				"stats": {
 					"strength": 17,
 					"agility": 24,
@@ -445,8 +446,7 @@ var zones: Dictionary = {
 					"mana": 169,
 					"armor": 3.4,
 					"damage": "38-42",
-					"speed": 1,
-					"XP": 0
+					"speed": 1
 				},
 				"skills": [
 					{
@@ -593,8 +593,7 @@ var zones: Dictionary = {
 					"mana": 303,
 					"armor": 3.8,
 					"damage": "40-50",
-					"speed": 1,
-					"XP": 0
+					"speed": 1
 				},
 				"skills": [
 					{
@@ -714,10 +713,10 @@ var zones: Dictionary = {
 		"music": "the_ironbound_isles",
 		"heroes": [
 			{
-				"id": "kunkka",
-				"name": "Kunkka",
-				"image": "res://assets/heroes/Kunkka.png",
-				"background": "res://assets/zones/Cladd_Isles.png",
+				"id": "kaelen_varr",
+				"name": "Kaelen Varr, the Drowned Captain",
+				"image": "res://assets/heroes/Kaelen_Varr.png",
+				"background": "res://assets/zones/the_ironbound_isles.jpg",
 				"range_type": "Melee",
 				"main_stat": "Strength",
 				"stats": {
@@ -729,15 +728,14 @@ var zones: Dictionary = {
 					"mana": 291,
 					"armor": 4.3,
 					"damage": "50-60",
-					"speed": 1,
-					"XP": 0
+					"speed": 1
 				},
 				"skills": [
 					{
-						"id": "torrent",
-						"name": "Torrent",
+						"id": "drowned_surge",
+						"name": "Drowned Surge",
 						"type": "standard",
-						"description": "Summons a column of rising water at range, damaging and stunning the target. At its max level, the torrent also splashes nearby enemies for damage.",
+						"description": "Kaelen calls a violent surge from the depths beneath his target. The water erupts upward without warning, damaging and stunning the enemy. At maximum strength, the surge spills outward and catches nearby enemies as well.",
 						"levels": [
 							{"damage": 60, "stun_turns": 1, "range": 3, "radius": 0, "mana_cost": 50, "cooldown": 5},
 							{"damage": 90, "stun_turns": 1, "range": 3, "radius": 0, "mana_cost": 55, "cooldown": 5},
@@ -746,10 +744,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "tidebringer",
-						"name": "Tidebringer",
+						"id": "pull_of_the_abyss",
+						"name": "Pull of the Abyss",
 						"type": "passive",
-						"description": "Passive: every few Attacks, Kunkka's sword strike hits harder and cleaves nearby enemies for a percentage of that attack's total damage.",
+						"description": "Passive: every few attacks, Kaelen's blade carries the crushing pull of the deep, empowering the strike and tearing through nearby enemies with a portion of its force.",
 						"levels": [
 							{"hits_to_activate": 3, "bonus_damage": 15, "cleave_columns": 1, "cleave_damage_pct": 0.5},
 							{"hits_to_activate": 3, "bonus_damage": 25, "cleave_columns": 1, "cleave_damage_pct": 0.6},
@@ -758,10 +756,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "x_marks_the_spot",
-						"name": "X Marks the Spot",
+						"id": "undertow",
+						"name": "Undertow",
 						"type": "standard",
-						"description": "Marks an enemy at range. On Kunkka's next turn he teleports onto wherever that enemy is by then, for free - it doesn't cost him his turn, and the teleport itself deals no damage.",
+						"description": "Kaelen marks an enemy with a strange nautical sigil. On his next turn, the mark pulls him instantly to the enemy's current position, regardless of where the target has moved. The movement costs no turn and deals no damage.",
 						"levels": [
 							{"range": 2, "mana_cost": 40, "cooldown": 5},
 							{"range": 3, "mana_cost": 45, "cooldown": 5},
@@ -770,10 +768,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "ghostship",
-						"name": "Ghostship",
+						"id": "the_sunken_one",
+						"name": "The Sunken One",
 						"type": "ultimate",
-						"description": "Ultimate: marks a target at range, then sails a phantom ship from Kunkka straight to it, damaging every enemy caught in its path.",
+						"description": "Ultimate: Kaelen summons the ship that carried him to the bottom of the sea. The Sunken One rises from behind him and unleashes a devastating broadside in the direction Kaelen is facing, damaging every enemy caught in its path.",
 						"levels": [
 							{"damage": 200, "range": 4, "mana_cost": 100, "cooldown": 10},
 							{"damage": 300, "range": 5, "mana_cost": 110, "cooldown": 9},
@@ -792,7 +790,7 @@ var zones: Dictionary = {
 			{
 				"id": "the_ironbound_isles_melee",
 				"name": "Ironbound Isles melee creep",
-				"image": "res://assets/enemies/Cladd Isles_mele.png",
+				"image": "res://assets/enemies/the_ironbound_isles_melee.png",
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
@@ -807,7 +805,7 @@ var zones: Dictionary = {
 			{
 				"id": "the_ironbound_isles_melee_2",
 				"name": "Ironbound Isles melee creep",
-				"image": "res://assets/enemies/Cladd Isles_mele.png",
+				"image": "res://assets/enemies/the_ironbound_isles_melee.png",
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
@@ -822,7 +820,7 @@ var zones: Dictionary = {
 			{
 				"id": "the_ironbound_isles_range",
 				"name": "Ironbound Isles range creep",
-				"image": "res://assets/enemies/Cladd Isles_range.png",
+				"image": "res://assets/enemies/the_ironbound_isles_range.png",
 				"type": "range",
 				"main_stat": "agility",
 				"main_stat_value": 10,
@@ -832,12 +830,13 @@ var zones: Dictionary = {
 				"speed": 1,
 				"armor": 1,
 				"XP": 69,
-				"gold": "43-52"
+				"gold": "43-52",
+				"projectile": "water_bubble"
 			}
 		],
 		"unlocked": true,
-		"background": "res://assets/zones/Cladd_Isles.png",
-		"battle_background": "res://assets/battle_areas/Cladd Isles_area.png"
+		"background": "res://assets/zones/the_ironbound_isles.jpg",
+		"battle_background": "res://assets/battle_areas/the_ironbound_isles_area.png"
 	},
 
 	"frostspire": {
@@ -847,12 +846,14 @@ var zones: Dictionary = {
 		"music": "frostspire",
 		"heroes": [
 			{
-				"id": "ancient_apparition",
-				"name": "Ancient Apparition",
-				"image": "res://assets/heroes/ancient_apparition.png",
-				"background": "res://assets/zones/white_spire_ancient_apparition.png",
+				"id": "nhal",
+				"name": "Nhal",
+				"image": "res://assets/heroes/nhal.png",
+				"background": "res://assets/zones/frostspire_nhal.jpg",
 				"range_type": "Range",
 				"main_stat": "Intelligence",
+				"attack_effect": "ice_shard",
+				"attack_origin": Vector2(0.66, -0.02),
 				"stats": {
 					"strength": 20,
 					"agility": 20,
@@ -862,15 +863,14 @@ var zones: Dictionary = {
 					"mana": 299,
 					"armor": 2,
 					"damage": "44-54",
-					"speed": 1,
-					"XP": 0
+					"speed": 1
 				},
 				"skills": [
 					{
-						"id": "cold_feet",
-						"name": "Cold Feet",
+						"id": "mark_of_stillness",
+						"name": "Mark of Stillness",
 						"type": "standard",
-						"description": "Casts a freezing curse on an enemy at range, dealing damage over time for the duration.",
+						"description": "Nhal marks an enemy with the cold that existed before motion itself. The afflicted creature slowly loses the warmth and movement that keep it alive, suffering damage for the duration of the curse.",
 						"levels": [
 							{"damage": 15, "duration": 3, "range": 2, "mana_cost": 40, "cooldown": 4},
 							{"damage": 25, "duration": 3, "range": 3, "mana_cost": 45, "cooldown": 4},
@@ -879,10 +879,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "ice_vortex",
-						"name": "Ice Vortex",
+						"id": "the_hollow_cold",
+						"name": "The Hollow Cold",
 						"type": "standard",
-						"description": "Casts a freezing vortex at a fixed range, dealing damage over time to every enemy caught within its radius.",
+						"description": "Nhal opens a small wound in the air, releasing the cold of the emptiness that existed before the world. A freezing vortex lingers at the target location, slowly consuming the warmth of every enemy caught within it.",
 						"levels": [
 							{"damage": 15, "radius": 1, "duration": 3, "mana_cost": 40, "cooldown": 5},
 							{"damage": 25, "radius": 1, "duration": 3, "mana_cost": 45, "cooldown": 5},
@@ -891,22 +891,22 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "chilling_touch",
-						"name": "Chilling Touch",
+						"id": "touch_of_the_first_cold",
+						"name": "Touch of the First Cold",
 						"type": "standard",
-						"description": "Blasts an enemy within normal attack range for the hero's own attack damage plus a flat bonus.",
+						"description": "Nhal reaches into an enemy with a fragment of the cold that existed before stars, flesh, and fire. His attack carries this primordial chill, striking the target with unnatural force.",
 						"levels": [
-							{"bonus_damage": 80, "mana_cost": 50, "cooldown": 6},
-							{"bonus_damage": 120, "mana_cost": 55, "cooldown": 6},
-							{"bonus_damage": 160, "mana_cost": 60, "cooldown": 5},
-							{"bonus_damage": 200, "mana_cost": 65, "cooldown": 5}
+							{"bonus_damage": 40, "mana_cost": 50, "cooldown": 6},
+							{"bonus_damage": 70, "mana_cost": 55, "cooldown": 6},
+							{"bonus_damage": 110, "mana_cost": 60, "cooldown": 5},
+							{"bonus_damage": 150, "mana_cost": 65, "cooldown": 5}
 						]
 					},
 					{
-						"id": "ice_blast",
-						"name": "Ice Blast",
+						"id": "return_to_the_void",
+						"name": "Return to the Void",
 						"type": "ultimate",
-						"description": "Ultimate: targets any enemy on the field, dealing damage to it and every enemy around it, then damage over time for the duration. Any enemy hit has a percentage of its max HP reserved for that same duration - if its HP ever drops to or below that reserved amount, it dies outright.",
+						"description": "Ultimate: Nhal marks an enemy and erases part of the material plane around it. Returning the world to the empty void before the creation of the matter. Everyone caught in its radius is struck with a primordial cold that continues to consume the heat of their bodies over time and they are prevented from retaining the life they once possessed. Any enemy whose health falls beneath a marked threshold is claimed by the cold void and dies instantly.",
 						"levels": [
 							{"damage": 150, "dot_damage": 20, "dot_duration": 3, "stun_turns": 1, "execute_pct": 0.20, "radius": 1, "mana_cost": 100, "cooldown": 10},
 							{"damage": 225, "dot_damage": 30, "dot_duration": 3, "stun_turns": 1, "execute_pct": 0.25, "radius": 1, "mana_cost": 110, "cooldown": 9},
@@ -921,12 +921,14 @@ var zones: Dictionary = {
 				},
 			},
 			{
-				"id": "winter_wyvern",
-				"name": "Winter Wyvern",
-				"image": "res://assets/heroes/Winter_Wyvern.png",
-				"background": "res://assets/zones/white_spire_Winter_Wyvern.png",
+				"id": "the_primordial_hunger",
+				"name": "The Primordial Hunger",
+				"image": "res://assets/heroes/The primordial hunger.png",
+				"background": "res://assets/zones/frostspire_the_primordial_hunger.jpg",
 				"range_type": "Range",
 				"main_stat": "Intelligence",
+				"battle_scale": 1.7,
+				"roar_origin": Vector2(0.76, 0.1),
 				"stats": {
 					"strength": 22,
 					"agility": 16,
@@ -936,15 +938,14 @@ var zones: Dictionary = {
 					"mana": 387,
 					"armor": 3.24,
 					"damage": "42-49",
-					"speed": 1,
-					"XP": 0
+					"speed": 1
 				},
 				"skills": [
 					{
-						"id": "arctic_burn",
-						"name": "Arctic Burn",
+						"id": "frostbound_fangs",
+						"name": "Frostbound Fangs",
 						"type": "standard",
-						"description": "Grants bonus attack damage and range for a number of Attacks, or until the effect's own duration runs out - whichever comes first.",
+						"description": "The Primordial Hunger's claws and fangs become coated in ancient frost, extending its reach and empowering its next attacks with the killing cold of Frostspire.",
 						"levels": [
 							{"bonus_damage": 30, "bonus_range": 2, "attacks": 2, "duration": 3, "mana_cost": 40, "cooldown": 5},
 							{"bonus_damage": 50, "bonus_range": 2, "attacks": 3, "duration": 3, "mana_cost": 50, "cooldown": 5},
@@ -953,22 +954,22 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "splinter_blast",
-						"name": "Splinter Blast",
+						"id": "maddening_roar",
+						"name": "Maddening Roar",
 						"type": "standard",
-						"description": "Launches a floating ball of ice at an enemy within normal attack range, dealing damage to it - every other enemy within a splinter range of it takes separate, lighter splinter damage.",
+						"description": "The Primordial Hunger release a terrifying roar against a marked target, causing it to loose its will to live.  The minds of all other enemies around the target are shattered.",
 						"levels": [
-							{"damage": 100, "splinter_damage": 60, "splinter_range": 1, "mana_cost": 50, "cooldown": 5},
-							{"damage": 150, "splinter_damage": 90, "splinter_range": 1, "mana_cost": 55, "cooldown": 5},
-							{"damage": 200, "splinter_damage": 120, "splinter_range": 1, "mana_cost": 60, "cooldown": 4},
-							{"damage": 250, "splinter_damage": 150, "splinter_range": 2, "mana_cost": 65, "cooldown": 4}
+							{"damage": 100, "shatter_damage": 60, "shatter_range": 1, "mana_cost": 50, "cooldown": 5},
+							{"damage": 150, "shatter_damage": 90, "shatter_range": 1, "mana_cost": 55, "cooldown": 5},
+							{"damage": 200, "shatter_damage": 120, "shatter_range": 1, "mana_cost": 60, "cooldown": 4},
+							{"damage": 250, "shatter_damage": 150, "shatter_range": 2, "mana_cost": 65, "cooldown": 4}
 						]
 					},
 					{
-						"id": "cold_embrace",
-						"name": "Cold Embrace",
+						"id": "the_test_of_time",
+						"name": "The Test of Time",
 						"type": "standard",
-						"description": "Encases the hero in ice, becoming immune to all damage and healing every turn for the duration - but unable to move or attack while it lasts. Casting it clears every other effect currently on the hero, good or bad.",
+						"description": "The Primordial Hunger slips into a state of absolute stillness, becoming untouchable by all attacks while its ancient form slowly restores itself. During this state it cannot move or attack.",
 						"levels": [
 							{"heal": 75, "duration": 2, "mana_cost": 50, "cooldown": 6},
 							{"heal": 110, "duration": 2, "mana_cost": 55, "cooldown": 6},
@@ -977,10 +978,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "winter's_curse",
-						"name": "Winter's Curse",
+						"id": "the_hunger_calls",
+						"name": "The Hunger Calls",
 						"type": "ultimate",
-						"description": "Ultimate: Freezes an enemy within normal attack range in place for the duration. Every OTHER enemy within curse_range columns of it ignores the hero for as long as the freeze holds, piling onto the frozen target instead - moving toward it or attacking it for bonus damage - while anything outside that range keeps targeting the hero as normal. The hero's own damage against the frozen target isn't boosted.",
+						"description": "Ultimate: The Primordial Hunger freezes an enemy in place and awakens an unnatural hunger for living flesh in every creature nearby. Enemies within the Hunger's reach become driven to tear into the marked victim, moving toward it or attacking it for increased damage. Creatures beyond its reach remain focused on the Primordial Hunger as normal.",
 						"levels": [
 							{"duration": 2, "curse_range": 2, "bonus_damage_pct": 0.10, "mana_cost": 100, "cooldown": 10},
 							{"duration": 3, "curse_range": 2, "bonus_damage_pct": 0.15, "mana_cost": 110, "cooldown": 9},
@@ -999,7 +1000,7 @@ var zones: Dictionary = {
 			{
 				"id": "frostspire_melee",
 				"name": "Frostspire melee creep",
-				"image": "res://assets/enemies/white_spire_mele.png",
+				"image": "res://assets/enemies/frostspire_melee.png",
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
@@ -1014,7 +1015,7 @@ var zones: Dictionary = {
 			{
 				"id": "frostspire_melee_2",
 				"name": "Frostspire melee creep",
-				"image": "res://assets/enemies/white_spire_mele.png",
+				"image": "res://assets/enemies/frostspire_melee.png",
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
@@ -1029,8 +1030,9 @@ var zones: Dictionary = {
 			{
 				"id": "frostspire_range",
 				"name": "Frostspire range creep",
-				"image": "res://assets/enemies/white_spire_range.png",
+				"image": "res://assets/enemies/frostspire_range.png",
 				"type": "range",
+				"projectile": "frost_shard",
 				"main_stat": "agility",
 				"main_stat_value": 10,
 				"hp": 100,
@@ -1043,8 +1045,9 @@ var zones: Dictionary = {
 			}
 		],
 		"unlocked": true,
-		"background": "res://assets/zones/white_spire_ancient_apparition.png",
-		"battle_background": "res://assets/battle_areas/white_spire_area.png"
+		"background": "res://assets/zones/frostspire_nhal.jpg",
+		"battle_background": "res://assets/battle_areas/frostspire_area.jpg",
+		"battle_ground_offset": 0.07
 	},
 
 	"the_everfrost": {
@@ -1057,7 +1060,7 @@ var zones: Dictionary = {
 				"id": "crystal_maiden",
 				"name": "Crystal Maiden",
 				"image": "res://assets/heroes/Crystal Maiden.png",
-				"background": "res://assets/zones/Frozen_Realm_Crystal_Maiden.png",
+				"background": "res://assets/zones/the_everfrost_crystal_maiden.png",
 				"range_type": "Range",
 				"main_stat": "Intelligence",
 				"stats": {
@@ -1069,8 +1072,7 @@ var zones: Dictionary = {
 					"mana": 291,
 					"armor": 4.3,
 					"damage": "48-54",
-					"speed": 1,
-					"XP": 0
+					"speed": 1
 				},
 				"skills": [
 					{
@@ -1131,7 +1133,7 @@ var zones: Dictionary = {
 				"id": "tusk",
 				"name": "Tusk",
 				"image": "res://assets/heroes/Tusk.png",
-				"background": "res://assets/zones/Frozen_Realm_Tusk.png",
+				"background": "res://assets/zones/the_everfrost_tusk.png",
 				"range_type": "Melee",
 				"main_stat": "Strength",
 				"stats": {
@@ -1143,8 +1145,7 @@ var zones: Dictionary = {
 					"mana": 267,
 					"armor": 3.83,
 					"damage": "50-54",
-					"speed": 1,
-					"XP": 0
+					"speed": 1
 				},
 				"skills": [
 					{
@@ -1206,7 +1207,7 @@ var zones: Dictionary = {
 			{
 				"id": "the_everfrost_melee",
 				"name": "Everfrost melee creep",
-				"image": "res://assets/enemies/Frozen_Realm_mele.png",
+				"image": "res://assets/enemies/the_everfrost_melee.png",
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
@@ -1221,7 +1222,7 @@ var zones: Dictionary = {
 			{
 				"id": "the_everfrost_melee_2",
 				"name": "Everfrost melee creep",
-				"image": "res://assets/enemies/Frozen_Realm_mele.png",
+				"image": "res://assets/enemies/the_everfrost_melee.png",
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
@@ -1236,7 +1237,7 @@ var zones: Dictionary = {
 			{
 				"id": "the_everfrost_range",
 				"name": "Everfrost range creep",
-				"image": "res://assets/enemies/Frozen_Realm_range.png",
+				"image": "res://assets/enemies/the_everfrost_range.png",
 				"type": "range",
 				"main_stat": "agility",
 				"main_stat_value": 10,
@@ -1250,8 +1251,8 @@ var zones: Dictionary = {
 			}
 		],
 		"unlocked": true,
-		"background": "res://assets/zones/Frozen_Realm_Crystal_Maiden.png",
-		"battle_background": "res://assets/battle_areas/Frozen_Realm_area.png"
+		"background": "res://assets/zones/the_everfrost_crystal_maiden.png",
+		"battle_background": "res://assets/battle_areas/the_everfrost_area.png"
 	},
 
 	"the_verdant_scar": {
@@ -1266,7 +1267,7 @@ var zones: Dictionary = {
 				"id": "treant_protector",
 				"name": "Treant Protector",
 				"image": "res://assets/heroes/Treant_Protector.png",
-				"background": "res://assets/zones/Vale_of_Augury_Treant_Protector.png",
+				"background": "res://assets/zones/the_verdant_scar_treant_protector.png",
 				"range_type": "Melee",
 				"main_stat": "Strength",
 				"stats": {
@@ -1278,8 +1279,7 @@ var zones: Dictionary = {
 					"mana": 315,
 					"armor": 3.5,
 					"damage": "85-93",
-					"speed": 1,
-					"XP": 0
+					"speed": 1
 				},
 				"skills": [
 					{
@@ -1340,7 +1340,7 @@ var zones: Dictionary = {
 				"id": "timbersaw",
 				"name": "Timbersaw",
 				"image": "res://assets/heroes/Timbersaw.png",
-				"background": "res://assets/zones/Vale_of_Augury_Timbersaw.png",
+				"background": "res://assets/zones/the_verdant_scar_timbersaw.png",
 				"range_type": "Melee",
 				"main_stat": "Strength",
 				"stats": {
@@ -1352,8 +1352,7 @@ var zones: Dictionary = {
 					"mana": 351,
 					"armor": 2.67,
 					"damage": "48-52",
-					"speed": 1,
-					"XP": 0
+					"speed": 1
 				},
 				"skills": [
 					{
@@ -1415,7 +1414,7 @@ var zones: Dictionary = {
 			{
 				"id": "the_verdant_scar_melee",
 				"name": "Verdant Scar melee creep",
-				"image": "res://assets/enemies/vale_of_augury_mele.png",
+				"image": "res://assets/enemies/the_verdant_scar_melee.png",
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
@@ -1430,7 +1429,7 @@ var zones: Dictionary = {
 			{
 				"id": "the_verdant_scar_melee_2",
 				"name": "Verdant Scar melee creep",
-				"image": "res://assets/enemies/vale_of_augury_mele.png",
+				"image": "res://assets/enemies/the_verdant_scar_melee.png",
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
@@ -1445,7 +1444,7 @@ var zones: Dictionary = {
 			{
 				"id": "the_verdant_scar_range",
 				"name": "Verdant Scar range creep",
-				"image": "res://assets/enemies/vale_of_augury_range.png",
+				"image": "res://assets/enemies/the_verdant_scar_range.png",
 				"type": "range",
 				"main_stat": "agility",
 				"main_stat_value": 10,
@@ -1459,8 +1458,8 @@ var zones: Dictionary = {
 			}
 		],
 		"unlocked": true,
-		"background": "res://assets/zones/Vale_of_Augury_Treant_Protector.png",
-		"battle_background": "res://assets/battle_areas/Vale_of_Augury.png"
+		"background": "res://assets/zones/the_verdant_scar_treant_protector.png",
+		"battle_background": "res://assets/battle_areas/the_verdant_scar_area.png"
 	},
 
 	"the_sundered_peaks": {
@@ -1496,7 +1495,7 @@ var zones: Dictionary = {
 				"id": "naga_siren",
 				"name": "Naga Siren",
 				"image": "res://assets/heroes/Naga Siren.png",
-				"background": "res://assets/zones/Sunken_Cities_Naga.png",
+				"background": "res://assets/zones/drowned_empire_naga.png",
 				"range_type": "Melee",
 				"main_stat": "Agility",
 				"stats": {
@@ -1508,8 +1507,7 @@ var zones: Dictionary = {
 					"mana": 303,
 					"armor": 4.7,
 					"damage": "45-47",
-					"speed": 1,
-					"XP": 0
+					"speed": 1
 				},
 				"skills": [
 					{
@@ -1570,7 +1568,7 @@ var zones: Dictionary = {
 				"id": "slardar",
 				"name": "Slardar",
 				"image": "res://assets/heroes/Slardar.png",
-				"background": "res://assets/zones/Sunken_Cities_Slardar.png",
+				"background": "res://assets/zones/drowned_empire_slardar.png",
 				"range_type": "Melee",
 				"main_stat": "Strength ",
 				"stats": {
@@ -1582,8 +1580,7 @@ var zones: Dictionary = {
 					"mana": 255,
 					"armor": 5.83,
 					"damage": "51-59",
-					"speed": 1,
-					"XP": 0
+					"speed": 1
 				},
 				"skills": [
 					{
@@ -1645,7 +1642,7 @@ var zones: Dictionary = {
 			{
 				"id": "drowned_empire_melee",
 				"name": "Drowned Empire melee creep",
-				"image": "res://assets/enemies/Sunken Cities_mele.png",
+				"image": "res://assets/enemies/drowned_empire_melee.png",
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
@@ -1660,7 +1657,7 @@ var zones: Dictionary = {
 			{
 				"id": "drowned_empire_melee_2",
 				"name": "Drowned Empire melee creep",
-				"image": "res://assets/enemies/Sunken Cities_mele.png",
+				"image": "res://assets/enemies/drowned_empire_melee.png",
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
@@ -1675,7 +1672,7 @@ var zones: Dictionary = {
 			{
 				"id": "drowned_empire_range",
 				"name": "Drowned Empire range",
-				"image": "res://assets/enemies/Sunken Cities_range.png",
+				"image": "res://assets/enemies/drowned_empire_range.png",
 				"type": "range",
 				"main_stat": "agility",
 				"main_stat_value": 10,
@@ -1689,8 +1686,8 @@ var zones: Dictionary = {
 			}
 		],
 		"unlocked": true,
-		"background": "res://assets/zones/Sunken_Cities_Naga.png",
-		"battle_background": "res://assets/battle_areas/Sunken Cities_area.png"
+		"background": "res://assets/zones/drowned_empire_naga.png",
+		"battle_background": "res://assets/battle_areas/drowned_empire_area.png"
 	},
 
 	"the_blackbloom": {
@@ -1704,7 +1701,7 @@ var zones: Dictionary = {
 				"id": "mirana",
 				"name": "Mirana",
 				"image": "res://assets/heroes/Mirana.png",
-				"background": "res://assets/zones/Nightsilver_Woods_Mirana.png",
+				"background": "res://assets/zones/the_blackbloom_mirana.png",
 				"range_type": "Range",
 				"main_stat": "Agility",
 				"stats": {
@@ -1716,8 +1713,7 @@ var zones: Dictionary = {
 					"mana": 339,
 					"armor": 2,
 					"damage": "19-23",
-					"speed": 1,
-					"XP": 0
+					"speed": 1
 				},
 				"skills": [
 					{
@@ -1778,7 +1774,7 @@ var zones: Dictionary = {
 				"id": "luna",
 				"name": "Luna",
 				"image": "res://assets/heroes/Luna.png",
-				"background": "res://assets/zones/Nightsilver_Woods_Luna.png",
+				"background": "res://assets/zones/the_blackbloom_luna.png",
 				"range_type": "Range",
 				"main_stat": "Agility",
 				"stats": {
@@ -1790,8 +1786,7 @@ var zones: Dictionary = {
 					"mana": 351,
 					"armor": 5.83,
 					"damage": "50-56",
-					"speed": 1,
-					"XP": 0
+					"speed": 1
 				},
 				"skills": [
 					{
@@ -1853,7 +1848,7 @@ var zones: Dictionary = {
 			{
 				"id": "the_blackbloom_melee",
 				"name": "Blackbloom melee creep",
-				"image": "res://assets/enemies/Nightsilver_Woods_mele.png",
+				"image": "res://assets/enemies/the_blackbloom_melee.png",
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
@@ -1868,7 +1863,7 @@ var zones: Dictionary = {
 			{
 				"id": "the_blackbloom_melee_2",
 				"name": "Blackbloom melee creep",
-				"image": "res://assets/enemies/Nightsilver_Woods_mele.png",
+				"image": "res://assets/enemies/the_blackbloom_melee.png",
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
@@ -1883,7 +1878,7 @@ var zones: Dictionary = {
 			{
 				"id": "the_blackbloom_range",
 				"name": "Blackbloom range creep",
-				"image": "res://assets/enemies/Nightsilver_Woods_range.png",
+				"image": "res://assets/enemies/the_blackbloom_range.png",
 				"type": "range",
 				"main_stat": "agility",
 				"main_stat_value": 10,
@@ -1897,8 +1892,8 @@ var zones: Dictionary = {
 			}
 		],
 		"unlocked": true,
-		"background": "res://assets/zones/Nightsilver_Woods_Mirana.png",
-		"battle_background": "res://assets/battle_areas/Nightsilver_Woods_area.png"
+		"background": "res://assets/zones/the_blackbloom_mirana.png",
+		"battle_background": "res://assets/battle_areas/the_blackbloom_area.png"
 	},
 
 	"the_wildreach": {
@@ -1956,7 +1951,7 @@ var zones: Dictionary = {
 				"id": "snapfire",
 				"name": "Snapfire",
 				"image": "res://assets/heroes/Snapfire.png",
-				"background": "res://assets/zones/Vale_of_Augury_Snapfire.png",
+				"background": "res://assets/zones/the_verdant_scar_snapfire.png",
 				"range_type": "Range",
 				"main_stat": "Strength",
 				"stats": {
@@ -1968,8 +1963,7 @@ var zones: Dictionary = {
 					"mana": 327,
 					"armor": 3.7,
 					"damage": "67-73",
-					"speed": 1,
-					"XP": 0
+					"speed": 1
 				},
 				"skills": [
 					{
@@ -2031,7 +2025,7 @@ var zones: Dictionary = {
 			{
 				"id": "scorchlands_melee",
 				"name": "Scorchlands melee creep",
-				"image": "res://assets/enemies/vale_of_augury_mele.png",
+				"image": "res://assets/enemies/the_verdant_scar_melee.png",
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
@@ -2046,7 +2040,7 @@ var zones: Dictionary = {
 			{
 				"id": "scorchlands_melee_2",
 				"name": "Scorchlands melee creep",
-				"image": "res://assets/enemies/vale_of_augury_mele.png",
+				"image": "res://assets/enemies/the_verdant_scar_melee.png",
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
@@ -2061,7 +2055,7 @@ var zones: Dictionary = {
 			{
 				"id": "scorchlands_range",
 				"name": "Scorchlands range creep",
-				"image": "res://assets/enemies/vale_of_augury_range.png",
+				"image": "res://assets/enemies/the_verdant_scar_range.png",
 				"type": "range",
 				"main_stat": "agility",
 				"main_stat_value": 10,
@@ -2075,8 +2069,8 @@ var zones: Dictionary = {
 			}
 		],
 		"unlocked": true,
-		"background": "res://assets/zones/Vale_of_Augury_Snapfire.png",
-		"battle_background": "res://assets/battle_areas/Vale_of_Augury.png"
+		"background": "res://assets/zones/the_verdant_scar_snapfire.png",
+		"battle_background": "res://assets/battle_areas/the_verdant_scar_area.png"
 	},
 
 	"the_bronze_dominion": {
@@ -2384,7 +2378,7 @@ var zones: Dictionary = {
 ## spaces and hyphens as underscores (e.g. "The Verdant Scar" ->
 ## "the_verdant_scar", "Yun-Shai" -> "yun_shai"). Zone ids are derived
 ## from their names this way, so a zone renamed later should get its id
-## (and PlayerManager.LEGACY_ZONE_IDS, for old saves) updated to match.
+## updated to match.
 ## The map itself links its labels to zones by id (Map.gd's REGIONS).
 func zone_id_from_name(zone_name: String) -> String:
 	return zone_name.to_lower().replace(" ", "_").replace("-", "_")
@@ -2492,6 +2486,7 @@ func build_hero_fight_enemy_def(hero_static: Dictionary) -> Dictionary:
 		"id": hero_id,
 		"name": hero_static.get("name", "Rival Hero"),
 		"image": hero_static.get("image", ""),
+		"battle_scale": hero_static.get("battle_scale", 1.0),
 		"type": "range" if is_ranged else "melee",
 		"hp": hp,
 		"damage": flat_damage,

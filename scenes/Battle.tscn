@@ -222,7 +222,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 show_percentage = false
 
-[node name="IceBlastReserveOverlay" type="ColorRect" parent="BarsBox/HPRow/HPBar" unique_id=1994048904]
+[node name="ReturnToTheVoidReserveOverlay" type="ColorRect" parent="BarsBox/HPRow/HPBar" unique_id=1994048904]
 layout_mode = 1
 anchors_preset = -1
 anchor_bottom = 1.0

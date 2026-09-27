@@ -5,8 +5,8 @@ extends Control
 # Background and under the hero/creeps (battle.gd places it). Never
 # takes input, never touches game state. battle.gd calls setup() with
 # the zone id; effects only exist for zones that have them (currently
-# the Elderwild and the Kingdom of Morvain) and nothing is drawn
-# anywhere else.
+# the Elderwild, the Kingdom of Morvain and Frostspire) and nothing is
+# drawn anywhere else.
 #
 # Elderwild:
 #   - autumn leaves blown across the forest on a gusting wind, in two
@@ -22,6 +22,10 @@ extends Control
 
 # Kingdom of Morvain runs in its own child node - see MorvainBattleAtmosphere.gd.
 const MORVAIN_FX := preload("res://scripts/MorvainBattleAtmosphere.gd")
+# Frostspire runs the hero picker's own Frostspire scene (the vortex, the
+# fortress's flashes, the snow) in its "battle" mode - see
+# FrostspireAtmosphere.gd.
+const FROSTSPIRE_FX := preload("res://scripts/FrostspireAtmosphere.gd")
 
 # Leaves live above the battle UI panel painted into the art.
 const ELD_LEAF_FLOOR := 0.64          # image UV y where they've faded out
@@ -75,6 +79,14 @@ func setup(zone_id: String) -> void:
 		add_child(fx)
 		fx.build(self, _background)
 		return
+	if zone_id == "frostspire":
+		_zone = zone_id
+		# Its positions come from the Background's laid-out size.
+		await get_tree().process_frame
+		var frost: Control = FROSTSPIRE_FX.new()
+		add_child(frost)
+		frost.build(self, _background, "battle")
+		return
 	if zone_id == "the_elderwild":
 		_zone = zone_id
 		_spawn_accum.clear()
@@ -102,6 +114,26 @@ func _image_scale() -> float:
 	var tex_size := _background.texture.get_size()
 	var rect_size := _background.size
 	return max(rect_size.x / tex_size.x, rect_size.y / tex_size.y)
+
+
+func _radial(size: int, offsets: PackedFloat32Array, colors: PackedColorArray) -> GradientTexture2D:
+	var g := Gradient.new()
+	g.offsets = offsets
+	g.colors = colors
+	var t := GradientTexture2D.new()
+	t.gradient = g
+	t.fill = GradientTexture2D.FILL_RADIAL
+	t.fill_from = Vector2(0.5, 0.5)
+	t.fill_to = Vector2(1.0, 0.5)
+	t.width = size
+	t.height = size
+	return t
+
+
+func _additive() -> CanvasItemMaterial:
+	var m := CanvasItemMaterial.new()
+	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	return m
 
 
 func _process(delta: float) -> void:

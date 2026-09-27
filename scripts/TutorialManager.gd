@@ -23,7 +23,7 @@ var current_step: int = 0
 
 # When empty, every action is allowed (i.e. no forced-input gate is in
 # effect). When non-empty, only these action ids may fire - scenes
-# define their own id strings (e.g. "skill:torrent", "move:right",
+# define their own id strings (e.g. "skill:drowned_surge", "move:right",
 # "flee", "buy:health_potion") and check is_action_allowed(id) before
 # handling a click.
 var _allowed_actions: Array = []
@@ -46,7 +46,7 @@ func _ready() -> void:
 ## Entry point - called from the Tutorial button on HowToPlay.gd. Wipes
 ## any real recruited hero out of the SANDBOXED copy of the player's
 ## data (same wipe "New Game" uses) so Zone.tscn's hero picker actually
-## shows Kunkka's recruitment screen instead of dropping straight into
+## shows Kaelen Varr's recruitment screen instead of dropping straight into
 ## a real in-progress battle.
 func start_tutorial() -> void:
 	PlayerManager.begin_tutorial_sandbox()
@@ -62,16 +62,16 @@ func start_tutorial() -> void:
 	_overlay.set_exit_button_visible(true)
 
 	show_popup(
-		"Welcome to the tutorial!\n\nYou'll play through Kunkka's home zone, The Ironbound Isles, step by "
+		"Welcome to the tutorial!\n\nYou'll play through Kaelen Varr's home zone, The Ironbound Isles, step by "
 		+ "step - picking skills, using them in battle, and knowing when to flee and restock on "
-		+ "potions.\n\nFirst up: recruit Kunkka and pick his starting skill.",
+		+ "potions.\n\nFirst, recruit the Drowned Captain and pick his starting skill.",
 		func(): get_tree().change_scene_to_file("res://scenes/Zone.tscn")
 	)
 
 
 ## Called when the player picks "Continue Tutorial" at stage 1's clear
 ## checkpoint (see battle.gd's "stage_cleared" case). Manufactures a
-## fresh mid-run scenario - Kunkka at level 5, deep into The Ironbound Isles'
+## fresh mid-run scenario - Kaelen Varr at level 5, deep into The Ironbound Isles'
 ## hardest stage, critically low on HP/mana, no potions - rather than
 ## literally continuing stage 1's fight, since the point here is
 ## teaching when to retreat and restock, not more combat. Still runs
@@ -88,7 +88,7 @@ func start_stage2() -> void:
 	current_stage = 2
 	current_step = 0
 
-	var kunkka_static: Dictionary = GameManager.get_hero_by_id("kunkka")
+	var kaelen_varr_static: Dictionary = GameManager.get_hero_by_id("kaelen_varr")
 
 	# Levels up for real through PlayerManager's own XP/growth curve
 	# (rather than hand-picking level-5 stats) so this always matches
@@ -98,7 +98,7 @@ func start_stage2() -> void:
 	while PlayerManager.get_level() < STAGE2_TARGET_LEVEL:
 		var xp_needed: int = GameManager.get_xp_required_for_level(PlayerManager.get_level())
 		PlayerManager.add_xp(xp_needed)
-		PlayerManager.check_level_up(kunkka_static)
+		PlayerManager.check_level_up(kaelen_varr_static)
 
 	_apply_low_hp_mana(STAGE2_LOW_HP_FRACTION, STAGE2_LOW_MANA_FRACTION)
 
@@ -116,7 +116,7 @@ func start_stage2() -> void:
 	PlayerManager.use_item("mana")
 
 	show_popup(
-		"Second tutorial stage!\n\nThis time you're picking up mid-run: Kunkka's already level 5 and "
+		"Second tutorial stage!\n\nThis time you're picking up mid-run: Kaelen Varr is "
 		+ "deep into The Ironbound Isles' toughest stage.",
 		func(): get_tree().change_scene_to_file("res://scenes/Battle.tscn")
 	)
@@ -154,13 +154,13 @@ func _apply_low_hp_mana(hp_fraction: float, mana_fraction: float) -> void:
 ## melee range on The Ironbound Isles' final stage - but this time the potions
 ## bought in stage 2 are still sitting in the sandboxed inventory, and
 ## XP is tuned so the very next melee kill lands exactly on level 6,
-## unlocking Ghostship (see GameManager.ULTIMATE_SKILL_LEVEL_UNLOCKS).
+## unlocking The Sunken One (see GameManager.ULTIMATE_SKILL_LEVEL_UNLOCKS).
 ## Stage 3's own script is longer than stage 2's (level up, a few more
 ## attacks, reinforcements, a failed then successful ultimate cast,
 ## mop-up) - a bit more starting HP than stage 2's razor-thin 10%
 ## keeps the whole sequence survivable against a real stage 3 enemy
 ## roster while still reading as "critically low" up front. Mana stays
-## at stage 2's fraction - it's meant to run out again once Ghostship
+## at stage 2's fraction - it's meant to run out again once The Sunken One
 ## is learned, forcing the Mana Potion beat.
 const STAGE3_LOW_HP_FRACTION := 0.4
 
@@ -181,7 +181,7 @@ func start_stage3() -> void:
 
 	# Sets XP so it lands EXACTLY on level 5's own requirement once the
 	# next melee kill's XP is added - one kill, one level up, as scripted.
-	# Kunkka is already level 5 (set by start_stage2()), so this is
+	# Kaelen Varr is already level 5 (set by start_stage2()), so this is
 	# levels 5 -> 6's own requirement.
 	var xp_required: int = GameManager.get_xp_required_for_level(STAGE2_TARGET_LEVEL)
 	var current_xp: float = float(PlayerManager.get_recruited_hero().get("xp", 0))
@@ -190,7 +190,7 @@ func start_stage3() -> void:
 
 	show_popup(
 		"Final tutorial stage!\n\nSame fight, same low resources - but this time you've got potions "
-		+ "in reserve, and a level-up (with your ultimate right behind it) within easy reach.",
+		+ "in reserve, and a level-up within easy reach. Gather enough strenght and you will be able to call your sunken ship once more.",
 		func(): get_tree().change_scene_to_file("res://scenes/Battle.tscn")
 	)
 

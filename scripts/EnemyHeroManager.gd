@@ -264,8 +264,8 @@ const FLEE_HP_THRESHOLD: float = 0.15
 const NEW_SIM_HP_RESTORE_PCT: float = 0.30
 const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 
-# Every ACTIVE skill across Veyrik, Erynd, Morvael, Kunkka, Ancient
-# Apparition, Winter Wyvern, Crystal Maiden, Tusk, Treant Protector,
+# Every ACTIVE skill across Veyrik, Erynd, Morvael, Kaelen Varr, Nhal,
+# The Primordial Hunger, Crystal Maiden, Tusk, Treant Protector,
 # Timbersaw, and Snapfire, the only eleven heroes with any simulated
 # skill logic today - anything else a hero knows just never gets cast
 # here. This is the full candidate pool
@@ -275,14 +275,14 @@ const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 # tie-break fallback order, only consulted when two skills' scores are
 # too close to call outright).
 # Blood of the Wild (Erynd's passive), Mark of the Mist and The Mist
-# Remembers (both Morvael's), Tidebringer (Kunkka's), Arcane Aura (Crystal
+# Remembers (both Morvael's), Pull of the Abyss (Kaelen Varr's), Arcane Aura (Crystal
 # Maiden's), and Reactive Armor (Timbersaw's) aren't in this list - none
 # of them are ever "cast" or scored: Blood of the Wild and The Mist Remembers turn
 # themselves on/off automatically off the hero's own HP%, same as the
 # player's own copies - see _update_npc_blood_of_the_wild_state()/_maybe_
-# auto_activate_npc_the_mist_remembers() - Mark of the Mist/Tidebringer only
+# auto_activate_npc_the_mist_remembers() - Mark of the Mist/Pull of the Abyss only
 # ever build off the hero's own plain Attacks - see _apply_npc_mark_of_the_
-# mist_stack()/_maybe_consume_npc_tidebringer_stack() - Arcane Aura
+# mist_stack()/_maybe_consume_npc_pull_of_the_abyss_stack() - Arcane Aura
 # just regenerates mana passively; there's nowhere in this sim's own
 # mana bookkeeping for it to hook into yet (see _get_npc_combat_stats()/
 # _npc_estimate_damage() for where a future hook would go), so for now
@@ -294,7 +294,7 @@ const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 # battle.gd's own apply_damage()/_deal_fixed_damage_to_enemy() hook -
 # see this file's own _apply_npc_reactive_armor_stack(), called from
 # _run_stage_fight()'s own retaliation loop.
-# X Marks the Spot (Kunkka's own other skill) isn't here for a
+# Undertow (Kaelen Varr's own other skill) isn't here for a
 # different reason: it's purely a positioning tool (mark now, teleport
 # onto the target next turn, no damage) with nothing else to it, and
 # this sim has no positions at all - every attack already reaches
@@ -321,25 +321,25 @@ const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 # the retaliation-loop guard) - invisibility skips enemy retaliation for
 # the turn, and the Attack that breaks it roots whichever enemy it hits
 # instead of adding bonus damage. Overgrowth is a self-centered AoE with
-# nothing to center it on here, so - like Ice Blast/Splinter Blast - it
+# nothing to center it on here, so - like Return to the Void/Maddening Roar - it
 # falls back to rooting and DoTing every living enemy at once rather
 # than just whichever ones would really be within radius.
-# Ghostship (Kunkka's ultimate) IS in this list, unlike X Marks the
-# Spot - its whole "everyone the ship's path crosses" concept has no
+# The Sunken One (Kaelen Varr's ultimate) IS in this list, unlike Undertow
+#  - its whole "everyone the ship's path crosses" concept has no
 # columns to work out a path along here, so it falls back to the same
 # "no columns, hit everyone" simplification Abyssal Spasm's own sim copy
 # already uses (see this file's "abyssal_spasm" case in _cast_skill()
-# below). Ice Vortex and Ice Blast (both Ancient Apparition's) use that
+# below). The Hollow Cold and Return to the Void (both Nhal's) use that
 # exact same "no columns, hit everyone" fallback for their own AoE, so
-# both ARE in this list, same reasoning as Ghostship's. Splinter Blast
-# and Winter's Curse (both Winter Wyvern's) use it too - Splinter
-# Blast's splash lands on every other living enemy, and Winter's Curse
+# both ARE in this list, same reasoning as The Sunken One's. Maddening Roar
+# and The Hunger Calls (both The Primordial Hunger's) use it too - Maddening
+# Roar's splash lands on every other living enemy, and The Hunger Calls
 # redirects every OTHER living enemy's own retaliation onto its frozen
-# target instead of the hero (see _cast_skill()'s own "splinter_blast"/
-# "winter's_curse" cases and _run_stage_fight()'s own retaliation loop).
+# target instead of the hero (see _cast_skill()'s own "maddening_roar"/
+# "the_hunger_calls" cases and _run_stage_fight()'s own retaliation loop).
 # Timbersaw's own Whirling Death (self-centered) and Timber Chain (a
 # targeted "hits everything between caster and target" line) both use
-# the exact same "no columns, hit everyone" fallback Ghostship's own sim
+# the exact same "no columns, hit everyone" fallback The Sunken One's own sim
 # copy already established - there's no meaningful difference between
 # "centered on the caster" and "a line toward a target" once there are
 # no columns to tell them apart on. Chakram, his ultimate, is a second
@@ -351,7 +351,7 @@ const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 # hop with an AoE landing) both fall back to that same "no columns, hit
 # everyone" simplification here, for the same reasoning as Whirling
 # Death's/Timber Chain's own. Mortimer Kisses, her ultimate, is a
-# channel - like Winter Wyvern's own Cold Embrace, it consumes the
+# channel - like The Primordial Hunger's own The Test of Time, it consumes the
 # WHOLE turn for as long as it's active (see this file's own
 # "mortimer_kisses" branch in _run_stage_fight()'s own action-decision
 # chain), just firing an automatic shot each of those turns instead of
@@ -359,9 +359,9 @@ const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 	"abyssal_spasm", "barbed_lunge", "leeching_hunger", "depthsveil",
 	"thornbind", "elderwild_companion", "wildbond", "beast_of_the_elderwild",
-	"whisper_of_the_veil", "veil_of_the_forgotten", "torrent", "ghostship",
-	"cold_feet", "ice_vortex", "chilling_touch", "ice_blast",
-	"arctic_burn", "splinter_blast", "cold_embrace", "winter's_curse",
+	"whisper_of_the_veil", "veil_of_the_forgotten", "drowned_surge", "the_sunken_one",
+	"mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold", "return_to_the_void",
+	"frostbound_fangs", "maddening_roar", "the_test_of_time", "the_hunger_calls",
 	"crystal_nova", "frostbite", "freezing_field",
 	"ice_shards", "snowball", "tag_team", "walrus_punch",
 	"nature's_guise", "leech_seed", "living_armor", "overgrowth",
@@ -382,7 +382,7 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # would attack anyway, same "no columns, always hit the lowest-HP enemy"
 # simplification Ice Shards'/Whisper of the Veil's own sim copies use. Slithereen
 # Crush is a self-centered AoE with nothing to center it on here, so -
-# like Ice Blast/Overgrowth/Song of the Siren above - it stuns and damages
+# like Return to the Void/Overgrowth/Song of the Siren above - it stuns and damages
 # every living enemy at once. Corrosive Haze marks whichever enemy the
 # hero would attack anyway (a new "corrosive_haze_bonus_pct" per-enemy
 # field, read by _apply_damage_to_enemy() to boost every hit THAT enemy
@@ -396,19 +396,19 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # Guardian Sprint/Slithereen Crush/Corrosive Haze/a plain Attack through
 # _build_npc_ai_context()'s own "bash_*" fields, and its own bonus damage
 # only ever lands through the hero's own basic-attack branch in
-# _run_stage_fight() (mirroring Tidebringer's own stack there) - its
+# _run_stage_fight() (mirroring Pull of the Abyss's own stack there) - its
 # knockback has nothing to act on here either, same reasoning Walrus
 # Punch's own collision bonus is dropped for.
 # Mirana's Starstorm is a self-centered AoE with nothing to center it on
-# here, so - like Ice Blast/Overgrowth/Song of the Siren above - it hits
+# here, so - like Return to the Void/Overgrowth/Song of the Siren above - it hits
 # every living enemy at once. Sacred Arrow has no columns to travel
 # across here, so (same "no columns" honesty EnemySkillAI's own _mirana_
 # sacred_arrow_expected_damage() already follows) its sim copy deals only
 # its own flat base_damage - never the distance-scaled total - to
 # whichever enemy the hero would attack anyway, stunning it the same way
-# Torrent's own sim copy does. Leap is NOT in this list at all - its
+# Drowned Surge's own sim copy does. Leap is NOT in this list at all - its
 # entire "close distance/reposition" concept has nothing to act on in a
-# positionless sim, the exact same reasoning X Marks the Spot is excluded
+# positionless sim, the exact same reasoning Undertow is excluded
 # for (see KNOWN_ACTIVE_SKILL_IDS's own comment above) - a Leap that
 # always "succeeds" here would have literally nothing to accomplish.
 # Moonlight Shadow mirrors Depthsveil's own sim copy exactly (see this
@@ -418,7 +418,7 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # Attack as a PERCENTAGE of the roll (mirroring Bash of the Deep's own
 # post-roll percentage), ending the moment that Attack lands.
 # Luna's Lucent Beam is single-target with its own flat damage, same
-# shape as Cold Feet's/Torrent's own sim copies - stunning whichever
+# shape as Mark of Stillness's/Drowned Surge's own sim copies - stunning whichever
 # enemy the hero would attack anyway. Eclipse fires ECLIPSE_BEAMS_PER_
 # TURN beams per turn, each independently picking ONE random living
 # enemy from `living` with NO cap on how many beams the same one can
@@ -439,7 +439,7 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # this match's own "ensnare" case, which just writes root_turns_left the
 # same way Overgrowth's own sim copy does) whichever enemy the hero would
 # attack anyway. Song of the Siren, her ultimate, has no columns to
-# center an AoE stun on either, so - like Ice Blast/Splinter Blast/
+# center an AoE stun on either, so - like Return to the Void/Maddening Roar/
 # Overgrowth above - it falls back to stunning and shredding the armor of
 # every living enemy at once, reusing the same armor_reduction/armor_
 # reduction_turns_left fields (and their own already-existing _tick_npc_
@@ -938,9 +938,9 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		_tick_npc_natures_guise(state["nature's_guise"])
 		_tick_npc_thornbind_effects(enemies)
 		_tick_npc_mark_of_the_mist_effects(enemies, turn_index)
-		_tick_npc_cold_feet_effects(enemies)
-		_tick_npc_ice_vortex_effects(enemies)
-		_tick_npc_ice_blast_effects(enemies)
+		_tick_npc_mark_of_stillness_effects(enemies)
+		_tick_npc_the_hollow_cold_effects(enemies)
+		_tick_npc_return_to_the_void_effects(enemies)
 		_tick_npc_frostbite_effects(enemies)
 		_tick_npc_freezing_field(state["freezing_field"], enemies)
 		_tick_npc_overgrowth_effects(enemies)
@@ -953,17 +953,17 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		gold_gained += kills["gold"]
 
 		var effective_max_hp: float = _npc_effective_max_hp(max_hp, state)
-		current_hp = _tick_npc_cold_embrace(state["cold_embrace"], current_hp, effective_max_hp)
+		current_hp = _tick_npc_the_test_of_time(state["the_test_of_time"], current_hp, effective_max_hp)
 		current_hp = _tick_npc_living_armor(state["living_armor"], current_hp, effective_max_hp)
 		# Unlike every other DoT ticked above, Leech Seed's own healing
 		# half goes to the CASTER (this hero), not the enemy it damages -
 		# see _tick_npc_leech_seed_effects()'s own docstring - so it needs
-		# current_hp/effective_max_hp the same way Cold Embrace's/Living
+		# current_hp/effective_max_hp the same way The Test of Time's/Living
 		# Armor's own ticks just above do.
 		current_hp = _tick_npc_leech_seed_effects(enemies, current_hp, effective_max_hp)
 		# Timbersaw's Reactive Armor: healing (per stack) is its own tick
-		# here, same "current_hp in, current_hp out" shape as Cold
-		# Embrace's/Living Armor's own ticks just above; the armor half
+		# here, same "current_hp in, current_hp out" shape as The Test of
+		# Time's/Living Armor's own ticks just above; the armor half
 		# is read live from _npc_reactive_armor_bonus_armor() wherever
 		# effective_armor is computed instead (see this function's own
 		# retaliation-loop call site below).
@@ -994,12 +994,12 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 			if state["mortimer_kisses"]["turns_remaining"] <= 0:
 				state["mortimer_kisses"]["active"] = false
 				state["mortimer_kisses"]["level_data"] = {}
-		elif state["cold_embrace"]["active"]:
-			# Encased in ice - can't move, attack, cast another skill, or
+		elif state["the_test_of_time"]["active"]:
+			# Held in The Test of Time - can't move, attack, cast another skill, or
 			# drink a potion, matching battle.gd's own copy (both the
 			# player's and a duel boss's) which locks every action the
 			# same way for the duration; its immunity/heal-per-turn
-			# already run via _tick_npc_cold_embrace() and the
+			# already run via _tick_npc_the_test_of_time() and the
 			# retaliation guard below regardless of what this turn does.
 			pass
 		elif current_hp <= effective_max_hp * LOW_HP_POTION_THRESHOLD and PlayerManager.get_npc_potion_count(hero_id, "health") > 0:
@@ -1029,13 +1029,13 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 				# attack (and possibly _end_npc_natures_guise()) below can
 				# change what state["nature's_guise"]["active"] reads.
 				var attacking_from_natures_guise: bool = state["nature's_guise"]["active"]
-				var tidebringer_level_data: Dictionary = _maybe_consume_npc_tidebringer_stack(hero_id, hero_static, state)
-				var tidebringer_bonus: float = float(tidebringer_level_data.get("bonus_damage", 0.0))
+				var pull_of_the_abyss_level_data: Dictionary = _maybe_consume_npc_pull_of_the_abyss_stack(hero_id, hero_static, state)
+				var pull_of_the_abyss_bonus: float = float(pull_of_the_abyss_level_data.get("bonus_damage", 0.0))
 				# Bash of the Deep counts this Attack toward its own
-				# threshold too, same idea as Tidebringer's stack just
+				# threshold too, same idea as Pull of the Abyss's stack just
 				# above - once reached, this hit's own damage is boosted
 				# by a PERCENTAGE of itself (folded in after the roll,
-				# unlike Tidebringer's flat pre-roll bonus). No knockback
+				# unlike Pull of the Abyss's flat pre-roll bonus). No knockback
 				# to apply here - see KNOWN_ACTIVE_SKILL_IDS's own comment
 				# above.
 				var bash_level_data: Dictionary = _maybe_consume_npc_bash_of_the_deep_stack(hero_id, hero_static, state)
@@ -1046,7 +1046,7 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 				# both active at once).
 				var moonlight_active: bool = state["moonlight_shadow"]["active"]
 				var moonlight_bonus_pct: float = state["moonlight_shadow"]["bonus_damage_pct"] if moonlight_active else 0.0
-				var dmg: float = _npc_roll_damage(damage_range, state, shadow_bonus + tidebringer_bonus)
+				var dmg: float = _npc_roll_damage(damage_range, state, shadow_bonus + pull_of_the_abyss_bonus)
 				if moonlight_active:
 					dmg += dmg * moonlight_bonus_pct
 				if not bash_level_data.is_empty():
@@ -1054,12 +1054,12 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 				var mitigated: float = _apply_damage_to_enemy(target, dmg)
 				_apply_npc_leeching_hunger_steal(target, state["leeching_hunger"], hero_static)
 				_apply_npc_mark_of_the_mist_stack(hero_id, hero_static, target, turn_index)
-				if not tidebringer_level_data.is_empty():
-					_apply_npc_tidebringer_cleave(target, dmg, tidebringer_level_data, living)
+				if not pull_of_the_abyss_level_data.is_empty():
+					_apply_npc_pull_of_the_abyss_cleave(target, dmg, pull_of_the_abyss_level_data, living)
 				var moon_glaives_level_data: Dictionary = _get_npc_moon_glaives_level_data(hero_id, hero_static)
 				if not moon_glaives_level_data.is_empty():
 					_apply_npc_moon_glaives_bounces(target, dmg, moon_glaives_level_data, living)
-				_apply_npc_arctic_burn_attack(state["arctic_burn"])
+				_apply_npc_frostbound_fangs_attack(state["frostbound_fangs"])
 				current_hp = minf(effective_max_hp, current_hp + _npc_wildbond_lifesteal(state["wildbond"], mitigated))
 				acted_with = "attack"
 
@@ -1190,10 +1190,10 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		# while Depthsveil or Nature's Guise is hiding the hero entirely
 		# (mirrors battle.gd's _is_hero_hidden() check in _enemy_turn()),
 		# or while
-		# Cold Embrace makes the hero fully immune (mirrors battle.gd's
+		# The Test of Time makes the hero fully immune (mirrors battle.gd's
 		# own _deal_fixed_damage_to_enemy() check - skipping this whole
 		# block is equivalent, since nothing else in this sim can damage
-		# the hero). While Winter's Curse is active, every OTHER living
+		# the hero). While The Hunger Calls is active, every OTHER living
 		# enemy piles onto its frozen target instead of the hero, for
 		# bonus_damage_pct extra damage - see KNOWN_ACTIVE_SKILL_IDS's
 		# own "no columns, redirect everyone" comment. curse_target/
@@ -1203,16 +1203,16 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		# partway through this same loop once its turn comes up, so
 		# every enemy this pass needs to see the same answer regardless
 		# of iteration order. ---
-		if not state["depthsveil"]["active"] and not state["cold_embrace"]["active"] and not state["nature's_guise"]["active"] and not state["moonlight_shadow"]["active"]:
+		if not state["depthsveil"]["active"] and not state["the_test_of_time"]["active"] and not state["nature's_guise"]["active"] and not state["moonlight_shadow"]["active"]:
 			# Timbersaw's Reactive Armor bonus is added on top of the base
 			# armor here, at the single call site, rather than inside
 			# _npc_effective_armor() itself (which has no hero_id/hero_
 			# static to look its own level data up with) - see
 			# _npc_reactive_armor_bonus_armor()'s own docstring.
 			var effective_armor: float = _npc_effective_armor(base_armor, state) + _npc_reactive_armor_bonus_armor(hero_id, hero_static, state)
-			var curse_target: Dictionary = state["winters_curse"].get("target_ref", {})
+			var curse_target: Dictionary = state["the_hunger_calls"].get("target_ref", {})
 			var curse_active: bool = not curse_target.is_empty() and int(curse_target.get("stun_turns_left", 0)) > 0
-			var curse_multiplier: float = 1.0 + float(state["winters_curse"].get("bonus_damage_pct", 0.0))
+			var curse_multiplier: float = 1.0 + float(state["the_hunger_calls"].get("bonus_damage_pct", 0.0))
 
 			for enemy in living:
 				var stun_left: int = enemy.get("stun_turns_left", 0)
@@ -1274,10 +1274,10 @@ func _new_npc_combat_state() -> Dictionary:
 		"the_mist_remembers": {"active": false, "heal_conversion_pct": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"bear": {},
 		"blood_of_the_wild": {"active": false, "damage_reduction_pct": 0.0},
-		"tidebringer_attack_count": 0,
-		"arctic_burn": {"active": false, "bonus_damage": 0.0, "bonus_range": 0, "attacks_remaining": 0, "turns_remaining": 0, "duration_pending_start": false},
-		"cold_embrace": {"active": false, "heal_per_turn": 0.0, "turns_remaining": 0, "duration_pending_start": false},
-		"winters_curse": {"target_ref": {}, "bonus_damage_pct": 0.0},
+		"pull_of_the_abyss_attack_count": 0,
+		"frostbound_fangs": {"active": false, "bonus_damage": 0.0, "bonus_range": 0, "attacks_remaining": 0, "turns_remaining": 0, "duration_pending_start": false},
+		"the_test_of_time": {"active": false, "heal_per_turn": 0.0, "turns_remaining": 0, "duration_pending_start": false},
+		"the_hunger_calls": {"target_ref": {}, "bonus_damage_pct": 0.0},
 		"freezing_field": {"active": false, "damage_per_turn": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"tag_team": {"active": false, "bonus_damage": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"nature's_guise": {"active": false, "root_turns": 0, "turns_remaining": 0, "duration_pending_start": false},
@@ -1332,7 +1332,7 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 			_apply_damage_to_enemy(_lowest_hp_enemy(living), float(level_data.get("damage", 0)))
 		"veil_of_the_forgotten":
 			_activate_npc_veil_of_the_forgotten(state["veil_of_the_forgotten"], level_data)
-		"torrent":
+		"drowned_surge":
 			var target: Dictionary = _lowest_hp_enemy(living)
 			var damage: float = float(level_data.get("damage", 0))
 			_apply_damage_to_enemy(target, damage)
@@ -1349,44 +1349,44 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 					if is_same(enemy, target):
 						continue
 					_apply_damage_to_enemy(enemy, damage)
-		"ghostship":
+		"the_sunken_one":
 			# The real ship travels a straight line from the hero to
 			# one marked target, damaging everyone caught in between -
 			# no columns here to work that path out along, so (see
 			# KNOWN_ACTIVE_SKILL_IDS's own comment above) it falls back
 			# to hitting every living enemy, same as Abyssal Spasm.
-			var ghostship_damage: float = float(level_data.get("damage", 0))
+			var the_sunken_one_damage: float = float(level_data.get("damage", 0))
 			for enemy in living:
-				_apply_damage_to_enemy(enemy, ghostship_damage)
-		"cold_feet":
-			var cold_feet_target: Dictionary = _lowest_hp_enemy(living)
-			cold_feet_target["cold_feet_dot_damage"] = float(level_data.get("damage", 0))
-			cold_feet_target["cold_feet_dot_turns_left"] = int(level_data.get("duration", 0))
-		"ice_vortex":
+				_apply_damage_to_enemy(enemy, the_sunken_one_damage)
+		"mark_of_stillness":
+			var mark_of_stillness_target: Dictionary = _lowest_hp_enemy(living)
+			mark_of_stillness_target["mark_of_stillness_dot_damage"] = float(level_data.get("damage", 0))
+			mark_of_stillness_target["mark_of_stillness_dot_turns_left"] = int(level_data.get("duration", 0))
+		"the_hollow_cold":
 			# No columns to center an AoE on a specific position here -
 			# same "no columns, hit everyone" fallback Abyssal Spasm's/
-			# Torrent's/Ghostship's own sim copies already use (see
+			# Drowned Surge's/The Sunken One's own sim copies already use (see
 			# KNOWN_ACTIVE_SKILL_IDS's own comment above), so the DoT
 			# lands on every living enemy instead of just whichever one
 			# would've been at its center.
 			var vortex_damage: float = float(level_data.get("damage", 0))
 			var vortex_duration: int = int(level_data.get("duration", 0))
 			for enemy in living:
-				enemy["ice_vortex_dot_damage"] = vortex_damage
-				enemy["ice_vortex_dot_turns_left"] = vortex_duration
-		"chilling_touch":
-			var chilling_touch_target: Dictionary = _lowest_hp_enemy(living)
-			var chilling_touch_damage: float = _npc_roll_damage(damage_range, state) + float(level_data.get("bonus_damage", 0))
-			_apply_damage_to_enemy(chilling_touch_target, chilling_touch_damage)
-		"ice_blast":
-			# Same "no columns, hit everyone" fallback as Ghostship/Ice
+				enemy["the_hollow_cold_dot_damage"] = vortex_damage
+				enemy["the_hollow_cold_dot_turns_left"] = vortex_duration
+		"touch_of_the_first_cold":
+			var touch_of_the_first_cold_target: Dictionary = _lowest_hp_enemy(living)
+			var touch_of_the_first_cold_damage: float = _npc_roll_damage(damage_range, state) + float(level_data.get("bonus_damage", 0))
+			_apply_damage_to_enemy(touch_of_the_first_cold_target, touch_of_the_first_cold_damage)
+		"return_to_the_void":
+			# Same "no columns, hit everyone" fallback as The Sunken One/Ice
 			# Vortex above - every living enemy is within its own AoE
 			# radius here, so there's no separate "pick the best
 			# target/position" step the way the real fight's own
-			# _cast_enemy_ice_blast() (which only ever has the player to
+			# _cast_enemy_return_to_the_void() (which only ever has the player to
 			# hit anyway) or the player's own multi-enemy _resolve_ice_
 			# blast_cast() need one. Only the stun singles out one
-			# target, the same "primary target only" rule Torrent's own
+			# target, the same "primary target only" rule Drowned Surge's own
 			# sim copy uses for its own stun.
 			var blast_damage: float = float(level_data.get("damage", 0))
 			var blast_dot_damage: float = float(level_data.get("dot_damage", 0))
@@ -1396,48 +1396,48 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 			for enemy in living:
 				_apply_damage_to_enemy(enemy, blast_damage)
 				if enemy["current_hp"] > 0:
-					enemy["ice_blast_dot_damage"] = blast_dot_damage
-					enemy["ice_blast_dot_turns_left"] = blast_dot_duration
-					enemy["ice_blast_execute_pct"] = blast_execute_pct
+					enemy["return_to_the_void_dot_damage"] = blast_dot_damage
+					enemy["return_to_the_void_dot_turns_left"] = blast_dot_duration
+					enemy["return_to_the_void_execute_pct"] = blast_execute_pct
 			if blast_primary["current_hp"] > 0:
 				blast_primary["stun_turns_left"] = int(level_data.get("stun_turns", 1))
-		"arctic_burn":
-			_activate_npc_arctic_burn(state["arctic_burn"], level_data)
-		"splinter_blast":
+		"frostbound_fangs":
+			_activate_npc_frostbound_fangs(state["frostbound_fangs"], level_data)
+		"maddening_roar":
 			# No columns to single out "every OTHER enemy within
-			# splinter_range" here - same "no columns, hit everyone"
-			# fallback Torrent's/Ice Vortex's own sim copies already use
+			# shatter_range" here - same "no columns, hit everyone"
+			# fallback Drowned Surge's/The Hollow Cold's own sim copies already use
 			# (see KNOWN_ACTIVE_SKILL_IDS's own comment above), so the
 			# primary target takes the full hit and every other living
-			# enemy takes the (lighter) splinter hit.
-			var splinter_primary: Dictionary = _lowest_hp_enemy(living)
-			_apply_damage_to_enemy(splinter_primary, float(level_data.get("damage", 0)))
-			var splinter_damage: float = float(level_data.get("splinter_damage", 0))
+			# enemy takes the (lighter) shatter hit.
+			var shatter_primary: Dictionary = _lowest_hp_enemy(living)
+			_apply_damage_to_enemy(shatter_primary, float(level_data.get("damage", 0)))
+			var shatter_damage: float = float(level_data.get("shatter_damage", 0))
 			for enemy in living:
-				if is_same(enemy, splinter_primary):
+				if is_same(enemy, shatter_primary):
 					continue
-				_apply_damage_to_enemy(enemy, splinter_damage)
-		"cold_embrace":
+				_apply_damage_to_enemy(enemy, shatter_damage)
+		"the_test_of_time":
 			_dispel_all_npc_effects(state)
-			_activate_npc_cold_embrace(state["cold_embrace"], level_data)
-		"winter's_curse":
+			_activate_npc_the_test_of_time(state["the_test_of_time"], level_data)
+		"the_hunger_calls":
 			# No columns to check curse_range against here - same "no
 			# columns, redirect everyone" fallback the AoE skills above
 			# use, so EVERY other living enemy (not just ones within some
 			# range of the frozen target) piles onto it instead of the
 			# hero for as long as the freeze holds - see
 			# _run_stage_fight()'s own retaliation loop, which reads
-			# state["winters_curse"] every turn.
+			# state["the_hunger_calls"] every turn.
 			var curse_target: Dictionary = _lowest_hp_enemy(living)
 			curse_target["stun_turns_left"] = int(level_data.get("duration", 0))
-			state["winters_curse"] = {
+			state["the_hunger_calls"] = {
 				"target_ref": curse_target,
 				"bonus_damage_pct": float(level_data.get("bonus_damage_pct", 0.0)),
 			}
 		"crystal_nova":
 			# No columns to check radius against here - same "no columns,
-			# hit everyone else" fallback Torrent's level-4 splash uses
-			# (see this match's "torrent" case above) once Crystal Nova's
+			# hit everyone else" fallback Drowned Surge's level-4 splash uses
+			# (see this match's "drowned_surge" case above) once Crystal Nova's
 			# own radius actually exists (level 3+); at levels 1-2
 			# (radius 0) it's a single-target nuke same as everywhere else.
 			var nova_primary: Dictionary = _lowest_hp_enemy(living)
@@ -1450,7 +1450,7 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 					_apply_damage_to_enemy(enemy, nova_damage)
 		"frostbite":
 			# Single-target control, same "whichever enemy the hero would
-			# attack anyway" target as Cold Feet/Torrent's own primary hit.
+			# attack anyway" target as Mark of Stillness/Drowned Surge's own primary hit.
 			var frostbite_target: Dictionary = _lowest_hp_enemy(living)
 			frostbite_target["frostbite_dot_damage"] = float(level_data.get("dot_damage", 0))
 			frostbite_target["frostbite_dot_turns_left"] = int(level_data.get("dot_duration", 0))
@@ -1462,7 +1462,7 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 			# The wall itself has nothing to act on here - nothing in this
 			# sim moves at all (see KNOWN_ACTIVE_SKILL_IDS's own comment
 			# above) - so this is just a flat hit to the primary target,
-			# same as Whisper of the Veil/Chilling Touch's own sim copies.
+			# same as Whisper of the Veil/Touch of the First Cold's own sim copies.
 			_apply_damage_to_enemy(_lowest_hp_enemy(living), float(level_data.get("damage", 0)))
 		"snowball":
 			var snowball_target: Dictionary = _lowest_hp_enemy(living)
@@ -1495,7 +1495,7 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 			# Self-centered AoE with nothing to center it on here (see
 			# KNOWN_ACTIVE_SKILL_IDS's own comment above) - roots and DoTs
 			# every living enemy at once, same "no columns, hit everyone"
-			# fallback Ice Blast's/Splinter Blast's own sim copies use.
+			# fallback Return to the Void's/Maddening Roar's own sim copies use.
 			var overgrowth_dot_damage: float = float(level_data.get("dot_damage", 0))
 			var overgrowth_root_duration: int = int(level_data.get("root_duration", 0))
 			for enemy in living:
@@ -1510,7 +1510,7 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 				_apply_damage_to_enemy(enemy, whirling_damage)
 		"timber_chain":
 			# A targeted "hits everything between caster and target" line,
-			# same "no columns, hit everyone" fallback Ghostship's own sim
+			# same "no columns, hit everyone" fallback The Sunken One's own sim
 			# copy already uses (see KNOWN_ACTIVE_SKILL_IDS's own comment
 			# above) - there's no meaningful difference between "centered
 			# on the caster" and "a line toward a target" once there are
@@ -1545,7 +1545,7 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 					enemy["stun_turns_left"] = cookie_stun_turns
 		"lil_shredder":
 			# Single-target burst, same "whichever enemy the hero would
-			# attack anyway" primary as Cold Feet's/Torrent's own. Each
+			# attack anyway" primary as Mark of Stillness's/Drowned Surge's own. Each
 			# shot ALSO stacks armor_reduction onto the SAME target - see
 			# this file's own "armor_reduction" docstring on
 			# _apply_damage_to_enemy() - so a later shot in the same
@@ -1579,7 +1579,7 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 				ensnare_target["root_turns_left"] = int(level_data.get("root_turns", 0))
 		"song_of_the_siren":
 			# No columns to center an AoE stun on here - same "no columns,
-			# hit everyone" fallback Ice Blast's/Splinter Blast's/
+			# hit everyone" fallback Return to the Void's/Maddening Roar's/
 			# Overgrowth's own sim copies already use (see KNOWN_ACTIVE_
 			# SKILL_IDS's own comment above), so every living enemy is
 			# stunned and armor-shredded at once, reusing the same
@@ -1691,10 +1691,10 @@ func _npc_skill_worth_casting(skill_id: String, state: Dictionary) -> bool:
 			return state["bear"].is_empty()
 		"veil_of_the_forgotten":
 			return not state["veil_of_the_forgotten"]["active"]
-		"arctic_burn":
-			return not state["arctic_burn"]["active"]
-		"cold_embrace":
-			return not state["cold_embrace"]["active"]
+		"frostbound_fangs":
+			return not state["frostbound_fangs"]["active"]
+		"the_test_of_time":
+			return not state["the_test_of_time"]["active"]
 		"freezing_field":
 			return not state["freezing_field"]["active"]
 		"tag_team":
@@ -1704,8 +1704,8 @@ func _npc_skill_worth_casting(skill_id: String, state: Dictionary) -> bool:
 		"living_armor":
 			return not state["living_armor"]["active"]
 		"mortimer_kisses":
-			# Purely defensive/documentation consistency, mirroring Cold
-			# Embrace's own case above - the turn-loop's own "mortimer_
+			# Purely defensive/documentation consistency, mirroring The Test of
+			# Time's own case above - the turn-loop's own "mortimer_
 			# kisses" branch in _run_stage_fight() already returns before
 			# this could ever be QUERIED while the channel is active in
 			# practice.
@@ -1717,7 +1717,7 @@ func _npc_skill_worth_casting(skill_id: String, state: Dictionary) -> bool:
 ## Every known, off-cooldown, currently-worthwhile, currently-
 ## affordable skill in KNOWN_ACTIVE_SKILL_IDS, PLUS a plain Attack for
 ## whichever heroes EnemySkillAI.basic_attack_participates() opts in
-## (today: only Kunkka, whose Tidebringer can make a plain Attack the
+## (today: only Kaelen Varr, whose Pull of the Abyss can make a plain Attack the
 ## better play), is scored by EnemySkillAI.evaluate_skill()/
 ## evaluate_basic_attack() against `ai_context`, and the highest-scoring
 ## one wins (ties resolved by EnemySkillAI - see pick_best_skill()) -
@@ -1777,37 +1777,37 @@ func _pick_ready_skill(hero_id: String, hero_static: Dictionary, cooldowns: Dict
 ## against for this NPC's turn - the simulation counterpart of
 ## battle.gd's own _build_enemy_ai_context(). Simplified versus the
 ## real fight the same way the rest of this sim already is: no
-## positions, so no target_distance (and no "kunkka_torrent_combo_
-## ready"/"kunkka_ghostship_combo_ready" - X Marks the Spot isn't even a
+## positions, so no target_distance (and no "kaelen_varr_drowned_surge_combo_
+## ready"/"kaelen_varr_the_sunken_one_combo_ready" - Undertow isn't even a
 ## candidate here, see KNOWN_ACTIVE_SKILL_IDS's own comment, so nothing
 ## ever reads those two), and `target` is always whichever living enemy
 ## the hero would attack anyway (_lowest_hp_enemy()), since that's the
 ## only target this sim's basic attack (and most of its skills) ever
 ## considers. `living_target_hps`/`living_target_max_hps` are every
 ## living enemy's own current/max HP, for EnemySkillAI's shared multi-
-## kill/execute scoring (see Ghostship's/Torrent's own modifiers, which
+## kill/execute scoring (see The Sunken One's/Drowned Surge's own modifiers, which
 ## need to know how many OTHER targets a hit would also kill, not just
-## the primary one `target_hp` covers, and Ancient Apparition's own Ice
+## the primary one `target_hp` covers, and Nhal's own Ice
 ## Blast modifier, which needs each target's own max HP to work out its
 ## execute threshold).
 ##
-## Winter Wyvern's own fields:
-##   - in_attack_range_now/in_attack_range_with_arctic_burn_bonus: always
+## The Primordial Hunger's own fields:
+##   - in_attack_range_now/in_attack_range_with_frostbound_fangs_bonus: always
 ##     true here - this sim's basic attack already reaches whichever
 ##     living enemy it targets with no travel cost at all (same reason
-##     X Marks the Spot isn't even a candidate here), so there's no
+##     Undertow isn't even a candidate here), so there's no
 ##     "can't reach the target" case to model the way battle.gd's real
 ##     columns have one.
-##   - arctic_burn_active: mirrors battle.gd's own field, just reading
+##   - frostbound_fangs_active: mirrors battle.gd's own field, just reading
 ##     `state` instead of an instance var.
 ##   - has_harmful_debuff: always false - nothing in this sim ever
 ##     debuffs the simulated hero itself (only ITS OWN skills debuff the
 ##     enemies it's fighting - see _tick_npc_thornbind_effects() and
-##     friends), so Cold Embrace never has a harmful effect on the hero
+##     friends), so The Test of Time never has a harmful effect on the hero
 ##     to dispel here, unlike a real hero fight where the player's own
 ##     skills can land on the rival boss.
-##   - redirect_candidate_count/avg_enemy_damage: for Winter Wyvern's own
-##     Winter's Curse - every OTHER living enemy is a redirect candidate
+##   - redirect_candidate_count/avg_enemy_damage: for The Primordial Hunger's own
+##     The Hunger Calls - every OTHER living enemy is a redirect candidate
 ##     here (see _run_stage_fight()'s own retaliation loop, which
 ##     redirects all of them, not just ones "in range" - there are no
 ##     columns to check a curse_range against), and their average damage
@@ -1859,9 +1859,9 @@ func _pick_ready_skill(hero_id: String, hero_static: Dictionary, cooldowns: Dict
 func _build_npc_ai_context(hero_id: String, hero_static: Dictionary, current_hp: float, effective_max_hp: float, current_mana: float, max_mana: float, damage_range: String, state: Dictionary, living: Array) -> Dictionary:
 	var target: Dictionary = {} if living.is_empty() else _lowest_hp_enemy(living)
 
-	var tidebringer_level_data: Dictionary = _get_npc_tidebringer_level_data(hero_id, hero_static)
-	var tidebringer_ready: bool = not tidebringer_level_data.is_empty() \
-		and (int(state.get("tidebringer_attack_count", 0)) + 1) >= int(tidebringer_level_data.get("hits_to_activate", 1))
+	var pull_of_the_abyss_level_data: Dictionary = _get_npc_pull_of_the_abyss_level_data(hero_id, hero_static)
+	var pull_of_the_abyss_ready: bool = not pull_of_the_abyss_level_data.is_empty() \
+		and (int(state.get("pull_of_the_abyss_attack_count", 0)) + 1) >= int(pull_of_the_abyss_level_data.get("hits_to_activate", 1))
 
 	var total_enemy_damage: float = 0.0
 	for enemy in living:
@@ -1898,12 +1898,12 @@ func _build_npc_ai_context(hero_id: String, hero_static: Dictionary, current_hp:
 		"bear_active": not state["bear"].is_empty(),
 		"living_target_hps": living.map(func(e): return float(e.get("current_hp", 0.0))),
 		"living_target_max_hps": living.map(func(e): return float(e["static"].get("hp", 1))),
-		"tidebringer_ready": tidebringer_ready,
-		"tidebringer_bonus_damage": float(tidebringer_level_data.get("bonus_damage", 0.0)),
-		"tidebringer_cleave_targets": maxi(living.size() - 1, 0) if tidebringer_ready else 0,
+		"pull_of_the_abyss_ready": pull_of_the_abyss_ready,
+		"pull_of_the_abyss_bonus_damage": float(pull_of_the_abyss_level_data.get("bonus_damage", 0.0)),
+		"pull_of_the_abyss_cleave_targets": maxi(living.size() - 1, 0) if pull_of_the_abyss_ready else 0,
 		"in_attack_range_now": true,
-		"in_attack_range_with_arctic_burn_bonus": true,
-		"arctic_burn_active": bool(state["arctic_burn"]["active"]),
+		"in_attack_range_with_frostbound_fangs_bonus": true,
+		"frostbound_fangs_active": bool(state["frostbound_fangs"]["active"]),
 		"has_harmful_debuff": false,
 		"redirect_candidate_count": maxi(living.size() - 1, 0),
 		"avg_enemy_damage": avg_enemy_damage,
@@ -2174,7 +2174,7 @@ func _end_npc_eclipse(ec: Dictionary) -> void:
 
 
 # ------------------------------------------------------------------
-# Luna's Moon Glaives - a passive, so like Mark of the Mist/Tidebringer
+# Luna's Moon Glaives - a passive, so like Mark of the Mist/Pull of the Abyss
 # above it's never "cast"; it just bounces off the hero's own plain
 # Attacks. Mirrors battle.gd's own _get_moon_glaives_level_data()/
 # _apply_moon_glaives_bounces(), simplified for this sim's own "no
@@ -2264,73 +2264,74 @@ func _tick_npc_thornbind_effects(enemies: Array) -> void:
 
 
 # ------------------------------------------------------------------
-# Ancient Apparition's Cold Feet/Ice Vortex - both plain damage-over-
+# Nhal's Mark of Stillness/The Hollow Cold - both plain damage-over-
 # time, so both mirror _tick_npc_thornbind_effects()'s own DoT half
 # exactly, just against their own dedicated per-enemy fields (see
-# battle.gd's _resolve_cold_feet_cast()/_resolve_ice_vortex_cast() for
+# battle.gd's _resolve_mark_of_stillness_cast()/_resolve_the_hollow_cold_cast() for
 # why they're kept separate from Thornbind's own DoT fields).
 # ------------------------------------------------------------------
 
-func _tick_npc_cold_feet_effects(enemies: Array) -> void:
+func _tick_npc_mark_of_stillness_effects(enemies: Array) -> void:
 	for enemy in enemies:
-		if enemy.get("cold_feet_dot_turns_left", 0) > 0:
-			enemy["cold_feet_dot_turns_left"] -= 1
-			var dot_damage: float = float(enemy.get("cold_feet_dot_damage", 0))
+		if enemy.get("mark_of_stillness_dot_turns_left", 0) > 0:
+			enemy["mark_of_stillness_dot_turns_left"] -= 1
+			var dot_damage: float = float(enemy.get("mark_of_stillness_dot_damage", 0))
 			if dot_damage > 0.0 and enemy.get("current_hp", 0) > 0:
 				_apply_damage_to_enemy(enemy, dot_damage)
 
 
-func _tick_npc_ice_vortex_effects(enemies: Array) -> void:
+func _tick_npc_the_hollow_cold_effects(enemies: Array) -> void:
 	for enemy in enemies:
-		if enemy.get("ice_vortex_dot_turns_left", 0) > 0:
-			enemy["ice_vortex_dot_turns_left"] -= 1
-			var dot_damage: float = float(enemy.get("ice_vortex_dot_damage", 0))
+		if enemy.get("the_hollow_cold_dot_turns_left", 0) > 0:
+			enemy["the_hollow_cold_dot_turns_left"] -= 1
+			var dot_damage: float = float(enemy.get("the_hollow_cold_dot_damage", 0))
 			if dot_damage > 0.0 and enemy.get("current_hp", 0) > 0:
 				_apply_damage_to_enemy(enemy, dot_damage)
 
 
-## Ticks Ice Blast's damage-over-time down by one turn for every enemy
+## Ticks Return to the Void's damage-over-time down by one turn for every enemy
 ## currently carrying it, then - if it survived that hit - checks its
 ## execute threshold: an enemy whose current_hp has dropped to or below
 ## execute_pct of its own max HP dies outright, regardless of how much
-## literal HP it has left, mirroring battle.gd's own _tick_ice_blast_
+## literal HP it has left, mirroring battle.gd's own _tick_return_to_the_void_
 ## effects(). Setting current_hp to 0 is enough to register as a kill
 ## here - _collect_npc_kills() (called right after this, in
 ## _run_stage_fight()'s own top-of-turn block) credits XP/gold off
 ## current_hp <= 0 by index, so no separate kill helper is needed the
 ## way battle.gd's own _kill_enemy() is.
-func _tick_npc_ice_blast_effects(enemies: Array) -> void:
+func _tick_npc_return_to_the_void_effects(enemies: Array) -> void:
 	for enemy in enemies:
-		if enemy.get("ice_blast_dot_turns_left", 0) <= 0:
+		if enemy.get("return_to_the_void_dot_turns_left", 0) <= 0:
 			continue
 		if enemy.get("current_hp", 0) <= 0:
 			continue
 
-		enemy["ice_blast_dot_turns_left"] -= 1
-		var dot_damage: float = float(enemy.get("ice_blast_dot_damage", 0))
+		enemy["return_to_the_void_dot_turns_left"] -= 1
+		var dot_damage: float = float(enemy.get("return_to_the_void_dot_damage", 0))
 		if dot_damage > 0.0:
 			_apply_damage_to_enemy(enemy, dot_damage)
 
 		if enemy.get("current_hp", 0) > 0:
-			var execute_pct: float = float(enemy.get("ice_blast_execute_pct", 0.0))
+			var execute_pct: float = float(enemy.get("return_to_the_void_execute_pct", 0.0))
 			var max_hp: float = float(enemy["static"].get("hp", 1))
 			if execute_pct > 0.0 and enemy["current_hp"] <= max_hp * execute_pct:
 				enemy["current_hp"] = 0.0
 
-		if enemy.get("ice_blast_dot_turns_left", 0) <= 0:
-			enemy["ice_blast_execute_pct"] = 0.0
+		if enemy.get("return_to_the_void_dot_turns_left", 0) <= 0:
+			enemy["return_to_the_void_execute_pct"] = 0.0
 
 
 # ------------------------------------------------------------------
-# Winter Wyvern's Arctic Burn - mirrors battle.gd's own
-# _activate_arctic_burn()/_apply_arctic_burn_attack()/_tick_arctic_
-# burn()/_end_arctic_burn(). _apply_npc_arctic_burn_attack() is called
+# The Primordial Hunger's Frostbound Fangs - mirrors battle.gd's own
+# _activate_frostbound_fangs()/_apply_frostbound_fangs_attack()/
+# _tick_frostbound_fangs()/_end_frostbound_fangs().
+# _apply_npc_frostbound_fangs_attack() is called
 # from _run_stage_fight()'s own basic-attack branch, right after the
-# attack lands, the same way _maybe_consume_npc_tidebringer_stack()'s
+# attack lands, the same way _maybe_consume_npc_pull_of_the_abyss_stack()'s
 # result is used there.
 # ------------------------------------------------------------------
 
-func _activate_npc_arctic_burn(ab: Dictionary, level_data: Dictionary) -> void:
+func _activate_npc_frostbound_fangs(ab: Dictionary, level_data: Dictionary) -> void:
 	ab["active"] = true
 	ab["bonus_damage"] = float(level_data.get("bonus_damage", 0))
 	ab["bonus_range"] = int(level_data.get("bonus_range", 0))
@@ -2339,15 +2340,15 @@ func _activate_npc_arctic_burn(ab: Dictionary, level_data: Dictionary) -> void:
 	ab["duration_pending_start"] = true
 
 
-func _apply_npc_arctic_burn_attack(ab: Dictionary) -> void:
+func _apply_npc_frostbound_fangs_attack(ab: Dictionary) -> void:
 	if not ab["active"] or ab["attacks_remaining"] <= 0:
 		return
 	ab["attacks_remaining"] -= 1
 	if ab["attacks_remaining"] <= 0:
-		_end_npc_arctic_burn(ab)
+		_end_npc_frostbound_fangs(ab)
 
 
-func _tick_npc_arctic_burn(ab: Dictionary) -> void:
+func _tick_npc_frostbound_fangs(ab: Dictionary) -> void:
 	if not ab["active"]:
 		return
 	if ab["duration_pending_start"]:
@@ -2355,10 +2356,10 @@ func _tick_npc_arctic_burn(ab: Dictionary) -> void:
 		return
 	ab["turns_remaining"] -= 1
 	if ab["turns_remaining"] <= 0:
-		_end_npc_arctic_burn(ab)
+		_end_npc_frostbound_fangs(ab)
 
 
-func _end_npc_arctic_burn(ab: Dictionary) -> void:
+func _end_npc_frostbound_fangs(ab: Dictionary) -> void:
 	ab["active"] = false
 	ab["bonus_damage"] = 0.0
 	ab["bonus_range"] = 0
@@ -2368,29 +2369,29 @@ func _end_npc_arctic_burn(ab: Dictionary) -> void:
 
 
 # ------------------------------------------------------------------
-# Winter Wyvern's Cold Embrace - mirrors battle.gd's own
-# _activate_cold_embrace()/_dispel_all_hero_effects()/_tick_cold_
-# embrace()/_end_cold_embrace(). Damage immunity and the move/attack
-# lockout are both enforced directly in _run_stage_fight() (the
+# The Primordial Hunger's The Test of Time - mirrors battle.gd's own
+# _activate_the_test_of_time()/_dispel_all_hero_effects()/
+# _tick_the_test_of_time()/_end_the_test_of_time(). Damage immunity and
+# the move/attack lockout are both enforced directly in _run_stage_fight() (the
 # retaliation loop's own guard, and the basic-attack branch's own
 # early-out) rather than here, the same split battle.gd uses between
 # this section and _deal_fixed_damage_to_enemy()/_enemy_hero_turn().
 # ------------------------------------------------------------------
 
-func _activate_npc_cold_embrace(ce: Dictionary, level_data: Dictionary) -> void:
+func _activate_npc_the_test_of_time(ce: Dictionary, level_data: Dictionary) -> void:
 	ce["active"] = true
 	ce["heal_per_turn"] = float(level_data.get("heal", 0))
 	ce["turns_remaining"] = int(level_data.get("duration", 0))
 	ce["duration_pending_start"] = true
 
 
-## Ticks Cold Embrace's duration down once per turn, healing the hero
+## Ticks The Test of Time's duration down once per turn, healing the hero
 ## for its own heal_per_turn on every tick that counts against the
-## duration - mirrors battle.gd's own _tick_cold_embrace(). Called from
+## duration - mirrors battle.gd's own _tick_the_test_of_time(). Called from
 ## _run_stage_fight() right after `effective_max_hp` is computed for the
 ## turn (needed to clamp the heal), returning the hero's updated
 ## current_hp the same way _apply_reduced_damage_to_npc() does.
-func _tick_npc_cold_embrace(ce: Dictionary, current_hp: float, effective_max_hp: float) -> float:
+func _tick_npc_the_test_of_time(ce: Dictionary, current_hp: float, effective_max_hp: float) -> float:
 	if not ce["active"]:
 		return current_hp
 	if ce["duration_pending_start"]:
@@ -2400,11 +2401,11 @@ func _tick_npc_cold_embrace(ce: Dictionary, current_hp: float, effective_max_hp:
 	current_hp = minf(effective_max_hp, current_hp + ce["heal_per_turn"])
 	ce["turns_remaining"] -= 1
 	if ce["turns_remaining"] <= 0:
-		_end_npc_cold_embrace(ce)
+		_end_npc_the_test_of_time(ce)
 	return current_hp
 
 
-func _end_npc_cold_embrace(ce: Dictionary) -> void:
+func _end_npc_the_test_of_time(ce: Dictionary) -> void:
 	ce["active"] = false
 	ce["heal_per_turn"] = 0.0
 	ce["turns_remaining"] = 0
@@ -2412,7 +2413,7 @@ func _end_npc_cold_embrace(ce: Dictionary) -> void:
 
 
 ## Dispels every other self-buff currently active on the hero, right
-## before Cold Embrace establishes its own state - the simulation's own
+## before The Test of Time establishes its own state - the simulation's own
 ## mirror of battle.gd's _dispel_all_hero_effects()/_dispel_all_enemy_
 ## hero_effects(). Simplified versus both of those: this sim has no
 ## concept of a debuff landing ON the simulated hero in the first place
@@ -2420,8 +2421,8 @@ func _end_npc_cold_embrace(ce: Dictionary) -> void:
 ## _run_stage_fight()'s own retaliation loop), so there's nothing
 ## harmful to clear, only these seven self-buffs.
 func _dispel_all_npc_effects(state: Dictionary) -> void:
-	if state["arctic_burn"]["active"]:
-		_end_npc_arctic_burn(state["arctic_burn"])
+	if state["frostbound_fangs"]["active"]:
+		_end_npc_frostbound_fangs(state["frostbound_fangs"])
 	if state["leeching_hunger"]["active"]:
 		_end_npc_leeching_hunger(state["leeching_hunger"])
 	if state["depthsveil"]["active"]:
@@ -2437,13 +2438,13 @@ func _dispel_all_npc_effects(state: Dictionary) -> void:
 
 
 # ------------------------------------------------------------------
-# Crystal Maiden's Frostbite - mirrors _tick_npc_cold_feet_effects()'/
-# _tick_npc_ice_vortex_effects()'s own DoT tick exactly, just against
+# Crystal Maiden's Frostbite - mirrors _tick_npc_mark_of_stillness_effects()'/
+# _tick_npc_the_hollow_cold_effects()'s own DoT tick exactly, just against
 # Frostbite's own dedicated per-enemy fields (see battle.gd's
 # _resolve_frostbite_cast() for why it's kept separate from every other
 # skill's own DoT fields). The stun itself needs no separate tick here -
 # it shares stun_turns_left, the same generic per-enemy field Barbed Lunge's/
-# Torrent's own stun already decrements in _run_stage_fight()'s own
+# Drowned Surge's own stun already decrements in _run_stage_fight()'s own
 # retaliation loop.
 # ------------------------------------------------------------------
 
@@ -2460,7 +2461,7 @@ func _tick_npc_frostbite_effects(enemies: Array) -> void:
 # Crystal Maiden's ultimate, Freezing Field - mirrors battle.gd's own
 # _activate_freezing_field()/_tick_freezing_field()/_end_freezing_
 # field(). No columns to check radius against here - same "no columns,
-# hit everyone" fallback Ice Vortex's own sim copy already uses (see
+# hit everyone" fallback The Hollow Cold's own sim copy already uses (see
 # this file's own KNOWN_ACTIVE_SKILL_IDS header comment), so every tick
 # that counts against the duration hits every still-living enemy, not
 # just whichever ones would really be within radius of the hero's own
@@ -2503,7 +2504,7 @@ func _end_npc_freezing_field(ff: Dictionary) -> void:
 # Tusk's Tag Team - mirrors battle.gd's own _activate_tag_team()/_tick_
 # tag_team()/_end_tag_team(): a flat bonus_damage added to
 # _npc_roll_damage()/_npc_estimate_damage() for the duration, same spot
-# Arctic Burn's/Beast of the Elderwild's own bonus_damage already occupy there.
+# Frostbound Fangs'/Beast of the Elderwild's own bonus_damage already occupy there.
 # ------------------------------------------------------------------
 
 func _activate_npc_tag_team(tt: Dictionary, level_data: Dictionary) -> void:
@@ -2609,14 +2610,13 @@ func _end_npc_living_armor(la: Dictionary) -> void:
 
 
 # ------------------------------------------------------------------
-# Treant Protector's Leech Seed - mirrors _tick_npc_cold_feet_effects()'/
+# Treant Protector's Leech Seed - mirrors _tick_npc_mark_of_stillness_effects()'/
 # _tick_npc_frostbite_effects()'s own DoT tick, just against Leech
 # Seed's own dedicated per-enemy fields, PLUS - unlike every other DoT
 # in this file - healing the CASTER (this hero) back for the same
 # amount each tick, mirroring battle.gd's own _tick_enemy_turn_start_
 # effects()'s "leech_seed" case (which heals whichever hero cast it, not
-# the target). Takes/returns current_hp the same way _tick_npc_cold_
-# embrace()/_tick_npc_living_armor() do, since it can change it.
+# the target). Takes/returns current_hp the same way _tick_npc_the_test_of_time()/_tick_npc_living_armor() do, since it can change it.
 # ------------------------------------------------------------------
 
 func _tick_npc_leech_seed_effects(enemies: Array, current_hp: float, effective_max_hp: float) -> float:
@@ -2633,7 +2633,7 @@ func _tick_npc_leech_seed_effects(enemies: Array, current_hp: float, effective_m
 
 
 # ------------------------------------------------------------------
-# Treant Protector's ultimate, Overgrowth - mirrors _tick_npc_ice_blast_
+# Treant Protector's ultimate, Overgrowth - mirrors _tick_npc_return_to_the_void_
 # effects()'s own DoT tick (minus its execute check), just against
 # Overgrowth's own dedicated per-enemy fields. The root itself needs no
 # separate tick here - it shares root_turns_left, the same generic
@@ -2803,7 +2803,7 @@ func _apply_npc_reactive_armor_stack(state: Dictionary, hero_id: String, hero_st
 ## other, same as battle.gd's own _tick_reactive_armor_stacks() - then
 ## heals current_hp for this level's own bonus_hp_regen_per_stack times
 ## however many stacks are STILL up after that. Takes/returns current_hp
-## the same way _tick_npc_cold_embrace()/_tick_npc_living_armor() do.
+## the same way _tick_npc_the_test_of_time()/_tick_npc_living_armor() do.
 func _tick_npc_reactive_armor(state: Dictionary, hero_id: String, hero_static: Dictionary, current_hp: float, effective_max_hp: float) -> float:
 	var stack_turns: Array = state["stack_turns"]
 	for i in range(stack_turns.size()):
@@ -2844,7 +2844,7 @@ func _tick_npc_armor_reduction_effects(enemies: Array) -> void:
 # _fire_mortimer_kisses_shot()/_fire_enemy_mortimer_kisses_shot(). The
 # channel's own turn-by-turn lockout lives in _run_stage_fight()'s own
 # action-decision chain (its own "mortimer_kisses" branch) rather than a
-# dedicated tick function here, mirroring Cold Embrace's own "pass"
+# dedicated tick function here, mirroring The Test of Time's own "pass"
 # branch there - this only fires a single shot, called from both the
 # INITIAL cast (this file's own "mortimer_kisses" case in _cast_skill())
 # and every automatic follow-up.
@@ -2860,8 +2860,8 @@ func _tick_npc_armor_reduction_effects(enemies: Array) -> void:
 ## Splash ("every OTHER enemy exactly 1 column away from the impact
 ## column") has no columns to measure here either, so it falls back to
 ## hitting every OTHER living enemy for splash_damage instead - the same
-## "no columns, hit everyone ELSE" fallback Torrent's own level-4 splash
-## and Splinter Blast's own splash already use.
+## "no columns, hit everyone ELSE" fallback Drowned Surge's own level-4 splash
+## and Maddening Roar's own splash already use.
 func _fire_npc_mortimer_kisses_shot(level_data: Dictionary, living: Array) -> void:
 	if living.is_empty():
 		return
@@ -3116,18 +3116,18 @@ func _tick_npc_mark_of_the_mist_effects(enemies: Array, turn_index: int) -> void
 
 
 # ------------------------------------------------------------------
-# Kunkka's Tidebringer - a passive, so like Mark of the Mist above (and
+# Kaelen Varr's Pull of the Abyss - a passive, so like Mark of the Mist above (and
 # unlike every skill in KNOWN_ACTIVE_SKILL_IDS) it's never "cast"; it
 # just builds off the hero's own plain Attacks - see this file's own
 # basic-attack branch in _run_stage_fight(). Mirrors battle.gd's
-# _maybe_consume_tidebringer_stack()/_apply_tidebringer_cleave().
+# _maybe_consume_pull_of_the_abyss_stack()/_apply_pull_of_the_abyss_cleave().
 # ------------------------------------------------------------------
 
-func _get_npc_tidebringer_level_data(hero_id: String, hero_static: Dictionary) -> Dictionary:
-	var level: int = PlayerManager.get_npc_skill_level(hero_id, "tidebringer")
+func _get_npc_pull_of_the_abyss_level_data(hero_id: String, hero_static: Dictionary) -> Dictionary:
+	var level: int = PlayerManager.get_npc_skill_level(hero_id, "pull_of_the_abyss")
 	if level <= 0:
 		return {}
-	var skill: Dictionary = _find_skill(hero_static, "tidebringer")
+	var skill: Dictionary = _find_skill(hero_static, "pull_of_the_abyss")
 	if skill.is_empty():
 		return {}
 	return GameManager.get_skill_level_data(skill, level)
@@ -3139,29 +3139,29 @@ func _get_npc_tidebringer_level_data(hero_id: String, hero_static: Dictionary) -
 ## without attacking, only by another empowered hit consuming it - and,
 ## once that threshold is reached, consumes the count and returns this
 ## level's data for the caller to fold bonus_damage into the roll and
-## then cleave with (_apply_npc_tidebringer_cleave()). Returns {} (an
-## ordinary Attack, no bonus) if the hero hasn't learned Tidebringer or
+## then cleave with (_apply_npc_pull_of_the_abyss_cleave()). Returns {} (an
+## ordinary Attack, no bonus) if the hero hasn't learned Pull of the Abyss or
 ## hasn't reached the threshold yet.
-func _maybe_consume_npc_tidebringer_stack(hero_id: String, hero_static: Dictionary, state: Dictionary) -> Dictionary:
-	var level_data: Dictionary = _get_npc_tidebringer_level_data(hero_id, hero_static)
+func _maybe_consume_npc_pull_of_the_abyss_stack(hero_id: String, hero_static: Dictionary, state: Dictionary) -> Dictionary:
+	var level_data: Dictionary = _get_npc_pull_of_the_abyss_level_data(hero_id, hero_static)
 	if level_data.is_empty():
 		return {}
 
-	state["tidebringer_attack_count"] += 1
-	if state["tidebringer_attack_count"] < int(level_data.get("hits_to_activate", 1)):
+	state["pull_of_the_abyss_attack_count"] += 1
+	if state["pull_of_the_abyss_attack_count"] < int(level_data.get("hits_to_activate", 1)):
 		return {}
 
-	state["tidebringer_attack_count"] = 0
+	state["pull_of_the_abyss_attack_count"] = 0
 	return level_data
 
 
 # ------------------------------------------------------------------
 # Slardar's passive, Bash of the Deep - same "count plain Attacks toward
-# a threshold, consume them all once reached" idiom as Tidebringer's own
+# a threshold, consume them all once reached" idiom as Pull of the Abyss's own
 # stack just above. Its knockback has nothing to act on in this
 # positionless sim (see KNOWN_ACTIVE_SKILL_IDS's own comment above) -
 # only the bonus damage half is applied, by the hero's own basic-attack
-# branch in _run_stage_fight(), mirroring Tidebringer's own bonus there.
+# branch in _run_stage_fight(), mirroring Pull of the Abyss's own bonus there.
 # ------------------------------------------------------------------
 
 func _get_npc_bash_of_the_deep_level_data(hero_id: String, hero_static: Dictionary) -> Dictionary:
@@ -3187,14 +3187,14 @@ func _maybe_consume_npc_bash_of_the_deep_stack(hero_id: String, hero_static: Dic
 	return level_data
 
 
-## Tidebringer's cleave, positionless-sim style: no columns here to
+## Pull of the Abyss's cleave, positionless-sim style: no columns here to
 ## measure cleave_columns against `target`'s own, so - same as Dark
 ## Pact's and Veil of the Forgotten's own AoE in this sim - it falls back to
 ## hitting every OTHER living enemy, each for cleave_damage_pct of
 ## `attack_damage` (the same raw, pre-mitigation roll `target` was just
 ## hit with, bonus damage already folded in by the caller), still
 ## mitigated by ITS OWN armor via _apply_damage_to_enemy().
-func _apply_npc_tidebringer_cleave(target: Dictionary, attack_damage: float, level_data: Dictionary, living: Array) -> void:
+func _apply_npc_pull_of_the_abyss_cleave(target: Dictionary, attack_damage: float, level_data: Dictionary, living: Array) -> void:
 	var cleave_damage: float = attack_damage * float(level_data.get("cleave_damage_pct", 0.0))
 	if cleave_damage <= 0.0:
 		return
@@ -3325,7 +3325,7 @@ func _npc_roll_damage(damage_range: String, state: Dictionary, extra_bonus: floa
 	var min_dmg: float = float(parts[0]) if parts.size() > 0 else 0.0
 	var max_dmg: float = float(parts[1]) if parts.size() > 1 else min_dmg
 
-	var bonus_damage: float = state["leeching_hunger"]["bonus"].get("damage", 0.0) + state["beast_of_the_elderwild"]["bonus_damage"] + state["arctic_burn"]["bonus_damage"] + state["tag_team"]["bonus_damage"] + extra_bonus
+	var bonus_damage: float = state["leeching_hunger"]["bonus"].get("damage", 0.0) + state["beast_of_the_elderwild"]["bonus_damage"] + state["frostbound_fangs"]["bonus_damage"] + state["tag_team"]["bonus_damage"] + extra_bonus
 	min_dmg += bonus_damage
 	max_dmg += bonus_damage
 
