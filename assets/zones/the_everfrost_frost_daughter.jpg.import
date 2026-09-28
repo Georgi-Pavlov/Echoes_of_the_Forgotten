@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cr5035xto7rq8"
-path="res://.godot/imported/the_everfrost_area.png-4a79d2f72158fc94f66d7ba02b053e3b.ctex"
+uid="uid://ddqnljwi4mgp3"
+path="res://.godot/imported/the_everfrost_frost_daughter.jpg-2117eeb714d1b89c5350bcdfa4dbdb70.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/battle_areas/the_everfrost_area.png"
-dest_files=["res://.godot/imported/the_everfrost_area.png-4a79d2f72158fc94f66d7ba02b053e3b.ctex"]
+source_file="res://assets/zones/the_everfrost_frost_daughter.jpg"
+dest_files=["res://.godot/imported/the_everfrost_frost_daughter.jpg-2117eeb714d1b89c5350bcdfa4dbdb70.ctex"]
 
 [params]
 

@@ -75,6 +75,10 @@ const ANIMATED_CREATURE_PROFILES := {
 	"frostspire_melee": "frostspire_melee",
 	"frostspire_melee_2": "frostspire_melee",
 	"frostspire_range": "frostspire_range",
+	"frost_daughter": "frost_daughter",
+	"the_everfrost_melee": "everfrost_melee",
+	"the_everfrost_melee_2": "everfrost_melee",
+	"the_everfrost_range": "everfrost_range",
 	# A rival Erynd's own bear; the player's is attached in
 	# _elderwild_companion() (it isn't spawned through _spawn_enemy()).
 	"enemy_elderwild_companion": "elderwild_companion",
@@ -155,16 +159,6 @@ const LIFESTEAL_MOTE_COLOR := Color(1.0, 0.2, 0.15, 1.0)
 # (same trick as BOUNCE_HIT_FLASH_COLOR).
 const WHISPER_OF_THE_VEIL_FLASH_COLOR := Color(0.7, 1.8, 1.7, 1)
 
-# Freezing Field's snowballs (see _play_snowball_barrage()): how many
-# fall on each unit a tick hits, their size range in px, their colors,
-# and how far above the unit they start falling from.
-const FREEZING_FIELD_SNOWBALLS_PER_TARGET := 3
-const FREEZING_FIELD_SNOWBALL_MIN_SIZE := 16.0
-const FREEZING_FIELD_SNOWBALL_MAX_SIZE := 26.0
-const FREEZING_FIELD_SNOWBALL_COLOR := Color(0.97, 0.99, 1.0, 1.0)
-const FREEZING_FIELD_SNOWBALL_RIM_COLOR := Color(0.7, 0.85, 1.0, 1.0)
-const FREEZING_FIELD_DROP_HEIGHT := 320.0
-
 # Living Armor's orbiting leaves (see _set_living_armor_leaves()): how
 # many, their two alternating greens, their size in px, and how long
 # one full orbit takes. The ring is a child node named
@@ -242,10 +236,10 @@ const MARK_OF_STILLNESS_FLAKE_COLOR := Color(0.85, 0.95, 1.0, 1.0)
 const MARK_OF_STILLNESS_FLASH_COLOR := Color(0.7, 1.3, 1.9, 1)
 const MARK_OF_STILLNESS_FROST_NAME := "MarkOfStillnessFrost"
 
-# How long Crystal Nova's frost lingers on everything it hit (see
+# How long Rimecleaver's frost lingers on everything it hit (see
 # _flash_frost_briefly()) - it's a single burst with no DoT to keep the
-# frost up, unlike Mark of Stillness/The Hollow Cold/Return to the Void/Frostbite.
-const CRYSTAL_NOVA_FROST_SECONDS := 2.5
+# frost up, unlike Mark of Stillness/The Hollow Cold/Return to the Void/Winter's Grip.
+const RIMECLEAVER_FROST_SECONDS := 2.5
 
 # Drowned Surge's water spray color (see _play_drowned_surge_splash()).
 const DROWNED_SURGE_SPRAY_COLOR := Color(0.55, 0.8, 1.0, 1.0)
@@ -560,7 +554,7 @@ var _guardian_sprint_duration_pending_start: bool = false
 # (same slot Living Armor's/Wildbond's own bonus armor use) and
 # heals bonus_hp_regen_per_stack * stack count every hero turn
 # (_apply_reactive_armor_regen(), same timing/stacking relationship as
-# Arcane Aura's/the baseline passive regen).
+# Frostborn's/the baseline passive regen).
 # ------------------------------------------------------------------
 var _reactive_armor_stack_turns: Array[int] = []
 
@@ -681,28 +675,28 @@ var _enemy_hunger_calls_fx: HungerCallsFX = null
 var _enemy_hunger_calls_fx_on_bear: bool = false
 
 # ------------------------------------------------------------------
-# Crystal Maiden's ultimate, Freezing Field: a self-cast that deals
+# Frost Daughter's ultimate, The Frost Tempest: a self-cast that deals
 # this level's own damage to every enemy within radius columns of the
 # hero's CURRENT position (re-checked fresh every tick, not fixed at
 # cast time - so it follows him if he moves) at the start of every
 # turn for the duration, same "casting turn doesn't count" pattern as
-# every other buff (see _tick_freezing_field()).
+# every other buff (see _tick_frost_tempest()).
 # ------------------------------------------------------------------
-var _freezing_field_active: bool = false
-var _freezing_field_damage_per_turn: float = 0.0
-var _freezing_field_radius: int = 0
-var _freezing_field_turns_remaining: int = 0
-var _freezing_field_duration_pending_start: bool = false
+var _frost_tempest_active: bool = false
+var _frost_tempest_damage_per_turn: float = 0.0
+var _frost_tempest_radius: int = 0
+var _frost_tempest_turns_remaining: int = 0
+var _frost_tempest_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
 # Luna's ultimate, Eclipse: a self-cast that, at the start of every turn
 # for as long as beams remain, fires ECLIPSE_BEAMS_PER_TURN beams (or
 # however many are left, if fewer) at random living, targetable enemies
 # within radius columns of the hero's CURRENT position (re-checked
-# fresh every tick, same as Freezing Field's own radius above - so it
+# fresh every tick, same as The Frost Tempest's own radius above - so it
 # follows her if she moves), each for this level's own damage. Ends the
 # instant every beam has landed, rather than running a fixed number of
-# turns like Freezing Field's own duration does. Same "casting turn
+# turns like The Frost Tempest's own duration does. Same "casting turn
 # doesn't count" pattern as every other buff (see _tick_eclipse()).
 # ------------------------------------------------------------------
 var _eclipse_active: bool = false
@@ -715,7 +709,7 @@ var _eclipse_duration_pending_start: bool = false
 # Timbersaw's ultimate, Chakram: a targeted cast that deals this
 # level's own cast_damage to the target and every enemy within radius
 # columns of the target's position AT CAST TIME, then plants a marker
-# there - fixed at that snapshot, unlike Freezing Field's own
+# there - fixed at that snapshot, unlike The Frost Tempest's own
 # hero-centered radius above, which re-checks the hero's current
 # position every tick - dealing damage_per_turn to every enemy within
 # radius columns of that FIXED spot at the start of every turn for the
@@ -732,7 +726,7 @@ var _chakram: Dictionary = {}
 # column and continuing toward the target, `blocked_columns` of them
 # total - for the duration (see _is_column_ice_shards_blocked(),
 # checked from every plain-movement decision in _enemy_turn()/
-# _enemy_hero_turn()). Fixed at cast time, unlike Freezing Field's own
+# _enemy_hero_turn()). Fixed at cast time, unlike The Frost Tempest's own
 # radius - the wall doesn't follow the hero if he moves afterward.
 # Recasting while a previous wall is still up simply replaces it
 # outright - there's nothing to give back, same as Frostbound Fangs/The Hunger
@@ -797,13 +791,13 @@ var _bear: Dictionary = {}
 # and each skill's own _cast_enemy_*_on_bear() for what it does to the
 # bear. Skills left out are either about the player's own position
 # (Undertow, The Sunken One/Timber Chain's line, Chakram's/Ice
-# Shards' placement, Mortimer Kisses' channel, Crystal Nova's area) or
+# Shards' placement, Mortimer Kisses' channel, Rimecleaver's area) or
 # not targeted at all; those still reach the bear through their own
 # AoE collateral, same as before.
 const ENEMY_BEAR_TARGETABLE_SKILLS: Array[String] = [
 	"thornbind", "whisper_of_the_veil", "drowned_surge", "corrosive_haze", "sacred_arrow",
 	"lucent_beam", "ensnare", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold",
-	"return_to_the_void", "maddening_roar", "the_hunger_calls", "frostbite", "snowball",
+	"return_to_the_void", "maddening_roar", "the_hunger_calls", "winters_grip", "snowball",
 	"walrus_punch", "leech_seed", "lil_shredder",
 ]
 
@@ -1146,18 +1140,18 @@ var _enemy_the_test_of_time_heal_per_turn: float = 0.0
 var _enemy_the_test_of_time_turns_remaining: int = 0
 var _enemy_the_test_of_time_duration_pending_start: bool = false
 
-# Crystal Maiden's Freezing Field, cast by the rival on herself - mirrors
-# the player's own _activate_freezing_field()/_tick_freezing_field()/
-# _end_freezing_field(): every tick that counts against the duration,
+# Frost Daughter's The Frost Tempest, cast by the rival on herself - mirrors
+# the player's own _activate_frost_tempest()/_tick_frost_tempest()/
+# _end_frost_tempest(): every tick that counts against the duration,
 # whichever of the player/rival is within `radius` columns of the
 # rival's OWN current position takes `damage_per_turn` (re-checked fresh
 # each tick, not fixed at cast time, same as the player's own copy) -
-# see _tick_enemy_freezing_field().
-var _enemy_freezing_field_active: bool = false
-var _enemy_freezing_field_damage_per_turn: float = 0.0
-var _enemy_freezing_field_radius: int = 0
-var _enemy_freezing_field_turns_remaining: int = 0
-var _enemy_freezing_field_duration_pending_start: bool = false
+# see _tick_enemy_frost_tempest().
+var _enemy_frost_tempest_active: bool = false
+var _enemy_frost_tempest_damage_per_turn: float = 0.0
+var _enemy_frost_tempest_radius: int = 0
+var _enemy_frost_tempest_turns_remaining: int = 0
+var _enemy_frost_tempest_duration_pending_start: bool = false
 
 # Tusk's Ice Shards, cast by the rival - mirrors the player's own
 # _resolve_ice_shards_cast()/_tick_ice_shards()/_end_ice_shards(): walls
@@ -1322,7 +1316,7 @@ var _player_stun_turns_left: int = 0
 # _cast_enemy_the_hunger_calls() (see that function's own comment on why
 # it collapses onto the shared stun field) - purely cosmetic, so the
 # frost screen tint/status icon can tell "frozen by The Hunger Calls"
-# apart from a Drowned Surge/Barbed Lunge/Return to the Void/Frostbite stun, all of which
+# apart from a Drowned Surge/Barbed Lunge/Return to the Void/Winter's Grip stun, all of which
 # also just set the same field. Cleared wherever the stun itself is
 # (a fresh dispel or the stun's own natural countdown reaching 0).
 var _player_the_hunger_calls_active: bool = false
@@ -1370,14 +1364,19 @@ var _player_return_to_the_void_dot_damage: float = 0.0
 var _player_return_to_the_void_dot_turns_left: int = 0
 var _player_return_to_the_void_execute_pct: float = 0.0
 
-# Crystal Maiden's Frostbite, cast by the rival on the player - mirrors
-# the player-side per-enemy frostbite_dot_damage/frostbite_dot_turns_
-# left fields (see _resolve_frostbite_cast()), just held as battle-local
+# Frost Daughter's Winter's Grip, cast by the rival on the player - mirrors
+# the player-side per-enemy winters_grip_dot_damage/winters_grip_dot_turns_
+# left fields (see _resolve_winters_grip_cast()), just held as battle-local
 # vars since there's only one player to track them on. The stun shares
 # _player_stun_turns_left above, same as Drowned Surge's/Return to the Void's own stun
 # does.
-var _player_frostbite_dot_damage: float = 0.0
-var _player_frostbite_dot_turns_left: int = 0
+var _player_winters_grip_dot_damage: float = 0.0
+var _player_winters_grip_dot_turns_left: int = 0
+# True while the player's own stun came from a rival's Winter's Grip -
+# its ice hands (WintersGripHands) hold him until that stun runs out.
+# Enemies/the bear carry the same as a "winters_grip_hold" field. See
+# _refresh_winters_grip_hands().
+var _player_winters_grip_hold: bool = false
 
 # Treant Protector's Leech Seed, cast by the rival on the player -
 # mirrors the player-side per-enemy leech_seed_dot_damage/leech_seed_
@@ -1572,17 +1571,17 @@ var _pending_maddening_roar_level_data: Dictionary = {}
 # actually clicked (_resolve_the_hunger_calls_cast()).
 var _pending_the_hunger_calls_level_data: Dictionary = {}
 
-# Crystal Maiden's Crystal Nova, held the same way as every other
+# Frost Daughter's Rimecleaver, held the same way as every other
 # targeted skill's own pending level data above, from the moment
-# _start_crystal_nova_targeting() opens targeting until a target is
-# actually clicked (_resolve_crystal_nova_cast()).
-var _pending_crystal_nova_level_data: Dictionary = {}
+# _start_rimecleaver_targeting() opens targeting until a target is
+# actually clicked (_resolve_rimecleaver_cast()).
+var _pending_rimecleaver_level_data: Dictionary = {}
 
-# Crystal Maiden's Frostbite, held the same way as every other targeted
+# Frost Daughter's Winter's Grip, held the same way as every other targeted
 # skill's own pending level data above, from the moment
-# _start_frostbite_targeting() opens targeting until a target is
-# actually clicked (_resolve_frostbite_cast()).
-var _pending_frostbite_level_data: Dictionary = {}
+# _start_winters_grip_targeting() opens targeting until a target is
+# actually clicked (_resolve_winters_grip_cast()).
+var _pending_winters_grip_level_data: Dictionary = {}
 
 # Tusk's Ice Shards, held the same way as every other targeted skill's
 # own pending level data above, from the moment _start_ice_shards_
@@ -1633,7 +1632,7 @@ const ENEMY_KNOWN_SKILL_IDS: Array[String] = [
 	"whisper_of_the_veil", "veil_of_the_forgotten", "drowned_surge", "undertow", "the_sunken_one",
 	"mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold", "return_to_the_void",
 	"frostbound_fangs", "maddening_roar", "the_test_of_time", "the_hunger_calls",
-	"crystal_nova", "frostbite", "freezing_field",
+	"rimecleaver", "winters_grip", "the_frost_tempest",
 	"ice_shards", "snowball", "tag_team", "walrus_punch",
 	"nature's_guise", "leech_seed", "living_armor", "overgrowth",
 	"whirling_death", "timber_chain", "chakram",
@@ -2178,7 +2177,7 @@ const ENEMY_STATUS_LABEL_COLOR := Color(1, 0.55, 0.3, 1)
 ## under its feet) can inflict directly on an enemy Dictionary. Mirrors
 ## _enemy_has_harmful_debuff()'s own field list (used for The Test of Time's
 ## AI scoring) plus the effects that helper doesn't need for that
-## purpose - stun, Frostbite's/Leech Seed's/Overgrowth's own DoTs, and
+## purpose - stun, Winter's Grip's/Leech Seed's/Overgrowth's own DoTs, and
 ## an Ice-Shards-blocked column, which isn't a Dictionary field at all
 ## but reads as "rooted" just the same since the enemy can't move
 ## either way (see _is_column_ice_shards_blocked()).
@@ -2227,7 +2226,7 @@ func _enemy_status_effect_text(enemy: Dictionary) -> String:
 		effects.append("The Hollow Cold")
 	if enemy.get("return_to_the_void_dot_turns_left", 0) > 0:
 		effects.append("Return to the Void")
-	if enemy.get("frostbite_dot_turns_left", 0) > 0:
+	if enemy.get("winters_grip_dot_turns_left", 0) > 0:
 		effects.append("Frostbitten")
 	if enemy.get("leech_seed_dot_turns_left", 0) > 0:
 		effects.append("Leeched")
@@ -2394,7 +2393,7 @@ func _populate_item_grid() -> void:
 				# Items are locked out for as long as The Test of Time is
 				# active on the hero (see _the_test_of_time_active), or while
 				# he's stunned/frozen (_player_stun_turns_left > 0 - set
-				# by Drowned Surge's/Barbed Lunge's/Return to the Void's/Frostbite's/The Hunger
+				# by Drowned Surge's/Barbed Lunge's/Return to the Void's/Winter's Grip's/The Hunger
 				# Calls's own stun, whether cast by the player or a rival
 				# hero) - a stunned hero loses the turn entirely, same as
 				# a stunned enemy loses its own (see _enemy_turn()'s stun
@@ -2513,6 +2512,8 @@ func _refresh_bars() -> void:
 
 	_refresh_status_effects()
 	_refresh_thornbind_vines()
+	_refresh_winters_grip_hands()
+	_refresh_frost_tempest_fx()
 	_refresh_overgrowth_roots()
 	_refresh_siren_lullabies()
 	_refresh_corrosive_haze()
@@ -2543,7 +2544,7 @@ func _refresh_status_effects() -> void:
 	if reserving:
 		return_to_the_void_reserve_overlay.anchor_right = clampf(_player_return_to_the_void_execute_pct, 0.0, 1.0)
 
-	var frost_active: bool = _player_return_to_the_void_dot_turns_left > 0 or _player_frostbite_dot_turns_left > 0 \
+	var frost_active: bool = _player_return_to_the_void_dot_turns_left > 0 or _player_winters_grip_dot_turns_left > 0 \
 		or _player_mark_of_stillness_dot_turns_left > 0 or _player_the_hollow_cold_dot_turns_left > 0 \
 		or _player_the_hunger_calls_active
 	_set_status_icon_visible(frost_status_icon, frost_active)
@@ -2555,7 +2556,7 @@ func _refresh_status_effects() -> void:
 	_set_status_icon_visible(root_status_icon, root_active)
 
 	# The frost skills' own ambient reminder - a persistent tint while
-	# any of The Hunger Calls/Frostbite/Return to the Void's own effects are still
+	# any of The Hunger Calls/Winter's Grip/Return to the Void's own effects are still
 	# on the player, fading out the instant they all are (a win, a
 	# flee, or the effect just running out all reach this the same way
 	# - every one of them already ends up back through _refresh_bars()).
@@ -2980,24 +2981,24 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 			# above - the mana/cooldown/turn spend happens once the
 			# click resolves (_resolve_the_hunger_calls_cast), not here.
 			return
-		"crystal_nova":
-			if not _start_crystal_nova_targeting(level_data):
+		"rimecleaver":
+			if not _start_rimecleaver_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_crystal_nova_cast), not here.
+			# click resolves (_resolve_rimecleaver_cast), not here.
 			return
-		"frostbite":
-			if not _start_frostbite_targeting(level_data):
+		"winters_grip":
+			if not _start_winters_grip_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_frostbite_cast), not here.
+			# click resolves (_resolve_winters_grip_cast), not here.
 			return
-		"freezing_field":
-			_activate_freezing_field(level_data)
+		"the_frost_tempest":
+			_activate_frost_tempest(level_data)
 		"ice_shards":
 			if not _start_ice_shards_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
@@ -4376,7 +4377,7 @@ func _build_music_note(size: float, color: Color) -> Node2D:
 ## _refresh_bars() (i.e. constantly), same approach as
 ## _refresh_thornbind_vines(). A mark only counts while the stun it rode
 ## in on is still running, and is cleared here once that stun is over -
-## so a later stun from anything else (Drowned Surge, Frostbite...) never
+## so a later stun from anything else (Drowned Surge, Winter's Grip...) never
 ## shows a lullaby.
 func _refresh_siren_lullabies() -> void:
 	for enemy in _enemies:
@@ -5833,74 +5834,127 @@ func _end_hunger_calls_fx() -> void:
 	_enemy_hunger_calls_fx = null
 
 
-## Resolves a Crystal Nova cast on `target`: `level_data.damage` to
+## Resolves a Rimecleaver cast on `target`: `level_data.damage` to
 ## `target`, then - once level_data.radius rises above 0, starting at
 ## level 3 - that same damage to every OTHER living, targetable enemy
 ## within `level_data.radius` columns of `target`'s own position too,
 ## mirroring Drowned Surge's own "splash centered on the target, never
 ## re-hitting it, same amount as the primary hit" radius
 ## (_resolve_drowned_surge_cast()).
-func _resolve_crystal_nova_cast(target: Dictionary, level_data: Dictionary) -> void:
+##
+## Both land with the axe (see _play_rimecleaver()): mana and cooldown
+## are spent right away and the turn stays locked while the axe forms;
+## the main hit lands when it chops into `target`, the splash when its
+## cleave has swung round the radius - then the turn ends. Who's caught
+## is snapshotted now.
+func _resolve_rimecleaver_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	var damage: float = float(level_data.get("damage", 0))
-	# Frosted before each hit lands - a kill frees the node.
-	_flash_frost_briefly(target.get("node"), CRYSTAL_NOVA_FROST_SECONDS)
-	_deal_fixed_damage_to_enemy(target, damage)
-
 	var radius: int = int(level_data.get("radius", 0))
+	var target_pos: int = target["pos_index"]
+
+	var splash_targets: Array = []
+	var splash_illusions: Array = []
 	if radius > 0:
-		var target_pos: int = target["pos_index"]
-		for enemy in _enemies.duplicate():
+		for enemy in _enemies:
 			if is_same(enemy, target) or _is_target_hidden(enemy):
 				continue
 			if _distance(enemy["pos_index"], target_pos) <= radius:
-				_flash_frost_briefly(enemy.get("node"), CRYSTAL_NOVA_FROST_SECONDS)
-				_deal_fixed_damage_to_enemy(enemy, damage)
+				splash_targets.append(enemy)
 		# Centered on the target's own column, same as the splash above -
 		# a rival's own illusion (Naga Siren's Mirror Image) can be in
 		# range independently of whether the boss itself currently is.
 		for illusion in _enemy_illusions:
 			if _distance(illusion["pos_index"], target_pos) <= radius:
-				_flash_frost_briefly(illusion.get("node"), CRYSTAL_NOVA_FROST_SECONDS)
-		_deal_aoe_damage_to_enemy_illusions(target_pos, radius, damage)
+				splash_illusions.append(illusion)
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["crystal_nova"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("crystal_nova", _skill_cooldowns["crystal_nova"])
+	_skill_cooldowns["rimecleaver"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("rimecleaver", _skill_cooldowns["rimecleaver"])
 	_refresh_skill_cooldown_labels()
+	# Nothing else happens this turn while the axe forms and falls.
+	_has_acted_this_turn = true
+	_update_action_buttons()
 
-	if _battle_over or _stage_generation != generation_before:
+	var on_impact := func() -> void:
+		if _battle_over or _stage_generation != generation_before:
+			return
+		if _enemies.any(func(e: Dictionary) -> bool: return is_same(e, target)):
+			# Flashed red and frosted before the hit lands - a kill frees the node.
+			_flash_frost_briefly(target.get("node"), RIMECLEAVER_FROST_SECONDS, BOUNCE_HIT_FLASH_COLOR)
+			_deal_fixed_damage_to_enemy(target, damage)
+		if radius <= 0 and not _battle_over and _stage_generation == generation_before:
+			_mark_turn_used()
+	var on_sweep := func() -> void:
+		if _battle_over or _stage_generation != generation_before:
+			return
+		for enemy in splash_targets:
+			if not _enemies.any(func(e: Dictionary) -> bool: return is_same(e, enemy)):
+				continue
+			_deal_fixed_damage_to_enemy(enemy, damage)
+		_deal_aoe_damage_to_enemy_illusions(target_pos, radius, damage)
+		if _battle_over or _stage_generation != generation_before:
+			return
+		_mark_turn_used()
+	# Everyone else caught flashes red (and frosts) as the swing cuts through them.
+	var pass_nodes: Array = []
+	for enemy in splash_targets:
+		pass_nodes.append(enemy.get("node"))
+	for illusion in splash_illusions:
+		pass_nodes.append(illusion.get("node"))
+	var on_pass := func(i: int) -> void:
+		if not _battle_over and _stage_generation == generation_before:
+			_flash_frost_briefly(pass_nodes[i], RIMECLEAVER_FROST_SECONDS, BOUNCE_HIT_FLASH_COLOR)
+	_play_rimecleaver(target.get("node"), radius, on_impact, on_sweep, pass_nodes, on_pass)
+
+
+## Purely cosmetic: Rimecleaver (RimecleaverFX). An axe of ice forms over
+## `target_node` and chops down onto it - `on_impact` fires then - and,
+## when `radius` > 0, swings a full circle round it across `radius`
+## columns before `on_sweep` fires. Both fire right away if the target's
+## sprite is already gone, so the caller's turn flow never stalls.
+func _play_rimecleaver(target_node: Variant, radius: int, on_impact: Callable, on_sweep: Callable,
+		pass_nodes: Array = [], on_pass: Callable = Callable()) -> void:
+	if not is_instance_valid(target_node) or not (target_node is Control) or not is_instance_valid(_fx_layer):
+		on_impact.call()
+		if radius > 0:
+			on_sweep.call()
 		return
+	var sweep_px := _grid_unit() * (float(radius) + 0.5) if radius > 0 else 0.0
+	RimecleaverFX.play(_fx_layer, target_node, sweep_px, func() -> void:
+		_shake_screen()
+		on_impact.call()
+	, on_sweep, pass_nodes, on_pass)
 
-	_mark_turn_used()
 
-
-## Resolves a Frostbite cast on `target`: freezes it in place for
+## Resolves a Winter's Grip cast on `target`: freezes it in place for
 ## `level_data.stun_turns` of its own turns (target["stun_turns_left"],
 ## the same shared per-enemy field Drowned Surge's/Return to the Void's/The Hunger
 ## Calls's own stun already uses), then arms its own damage-over-time
-## (target["frostbite_dot_damage"]/["frostbite_dot_turns_left"], ticked
+## (target["winters_grip_dot_damage"]/["winters_grip_dot_turns_left"], ticked
 ## by _tick_enemy_turn_start_effects() at the start of that enemy's own
 ## turn, alongside every other DoT) - a
 ## dedicated pair of fields rather than reusing Mark of Stillness's/Ice
 ## Vortex's/Return to the Void's own, so a different skill's DoT never silently
 ## shares or clobbers another's counters on the same target.
-func _resolve_frostbite_cast(target: Dictionary, level_data: Dictionary) -> void:
+func _resolve_winters_grip_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	target["stun_turns_left"] = int(level_data.get("stun_turns", 0))
-	target["frostbite_dot_damage"] = float(level_data.get("dot_damage", 0))
-	target["frostbite_dot_turns_left"] = int(level_data.get("dot_duration", 0))
+	target["winters_grip_dot_damage"] = float(level_data.get("dot_damage", 0))
+	target["winters_grip_dot_turns_left"] = int(level_data.get("dot_duration", 0))
+	target["winters_grip_hold"] = true
 	if is_instance_valid(target.get("node")):
 		_flash_bounce_hit(target["node"], MARK_OF_STILLNESS_FLASH_COLOR)
 	_refresh_mark_of_stillness_frost()
+	_refresh_winters_grip_hands()
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["frostbite"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("frostbite", _skill_cooldowns["frostbite"])
+	_skill_cooldowns["winters_grip"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("winters_grip", _skill_cooldowns["winters_grip"])
 	_refresh_skill_cooldown_labels()
 
 	if _battle_over or _stage_generation != generation_before:
@@ -6345,23 +6399,23 @@ func _apply_bash_of_the_deep_illusion_knockback(illusion: Dictionary, level_data
 
 
 # ------------------------------------------------------------------
-# Crystal Maiden's Arcane Aura - a passive, so unlike every cast skill
+# Frost Daughter's Frostborn - a passive, so unlike every cast skill
 # above there's no button/cast/mana/cooldown for it (see
 # _populate_skill_buttons()'s "passive" branch); it just regenerates
-# mana on its own at the start of every hero turn (_apply_arcane_aura_
+# mana on its own at the start of every hero turn (_apply_frostborn_
 # regen(), called from _end_turn()).
 # ------------------------------------------------------------------
 
-## Arcane Aura's level data for whatever level the player has it at
+## Frostborn's level data for whatever level the player has it at
 ## right now - {} if it isn't learned at all (level 0), the same
 ## "empty means locked" convention every other auto-triggered skill's
 ## own _get_*_level_data() helper uses.
-func _get_arcane_aura_level_data() -> Dictionary:
-	var level: int = PlayerManager.get_skill_level("arcane_aura")
+func _get_frostborn_level_data() -> Dictionary:
+	var level: int = PlayerManager.get_skill_level("frostborn")
 	if level <= 0:
 		return {}
 	for skill in _hero_static.get("skills", []):
-		if skill.get("id", "") == "arcane_aura":
+		if skill.get("id", "") == "frostborn":
 			return GameManager.get_skill_level_data(skill, level)
 	return {}
 
@@ -6372,8 +6426,8 @@ func _get_arcane_aura_level_data() -> Dictionary:
 ## the very start of every hero turn, regardless of whether the player
 ## actually gets to act that turn (e.g. still stunned or held in The
 ## Test of Time). A no-op while the skill isn't learned.
-func _apply_arcane_aura_regen() -> void:
-	var level_data: Dictionary = _get_arcane_aura_level_data()
+func _apply_frostborn_regen() -> void:
+	var level_data: Dictionary = _get_frostborn_level_data()
 	if level_data.is_empty():
 		return
 
@@ -6381,130 +6435,88 @@ func _apply_arcane_aura_regen() -> void:
 
 
 # ------------------------------------------------------------------
-# Crystal Maiden's ultimate, Freezing Field.
+# Frost Daughter's ultimate, The Frost Tempest.
 # ------------------------------------------------------------------
 
-## Activates Freezing Field: arms this level's own damage/radius for
+## Activates The Frost Tempest: arms this level's own damage/radius for
 ## `level_data.duration` turns. Always "succeeds" - cast on the hero
 ## himself, no target or range requirement, same as every other
 ## self-cast buff.
-func _activate_freezing_field(level_data: Dictionary) -> void:
-	_freezing_field_active = true
-	_freezing_field_damage_per_turn = float(level_data.get("damage", 0))
-	_freezing_field_radius = int(level_data.get("radius", 0))
-	_freezing_field_turns_remaining = int(level_data.get("duration", 0))
+func _activate_frost_tempest(level_data: Dictionary) -> void:
+	_frost_tempest_active = true
+	_frost_tempest_damage_per_turn = float(level_data.get("damage", 0))
+	_frost_tempest_radius = int(level_data.get("radius", 0))
+	_frost_tempest_turns_remaining = int(level_data.get("duration", 0))
 	# The casting turn itself doesn't count - duration only starts
-	# ticking from the turn after (see _tick_freezing_field()), same as
+	# ticking from the turn after (see _tick_frost_tempest()), same as
 	# every other duration-based buff.
-	_freezing_field_duration_pending_start = true
+	_frost_tempest_duration_pending_start = true
 
-	_show_message_over_hero("Freezing Field!")
+	_show_message_over_hero("The Frost Tempest!")
 
 
-## Ticks Freezing Field's duration down once per End Turn, same timing
+## Ticks The Frost Tempest's duration down once per End Turn, same timing
 ## (and same "the casting turn doesn't count" skip) as every other
 ## duration-based buff - dealing this level's own damage to every
 ## living, targetable enemy within radius columns of the hero's CURRENT
 ## position (re-checked fresh here, not fixed at cast time) on every
 ## tick that actually counts against the duration.
-func _tick_freezing_field() -> void:
-	if not _freezing_field_active:
+func _tick_frost_tempest() -> void:
+	if not _frost_tempest_active:
 		return
 
-	if _freezing_field_duration_pending_start:
-		_freezing_field_duration_pending_start = false
+	if _frost_tempest_duration_pending_start:
+		_frost_tempest_duration_pending_start = false
 		return
 
-	# Snowballs on every unit this tick is about to hit - gathered (and
-	# launched) before any damage lands, since a kill frees its node.
-	var snowball_nodes: Array = []
+	# Every unit this tick is about to hit flashes red - gathered before
+	# any damage lands, since a kill frees its node.
+	var hit_nodes: Array = []
 	for enemy in _enemies:
-		if not _is_target_hidden(enemy) and _distance(enemy["pos_index"], _hero_pos_index) <= _freezing_field_radius:
-			snowball_nodes.append(enemy.get("node"))
+		if not _is_target_hidden(enemy) and _distance(enemy["pos_index"], _hero_pos_index) <= _frost_tempest_radius:
+			hit_nodes.append(enemy.get("node"))
 	for illusion in _enemy_illusions:
-		if _distance(illusion["pos_index"], _hero_pos_index) <= _freezing_field_radius:
-			snowball_nodes.append(illusion.get("node"))
-	_play_snowball_barrage(snowball_nodes)
+		if _distance(illusion["pos_index"], _hero_pos_index) <= _frost_tempest_radius:
+			hit_nodes.append(illusion.get("node"))
+	_flash_frost_tempest_hits(hit_nodes)
 
 	for enemy in _enemies.duplicate():
 		if _is_target_hidden(enemy):
 			continue
-		if _distance(enemy["pos_index"], _hero_pos_index) <= _freezing_field_radius:
-			_deal_fixed_damage_to_enemy(enemy, _freezing_field_damage_per_turn)
+		if _distance(enemy["pos_index"], _hero_pos_index) <= _frost_tempest_radius:
+			_deal_fixed_damage_to_enemy(enemy, _frost_tempest_damage_per_turn)
 			if _battle_over:
 				return
 	# Self-centered on the hero's CURRENT position, same as the check
 	# above - a rival's own illusion (Naga Siren's Mirror Image) can be
 	# in range independently of whether the boss itself currently is.
-	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, _freezing_field_radius, _freezing_field_damage_per_turn)
+	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, _frost_tempest_radius, _frost_tempest_damage_per_turn)
 
-	_freezing_field_turns_remaining -= 1
-	if _freezing_field_turns_remaining <= 0:
-		_end_freezing_field()
+	_frost_tempest_turns_remaining -= 1
+	if _frost_tempest_turns_remaining <= 0:
+		_end_frost_tempest()
 	_refresh_mark_of_stillness_frost()
 
 
-## Purely cosmetic: Freezing Field's tick - FREEZING_FIELD_SNOWBALLS_PER_
-## TARGET snowballs falling from above onto each node in `nodes` (every
-## unit the tick hits), each a soft white ball with a pale-blue rim and
-## glow, starting at a random spot above its target and accelerating
-## down onto a random spot on it, staggered so they rain in one after
-## another, then bursting into a white puff (_play_orb_impact()) where
-## they land. Landing spots are captured up front, so a unit killed by
-## the tick still gets its snowballs. Same layering as
-## _play_scatterblast_effect().
-func _play_snowball_barrage(nodes: Array) -> void:
+## Purely cosmetic: The Frost Tempest's tick - every unit in `nodes` (all
+## the tick is about to hit, gathered before the damage lands since a
+## kill frees its node) flashes red as the storm tears into it.
+func _flash_frost_tempest_hits(nodes: Array) -> void:
 	for node in nodes:
-		if not is_instance_valid(node) or not (node is Control):
-			continue
-		var center: Vector2 = node.position + node.size / 2.0
-
-		for i in FREEZING_FIELD_SNOWBALLS_PER_TARGET:
-			var ball_size: float = randf_range(FREEZING_FIELD_SNOWBALL_MIN_SIZE, FREEZING_FIELD_SNOWBALL_MAX_SIZE)
-			var style := StyleBoxFlat.new()
-			style.bg_color = FREEZING_FIELD_SNOWBALL_COLOR
-			style.border_color = FREEZING_FIELD_SNOWBALL_RIM_COLOR
-			style.set_border_width_all(2)
-			style.set_corner_radius_all(int(ceilf(ball_size / 2.0)))
-			style.corner_detail = 12
-			style.shadow_color = Color(FREEZING_FIELD_SNOWBALL_RIM_COLOR.r, FREEZING_FIELD_SNOWBALL_RIM_COLOR.g, FREEZING_FIELD_SNOWBALL_RIM_COLOR.b, 0.5)
-			style.shadow_size = 6
-			var ball := Panel.new()
-			ball.add_theme_stylebox_override("panel", style)
-			ball.size = Vector2(ball_size, ball_size)
-			ball.pivot_offset = ball.size / 2.0
-			ball.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-			var land: Vector2 = center + Vector2(randf_range(-0.3, 0.3) * node.size.x, randf_range(-0.25, 0.2) * node.size.y)
-			var start: Vector2 = land + Vector2(randf_range(-60.0, 60.0), -FREEZING_FIELD_DROP_HEIGHT)
-			ball.position = start - ball.size / 2.0
-			ball.modulate.a = 0.0
-			add_child(ball)
-			move_child(ball, enemies_layer.get_index() + 1)
-
-			var fall_time: float = randf_range(0.35, 0.45)
-			var tween: Tween = ball.create_tween()
-			tween.tween_interval(i * 0.12 + randf_range(0.0, 0.08))
-			tween.tween_property(ball, "modulate:a", 1.0, 0.06)
-			tween.tween_property(ball, "position", land - ball.size / 2.0, fall_time).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-			tween.tween_callback(func() -> void:
-				_play_orb_impact(land, FREEZING_FIELD_SNOWBALL_COLOR, 0.8)
-			)
-			tween.tween_property(ball, "scale", Vector2(1.4, 0.4), 0.06)
-			tween.parallel().tween_property(ball, "modulate:a", 0.0, 0.08)
-			tween.tween_callback(ball.queue_free)
+		if is_instance_valid(node) and node is TextureRect:
+			_flash_bounce_hit(node)
 
 
-## Ends Freezing Field once its duration runs out.
-func _end_freezing_field() -> void:
-	_freezing_field_active = false
-	_freezing_field_damage_per_turn = 0.0
-	_freezing_field_radius = 0
-	_freezing_field_turns_remaining = 0
-	_freezing_field_duration_pending_start = false
+## Ends The Frost Tempest once its duration runs out.
+func _end_frost_tempest() -> void:
+	_frost_tempest_active = false
+	_frost_tempest_damage_per_turn = 0.0
+	_frost_tempest_radius = 0
+	_frost_tempest_turns_remaining = 0
+	_frost_tempest_duration_pending_start = false
 	_refresh_mark_of_stillness_frost()
 
-	_show_message_over_hero("Freezing Field fades")
+	_show_message_over_hero("The Frost Tempest fades")
 
 
 # ------------------------------------------------------------------
@@ -6900,7 +6912,7 @@ func _is_column_ice_shards_blocked(col: int) -> bool:
 ## action, so anything checked right after (range, _stage_generation,
 ## etc.) already sees him there - then deals
 ## `level_data.damage` and stuns it for `level_data.stun_turns` if it
-## survives, same stun mechanism Drowned Surge's/Return to the Void's/Frostbite's own
+## survives, same stun mechanism Drowned Surge's/Return to the Void's/Winter's Grip's own
 ## use. The charge itself (portrait swap to SNOWBALL_IMAGE_PATH, a
 ## tween sliding his VISUAL position across to match) is purely
 ## cosmetic and layered on top afterward, same "instant, already-
@@ -7076,7 +7088,7 @@ func _resolve_walrus_punch_cast(target: Dictionary, level_data: Dictionary) -> v
 ## playing: deals the punch's own damage, shows "Wall hit!" if it fell
 ## short of its full knockback distance, and - if the target survived -
 ## stuns it in place for `level_data.stun_turns`, the same shared
-## stun_turns_left field Drowned Surge's/Return to the Void's/Frostbite's/Snowball's
+## stun_turns_left field Drowned Surge's/Return to the Void's/Winter's Grip's/Snowball's
 ## own stun already uses. Bails out first if a stage/hero-fight
 ## transition already happened while the slide was playing - the same
 ## generation guard every other targeted cast checks before spending
@@ -7112,7 +7124,7 @@ func _resolve_walrus_punch_damage(target: Dictionary, punch_damage: float, hit_w
 ## Resolves a Leech Seed cast on `target`: no immediate damage, just
 ## arms this level's own dot_damage/heal_per_turn onto `target`'s own
 ## dedicated leech_seed_dot_turns_left counter - a separate pair of
-## fields from Mark of Stillness's/The Hollow Cold's/Return to the Void's/Frostbite's own
+## fields from Mark of Stillness's/The Hollow Cold's/Return to the Void's/Winter's Grip's own
 ## DoTs, same "never silently shares or clobbers another skill's
 ## counters on the same target" reasoning those already follow - ticked
 ## once per turn, at the start of that enemy's own turn, by
@@ -7449,7 +7461,7 @@ func _apply_root(target: Dictionary, level_data: Dictionary) -> void:
 ## (ending the curse once its own duration runs out - stack decay for a
 ## NOT-yet-activated curse is a separate, turn-count-based check handled
 ## by _tick_mark_of_the_mist_effects() instead, since it isn't a DoT),
-## Mark of Stillness's/The Hollow Cold's/Frostbite's/Leech Seed's own DoTs (Leech
+## Mark of Stillness's/The Hollow Cold's/Winter's Grip's/Leech Seed's own DoTs (Leech
 ## Seed also healing the hero back), Return to the Void's DoT plus its own
 ## execute-threshold check, and Treant Protector's Overgrowth DoT -
 ## each a dedicated pair of fields so none of them ever clobber each
@@ -7560,11 +7572,11 @@ func _tick_enemy_turn_start_effects(enemy: Dictionary) -> void:
 		if enemy.get("current_hp", 0) <= 0:
 			return
 
-	if enemy.get("frostbite_dot_turns_left", 0) > 0:
-		enemy["frostbite_dot_turns_left"] -= 1
-		var frostbite_dot: float = float(enemy.get("frostbite_dot_damage", 0))
-		if frostbite_dot > 0.0:
-			_deal_fixed_damage_to_enemy(enemy, frostbite_dot, false, false)
+	if enemy.get("winters_grip_dot_turns_left", 0) > 0:
+		enemy["winters_grip_dot_turns_left"] -= 1
+		var winters_grip_dot: float = float(enemy.get("winters_grip_dot_damage", 0))
+		if winters_grip_dot > 0.0:
+			_deal_fixed_damage_to_enemy(enemy, winters_grip_dot, false, false)
 			if _battle_over or enemy.get("current_hp", 0) <= 0:
 				return
 
@@ -7598,7 +7610,7 @@ func _tick_enemy_turn_start_effects(enemy: Dictionary) -> void:
 ## Dictionary - Thornbind's root/silence counters and DoT, Mark of the
 ## Mist's DoT (stack decay lives in _tick_enemy_mark_of_the_mist_
 ## effects() instead, same "not a DoT" reasoning as the enemy-side
-## version), Mark of Stillness's/The Hollow Cold's/Frostbite's own DoTs, Return to the Void's
+## version), Mark of Stillness's/The Hollow Cold's/Winter's Grip's own DoTs, Return to the Void's
 ## DoT plus its own execute-threshold check, Treant Protector's Leech
 ## Seed (unlike every other DoT here, its own healing half goes to the
 ## CASTER - the rival - not the player, so this heals the boss directly
@@ -7664,10 +7676,10 @@ func _tick_player_turn_start_effects() -> void:
 		if _player_return_to_the_void_dot_turns_left <= 0:
 			_player_return_to_the_void_execute_pct = 0.0
 
-	if _player_frostbite_dot_turns_left > 0:
-		_player_frostbite_dot_turns_left -= 1
-		if _player_frostbite_dot_damage > 0.0:
-			apply_damage(_player_frostbite_dot_damage)
+	if _player_winters_grip_dot_turns_left > 0:
+		_player_winters_grip_dot_turns_left -= 1
+		if _player_winters_grip_dot_damage > 0.0:
+			apply_damage(_player_winters_grip_dot_damage)
 
 	if _player_leech_seed_dot_turns_left > 0:
 		_player_leech_seed_dot_turns_left -= 1
@@ -8010,7 +8022,7 @@ func _activate_the_test_of_time(level_data: Dictionary) -> void:
 ## belong to other heroes, but this stays generic and correct regardless
 ## of whose battle it runs in - plus every debuff a rival hero fight
 ## boss could have inflicted (root, silence, Thornbind's/Mark of the
-## Mist's/Mark of Stillness's/The Hollow Cold's/Return to the Void's/Frostbite's/Leech
+## Mist's/Mark of Stillness's/The Hollow Cold's/Return to the Void's/Winter's Grip's/Leech
 ## Seed's/Overgrowth's/Mortimer Kisses' burn damage-over-time, Ice
 ## Blast's execute threshold, Barbed Lunge's/Drowned Surge's stun, Lil' Shredder's
 ## own armor reduction, and a hostile Leeching Hunger's stat penalty) -
@@ -8053,8 +8065,9 @@ func _dispel_all_hero_effects() -> void:
 	_player_return_to_the_void_dot_damage = 0.0
 	_player_return_to_the_void_dot_turns_left = 0
 	_player_return_to_the_void_execute_pct = 0.0
-	_player_frostbite_dot_damage = 0.0
-	_player_frostbite_dot_turns_left = 0
+	_player_winters_grip_dot_damage = 0.0
+	_player_winters_grip_dot_turns_left = 0
+	_player_winters_grip_hold = false
 	_player_leech_seed_dot_damage = 0.0
 	_player_leech_seed_heal_per_turn = 0.0
 	_player_leech_seed_dot_turns_left = 0
@@ -8685,7 +8698,7 @@ func _bear_turn() -> void:
 		return
 
 	# A rival's stun (Drowned Surge/Sacred Arrow/Lucent Beam/Return to the Void/
-	# Frostbite/The Hunger Calls/Snowball/Walrus Punch aimed at the bear)
+	# Winter's Grip/The Hunger Calls/Snowball/Walrus Punch aimed at the bear)
 	# costs it this whole turn; a root (Thornbind/Ensnare) still lets it
 	# attack what's already on its column, just not walk. Both are
 	# checked with their CURRENT value before ticking down - the same
@@ -8771,7 +8784,7 @@ func _refresh_skill_cooldown_labels() -> void:
 
 ## Ticks every tracked skill cooldown down by one turn, clamped at 0,
 ## and ticks Leeching Hunger's, Depthsveil's, Frostbound Fangs', The Test of
-## Time's, Freezing Field's, Ice Shards', Tag Team's, Nature's
+## Time's, The Frost Tempest's, Ice Shards', Tag Team's, Nature's
 ## Guise's, Living Armor's, Reactive Armor's (each stack independently),
 ## Chakram's, Wildbond's, Beast of the Elderwild's, Veil of the Forgotten's, and The Mist
 ## Remembers's durations, plus Mark of the Mist's own (enemy- and player-side)
@@ -8795,7 +8808,7 @@ func _tick_skill_cooldowns() -> void:
 	_tick_moonlight_shadow()
 	_tick_frostbound_fangs()
 	_tick_the_test_of_time()
-	_tick_freezing_field()
+	_tick_frost_tempest()
 	_tick_eclipse()
 	_tick_ice_shards()
 	_tick_tag_team()
@@ -8824,7 +8837,7 @@ func _tick_skill_cooldowns() -> void:
 		_tick_enemy_mark_of_the_mist_effects()
 		_tick_enemy_frostbound_fangs()
 		_tick_enemy_the_test_of_time()
-		_tick_enemy_freezing_field()
+		_tick_enemy_frost_tempest()
 		_tick_enemy_ice_shards()
 		_tick_enemy_tag_team()
 		_tick_enemy_natures_guise()
@@ -8845,7 +8858,7 @@ func _tick_skill_cooldowns() -> void:
 # HP/mana already derive from (strength for HP, intelligence for
 # mana). Ticks right after status effects/DoT for that same "turn" -
 # _apply_passive_hero_regen() is called from _end_turn() right where
-# Arcane Aura's own regen already is (right after _tick_skill_
+# Frostborn's own regen already is (right after _tick_skill_
 # cooldowns()' DoT tick, before the player's action buttons reopen);
 # _tick_enemy_passive_regen() is called from _tick_skill_cooldowns()
 # itself, alongside every other unconditional enemy-side tick, so a
@@ -10520,11 +10533,11 @@ func _start_the_hunger_calls_targeting(level_data: Dictionary) -> bool:
 	return true
 
 
-## Crystal Maiden's Crystal Nova target picking: same column-range/
+## Frost Daughter's Rimecleaver target picking: same column-range/
 ## highlight mechanism as every other "normal attack range" targeted
 ## skill above (_hero_attack_column_range()). Returns false (and shows
 ## a message) if nothing is in range.
-func _start_crystal_nova_targeting(level_data: Dictionary) -> bool:
+func _start_rimecleaver_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = _hero_attack_column_range()
@@ -10539,8 +10552,8 @@ func _start_crystal_nova_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "crystal_nova"
-	_pending_crystal_nova_level_data = level_data
+	_targeting_purpose = "rimecleaver"
+	_pending_rimecleaver_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
@@ -10572,11 +10585,11 @@ func _start_lil_shredder_targeting(level_data: Dictionary) -> bool:
 	return true
 
 
-## Crystal Maiden's Frostbite target picking: same column-range/
+## Frost Daughter's Winter's Grip target picking: same column-range/
 ## highlight mechanism as every other "normal attack range" targeted
 ## skill above (_hero_attack_column_range()). Returns false (and shows
 ## a message) if nothing is in range.
-func _start_frostbite_targeting(level_data: Dictionary) -> bool:
+func _start_winters_grip_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = _hero_attack_column_range()
@@ -10591,8 +10604,8 @@ func _start_frostbite_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "frostbite"
-	_pending_frostbite_level_data = level_data
+	_targeting_purpose = "winters_grip"
+	_pending_winters_grip_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
@@ -10872,8 +10885,8 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 	var return_to_the_void_level_data: Dictionary = _pending_return_to_the_void_level_data
 	var maddening_roar_level_data: Dictionary = _pending_maddening_roar_level_data
 	var the_hunger_calls_level_data: Dictionary = _pending_the_hunger_calls_level_data
-	var crystal_nova_level_data: Dictionary = _pending_crystal_nova_level_data
-	var frostbite_level_data: Dictionary = _pending_frostbite_level_data
+	var rimecleaver_level_data: Dictionary = _pending_rimecleaver_level_data
+	var winters_grip_level_data: Dictionary = _pending_winters_grip_level_data
 	var ice_shards_level_data: Dictionary = _pending_ice_shards_level_data
 	var snowball_level_data: Dictionary = _pending_snowball_level_data
 	var walrus_punch_level_data: Dictionary = _pending_walrus_punch_level_data
@@ -10916,10 +10929,10 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 		_resolve_maddening_roar_cast(enemy, maddening_roar_level_data)
 	elif purpose == "the_hunger_calls":
 		_resolve_the_hunger_calls_cast(enemy, the_hunger_calls_level_data)
-	elif purpose == "crystal_nova":
-		_resolve_crystal_nova_cast(enemy, crystal_nova_level_data)
-	elif purpose == "frostbite":
-		_resolve_frostbite_cast(enemy, frostbite_level_data)
+	elif purpose == "rimecleaver":
+		_resolve_rimecleaver_cast(enemy, rimecleaver_level_data)
+	elif purpose == "winters_grip":
+		_resolve_winters_grip_cast(enemy, winters_grip_level_data)
 	elif purpose == "ice_shards":
 		_resolve_ice_shards_cast(enemy, ice_shards_level_data)
 	elif purpose == "snowball":
@@ -11690,11 +11703,11 @@ func _reset_enemy_hero_state(hero_static: Dictionary) -> void:
 	_enemy_the_test_of_time_turns_remaining = 0
 	_enemy_the_test_of_time_duration_pending_start = false
 
-	_enemy_freezing_field_active = false
-	_enemy_freezing_field_damage_per_turn = 0.0
-	_enemy_freezing_field_radius = 0
-	_enemy_freezing_field_turns_remaining = 0
-	_enemy_freezing_field_duration_pending_start = false
+	_enemy_frost_tempest_active = false
+	_enemy_frost_tempest_damage_per_turn = 0.0
+	_enemy_frost_tempest_radius = 0
+	_enemy_frost_tempest_turns_remaining = 0
+	_enemy_frost_tempest_duration_pending_start = false
 
 	_enemy_ice_shards_active = false
 	_enemy_ice_shards_blocked_columns = []
@@ -11755,8 +11768,9 @@ func _reset_enemy_hero_state(hero_static: Dictionary) -> void:
 	_player_return_to_the_void_dot_damage = 0.0
 	_player_return_to_the_void_dot_turns_left = 0
 	_player_return_to_the_void_execute_pct = 0.0
-	_player_frostbite_dot_damage = 0.0
-	_player_frostbite_dot_turns_left = 0
+	_player_winters_grip_dot_damage = 0.0
+	_player_winters_grip_dot_turns_left = 0
+	_player_winters_grip_hold = false
 	_player_leech_seed_dot_damage = 0.0
 	_player_leech_seed_heal_per_turn = 0.0
 	_player_leech_seed_dot_turns_left = 0
@@ -11835,7 +11849,7 @@ func _end_turn() -> void:
 	_tick_skill_cooldowns()
 
 	# A rival's own buff tick inside _tick_skill_cooldowns() above (e.g.
-	# Freezing Field, if it ever damages its own caster) could in
+	# The Frost Tempest, if it ever damages its own caster) could in
 	# principle finish either side off outside the normal attack/skill/
 	# enemy-turn paths already checked earlier in this function, so this
 	# still needs its own defeat check. A kill can just as easily finish
@@ -11877,19 +11891,19 @@ func _end_turn() -> void:
 	# never spends the turn this function is about to reopen below).
 	_resolve_undertow_teleport()
 
-	# Arcane Aura regenerates mana at the start of every hero turn,
+	# Frostborn regenerates mana at the start of every hero turn,
 	# whether or not he actually gets to act on it (see
-	# _apply_arcane_aura_regen()'s own comment) - a no-op while it isn't
+	# _apply_frostborn_regen()'s own comment) - a no-op while it isn't
 	# learned.
-	_apply_arcane_aura_regen()
+	_apply_frostborn_regen()
 
 	# Passive HP/mana regen (see _apply_passive_hero_regen()) - same
-	# timing as Arcane Aura's own regen just above, on top of it rather
+	# timing as Frostborn's own regen just above, on top of it rather
 	# than instead of it.
 	_apply_passive_hero_regen()
 
 	# Reactive Armor's own regen, off of whatever stacks are currently
-	# active - same timing/stacking relationship as Arcane Aura's and
+	# active - same timing/stacking relationship as Frostborn's and
 	# the baseline regen above.
 	_apply_reactive_armor_regen()
 
@@ -12588,9 +12602,9 @@ func _enemy_skill_worth_casting(skill_id: String) -> bool:
 			return not _enemy_frostbound_fangs_active
 		"the_test_of_time":
 			return not _enemy_the_test_of_time_active
-		"freezing_field":
-			return not _enemy_freezing_field_active
-		"frostbite":
+		"the_frost_tempest":
+			return not _enemy_frost_tempest_active
+		"winters_grip":
 			# Recasting on an already-frostbitten player just resets the
 			# same level's own DoT back to full - no extra total damage
 			# over just letting it run out, same "no benefit from
@@ -12600,7 +12614,7 @@ func _enemy_skill_worth_casting(skill_id: String) -> bool:
 			# whichever living enemy is currently lowest-HP and so can't
 			# rely on a single flag like this - recasting here can only
 			# ever land on the same, already-frozen player).
-			return _enemy_skill_worth_on_target("frostbite", false) or (_is_bear_alive() and _enemy_skill_worth_on_target("frostbite", true))
+			return _enemy_skill_worth_on_target("winters_grip", false) or (_is_bear_alive() and _enemy_skill_worth_on_target("winters_grip", true))
 		"tag_team":
 			return not _enemy_tag_team_active
 		"nature's_guise":
@@ -12609,7 +12623,7 @@ func _enemy_skill_worth_casting(skill_id: String) -> bool:
 			return not _enemy_living_armor_active
 		"leech_seed":
 			# Same "no benefit from resetting your own DoT" reasoning as
-			# Mark of Stillness/The Hollow Cold/Frostbite above - recasting on an
+			# Mark of Stillness/The Hollow Cold/Winter's Grip above - recasting on an
 			# already-seeded player just restarts the same level's own
 			# damage/healing back to full, no extra total value over
 			# letting the existing one run its course.
@@ -12795,9 +12809,9 @@ func _enemy_has_unaffordable_ready_skill(enemy_type: String, hero_distance: int,
 ##     redirect onto the frozen target the way the simulation's other
 ##     living creeps can (see EnemyHeroManager's own _build_npc_ai_
 ##     context() for the real multi-enemy version of both fields).
-##   - target_distance: also doubles as Crystal Maiden's own Freezing
-##     Field range check (see EnemySkillAI's own _cm_freezing_field_
-##     modifier()) - Freezing Field is centered on HERSELF, not the
+##   - target_distance: also doubles as Frost Daughter's own Freezing
+##     Field range check (see EnemySkillAI's own _fd_frost_tempest_
+##     modifier()) - The Frost Tempest is centered on HERSELF, not the
 ##     player, but in a hero fight `hero_distance` (the rival's distance
 ##     to the player) and "the player's distance to the rival" are the
 ##     same number, so there's no separate field to compute.
@@ -13172,12 +13186,12 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 			_cast_enemy_the_test_of_time(level_data)
 		"the_hunger_calls":
 			_cast_enemy_the_hunger_calls(level_data)
-		"crystal_nova":
-			_cast_enemy_crystal_nova(level_data)
-		"frostbite":
-			_cast_enemy_frostbite(level_data)
-		"freezing_field":
-			_cast_enemy_freezing_field(level_data)
+		"rimecleaver":
+			_cast_enemy_rimecleaver(level_data)
+		"winters_grip":
+			_cast_enemy_winters_grip(level_data)
+		"the_frost_tempest":
+			_cast_enemy_frost_tempest(level_data)
 		"ice_shards":
 			_cast_enemy_ice_shards(enemy, level_data)
 		"snowball":
@@ -13265,7 +13279,7 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 # ------------------------------------------------------------------
 # Enemy hero skill cast feedback - a scale/brightness pulse on the
 # caster, a floating cast-name banner over it, a frost screen tint for
-# The Hunger Calls/Frostbite/Return to the Void specifically (their own lingering
+# The Hunger Calls/Winter's Grip/Return to the Void specifically (their own lingering
 # "ambient reminder" while still active lives in _refresh_status_
 # effects() instead, since that has to persist past this one moment),
 # and extra weight (a bigger pulse plus a screen shake) for ultimates.
@@ -13273,7 +13287,7 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 # this for free.
 # ------------------------------------------------------------------
 
-const FROST_TINT_SKILL_IDS := ["the_hunger_calls", "frostbite", "return_to_the_void"]
+const FROST_TINT_SKILL_IDS := ["the_hunger_calls", "winters_grip", "return_to_the_void"]
 const FROST_TINT_COLOR := Color(0.55, 0.85, 1.0)
 
 
@@ -13550,7 +13564,7 @@ func _refresh_thornbind_vines() -> void:
 
 
 ## Keeps the frost in sync with who's currently frozen by Mark of Stillness's,
-## The Hollow Cold's, Return to the Void's OR Frostbite's DoT, or held by The Hunger
+## The Hollow Cold's, Return to the Void's OR Winter's Grip's DoT, or held by The Hunger
 ## Calls's freeze (for as long as its stun lasts), or standing inside the other side's active Freezing
 ## Field - every enemy (their own mark_of_stillness_dot_turns_left/
 ## the_hollow_cold_dot_turns_left) and the player's hero (the matching
@@ -13560,48 +13574,48 @@ func _refresh_thornbind_vines() -> void:
 ## _refresh_thornbind_vines(), so the frost just follows current state
 ## instead of being toggled at every cast/tick/dispel site.
 func _refresh_mark_of_stillness_frost() -> void:
-	# Freezing Field's zones: every unit standing inside an active field
+	# The Frost Tempest's zones: every unit standing inside an active field
 	# is frosted, from its first damaging tick on (the casting turn
-	# itself doesn't hit anything yet - see _tick_freezing_field()), so
+	# itself doesn't hit anything yet - see _tick_frost_tempest()), so
 	# the frost follows whoever the field is actually hitting - on when
 	# they're inside it, off once they walk out or it ends. -1 = no
 	# field of that side's right now.
-	var player_field_center: int = _hero_pos_index if (_freezing_field_active and not _freezing_field_duration_pending_start) else -1
+	var player_field_center: int = _hero_pos_index if (_frost_tempest_active and not _frost_tempest_duration_pending_start) else -1
 	var rival_field_center: int = -1
-	if _enemy_freezing_field_active and not _enemy_freezing_field_duration_pending_start:
+	if _enemy_frost_tempest_active and not _enemy_frost_tempest_duration_pending_start:
 		var field_boss: Dictionary = _get_hero_fight_boss()
 		if not field_boss.is_empty():
 			rival_field_center = field_boss["pos_index"]
 
 	for enemy in _enemies:
 		var frozen: bool = enemy.get("mark_of_stillness_dot_turns_left", 0) > 0 or enemy.get("the_hollow_cold_dot_turns_left", 0) > 0 \
-			or enemy.get("return_to_the_void_dot_turns_left", 0) > 0 or enemy.get("frostbite_dot_turns_left", 0) > 0 \
+			or enemy.get("return_to_the_void_dot_turns_left", 0) > 0 or enemy.get("winters_grip_dot_turns_left", 0) > 0 \
 			or (is_same(enemy, _hunger_calls_target) and _is_the_hunger_calls_active()) \
 			or (_enemy_the_test_of_time_active and enemy["static"].get("is_hero_fight_boss", false)) \
-			or (player_field_center >= 0 and not _is_target_hidden(enemy) and _distance(enemy["pos_index"], player_field_center) <= _freezing_field_radius)
+			or (player_field_center >= 0 and not _is_target_hidden(enemy) and _distance(enemy["pos_index"], player_field_center) <= _frost_tempest_radius)
 		_set_mark_of_stillness_frost(enemy.get("node"), frozen)
 	_set_mark_of_stillness_frost(hero_image, _player_mark_of_stillness_dot_turns_left > 0 or _player_the_hollow_cold_dot_turns_left > 0 \
-		or _player_return_to_the_void_dot_turns_left > 0 or _player_frostbite_dot_turns_left > 0 or _player_the_hunger_calls_active \
+		or _player_return_to_the_void_dot_turns_left > 0 or _player_winters_grip_dot_turns_left > 0 or _player_the_hunger_calls_active \
 		or _the_test_of_time_active \
-		or (rival_field_center >= 0 and _distance(_hero_pos_index, rival_field_center) <= _enemy_freezing_field_radius))
+		or (rival_field_center >= 0 and _distance(_hero_pos_index, rival_field_center) <= _enemy_frost_tempest_radius))
 	# Illusions (either side) can only ever carry The Hollow Cold's DoT,
 	# never Mark of Stillness's - a single-target cast never lands on one - or
-	# stand inside the opposing side's Freezing Field. The player's own
+	# stand inside the opposing side's The Frost Tempest. The player's own
 	# Elderwild Companion can carry either DoT (a rival can aim Mark of Stillness at it -
 	# see _cast_enemy_mark_of_stillness_on_bear()).
 	for illusion in _illusions:
 		var illusion_frozen: bool = illusion.get("the_hollow_cold_dot_turns_left", 0) > 0 \
-			or (rival_field_center >= 0 and _distance(illusion["pos_index"], rival_field_center) <= _enemy_freezing_field_radius)
+			or (rival_field_center >= 0 and _distance(illusion["pos_index"], rival_field_center) <= _enemy_frost_tempest_radius)
 		_set_mark_of_stillness_frost(illusion.get("node"), illusion_frozen)
 	for illusion in _enemy_illusions:
 		var enemy_illusion_frozen: bool = illusion.get("the_hollow_cold_dot_turns_left", 0) > 0 \
-			or (player_field_center >= 0 and _distance(illusion["pos_index"], player_field_center) <= _freezing_field_radius)
+			or (player_field_center >= 0 and _distance(illusion["pos_index"], player_field_center) <= _frost_tempest_radius)
 		_set_mark_of_stillness_frost(illusion.get("node"), enemy_illusion_frozen)
 	if _is_bear_alive():
 		var bear_frozen: bool = int(_bear.get("mark_of_stillness_dot_turns_left", 0)) > 0 or int(_bear.get("the_hollow_cold_dot_turns_left", 0)) > 0 \
-			or int(_bear.get("return_to_the_void_dot_turns_left", 0)) > 0 or int(_bear.get("frostbite_dot_turns_left", 0)) > 0 \
+			or int(_bear.get("return_to_the_void_dot_turns_left", 0)) > 0 or int(_bear.get("winters_grip_dot_turns_left", 0)) > 0 \
 			or (bool(_bear.get("the_hunger_calls_active", false)) and int(_bear.get("stun_turns_left", 0)) > 0) \
-			or (rival_field_center >= 0 and _distance(_bear["pos_index"], rival_field_center) <= _enemy_freezing_field_radius)
+			or (rival_field_center >= 0 and _distance(_bear["pos_index"], rival_field_center) <= _enemy_frost_tempest_radius)
 		_set_mark_of_stillness_frost(_bear.get("node"), bear_frozen)
 
 
@@ -13773,16 +13787,16 @@ func _close_all_hollow_cold_tears() -> void:
 
 ## Purely cosmetic: frosts `node` (any unit's sprite) for `seconds`
 ## regardless of any DoT - the icy flash plus the same frost Mark of Stillness/
-## The Hollow Cold/Return to the Void/Frostbite leave, which then fades on its own.
-## Used by Crystal Nova, a single burst with nothing lingering to tie
+## The Hollow Cold/Return to the Void/Winter's Grip leave, which then fades on its own.
+## Used by Rimecleaver, a single burst with nothing lingering to tie
 ## the frost to. If a DoT-driven frost is also on the unit, whichever
 ## lasts longer wins - the timed hold only ever keeps frost on, never
 ## takes it off early.
-func _flash_frost_briefly(node: Variant, seconds: float) -> void:
+func _flash_frost_briefly(node: Variant, seconds: float, flash_color: Color = MARK_OF_STILLNESS_FLASH_COLOR) -> void:
 	if not is_instance_valid(node) or not (node is TextureRect):
 		return
 	node.set_meta("frost_hold_until_msec", Time.get_ticks_msec() + int(seconds * 1000.0))
-	_flash_bounce_hit(node, MARK_OF_STILLNESS_FLASH_COLOR)
+	_flash_bounce_hit(node, flash_color)
 	_set_mark_of_stillness_frost(node, true)
 	# Re-evaluated once the hold runs out: stays frosted if a DoT is
 	# still holding it, otherwise fades. A tween bound to this node (not
@@ -13804,7 +13818,7 @@ func _flash_frost_briefly(node: Variant, seconds: float) -> void:
 func _set_mark_of_stillness_frost(node: Variant, active: bool) -> void:
 	if not is_instance_valid(node) or not (node is TextureRect):
 		return
-	# A timed hold (Crystal Nova - see _flash_frost_briefly()) keeps the
+	# A timed hold (Rimecleaver - see _flash_frost_briefly()) keeps the
 	# frost up even when no DoT is holding it anymore, until it expires.
 	if not active and Time.get_ticks_msec() < int(node.get_meta("frost_hold_until_msec", 0)):
 		active = true
@@ -13890,6 +13904,58 @@ func _set_mark_of_stillness_frost(node: Variant, active: bool) -> void:
 ## Grows Thornbind's vines around `node`, or unwinds them - both no-ops
 ## when that's already the state, so the constant _refresh_bars() calls
 ## don't keep restarting them.
+## Keeps Winter's Grip's ice hands (WintersGripHands) on everyone it's
+## currently holding - every enemy, the player's hero (a rival's cast)
+## and his Elderwild Companion - for exactly as long as the stun it
+## applied lasts. Called from _refresh_bars() (i.e. constantly), like
+## _refresh_thornbind_vines(). The stun counter is shared with every
+## other stun, so the "held by Winter's Grip" flag is dropped the moment
+## it runs out - a later stun from anything else doesn't bring the
+## hands back.
+func _refresh_winters_grip_hands() -> void:
+	for enemy in _enemies:
+		if int(enemy.get("stun_turns_left", 0)) <= 0:
+			enemy["winters_grip_hold"] = false
+		_set_winters_grip_hands(enemy.get("node"), enemy.get("winters_grip_hold", false))
+	if _player_stun_turns_left <= 0:
+		_player_winters_grip_hold = false
+	_set_winters_grip_hands(hero_image, _player_winters_grip_hold)
+	if _is_bear_alive():
+		if int(_bear.get("stun_turns_left", 0)) <= 0:
+			_bear["winters_grip_hold"] = false
+		_set_winters_grip_hands(_bear.get("node"), _bear.get("winters_grip_hold", false))
+
+
+## Keeps The Frost Tempest's storm, levitation and glowing eyes
+## (FrostTempestFX) on whoever has it active - the player's hero or a
+## rival Frost Daughter - from the cast until it ends, sized to that
+## cast's radius. Called from _refresh_bars() (i.e. constantly), like
+## _refresh_winters_grip_hands().
+func _refresh_frost_tempest_fx() -> void:
+	_set_frost_tempest_fx(hero_image, _frost_tempest_active, _frost_tempest_radius)
+	var boss: Dictionary = _get_hero_fight_boss()
+	if not boss.is_empty():
+		_set_frost_tempest_fx(boss.get("node"), _enemy_frost_tempest_active, _enemy_frost_tempest_radius)
+
+
+func _set_frost_tempest_fx(node: Variant, active: bool, radius: int) -> void:
+	if not is_instance_valid(node) or not (node is TextureRect):
+		return
+	if active:
+		FrostTempestFX.attach(node, _grid_unit() * (float(radius) + 0.5))
+	else:
+		FrostTempestFX.release(node)
+
+
+func _set_winters_grip_hands(node: Variant, held: bool) -> void:
+	if not is_instance_valid(node) or not (node is Control):
+		return
+	if held:
+		WintersGripHands.attach(node)
+	else:
+		WintersGripHands.release(node)
+
+
 func _set_thornbind_vines(node: Variant, thornbound: bool) -> void:
 	if not is_instance_valid(node) or not (node is Control):
 		return
@@ -15418,53 +15484,87 @@ func _cast_enemy_the_hunger_calls(level_data: Dictionary) -> void:
 
 
 # ------------------------------------------------------------------
-# Crystal Maiden's Crystal Nova/Frostbite, cast by the rival on the
-# player - mirror the player's own _resolve_crystal_nova_cast()/
-# _resolve_frostbite_cast(). Simplification versus those player-facing
+# Frost Daughter's Rimecleaver/Winter's Grip, cast by the rival on the
+# player - mirror the player's own _resolve_rimecleaver_cast()/
+# _resolve_winters_grip_cast(). Simplification versus those player-facing
 # copies: there's only one possible target in a hero fight (the player),
-# so Crystal Nova's own "every other enemy within radius of the primary
+# so Rimecleaver's own "every other enemy within radius of the primary
 # target" splash has nothing else to reach - same "AoE skill with only
 # one possible target" simplification Abyssal Spasm/Maddening Roar/Ice
 # Vortex already use for a rival.
 # ------------------------------------------------------------------
 
-func _cast_enemy_crystal_nova(level_data: Dictionary) -> void:
+func _cast_enemy_rimecleaver(level_data: Dictionary) -> void:
 	var damage: float = float(level_data.get("damage", 0))
 	var radius: int = int(level_data.get("radius", 0))
-	# Frosted before the hits land - a kill frees the node.
-	_flash_frost_briefly(hero_image, CRYSTAL_NOVA_FROST_SECONDS)
-	for illusion in _illusions:
-		if _distance(illusion["pos_index"], _hero_pos_index) <= radius:
-			_flash_frost_briefly(illusion.get("node"), CRYSTAL_NOVA_FROST_SECONDS)
-	if _is_bear_alive() and _distance(_bear["pos_index"], _hero_pos_index) <= radius:
-		_flash_frost_briefly(_bear.get("node"), CRYSTAL_NOVA_FROST_SECONDS)
-	apply_damage(damage)
-	# Crystal Nova's own splash (the same damage as the main hit) is
-	# centered on the impact point (the player, the only possible
-	# target here) - an illusion near the player can still be caught
-	# in it.
-	_deal_aoe_damage_to_illusions(_hero_pos_index, int(level_data.get("radius", 0)), damage)
-	_deal_aoe_damage_to_bear(_hero_pos_index, int(level_data.get("radius", 0)), damage)
-	_show_message_over_hero("Crystal Nova!")
+	_show_message_over_hero("Rimecleaver!")
+	# The player can't act until the axe has fallen (and swung) and the
+	# hits have landed - same as the rival's Return to the Void.
+	_rival_fx_in_flight = true
+	_update_action_buttons()
+	var generation_before: int = _stage_generation
+	var on_impact := func() -> void:
+		if _battle_over or _stage_generation != generation_before:
+			return
+		# Flashed red and frosted before the hit lands.
+		_flash_frost_briefly(hero_image, RIMECLEAVER_FROST_SECONDS, BOUNCE_HIT_FLASH_COLOR)
+		apply_damage(damage)
+		_refresh_bars()
+		if _recruited.get("current_hp", 0) <= 0:
+			_rival_fx_in_flight = false
+			_handle_defeat()
+			return
+		if radius <= 0:
+			_rival_fx_in_flight = false
+			_update_action_buttons()
+	var on_sweep := func() -> void:
+		if _battle_over or _stage_generation != generation_before:
+			_rival_fx_in_flight = false
+			_update_action_buttons()
+			return
+		# Rimecleaver's own splash (the same damage as the main hit) is
+		# centered on the impact point (the player, the only possible
+		# target here) - an illusion near the player can still be caught
+		# in it.
+		_deal_aoe_damage_to_illusions(_hero_pos_index, radius, damage)
+		_deal_aoe_damage_to_bear(_hero_pos_index, radius, damage)
+		_rival_fx_in_flight = false
+		_refresh_bars()
+		_update_action_buttons()
+	# Anyone else caught (an illusion, the bear) flashes red and frosts as
+	# the swing cuts through them.
+	var pass_nodes: Array = []
+	if radius > 0:
+		for illusion in _illusions:
+			if _distance(illusion["pos_index"], _hero_pos_index) <= radius:
+				pass_nodes.append(illusion.get("node"))
+		if _is_bear_alive() and _distance(_bear["pos_index"], _hero_pos_index) <= radius:
+			pass_nodes.append(_bear.get("node"))
+	var on_pass := func(i: int) -> void:
+		if not _battle_over and _stage_generation == generation_before:
+			_flash_frost_briefly(pass_nodes[i], RIMECLEAVER_FROST_SECONDS, BOUNCE_HIT_FLASH_COLOR)
+	_play_rimecleaver(hero_image, radius, on_impact, on_sweep, pass_nodes, on_pass)
 
 
-func _cast_enemy_frostbite(level_data: Dictionary) -> void:
+func _cast_enemy_winters_grip(level_data: Dictionary) -> void:
 	if _enemy_skill_on_bear:
-		_cast_enemy_frostbite_on_bear(level_data)
+		_cast_enemy_winters_grip_on_bear(level_data)
 		return
-	_player_frostbite_dot_damage = float(level_data.get("dot_damage", 0))
-	_player_frostbite_dot_turns_left = int(level_data.get("dot_duration", 0))
+	_player_winters_grip_dot_damage = float(level_data.get("dot_damage", 0))
+	_player_winters_grip_dot_turns_left = int(level_data.get("dot_duration", 0))
 	_player_stun_turns_left = int(level_data.get("stun_turns", 1))
-	_show_message_over_hero("Frostbite!")
+	_player_winters_grip_hold = true
+	_show_message_over_hero("Winter's Grip!")
 	_flash_bounce_hit(hero_image, MARK_OF_STILLNESS_FLASH_COLOR)
 	_refresh_mark_of_stillness_frost()
+	_refresh_winters_grip_hands()
 
 
 
 # ------------------------------------------------------------------
-# Crystal Maiden's ultimate, Freezing Field, cast by the rival on
-# herself - mirrors the player's own _activate_freezing_field()/_tick_
-# freezing_field()/_end_freezing_field(). Damage is applied straight to
+# Frost Daughter's ultimate, The Frost Tempest, cast by the rival on
+# herself - mirrors the player's own _activate_frost_tempest()/_tick_
+# frost_tempest()/_end_frost_tempest(). Damage is applied straight to
 # the player via apply_damage() (which already checks the player's own
 # The Test of Time immunity, same as every other rival hit) rather than
 # _deal_fixed_damage_to_enemy() (an enemy-side helper, for damage FROM
@@ -15472,66 +15572,66 @@ func _cast_enemy_frostbite(level_data: Dictionary) -> void:
 # above already uses.
 # ------------------------------------------------------------------
 
-func _cast_enemy_freezing_field(level_data: Dictionary) -> void:
-	_enemy_freezing_field_active = true
-	_enemy_freezing_field_damage_per_turn = float(level_data.get("damage", 0))
-	_enemy_freezing_field_radius = int(level_data.get("radius", 0))
-	_enemy_freezing_field_turns_remaining = int(level_data.get("duration", 0))
-	_enemy_freezing_field_duration_pending_start = true
-	_show_message_over_hero("Freezing Field!")
+func _cast_enemy_frost_tempest(level_data: Dictionary) -> void:
+	_enemy_frost_tempest_active = true
+	_enemy_frost_tempest_damage_per_turn = float(level_data.get("damage", 0))
+	_enemy_frost_tempest_radius = int(level_data.get("radius", 0))
+	_enemy_frost_tempest_turns_remaining = int(level_data.get("duration", 0))
+	_enemy_frost_tempest_duration_pending_start = true
+	_show_message_over_hero("The Frost Tempest!")
 
 
-## Ticks Freezing Field's duration down once per End Turn, same timing
+## Ticks The Frost Tempest's duration down once per End Turn, same timing
 ## (and same "the casting turn doesn't count" skip) as every other
 ## duration-based buff - dealing this level's own damage to the player
 ## whenever they're within radius columns of the rival's CURRENT
 ## position (re-checked fresh here, not fixed at cast time, mirroring
-## the player's own _tick_freezing_field()). There's only one possible
+## the player's own _tick_frost_tempest()). There's only one possible
 ## target in a hero fight, so this collapses to a single conditional hit
 ## rather than a loop over multiple enemies.
-func _tick_enemy_freezing_field() -> void:
-	if not _enemy_freezing_field_active:
+func _tick_enemy_frost_tempest() -> void:
+	if not _enemy_frost_tempest_active:
 		return
 
-	if _enemy_freezing_field_duration_pending_start:
-		_enemy_freezing_field_duration_pending_start = false
+	if _enemy_frost_tempest_duration_pending_start:
+		_enemy_frost_tempest_duration_pending_start = false
 		return
 
 	var boss: Dictionary = _get_hero_fight_boss()
 	if not boss.is_empty():
-		# Snowballs on every unit this tick is about to hit, launched
-		# before the damage lands (a kill frees its node).
+		# Every unit this tick is about to hit flashes red, before the
+		# damage lands (a kill frees its node).
 		var boss_pos: int = boss["pos_index"]
-		var snowball_nodes: Array = []
-		if _distance(boss_pos, _hero_pos_index) <= _enemy_freezing_field_radius:
-			snowball_nodes.append(hero_image)
+		var hit_nodes: Array = []
+		if _distance(boss_pos, _hero_pos_index) <= _enemy_frost_tempest_radius:
+			hit_nodes.append(hero_image)
 		for illusion in _illusions:
-			if _distance(illusion["pos_index"], boss_pos) <= _enemy_freezing_field_radius:
-				snowball_nodes.append(illusion.get("node"))
-		if _is_bear_alive() and _distance(_bear["pos_index"], boss_pos) <= _enemy_freezing_field_radius:
-			snowball_nodes.append(_bear.get("node"))
-		_play_snowball_barrage(snowball_nodes)
+			if _distance(illusion["pos_index"], boss_pos) <= _enemy_frost_tempest_radius:
+				hit_nodes.append(illusion.get("node"))
+		if _is_bear_alive() and _distance(_bear["pos_index"], boss_pos) <= _enemy_frost_tempest_radius:
+			hit_nodes.append(_bear.get("node"))
+		_flash_frost_tempest_hits(hit_nodes)
 
-		if _distance(boss["pos_index"], _hero_pos_index) <= _enemy_freezing_field_radius:
-			apply_damage(_enemy_freezing_field_damage_per_turn)
+		if _distance(boss["pos_index"], _hero_pos_index) <= _enemy_frost_tempest_radius:
+			apply_damage(_enemy_frost_tempest_damage_per_turn)
 		# Centered on the boss's own CURRENT position, same as the hero
 		# check above - an illusion can be in range independently of
 		# whether the hero himself currently is.
-		_deal_aoe_damage_to_illusions(boss["pos_index"], _enemy_freezing_field_radius, _enemy_freezing_field_damage_per_turn)
-		_deal_aoe_damage_to_bear(boss["pos_index"], _enemy_freezing_field_radius, _enemy_freezing_field_damage_per_turn)
+		_deal_aoe_damage_to_illusions(boss["pos_index"], _enemy_frost_tempest_radius, _enemy_frost_tempest_damage_per_turn)
+		_deal_aoe_damage_to_bear(boss["pos_index"], _enemy_frost_tempest_radius, _enemy_frost_tempest_damage_per_turn)
 
-	_enemy_freezing_field_turns_remaining -= 1
-	if _enemy_freezing_field_turns_remaining <= 0:
-		_end_enemy_freezing_field()
+	_enemy_frost_tempest_turns_remaining -= 1
+	if _enemy_frost_tempest_turns_remaining <= 0:
+		_end_enemy_frost_tempest()
 	_refresh_mark_of_stillness_frost()
 
 
-func _end_enemy_freezing_field() -> void:
-	_enemy_freezing_field_active = false
-	_enemy_freezing_field_damage_per_turn = 0.0
-	_enemy_freezing_field_radius = 0
-	_enemy_freezing_field_turns_remaining = 0
-	_enemy_freezing_field_duration_pending_start = false
+func _end_enemy_frost_tempest() -> void:
+	_enemy_frost_tempest_active = false
+	_enemy_frost_tempest_damage_per_turn = 0.0
+	_enemy_frost_tempest_radius = 0
+	_enemy_frost_tempest_turns_remaining = 0
+	_enemy_frost_tempest_duration_pending_start = false
 	_refresh_mark_of_stillness_frost()
 
 
@@ -15876,7 +15976,7 @@ func _cast_enemy_overgrowth(enemy: Dictionary, level_data: Dictionary) -> void:
 # position. There's only one possible target in a hero fight, so this
 # collapses to a single conditional hit rather than a loop over multiple
 # enemies, same simplification every other self-centered AoE's own
-# rival copy already uses (see _cast_enemy_freezing_field()/_cast_enemy_
+# rival copy already uses (see _cast_enemy_frost_tempest()/_cast_enemy_
 # overgrowth()). "Pure damage" and the primary-attribute reduction are
 # both purely descriptive here - neither is mechanically implemented
 # anywhere in this project (the player's own _cast_whirling_death() also
@@ -17375,6 +17475,9 @@ func _play_hero_attack_effect(hero_static: Dictionary, caster: TextureRect, targ
 		"vine_lash":
 			_deferred_hit_node = target_node
 			VineLashFX.play(_fx_layer, from, to, on_hit)
+		"frost_raven":
+			_deferred_hit_node = target_node
+			FrostRavenFX.play(_fx_layer, from, to, on_hit)
 		"ice_shard":
 			# Launched from the shard hanging beside him (IceShardFX), not
 			# from `from` - a fresh one starts forming as it leaves.
@@ -17966,10 +18069,10 @@ func _enemy_skill_worth_on_target(skill_id: String, on_bear: bool) -> bool:
 			field = "the_hollow_cold_dot_turns_left"
 			if not on_bear:
 				return _player_the_hollow_cold_dot_turns_left <= 0
-		"frostbite":
-			field = "frostbite_dot_turns_left"
+		"winters_grip":
+			field = "winters_grip_dot_turns_left"
 			if not on_bear:
-				return _player_frostbite_dot_turns_left <= 0
+				return _player_winters_grip_dot_turns_left <= 0
 		"leech_seed":
 			field = "leech_seed_dot_turns_left"
 			if not on_bear:
@@ -18018,7 +18121,7 @@ func _choose_enemy_skill_on_bear(enemy: Dictionary, skill_id: String) -> bool:
 ## Roughly how much damage `skill_id`'s own immediate hit would do to
 ## the bear after its armor - only used to judge whether a cast would
 ## finish it off. DoT-only skills (Thornbind/Mark of Stillness/The Hollow Cold/
-## Frostbite/Leech Seed/Corrosive Haze/The Hunger Calls) return 0.
+## Winter's Grip/Leech Seed/Corrosive Haze/The Hunger Calls) return 0.
 func _estimate_enemy_skill_hit_on_bear(enemy: Dictionary, skill_id: String, level_data: Dictionary) -> float:
 	var raw: float = 0.0
 	match skill_id:
@@ -18056,7 +18159,7 @@ func _tick_bear_turn_start_effects() -> void:
 	if not _is_bear_alive():
 		return
 
-	for key in ["thornbind", "mark_of_stillness", "the_hollow_cold", "frostbite"]:
+	for key in ["thornbind", "mark_of_stillness", "the_hollow_cold", "winters_grip"]:
 		var turns_key: String = key + "_dot_turns_left"
 		if int(_bear.get(turns_key, 0)) > 0:
 			_bear[turns_key] -= 1
@@ -18330,13 +18433,15 @@ func _cast_enemy_the_hunger_calls_on_bear(level_data: Dictionary) -> void:
 	_refresh_mark_of_stillness_frost()
 
 
-func _cast_enemy_frostbite_on_bear(level_data: Dictionary) -> void:
-	_bear["frostbite_dot_damage"] = float(level_data.get("dot_damage", 0))
-	_bear["frostbite_dot_turns_left"] = int(level_data.get("dot_duration", 0))
-	_show_message_over_bear("Frostbite!")
+func _cast_enemy_winters_grip_on_bear(level_data: Dictionary) -> void:
+	_bear["winters_grip_dot_damage"] = float(level_data.get("dot_damage", 0))
+	_bear["winters_grip_dot_turns_left"] = int(level_data.get("dot_duration", 0))
+	_show_message_over_bear("Winter's Grip!")
 	_flash_bounce_hit(_bear["node"], MARK_OF_STILLNESS_FLASH_COLOR)
 	_stun_bear(int(level_data.get("stun_turns", 1)))
+	_bear["winters_grip_hold"] = true
 	_refresh_mark_of_stillness_frost()
+	_refresh_winters_grip_hands()
 
 
 func _cast_enemy_snowball_on_bear(enemy: Dictionary, level_data: Dictionary) -> void:

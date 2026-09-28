@@ -29,6 +29,8 @@ uniform float ripple_speed = 1.8;
 
 uniform vec2 move_offset = vec2(0.0);
 uniform vec2 action_offset = vec2(0.0);
+// Lifts the whole figure off the ground (The Frost Tempest's levitation).
+uniform vec2 hover_offset = vec2(0.0);
 uniform vec2 squash = vec2(1.0);
 uniform float lean = 0.0;
 
@@ -72,7 +74,7 @@ void vertex() {
 	float sway = sin(t * sway_speed) * sway_amount + sin(t * sway_speed * 2.3 + 1.7) * sway_amount * 0.3;
 	VERTEX.x += (sway + lean) * rect_size.x * h;
 
-	VERTEX += move_offset + action_offset;
+	VERTEX += move_offset + action_offset + hover_offset;
 }
 
 void fragment() {

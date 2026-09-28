@@ -143,6 +143,31 @@ const PROFILES := {
 		"glow_color": Color(0.5, 0.85, 1.0),
 		"edge_color": Color(0.55, 0.9, 1.0),
 	},
+	# The Everfrost - Frost Daughter: a steady warrior's breath, her furs
+	# barely stirring; the cold glow of her magic when she casts.
+	"frost_daughter": {
+		"breath_amount": 0.012, "breath_speed": 1.3,
+		"sway_amount": 0.007, "sway_speed": 0.55,
+		"ripple_amount": 0.0,
+		"glow_color": Color(0.55, 0.85, 1.0),
+		"edge_color": Color(0.6, 0.9, 1.0),
+	},
+	# Everfrost creeps - hulking ice trolls: heavy, deep breaths, their
+	# frozen crests of ice glinting cold blue when they strike or cast.
+	"everfrost_melee": {
+		"breath_amount": 0.02, "breath_speed": 1.7,
+		"sway_amount": 0.008, "sway_speed": 0.8,
+		"ripple_amount": 0.0,
+		"glow_color": Color(0.5, 0.8, 1.0),
+		"edge_color": Color(0.55, 0.85, 1.0),
+	},
+	"everfrost_range": {
+		"breath_amount": 0.016, "breath_speed": 1.5,
+		"sway_amount": 0.012, "sway_speed": 0.65,
+		"ripple_amount": 0.0,
+		"glow_color": Color(0.5, 0.8, 1.0),
+		"edge_color": Color(0.55, 0.85, 1.0),
+	},
 	# The Primordial Hunger - a vast, ancient beast: slow, deep breaths that
 	# heave its whole bulk, barely any sway, and the faint shimmer of the
 	# cold coming off it.
@@ -202,6 +227,7 @@ func _setup(node: TextureRect) -> void:
 	_mat.set_shader_parameter("time_offset", randf() * 100.0)
 	# Tweens can only target parameters that have been set at least once.
 	_mat.set_shader_parameter("move_offset", Vector2.ZERO)
+	_mat.set_shader_parameter("hover_offset", Vector2.ZERO)
 	_mat.set_shader_parameter("dissolve", 0.0)
 	var jitter := randf_range(0.88, 1.12)
 	for key in ["breath_amount", "sway_amount", "ripple_amount", "ripple_freq"]:
@@ -331,6 +357,12 @@ func play_death(free_node: bool = true) -> void:
 	t.parallel().tween_property(_mat, _param("action_offset"), Vector2(0.0, -14.0), DEATH_DURATION)
 	if free_node:
 		t.finished.connect(_target.queue_free)
+
+
+## Lifts the whole figure `height` px off the ground (0 = back down).
+## Driven every frame by whoever levitates it (FrostTempestFX).
+func set_hover(height: float) -> void:
+	_mat.set_shader_parameter("hover_offset", Vector2(0.0, -height))
 
 
 ## Clears a death dissolve (e.g. the hero's portrait being reused).

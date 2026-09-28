@@ -5,7 +5,7 @@ extends Control
 # Background and under the hero/creeps (battle.gd places it). Never
 # takes input, never touches game state. battle.gd calls setup() with
 # the zone id; effects only exist for zones that have them (currently
-# the Elderwild, the Kingdom of Morvain and Frostspire) and nothing is
+# the Elderwild, the Kingdom of Morvain, Frostspire and The Everfrost) and nothing is
 # drawn anywhere else.
 #
 # Elderwild:
@@ -26,6 +26,8 @@ const MORVAIN_FX := preload("res://scripts/MorvainBattleAtmosphere.gd")
 # fortress's flashes, the snow) in its "battle" mode - see
 # FrostspireAtmosphere.gd.
 const FROSTSPIRE_FX := preload("res://scripts/FrostspireAtmosphere.gd")
+# The Everfrost: flickering fires and wind - see EverfrostBattleAtmosphere.gd.
+const EVERFROST_FX := preload("res://scripts/EverfrostBattleAtmosphere.gd")
 
 # Leaves live above the battle UI panel painted into the art.
 const ELD_LEAF_FLOOR := 0.64          # image UV y where they've faded out
@@ -86,6 +88,14 @@ func setup(zone_id: String) -> void:
 		var frost: Control = FROSTSPIRE_FX.new()
 		add_child(frost)
 		frost.build(self, _background, "battle")
+		return
+	if zone_id == "the_everfrost":
+		_zone = zone_id
+		# Its positions come from the Background's laid-out size.
+		await get_tree().process_frame
+		var everfrost: Control = EVERFROST_FX.new()
+		add_child(everfrost)
+		everfrost.build(self, _background)
 		return
 	if zone_id == "the_elderwild":
 		_zone = zone_id

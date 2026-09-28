@@ -25,15 +25,15 @@ class_name EnemySkillRange
 #     which reads whichever of the two fields a given skill actually
 #     has).
 #   - Thornbind/Whisper of the Veil/Touch of the First Cold/Maddening Roar/The Hunger Calls/
-#     Crystal Nova/Frostbite: none of the seven has a range field of its
+#     Rimecleaver/Winter's Grip: none of the seven has a range field of its
 #     own (Maddening Roar has `shatter_range`, but that's its splash
 #     radius around whichever target gets hit, not its own targeting
-#     range; Crystal Nova's own `radius` field is the same story;
+#     range; Rimecleaver's own `radius` field is the same story;
 #     The Hunger Calls has no range field at all), so all seven use the
 #     rival's own basic-attack range for its type instead, mirroring how
 #     the player's own copies of each use the player's attack-column
-#     range (_hero_attack_column_range(), via _start_crystal_nova_
-#     targeting()/_start_frostbite_targeting()).
+#     range (_hero_attack_column_range(), via _start_rimecleaver_
+#     targeting()/_start_winters_grip_targeting()).
 #   - Barbed Lunge: a gap-closer, but only up to its own `distance` field of
 #     columns - it stops the moment it lands on the player's column
 #     (see battle.gd's _cast_enemy_barbed_lunge()), so a player standing
@@ -124,12 +124,12 @@ class_name EnemySkillRange
 # either, despite being a self-centered AoE like Abyssal Spasm/Whirling
 # Death above - unlike those two, it's scored (not gated) against range,
 # the same "out of range scores low rather than being excluded outright"
-# shape Overgrowth's/Freezing Field's own self-cast ultimates already use
+# shape Overgrowth's/The Frost Tempest's own self-cast ultimates already use
 # (see EnemySkillAI's own _naga_song_of_the_siren_modifier(), which reads
 # `target_distance` itself). Mirror Image is a self-buff with no target
 # of its own to reach at cast time at all, same as Tag Team/Nature's
 # Guise/Living Armor above. Rip Tide is passive and never even reaches
-# this file, same as Reactive Armor/Arcane Aura.
+# this file, same as Reactive Armor/Frostborn.
 # Slardar's Slithereen Crush follows Song of the Siren's own precedent
 # exactly - a self-centered AoE stun scored (not gated) against range via
 # EnemySkillAI's own _slardar_slithereen_crush_modifier() (fed by
@@ -156,12 +156,12 @@ class_name EnemySkillRange
 # are both passive and never even reach this file.
 # Every other known skill (Leeching Hunger, Depthsveil, Wildbond,
 # Beast of the Elderwild, Elderwild Companion, Veil of the Forgotten, Frostbound Fangs, The Test of
-# Time, Crystal Maiden's own Freezing Field, Tusk's own Tag Team, and
+# Time, Frost Daughter's own The Frost Tempest, Tusk's own Tag Team, and
 # Treant Protector's own Nature's Guise/Living Armor/Overgrowth) is a
 # self-buff/summon/AoE with no target to range-check, so this always
-# reports those as in range - Freezing Field/Overgrowth in particular
+# reports those as in range - The Frost Tempest/Overgrowth in particular
 # are centered on the caster's OWN position (see EnemySkillAI's own
-# _cm_freezing_field_modifier()/_tp_overgrowth_modifier()), never a
+# _fd_frost_tempest_modifier()/_tp_overgrowth_modifier()), never a
 # selected enemy's, so there's nothing here to check range against in
 # the first place, exactly like every other self-cast skill in this
 # list; Tag Team/Nature's Guise/Living Armor are simpler still - no
@@ -179,7 +179,7 @@ class_name EnemySkillRange
 # _snapfire_firesnap_cookie_modifier()), never a candidacy gate here.
 # ============================================================
 
-const RANGE_CHECKED_SKILL_IDS: Array[String] = ["abyssal_spasm", "thornbind", "whisper_of_the_veil", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "crystal_nova", "frostbite", "ice_shards", "snowball", "walrus_punch", "leech_seed", "whirling_death", "timber_chain", "chakram", "lil_shredder", "mortimer_kisses", "scatterblast", "ensnare", "corrosive_haze", "sacred_arrow", "lucent_beam"]
+const RANGE_CHECKED_SKILL_IDS: Array[String] = ["abyssal_spasm", "thornbind", "whisper_of_the_veil", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "ice_shards", "snowball", "walrus_punch", "leech_seed", "whirling_death", "timber_chain", "chakram", "lil_shredder", "mortimer_kisses", "scatterblast", "ensnare", "corrosive_haze", "sacred_arrow", "lucent_beam"]
 
 
 ## True if `skill_id` needs a range check at all before being cast -
@@ -202,7 +202,7 @@ static func is_in_range(skill_id: String, distance: int, radius: int, attack_ran
 	match skill_id:
 		"abyssal_spasm", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "ice_shards", "snowball", "leech_seed", "whirling_death", "timber_chain", "chakram", "ensnare", "corrosive_haze", "sacred_arrow", "lucent_beam":
 			return distance <= radius
-		"thornbind", "whisper_of_the_veil", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "crystal_nova", "frostbite", "walrus_punch", "lil_shredder", "mortimer_kisses":
+		"thornbind", "whisper_of_the_veil", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "walrus_punch", "lil_shredder", "mortimer_kisses":
 			return distance <= attack_range
 		_:
 			# scatterblast never reaches this generic chain - battle.gd's

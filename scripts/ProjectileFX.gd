@@ -13,7 +13,7 @@ extends RefCounted
 ## Every color/size a projectile needs. Any key a style leaves out
 ## falls back to DEFAULT_STYLE.
 const DEFAULT_STYLE := {
-	# "arrow" (shaft, head, fletching), "spike" (a tapering quill),
+	# "arrow" (shaft, head, fletching), "spike" (a tapering quill), "spear",
 	# "ice_shard" (Nhal's ice crystal), "skull" (a ghostly skull) or
 	# "bubble" (a wobbling water bubble) - for the last two, "length" is
 	# its height.
@@ -110,6 +110,25 @@ const STYLES := {
 		"base_duration": 0.2,
 		"per_100px_duration": 0.06,
 	},
+	# Everfrost range creeps (the ice troll): its spear hurled in a high
+	# lob - a long wooden haft bound with leather and an ice-crystal head -
+	# shattering into ice and splinters.
+	"wooden_spear": {
+		"shape": "spear",
+		"launch": Vector2(0.22, 0.36),
+		"length": 96.0,
+		"shaft_width": 4.0,
+		"shaft_color": Color(0.42, 0.28, 0.16),
+		"head_color": Color(0.7, 0.88, 1.0),
+		"fletch_color": Color(0.3, 0.19, 0.11),
+		"glow_color": Color(0.5, 0.8, 1.0, 0.3),
+		"trail_color": Color(0.85, 0.93, 1.0, 0.55),
+		"impact_color": Color(0.75, 0.9, 1.0),
+		"arc": 0.16,
+		"max_arc": 75.0,
+		"base_duration": 0.18,
+		"per_100px_duration": 0.05,
+	},
 	# Frostspire range creeps (the frost wraith): a shard of ice flung from
 	# its outstretched claw - Nhal's own attack projectile
 	# (IceShardProjectile), trailing frost and bursting into ice. Only
@@ -165,6 +184,8 @@ static func _fire_one(host: Node, style: Dictionary, from: Vector2, to: Vector2,
 			projectile = _build_skull(style)
 		"bubble":
 			projectile = _build_bubble(style)
+		"spear":
+			projectile = _build_spear(style)
 		_:
 			projectile = _build_arrow(style)
 	host.add_child(projectile)
@@ -294,6 +315,64 @@ static func _build_spike(style: Dictionary) -> Node2D:
 		spike.add_child(barb)
 
 	return spike
+
+
+## A spear pointing right (+x), TIP at the origin: a long wooden haft
+## ("shaft_color") with leather bindings ("fletch_color") near the head,
+## and a jagged, glowing ice-crystal head ("head_color").
+static func _build_spear(style: Dictionary) -> Node2D:
+	var spear := Node2D.new()
+	var length: float = style["length"]
+	var half: float = float(style["shaft_width"]) / 2.0
+	var head_len := length * 0.24
+	var head_half := half * 3.2
+	var wood: Color = style["shaft_color"]
+	var ice: Color = style["head_color"]
+
+	var glow_color: Color = style["glow_color"]
+	if glow_color.a > 0.0:
+		var glow := Polygon2D.new()
+		glow.color = glow_color
+		glow.polygon = PackedVector2Array([
+			Vector2(-head_len - 4.0, -head_half - 3.0), Vector2(5.0, 0.0), Vector2(-head_len - 4.0, head_half + 3.0)])
+		spear.add_child(glow)
+
+	var shaft := Polygon2D.new()
+	shaft.polygon = PackedVector2Array([
+		Vector2(-length, -half * 0.8), Vector2(-head_len + 2.0, -half),
+		Vector2(-head_len + 2.0, half), Vector2(-length, half * 0.8)])
+	shaft.vertex_colors = PackedColorArray([wood.darkened(0.25), wood, wood, wood.darkened(0.25)])
+	spear.add_child(shaft)
+	var grain := Line2D.new()
+	grain.width = 1.0
+	grain.default_color = Color(wood.lightened(0.35), 0.6)
+	grain.points = PackedVector2Array([Vector2(-length * 0.95, -half * 0.35), Vector2(-head_len, -half * 0.35)])
+	spear.add_child(grain)
+
+	# Leather bindings wound round the haft below the head.
+	for i in 4:
+		var x := -head_len - 3.0 - i * 5.0
+		var band := Line2D.new()
+		band.width = 2.5
+		band.default_color = style["fletch_color"]
+		band.points = PackedVector2Array([Vector2(x - 2.0, -half - 1.0), Vector2(x + 2.0, half + 1.0)])
+		spear.add_child(band)
+
+	# The ice head: a long jagged crystal with a paler core.
+	var head := Polygon2D.new()
+	head.color = Color(ice, 0.95)
+	head.polygon = PackedVector2Array([
+		Vector2(-head_len, -half), Vector2(-head_len * 0.7, -head_half), Vector2(-head_len * 0.45, -head_half * 0.6),
+		Vector2(-head_len * 0.3, -head_half * 0.9), Vector2(0.0, 0.0),
+		Vector2(-head_len * 0.3, head_half * 0.7), Vector2(-head_len * 0.55, head_half * 0.85),
+		Vector2(-head_len * 0.75, head_half * 0.5), Vector2(-head_len, half)])
+	spear.add_child(head)
+	var core := Line2D.new()
+	core.width = 1.5
+	core.default_color = Color(1, 1, 1, 0.85)
+	core.points = PackedVector2Array([Vector2(-head_len * 0.9, 0.0), Vector2(-2.0, 0.0)])
+	spear.add_child(core)
+	return spear
 
 
 ## An arrow pointing right (+x) with its TIP at the origin, so its

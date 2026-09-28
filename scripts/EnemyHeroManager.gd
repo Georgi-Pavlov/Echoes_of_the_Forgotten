@@ -265,7 +265,7 @@ const NEW_SIM_HP_RESTORE_PCT: float = 0.30
 const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 
 # Every ACTIVE skill across Veyrik, Erynd, Morvael, Kaelen Varr, Nhal,
-# The Primordial Hunger, Crystal Maiden, Tusk, Treant Protector,
+# The Primordial Hunger, Frost Daughter, Tusk, Treant Protector,
 # Timbersaw, and Snapfire, the only eleven heroes with any simulated
 # skill logic today - anything else a hero knows just never gets cast
 # here. This is the full candidate pool
@@ -275,18 +275,18 @@ const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 # tie-break fallback order, only consulted when two skills' scores are
 # too close to call outright).
 # Blood of the Wild (Erynd's passive), Mark of the Mist and The Mist
-# Remembers (both Morvael's), Pull of the Abyss (Kaelen Varr's), Arcane Aura (Crystal
-# Maiden's), and Reactive Armor (Timbersaw's) aren't in this list - none
+# Remembers (both Morvael's), Pull of the Abyss (Kaelen Varr's), Frostborn (Frost
+# Daughter's), and Reactive Armor (Timbersaw's) aren't in this list - none
 # of them are ever "cast" or scored: Blood of the Wild and The Mist Remembers turn
 # themselves on/off automatically off the hero's own HP%, same as the
 # player's own copies - see _update_npc_blood_of_the_wild_state()/_maybe_
 # auto_activate_npc_the_mist_remembers() - Mark of the Mist/Pull of the Abyss only
 # ever build off the hero's own plain Attacks - see _apply_npc_mark_of_the_
-# mist_stack()/_maybe_consume_npc_pull_of_the_abyss_stack() - Arcane Aura
+# mist_stack()/_maybe_consume_npc_pull_of_the_abyss_stack() - Frostborn
 # just regenerates mana passively; there's nowhere in this sim's own
 # mana bookkeeping for it to hook into yet (see _get_npc_combat_stats()/
 # _npc_estimate_damage() for where a future hook would go), so for now
-# a simulated Crystal Maiden simply doesn't regenerate mana beyond
+# a simulated Frost Daughter simply doesn't regenerate mana beyond
 # whatever NEW_SIM_MANA_RESTORE_PCT already grants at the start of a
 # fresh attempt - same "no benefit invented that doesn't already exist"
 # rule this whole file follows elsewhere - and Reactive Armor stacks
@@ -343,8 +343,8 @@ const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 # copy already established - there's no meaningful difference between
 # "centered on the caster" and "a line toward a target" once there are
 # no columns to tell them apart on. Chakram, his ultimate, is a second
-# self-tracked persistent-AoE state (mirroring Crystal Maiden's own
-# Freezing Field sim copy) that also just hits every living enemy each
+# self-tracked persistent-AoE state (mirroring Frost Daughter's own
+# The Frost Tempest sim copy) that also just hits every living enemy each
 # tick it's active, for the same reason. Snapfire's own Scatterblast
 # (directional in a real fight - see battle.gd's own _enemy_skill_in_
 # range()'s "scatterblast" case) and Firesnap Cookie (a self-directed
@@ -362,7 +362,7 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 	"whisper_of_the_veil", "veil_of_the_forgotten", "drowned_surge", "the_sunken_one",
 	"mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold", "return_to_the_void",
 	"frostbound_fangs", "maddening_roar", "the_test_of_time", "the_hunger_calls",
-	"crystal_nova", "frostbite", "freezing_field",
+	"rimecleaver", "winters_grip", "the_frost_tempest",
 	"ice_shards", "snowball", "tag_team", "walrus_punch",
 	"nature's_guise", "leech_seed", "living_armor", "overgrowth",
 	"whirling_death", "timber_chain", "chakram",
@@ -941,8 +941,8 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		_tick_npc_mark_of_stillness_effects(enemies)
 		_tick_npc_the_hollow_cold_effects(enemies)
 		_tick_npc_return_to_the_void_effects(enemies)
-		_tick_npc_frostbite_effects(enemies)
-		_tick_npc_freezing_field(state["freezing_field"], enemies)
+		_tick_npc_winters_grip_effects(enemies)
+		_tick_npc_frost_tempest(state["the_frost_tempest"], enemies)
 		_tick_npc_overgrowth_effects(enemies)
 		_tick_npc_chakram(state["chakram"], enemies)
 		_tick_npc_mirror_image(state["mirror_image"])
@@ -1278,7 +1278,7 @@ func _new_npc_combat_state() -> Dictionary:
 		"frostbound_fangs": {"active": false, "bonus_damage": 0.0, "bonus_range": 0, "attacks_remaining": 0, "turns_remaining": 0, "duration_pending_start": false},
 		"the_test_of_time": {"active": false, "heal_per_turn": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"the_hunger_calls": {"target_ref": {}, "bonus_damage_pct": 0.0},
-		"freezing_field": {"active": false, "damage_per_turn": 0.0, "turns_remaining": 0, "duration_pending_start": false},
+		"the_frost_tempest": {"active": false, "damage_per_turn": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"tag_team": {"active": false, "bonus_damage": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"nature's_guise": {"active": false, "root_turns": 0, "turns_remaining": 0, "duration_pending_start": false},
 		"living_armor": {"active": false, "bonus_armor": 0.0, "bonus_hp_regen": 0.0, "turns_remaining": 0, "duration_pending_start": false},
@@ -1434,10 +1434,10 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 				"target_ref": curse_target,
 				"bonus_damage_pct": float(level_data.get("bonus_damage_pct", 0.0)),
 			}
-		"crystal_nova":
+		"rimecleaver":
 			# No columns to check radius against here - same "no columns,
 			# hit everyone else" fallback Drowned Surge's level-4 splash uses
-			# (see this match's "drowned_surge" case above) once Crystal Nova's
+			# (see this match's "drowned_surge" case above) once Rimecleaver's
 			# own radius actually exists (level 3+); at levels 1-2
 			# (radius 0) it's a single-target nuke same as everywhere else.
 			var nova_primary: Dictionary = _lowest_hp_enemy(living)
@@ -1448,16 +1448,16 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 					if is_same(enemy, nova_primary):
 						continue
 					_apply_damage_to_enemy(enemy, nova_damage)
-		"frostbite":
+		"winters_grip":
 			# Single-target control, same "whichever enemy the hero would
 			# attack anyway" target as Mark of Stillness/Drowned Surge's own primary hit.
-			var frostbite_target: Dictionary = _lowest_hp_enemy(living)
-			frostbite_target["frostbite_dot_damage"] = float(level_data.get("dot_damage", 0))
-			frostbite_target["frostbite_dot_turns_left"] = int(level_data.get("dot_duration", 0))
-			if frostbite_target["current_hp"] > 0:
-				frostbite_target["stun_turns_left"] = int(level_data.get("stun_turns", 1))
-		"freezing_field":
-			_activate_npc_freezing_field(state["freezing_field"], level_data)
+			var winters_grip_target: Dictionary = _lowest_hp_enemy(living)
+			winters_grip_target["winters_grip_dot_damage"] = float(level_data.get("dot_damage", 0))
+			winters_grip_target["winters_grip_dot_turns_left"] = int(level_data.get("dot_duration", 0))
+			if winters_grip_target["current_hp"] > 0:
+				winters_grip_target["stun_turns_left"] = int(level_data.get("stun_turns", 1))
+		"the_frost_tempest":
+			_activate_npc_frost_tempest(state["the_frost_tempest"], level_data)
 		"ice_shards":
 			# The wall itself has nothing to act on here - nothing in this
 			# sim moves at all (see KNOWN_ACTIVE_SKILL_IDS's own comment
@@ -1695,8 +1695,8 @@ func _npc_skill_worth_casting(skill_id: String, state: Dictionary) -> bool:
 			return not state["frostbound_fangs"]["active"]
 		"the_test_of_time":
 			return not state["the_test_of_time"]["active"]
-		"freezing_field":
-			return not state["freezing_field"]["active"]
+		"the_frost_tempest":
+			return not state["the_frost_tempest"]["active"]
 		"tag_team":
 			return not state["tag_team"]["active"]
 		"nature's_guise":
@@ -2438,28 +2438,28 @@ func _dispel_all_npc_effects(state: Dictionary) -> void:
 
 
 # ------------------------------------------------------------------
-# Crystal Maiden's Frostbite - mirrors _tick_npc_mark_of_stillness_effects()'/
+# Frost Daughter's Winter's Grip - mirrors _tick_npc_mark_of_stillness_effects()'/
 # _tick_npc_the_hollow_cold_effects()'s own DoT tick exactly, just against
-# Frostbite's own dedicated per-enemy fields (see battle.gd's
-# _resolve_frostbite_cast() for why it's kept separate from every other
+# Winter's Grip's own dedicated per-enemy fields (see battle.gd's
+# _resolve_winters_grip_cast() for why it's kept separate from every other
 # skill's own DoT fields). The stun itself needs no separate tick here -
 # it shares stun_turns_left, the same generic per-enemy field Barbed Lunge's/
 # Drowned Surge's own stun already decrements in _run_stage_fight()'s own
 # retaliation loop.
 # ------------------------------------------------------------------
 
-func _tick_npc_frostbite_effects(enemies: Array) -> void:
+func _tick_npc_winters_grip_effects(enemies: Array) -> void:
 	for enemy in enemies:
-		if enemy.get("frostbite_dot_turns_left", 0) > 0:
-			enemy["frostbite_dot_turns_left"] -= 1
-			var dot_damage: float = float(enemy.get("frostbite_dot_damage", 0))
+		if enemy.get("winters_grip_dot_turns_left", 0) > 0:
+			enemy["winters_grip_dot_turns_left"] -= 1
+			var dot_damage: float = float(enemy.get("winters_grip_dot_damage", 0))
 			if dot_damage > 0.0 and enemy.get("current_hp", 0) > 0:
 				_apply_damage_to_enemy(enemy, dot_damage)
 
 
 # ------------------------------------------------------------------
-# Crystal Maiden's ultimate, Freezing Field - mirrors battle.gd's own
-# _activate_freezing_field()/_tick_freezing_field()/_end_freezing_
+# Frost Daughter's ultimate, The Frost Tempest - mirrors battle.gd's own
+# _activate_frost_tempest()/_tick_frost_tempest()/_end_freezing_
 # field(). No columns to check radius against here - same "no columns,
 # hit everyone" fallback The Hollow Cold's own sim copy already uses (see
 # this file's own KNOWN_ACTIVE_SKILL_IDS header comment), so every tick
@@ -2468,14 +2468,14 @@ func _tick_npc_frostbite_effects(enemies: Array) -> void:
 # position in a real fight.
 # ------------------------------------------------------------------
 
-func _activate_npc_freezing_field(ff: Dictionary, level_data: Dictionary) -> void:
+func _activate_npc_frost_tempest(ff: Dictionary, level_data: Dictionary) -> void:
 	ff["active"] = true
 	ff["damage_per_turn"] = float(level_data.get("damage", 0))
 	ff["turns_remaining"] = int(level_data.get("duration", 0))
 	ff["duration_pending_start"] = true
 
 
-func _tick_npc_freezing_field(ff: Dictionary, enemies: Array) -> void:
+func _tick_npc_frost_tempest(ff: Dictionary, enemies: Array) -> void:
 	if not ff["active"]:
 		return
 	if ff["duration_pending_start"]:
@@ -2490,10 +2490,10 @@ func _tick_npc_freezing_field(ff: Dictionary, enemies: Array) -> void:
 
 	ff["turns_remaining"] -= 1
 	if ff["turns_remaining"] <= 0:
-		_end_npc_freezing_field(ff)
+		_end_npc_frost_tempest(ff)
 
 
-func _end_npc_freezing_field(ff: Dictionary) -> void:
+func _end_npc_frost_tempest(ff: Dictionary) -> void:
 	ff["active"] = false
 	ff["damage_per_turn"] = 0.0
 	ff["turns_remaining"] = 0
@@ -2573,7 +2573,7 @@ func _end_npc_natures_guise(ng: Dictionary) -> void:
 # bonus armor already shares there), bonus_hp_regen heals the hero every
 # tick. Unlike the player's own copy, there's no baseline passive regen
 # in this sim to stack on top of (see KNOWN_ACTIVE_SKILL_IDS's own
-# comment on Arcane Aura for why - nothing here regenerates HP/mana on
+# comment on Frostborn for why - nothing here regenerates HP/mana on
 # its own beyond NEW_SIM_HP_RESTORE_PCT/NEW_SIM_MANA_RESTORE_PCT at the
 # start of a fresh attempt), so this is simply its own full heal amount,
 # same "no benefit invented that doesn't already exist" rule.
@@ -2611,7 +2611,7 @@ func _end_npc_living_armor(la: Dictionary) -> void:
 
 # ------------------------------------------------------------------
 # Treant Protector's Leech Seed - mirrors _tick_npc_mark_of_stillness_effects()'/
-# _tick_npc_frostbite_effects()'s own DoT tick, just against Leech
+# _tick_npc_winters_grip_effects()'s own DoT tick, just against Leech
 # Seed's own dedicated per-enemy fields, PLUS - unlike every other DoT
 # in this file - healing the CASTER (this hero) back for the same
 # amount each tick, mirroring battle.gd's own _tick_enemy_turn_start_
@@ -2653,7 +2653,7 @@ func _tick_npc_overgrowth_effects(enemies: Array) -> void:
 # ------------------------------------------------------------------
 # Timbersaw's ultimate, Chakram - mirrors battle.gd's own _chakram
 # field/_resolve_chakram_cast()/_tick_chakram()/_despawn_chakram(),
-# simplified the same way Crystal Maiden's own Freezing Field sim copy
+# simplified the same way Frost Daughter's own The Frost Tempest sim copy
 # is: no fixed position to plant at here (no columns at all - see
 # KNOWN_ACTIVE_SKILL_IDS's own comment above), so every tick that counts
 # against the duration hits every still-living enemy instead of just
@@ -2822,7 +2822,7 @@ func _tick_npc_reactive_armor(state: Dictionary, hero_id: String, hero_static: D
 
 
 # ------------------------------------------------------------------
-# Snapfire's Lil' Shredder - mirrors _tick_npc_frostbite_effects()'s own
+# Snapfire's Lil' Shredder - mirrors _tick_npc_winters_grip_effects()'s own
 # DoT tick shape, just against the armor_reduction/armor_reduction_
 # turns_left fields this file's own "lil_shredder" case in _cast_skill()
 # writes (see _apply_damage_to_enemy()'s own docstring for where the
@@ -2885,7 +2885,7 @@ func _fire_npc_mortimer_kisses_shot(level_data: Dictionary, living: Array) -> vo
 ## Ticks Mortimer Kisses' burn DoT down by one turn for every enemy
 ## currently carrying it, dealing that turn's damage - same shape as
 ## every other single-field DoT tick in this file (see _tick_npc_
-## frostbite_effects()'s own).
+## winters_grip_effects()'s own).
 func _tick_npc_mortimer_burn_effects(enemies: Array) -> void:
 	for enemy in enemies:
 		if enemy.get("mortimer_burn_dot_turns_left", 0) > 0:

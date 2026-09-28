@@ -27,7 +27,7 @@ const KEN_BURNS_ZOOM := 1.08
 ## each hero's "name" field in GameManager.zones. Swap freely.
 const FEATURED_HERO_NAMES: Array[String] = [
 	"Veyrik",
-	"Crystal Maiden",
+	"Frost Daughter",
 	"Erynd",
 ]
 

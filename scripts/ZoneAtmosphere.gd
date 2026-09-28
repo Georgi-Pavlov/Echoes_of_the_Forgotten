@@ -7,7 +7,8 @@ extends Control
 # show_for_background() whenever the shown hero changes; effects only
 # exist for backgrounds that have them (currently Veyrik's Iron Abyss,
 # Erynd's Elderwild, Morvael's Kingdom of Morvain, Kaelen Varr's
-# Ironbound Isles and Nhal's and The Primordial Hunger's Frostspire) and are
+# Ironbound Isles, Nhal's and The Primordial Hunger's Frostspire and
+# Frost Daughter's Everfrost) and are
 # torn down again when switching to any other hero. Morvain's, the
 # Ironbound Isles' and Frostspire's effects live in their own scripts
 # (MorvainAtmosphere.gd, IronboundAtmosphere.gd, FrostspireAtmosphere.gd),
@@ -123,6 +124,8 @@ const FROSTSPIRE_BG := "res://assets/zones/frostspire_nhal.jpg"
 const FROSTSPIRE_HUNGER_BG := "res://assets/zones/frostspire_the_primordial_hunger.jpg"
 # Frostspire too, for both of its heroes - see FrostspireAtmosphere.gd.
 const FROSTSPIRE_FX := preload("res://scripts/FrostspireAtmosphere.gd")
+const EVERFROST_BG := "res://assets/zones/the_everfrost_frost_daughter.jpg"
+const EVERFROST_FX := preload("res://scripts/EverfrostAtmosphere.gd")
 
 const ELDERWILD_BG := "res://assets/zones/The Elderwild.jpg"
 const ELDERWILD_SHADER := preload("res://shaders/elderwild_background.gdshader")
@@ -241,7 +244,7 @@ func _ready() -> void:
 ## Called by zone.gd after it has set the background for the shown hero.
 func show_for_background(path: String) -> void:
 	_clear()
-	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG]:
+	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG, EVERFROST_BG]:
 		return
 	# Guards against a hero switch landing during the await below.
 	_build_id += 1
@@ -260,6 +263,8 @@ func show_for_background(path: String) -> void:
 		_build_frostspire("nhal")
 	elif path == FROSTSPIRE_HUNGER_BG:
 		_build_frostspire("the_primordial_hunger")
+	elif path == EVERFROST_BG:
+		_build_everfrost()
 	else:
 		_build_elderwild()
 
@@ -980,3 +985,12 @@ func _build_frostspire(hero: String) -> void:
 	add_child(fx)
 	fx.build(self, _background, hero)
 	_zone = "frostspire"
+
+
+# --- The Everfrost --------------------------------------------------
+
+func _build_everfrost() -> void:
+	var fx: Control = EVERFROST_FX.new()
+	add_child(fx)
+	fx.build(self, _background)
+	_zone = "everfrost"

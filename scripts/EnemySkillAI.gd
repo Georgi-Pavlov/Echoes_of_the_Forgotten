@@ -40,7 +40,7 @@ class_name EnemySkillAI
 # genuinely be the better play than any of Kaelen Varr's real skills.
 #
 # Eleven heroes have real AI logic today: Veyrik, Erynd, Morvael,
-# Kaelen Varr, Nhal, The Primordial Hunger, Crystal Maiden, Tusk,
+# Kaelen Varr, Nhal, The Primordial Hunger, Frost Daughter, Tusk,
 # Treant Protector, Timbersaw, and Snapfire - see resolve_hero_
 # archetype() for how a hero_static maps to one of them,
 # and each one's own _*_modifier() function below for its personality.
@@ -53,10 +53,10 @@ class_name EnemySkillAI
 # piles onto the frozen target instead, for bonus damage - see
 # _hunger_calls_modifier()'s own "redirect_candidate_count" scoring
 # and battle.gd's/EnemyHeroManager.gd's own retaliation-loop hooks).
-# Crystal Maiden's Freezing Field is a self-cast AoE ultimate (centered
+# Frost Daughter's The Frost Tempest is a self-cast AoE ultimate (centered
 # on HER OWN position, never a selected enemy's) rather than a targeted
-# one - see _cm_freezing_field_modifier()'s own "target_distance" check,
-# which is battle.gd's already-computed distance from Crystal Maiden's
+# one - see _fd_frost_tempest_modifier()'s own "target_distance" check,
+# which is battle.gd's already-computed distance from Frost Daughter's
 # own pos_index to the player, not a fresh per-target search. Arcane
 # Aura is passive and deliberately never appears in SKILL_INFO/
 # HERO_TIE_BREAK/_estimate_skill_damage - callers only ever hand this
@@ -81,10 +81,10 @@ class_name EnemySkillAI
 # with real positions, does _tp_natures_guise_modifier() add its own
 # stealth-engage/root-setup value on top (see that function's own
 # "target_distance" gate). Overgrowth is a second self-cast AoE
-# ultimate, same "centered on the caster" shape as Crystal Maiden's own
-# Freezing Field - see _tp_overgrowth_modifier().
+# ultimate, same "centered on the caster" shape as Frost Daughter's own
+# The Frost Tempest - see _tp_overgrowth_modifier().
 # Timbersaw's Whirling Death is ALSO self-cast/self-centered (like
-# Freezing Field/Overgrowth), but Timber Chain and Chakram are both
+# The Frost Tempest/Overgrowth), but Timber Chain and Chakram are both
 # TARGET-centered - see _timbersaw_chakram_modifier()'s own docstring
 # for why Chakram in particular is scored differently from a self-
 # centered AoE despite both ending up reading the same `living_target_
@@ -104,7 +104,7 @@ class_name EnemySkillAI
 # qualitative bonus for "a hero was hit" (context's own "target_is_hero"
 # field), never a real stat-based number.
 # Snapfire's Scatterblast is DIRECTIONAL rather than self-centered like
-# Whirling Death/Freezing Field/Overgrowth (see battle.gd's own
+# Whirling Death/The Frost Tempest/Overgrowth (see battle.gd's own
 # _enemy_skill_in_range()'s "scatterblast" case for how that's actually
 # enforced) - by the time this file ever scores it as a candidate, the
 # player is already confirmed to be ahead of the rival in whichever
@@ -112,7 +112,7 @@ class_name EnemySkillAI
 # same `living_target_hps` every other AoE skill's own modifier does,
 # with no extra directional math of its own to repeat. Firesnap Cookie
 # is self-directed (a hop, not a self-centered radius check the way
-# Freezing Field's own is) - _snapfire_firesnap_cookie_modifier()
+# The Frost Tempest's own is) - _snapfire_firesnap_cookie_modifier()
 # projects the landing column itself from the context's own
 # `caster_pos_index`/`caster_facing_left`/`grid_columns` fields (the
 # same ones Tusk's own Ice Shards/Walrus Punch modifiers already read)
@@ -146,7 +146,7 @@ class_name EnemySkillAI
 # really means (every hit Naga/her illusions land completely safely
 # while the stun holds), shared between _estimate_skill_damage()'s own
 # case and _naga_song_of_the_siren_modifier() so the two numbers never
-# drift apart. Rip Tide is passive, same as Arcane Aura/Reactive Armor -
+# drift apart. Rip Tide is passive, same as Frostborn/Reactive Armor -
 # never in SKILL_INFO/HERO_TIE_BREAK/_estimate_skill_damage, never a
 # scored candidate; its bonuses reach Mirror Image/Song/a plain Attack
 # purely through context fields (rip_tide_illusion_damage_bonus_pct/
@@ -163,7 +163,7 @@ class_name EnemySkillAI
 # _slardar_guardian_sprint_modifier()'s own docstring). Slithereen Crush
 # and Corrosive Haze are both "offensive", same shape as every other
 # self-cast/target-marking skill in this file. Bash of the Deep is
-# passive and, like Rip Tide/Reactive Armor/Arcane Aura, never appears in
+# passive and, like Rip Tide/Reactive Armor/Frostborn, never appears in
 # SKILL_INFO/HERO_TIE_BREAK/_estimate_skill_damage - its progression
 # reaches every one of Slardar's other actions purely through context
 # fields ("bash_attacks_required"/"bash_current_progress"/"bash_bonus_
@@ -198,7 +198,7 @@ class_name EnemySkillAI
 # value at more than one - never a naive "beams x damage, guaranteed"
 # reading, and never a "one beam per enemy" assumption). Moon Glaives and
 # Lunar Blessing are both passive and, like Bash of the Deep/Rip Tide/
-# Reactive Armor/Arcane Aura, never appear in SKILL_INFO/HERO_TIE_BREAK/
+# Reactive Armor/Frostborn, never appear in SKILL_INFO/HERO_TIE_BREAK/
 # _estimate_skill_damage - Lunar Blessing's own bonus is already folded
 # into "hero_damage" itself by _roll_enemy_hero_damage()/
 # _npc_roll_damage() (see each one's own docstring), and Moon Glaives'
@@ -242,9 +242,9 @@ const SKILL_INFO := {
 	"maddening_roar": {"category": "offensive", "base_score": 50.0},
 	"the_test_of_time": {"category": "defensive", "base_score": 45.0},
 	"the_hunger_calls": {"category": "defensive", "base_score": 65.0},
-	"crystal_nova": {"category": "offensive", "base_score": 45.0},
-	"frostbite": {"category": "offensive", "base_score": 50.0},
-	"freezing_field": {"category": "offensive", "base_score": 65.0},
+	"rimecleaver": {"category": "offensive", "base_score": 45.0},
+	"winters_grip": {"category": "offensive", "base_score": 50.0},
+	"the_frost_tempest": {"category": "offensive", "base_score": 65.0},
 	"ice_shards": {"category": "offensive", "base_score": 40.0},
 	"snowball": {"category": "offensive", "base_score": 50.0},
 	"tag_team": {"category": "utility", "base_score": 35.0},
@@ -307,7 +307,7 @@ const HERO_TIE_BREAK := {
 	"kaelen_varr": ["the_sunken_one", "drowned_surge", "undertow"],
 	"nhal": ["return_to_the_void", "touch_of_the_first_cold", "mark_of_stillness", "the_hollow_cold"],
 	"the_primordial_hunger": ["the_hunger_calls", "maddening_roar", "the_test_of_time", "frostbound_fangs"],
-	"crystal_maiden": ["freezing_field", "frostbite", "crystal_nova"],
+	"frost_daughter": ["the_frost_tempest", "winters_grip", "rimecleaver"],
 	"tusk": ["walrus_punch", "snowball", "ice_shards", "tag_team"],
 	"treant_protector": ["overgrowth", "leech_seed", "nature's_guise", "living_armor"],
 	"timbersaw": ["chakram", "timber_chain", "whirling_death"],
@@ -347,8 +347,8 @@ static func resolve_hero_archetype(hero_static: Dictionary) -> String:
 		return "nhal"
 	if "the_hunger_calls" in skill_ids:
 		return "the_primordial_hunger"
-	if "freezing_field" in skill_ids:
-		return "crystal_maiden"
+	if "the_frost_tempest" in skill_ids:
+		return "frost_daughter"
 	if "walrus_punch" in skill_ids:
 		return "tusk"
 	if "overgrowth" in skill_ids:
@@ -402,11 +402,11 @@ static func evaluate_skill(skill_id: String, level_data: Dictionary, context: Di
 ## expire unused (see _hunger_basic_attack_modifier()). This stays a hero-
 ## gated switch rather than always-on so no other hero's existing
 ## behavior changes: for everyone else, a plain Attack is still purely
-## the fallback for "nothing else qualified," exactly as before. Crystal
-## Maiden opts in too: her whole kit is mana-hungry (70-330 a cast), so a
+## the fallback for "nothing else qualified," exactly as before. Frost
+## Daughter opts in too: her whole kit is mana-hungry (70-330 a cast), so a
 ## plain Attack that can already finish a low-HP target off deserves a
 ## real shot at beating one of them outright - see
-## _cm_basic_attack_modifier(). Tusk opts in for the same reason - his
+## _fd_basic_attack_modifier(). Tusk opts in for the same reason - his
 ## Walrus Punch in particular is an expensive ultimate that a cheap
 ## plain Attack can already make redundant against a low-HP target (see
 ## _tusk_basic_attack_modifier()/_tusk_walrus_punch_modifier()'s own
@@ -438,7 +438,7 @@ static func evaluate_skill(skill_id: String, level_data: Dictionary, context: Di
 ## own right, not just the fallback for "nothing else qualified" (see
 ## _luna_basic_attack_modifier()'s own docstring).
 static func basic_attack_participates(archetype: String) -> bool:
-	return archetype == "kaelen_varr" or archetype == "the_primordial_hunger" or archetype == "crystal_maiden" or archetype == "tusk" or archetype == "treant_protector" or archetype == "timbersaw" or archetype == "snapfire" or archetype == "naga_siren" or archetype == "slardar" or archetype == "mirana" or archetype == "luna"
+	return archetype == "kaelen_varr" or archetype == "the_primordial_hunger" or archetype == "frost_daughter" or archetype == "tusk" or archetype == "treant_protector" or archetype == "timbersaw" or archetype == "snapfire" or archetype == "naga_siren" or archetype == "slardar" or archetype == "mirana" or archetype == "luna"
 
 
 ## The score for a plain Attack, for a hero basic_attack_participates()
@@ -569,17 +569,17 @@ static func _estimate_skill_damage(skill_id: String, level_data: Dictionary, con
 			return float(level_data.get("damage", 0.0)) + float(level_data.get("dot_damage", 0.0)) * float(level_data.get("dot_duration", 0.0))
 		"maddening_roar":
 			return float(level_data.get("damage", 0.0))
-		"crystal_nova":
+		"rimecleaver":
 			return float(level_data.get("damage", 0.0))
-		"frostbite":
+		"winters_grip":
 			# A pure DoT/control cast, same as Mark of Stillness/The Hollow Cold above -
 			# its entire damage value is dot_damage x dot_duration, never
 			# just the per-turn tick.
 			return float(level_data.get("dot_damage", 0.0)) * float(level_data.get("dot_duration", 0.0))
-		"freezing_field":
+		"the_frost_tempest":
 			# Also a pure damage-over-time cast (on herself, hitting
 			# whoever's in range each tick) - damage x duration, same
-			# reasoning as Mark of Stillness/The Hollow Cold/Frostbite above.
+			# reasoning as Mark of Stillness/The Hollow Cold/Winter's Grip above.
 			return float(level_data.get("damage", 0.0)) * float(level_data.get("duration", 0.0))
 		"ice_shards", "snowball":
 			return float(level_data.get("damage", 0.0))
@@ -599,13 +599,13 @@ static func _estimate_skill_damage(skill_id: String, level_data: Dictionary, con
 			return float(context.get("hero_damage", 0.0)) * float(level_data.get("damage_multiplier", 1.0))
 		"leech_seed":
 			# A pure DoT/sustain cast, same as Mark of Stillness/The Hollow Cold/
-			# Frostbite above - its entire damage value is dot_damage x
+			# Winter's Grip above - its entire damage value is dot_damage x
 			# duration, never just the per-turn tick.
 			return float(level_data.get("dot_damage", 0.0)) * float(level_data.get("duration", 0.0))
 		"overgrowth":
 			# Also a pure damage-over-time cast (on herself... himself,
 			# hitting whoever's in range each tick) - dot_damage x
-			# root_duration, same reasoning as Freezing Field's own case.
+			# root_duration, same reasoning as The Frost Tempest's own case.
 			return float(level_data.get("dot_damage", 0.0)) * float(level_data.get("root_duration", 0.0))
 		"whirling_death", "timber_chain":
 			return float(level_data.get("damage", 0.0))
@@ -678,8 +678,8 @@ static func _hero_specific_modifier(archetype: String, skill_id: String, level_d
 			return _nhal_modifier(skill_id, level_data, context)
 		"the_primordial_hunger":
 			return _the_primordial_hunger_modifier(skill_id, level_data, context)
-		"crystal_maiden":
-			return _crystal_maiden_modifier(skill_id, level_data, context)
+		"frost_daughter":
+			return _frost_daughter_modifier(skill_id, level_data, context)
 		"tusk":
 			return _tusk_modifier(skill_id, level_data, context)
 		"treant_protector":
@@ -1294,36 +1294,36 @@ static func _hunger_basic_attack_modifier(context: Dictionary) -> float:
 	return 25.0 if bool(context.get("frostbound_fangs_active", false)) else 0.0
 
 
-## Crystal Maiden: ranged, control/burst/AoE, mana-aware. Crystal Nova's
+## Frost Daughter: ranged, control/burst/AoE, mana-aware. Rimecleaver's
 ## generic offensive scoring already covers its primary hit (target
 ## value, kill potential - via _estimate_skill_damage()'s own
-## "crystal_nova" case); this only adds its own splash-specific terms
-## once its radius actually exists (level 3+ - see _cm_crystal_nova_
-## modifier()). Frostbite is "offensive" category too (so it gets the
+## "rimecleaver" case); this only adds its own splash-specific terms
+## once its radius actually exists (level 3+ - see _fd_rimecleaver_
+## modifier()). Winter's Grip is "offensive" category too (so it gets the
 ## same generic kill-potential/target-value terms, fed by its own DoT-
 ## totaled _estimate_skill_damage() case) - this layers its control
 ## value (stun_turns) and defensive value (hero_hp_ratio) on top (see
-## _cm_frostbite_modifier()). Freezing Field is the one skill here that
-## ISN'T a targeted cast - it's centered on Crystal Maiden's own
-## position, never a selected enemy's (see _cm_freezing_field_
+## _fd_winters_grip_modifier()). The Frost Tempest is the one skill here that
+## ISN'T a targeted cast - it's centered on Frost Daughter's own
+## position, never a selected enemy's (see _fd_frost_tempest_
 ## modifier()'s own docstring for how that's told apart from a normal
 ## AoE in a codebase where every existing AoE skill is either target-
 ## centered or "no columns, hit everyone").
-static func _crystal_maiden_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
+static func _frost_daughter_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
 	match skill_id:
-		"crystal_nova":
-			return _cm_crystal_nova_modifier(level_data, context)
-		"frostbite":
-			return _cm_frostbite_modifier(level_data, context)
-		"freezing_field":
-			return _cm_freezing_field_modifier(level_data, context)
+		"rimecleaver":
+			return _fd_rimecleaver_modifier(level_data, context)
+		"winters_grip":
+			return _fd_winters_grip_modifier(level_data, context)
+		"the_frost_tempest":
+			return _fd_frost_tempest_modifier(level_data, context)
 		BASIC_ATTACK_ID:
-			return _cm_basic_attack_modifier(context)
+			return _fd_basic_attack_modifier(context)
 		_:
 			return 0.0
 
 
-## Crystal Nova: radius is 0 at levels 1-2 (a single-target nuke - the
+## Rimecleaver: radius is 0 at levels 1-2 (a single-target nuke - the
 ## generic offensive scoring above already covers it in full, so this
 ## adds nothing extra), and 1-2 at levels 3-4, at which point every
 ## other living target within it takes the same damage too. Target
@@ -1335,7 +1335,7 @@ static func _crystal_maiden_modifier(skill_id: String, level_data: Dictionary, c
 ## possible target (see _build_enemy_ai_context()'s own docstring), so
 ## this collapses to the "1 target: +5" tier there, same as every other
 ## AoE skill's own rival-side simplification.
-static func _cm_crystal_nova_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _fd_rimecleaver_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var radius: int = int(level_data.get("radius", 0))
 	if radius <= 0:
 		return 0.0
@@ -1366,23 +1366,23 @@ static func _cm_crystal_nova_modifier(level_data: Dictionary, context: Dictionar
 	return score
 
 
-## Frostbite: control is at least as important as the damage here (per
+## Winter's Grip: control is at least as important as the damage here (per
 ## the design doc), so a 2-turn stun scores substantially higher than a
 ## 1-turn one, and being in real danger (low hero_hp_ratio - the same
 ## signal every defensive skill in this file already keys off, via
 ## _evaluate_defensive()) adds its own separate defensive bonus on top,
-## even though Frostbite itself is "offensive" category (so it doesn't
+## even though Winter's Grip itself is "offensive" category (so it doesn't
 ## get _evaluate_defensive()'s tiers automatically). enemy_count is a
 ## small extra nudge for "also outnumbered while hurt" - always 1 in a
 ## real hero fight (a no-op there), the simulation's actual living-
 ## enemy count otherwise. Recasting on an already-frostbitten target is
 ## gated out at the candidacy level instead (see battle.gd's own
-## _enemy_skill_worth_casting()'s "frostbite" case), same as every
+## _enemy_skill_worth_casting()'s "winters_grip" case), same as every
 ## other already-active check in this file - the simulation doesn't
 ## mirror that gate, since its own target is always whichever living
 ## enemy is currently lowest-HP (see EnemyHeroManager's own _build_npc_
 ## ai_context() docstring), which can be a different one turn to turn.
-static func _cm_frostbite_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _fd_winters_grip_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var score: float = 0.0
 
 	var stun_turns: int = int(level_data.get("stun_turns", 0))
@@ -1403,9 +1403,9 @@ static func _cm_frostbite_modifier(level_data: Dictionary, context: Dictionary) 
 	return score
 
 
-## Freezing Field: the one skill in this file centered on the CASTER's
+## The Frost Tempest: the one skill in this file centered on the CASTER's
 ## own position rather than a selected enemy's. `target_distance` is
-## battle.gd's already-computed distance from Crystal Maiden's own
+## battle.gd's already-computed distance from Frost Daughter's own
 ## pos_index to the player (see _build_enemy_ai_context()) - reused
 ## here rather than re-derived, and never present in the simulation's
 ## own context (no positions there at all - see EnemyHeroManager's own
@@ -1423,11 +1423,11 @@ static func _cm_frostbite_modifier(level_data: Dictionary, context: Dictionary) 
 ## same split Return to the Void's/Maddening Roar's own modifiers use for their
 ## own multi-kill bonus. The survivability penalty is deliberately small
 ## and only fires when things are clearly dire (hero_hp_ratio < 30% AND
-## multiple living enemies) - Freezing Field has no invented immunity/
+## multiple living enemies) - The Frost Tempest has no invented immunity/
 ## stun/slow of its own to lean on here (per the design doc's own "use
 ## only mechanics that actually exist" note), so this is a real cost,
 ## not a wash.
-static func _cm_freezing_field_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _fd_frost_tempest_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var radius: int = int(level_data.get("radius", 0))
 	var raw_distance: int = int(context.get("target_distance", -1))
 	var in_range: bool = raw_distance < 0 or raw_distance <= radius
@@ -1464,7 +1464,7 @@ static func _cm_freezing_field_modifier(level_data: Dictionary, context: Diction
 
 	# The primary target's own kill is already scored generically (see
 	# _kill_potential_bonus(), fed by _estimate_skill_damage()'s own
-	# "freezing_field" case) - this only adds for kills BEYOND that one,
+	# "the_frost_tempest" case) - this only adds for kills BEYOND that one,
 	# same split Drowned Surge's/The Sunken One's/Return to the Void's own modifiers use.
 	if extra_kills >= 2:
 		score += 30.0 * float(extra_kills - 1)
@@ -1480,14 +1480,14 @@ static func _cm_freezing_field_modifier(level_data: Dictionary, context: Diction
 
 
 ## A plain Attack is only worth scoring above its flat baseline for
-## Crystal Maiden when it can finish the target off outright (see
+## Frost Daughter when it can finish the target off outright (see
 ## basic_attack_participates()'s own docstring for why she opts in at
 ## all) - every one of her real skills costs 70-330 mana, so a free kill
 ## deserves a real shot at winning over spending any of it. A small extra
 ## nudge applies when mana is already scarce (<30% of max), the same
 ## "mana efficiency as a small modifier, never a dominant one" role
 ## _resource_penalty() already plays for every hero's every skill.
-static func _cm_basic_attack_modifier(context: Dictionary) -> float:
+static func _fd_basic_attack_modifier(context: Dictionary) -> float:
 	var score: float = 0.0
 
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
@@ -1597,7 +1597,7 @@ static func _tusk_ice_shards_modifier(level_data: Dictionary, context: Dictionar
 ## Snowball: direct offensive/control - the generic offensive scoring
 ## above already covers its own damage/kill-potential; this layers
 ## control value (stun_turns) and "how much does removing an action
-## matter right now" (hero_hp_ratio, same danger signal Frostbite's own
+## matter right now" (hero_hp_ratio, same danger signal Winter's Grip's own
 ## defensive bonus uses) on top. Early-out mirrors Walrus Punch's own
 ## below: a target a plain Attack can already kill outright leaves
 ## nothing for the stun to prevent, so it's not worth the mana (see the
@@ -1754,7 +1754,7 @@ static func _tusk_walrus_punch_modifier(level_data: Dictionary, context: Diction
 ## Punch/Snowball are both real mana/cooldown investments, so a free
 ## kill deserves a real shot at winning over spending either (see the
 ## design doc's own Example A). Same small mana-scarcity nudge as
-## Crystal Maiden's own copy.
+## Frost Daughter's own copy.
 static func _tusk_basic_attack_modifier(context: Dictionary) -> float:
 	var score: float = 0.0
 
@@ -1779,8 +1779,8 @@ static func _tusk_basic_attack_modifier(context: Dictionary) -> float:
 ## dot_damage x duration _estimate_skill_damage() cases, for the shared
 ## kill-potential/target-value terms); this layers Leech Seed's own
 ## Treant-condition-scaled healing value, and Overgrowth's own multi-
-## target root/DoT tiers (self-centered, same shape as Crystal Maiden's
-## own Freezing Field), on top. Living Armor is "defensive" too (the
+## target root/DoT tiers (self-centered, same shape as Frost Daughter's
+## own The Frost Tempest), on top. Living Armor is "defensive" too (the
 ## shared HP-ratio tiers already cover most of the design doc's own
 ## "lower priority at high HP" instruction); this adds its own expected
 ## healing/armor value.
@@ -1929,12 +1929,12 @@ static func _tp_living_armor_modifier(level_data: Dictionary, context: Dictionar
 
 
 ## Overgrowth: Treant's primary AoE control + damage ultimate, SELF-
-## CENTERED like Crystal Maiden's own Freezing Field - never a selected
-## enemy's position (see _cm_freezing_field_modifier()'s own docstring
+## CENTERED like Frost Daughter's own The Frost Tempest - never a selected
+## enemy's position (see _fd_frost_tempest_modifier()'s own docstring
 ## for why `target_distance` is reused here rather than re-derived: it's
 ## battle.gd's already-computed distance from Treant's own pos_index to
 ## the player). Out of radius in a real fight, this is a low-value cast,
-## same reasoning as Freezing Field's own early-out. In range (or the
+## same reasoning as The Frost Tempest's own early-out. In range (or the
 ## simulation, where a missing value defaults to "in range" - every
 ## other AoE skill's own "no columns, hit everyone" simplification),
 ## this layers the design doc's own multi-target/low-HP/multi-kill tiers
@@ -1995,7 +1995,7 @@ static func _tp_overgrowth_modifier(level_data: Dictionary, context: Dictionary)
 	# The primary target's own kill is already scored generically (see
 	# _kill_potential_bonus(), fed by _estimate_skill_damage()'s own
 	# "overgrowth" case) - this only adds for kills BEYOND that one, same
-	# split Drowned Surge's/The Sunken One's/Return to the Void's/Freezing Field's own
+	# split Drowned Surge's/The Sunken One's/Return to the Void's/The Frost Tempest's own
 	# modifiers use.
 	if extra_kills >= 2:
 		score += 30.0 * float(extra_kills - 1)
@@ -2084,7 +2084,7 @@ static func _timbersaw_sustain_factor(context: Dictionary) -> float:
 ## Whirling Death: self-centered, never a targeted cast - the AI has to
 ## evaluate however many enemies are ALREADY within radius of Timbersaw's
 ## own current position, never an arbitrary chosen location (see
-## _cm_freezing_field_modifier()'s own docstring for the same "reuse
+## _fd_frost_tempest_modifier()'s own docstring for the same "reuse
 ## target_distance as the self-centered range check" reasoning this
 ## mirrors). The generic offensive scoring above already covers the
 ## primary target's own value/kill potential (fed by the flat-damage
@@ -2211,7 +2211,7 @@ static func _timbersaw_timber_chain_modifier(level_data: Dictionary, context: Di
 ## if it were a self-centered AoE (see this file's own header comment).
 ## Its own `range` field (a real targeting requirement, gated by
 ## EnemySkillRange before this is ever a candidate) already keeps this
-## from firing at an unreachable target, so - unlike Freezing Field's/
+## from firing at an unreachable target, so - unlike The Frost Tempest's/
 ## Overgrowth's/Whirling Death's own self-centered "is the caster's own
 ## radius even reaching anything" gate - there's no separate range check
 ## to repeat here. The early-out mirrors Leech Seed's/Snowball's own: a
@@ -2314,8 +2314,8 @@ static func _timbersaw_basic_attack_modifier(context: Dictionary) -> float:
 ## opportunity-cost value on top. None of the four needs anything beyond
 ## context fields this file already exposes generically (living_target_
 ## hps/target_distance/caster_pos_index/target_pos_index/grid_columns/
-## caster_facing_left, all already established by Tusk's/Crystal
-## Maiden's own modifiers) plus two new ones scoped to this file's own
+## caster_facing_left, all already established by Tusk's/Frost
+## Daughter's own modifiers) plus two new ones scoped to this file's own
 ## header comment: "target_is_hero" (Timbersaw's own, reused as-is) and
 ## "target_armor" (new, for Lil' Shredder specifically).
 static func _snapfire_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
@@ -2731,8 +2731,8 @@ static func _naga_ensnare_modifier(level_data: Dictionary, context: Dictionary) 
 ## own at all) - its real destructive value is every hit Naga and any
 ## active illusions can land completely safely while every enemy in
 ## radius is stunned and unable to retaliate. Self-centered, same "reuse
-## target_distance as its own self-cast range check" idiom Crystal
-## Maiden's own Freezing Field/Treant Protector's own Overgrowth already
+## target_distance as its own self-cast range check" idiom Frost
+## Daughter's own The Frost Tempest/Treant Protector's own Overgrowth already
 ## use (see _tp_overgrowth_modifier()'s own docstring) - out of range in
 ## a real fight scores low rather than being excluded outright, same
 ## early-out shape Overgrowth's own uses.

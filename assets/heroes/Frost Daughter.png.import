@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://414xmkqywacs"
-path="res://.godot/imported/the_everfrost_crystal_maiden.png-43afba71ffd6c875ec52e9301cad2829.ctex"
+uid="uid://dc0vrk3iepbw2"
+path="res://.godot/imported/Frost Daughter.png-d210b58ca2dd352ac35fdf0f3958a64d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/zones/the_everfrost_crystal_maiden.png"
-dest_files=["res://.godot/imported/the_everfrost_crystal_maiden.png-43afba71ffd6c875ec52e9301cad2829.ctex"]
+source_file="res://assets/heroes/Frost Daughter.png"
+dest_files=["res://.godot/imported/Frost Daughter.png-d210b58ca2dd352ac35fdf0f3958a64d.ctex"]
 
 [params]
 

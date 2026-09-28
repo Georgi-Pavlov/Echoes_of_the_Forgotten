@@ -1057,10 +1057,13 @@ var zones: Dictionary = {
 		"music": "the_everfrost",
 		"heroes": [
 			{
-				"id": "crystal_maiden",
-				"name": "Crystal Maiden",
-				"image": "res://assets/heroes/Crystal Maiden.png",
-				"background": "res://assets/zones/the_everfrost_crystal_maiden.png",
+				"id": "frost_daughter",
+				"name": "Frost Daughter",
+				"image": "res://assets/heroes/Frost Daughter.png",
+				"background": "res://assets/zones/the_everfrost_frost_daughter.jpg",
+				# Normal attack: a raven of ice from the crystals in her raised hand.
+				"attack_effect": "frost_raven",
+				"attack_origin": Vector2(0.91, 0.28),
 				"range_type": "Range",
 				"main_stat": "Intelligence",
 				"stats": {
@@ -1076,46 +1079,46 @@ var zones: Dictionary = {
 				},
 				"skills": [
 					{
-						"id": "crystal_nova",
-						"name": "Crystal Nova",
+						"id": "rimecleaver",
+						"name": "Rimecleaver",
 						"type": "standard",
-						"description": "A freezing blast cast on an enemy within normal attack range, dealing damage to it - at later levels, every other enemy within its own radius of the target takes that same damage too.",
+						"description": "Frost Daughter summons a massive axe of solid ice above an enemy and brings it crashing down upon them. At higher levels, the frozen blade cleaves through nearby enemies with the force of the impact.",
 						"levels": [
-							{"damage": 100, "radius": 0, "mana_cost": 70, "cooldown": 3},
-							{"damage": 160, "radius": 0, "mana_cost": 100, "cooldown": 3},
-							{"damage": 230, "radius": 1, "mana_cost": 135, "cooldown": 4},
-							{"damage": 310, "radius": 2, "mana_cost": 170, "cooldown": 4}
+							{"damage": 85, "radius": 0, "mana_cost": 70, "cooldown": 3},
+							{"damage": 110, "radius": 0, "mana_cost": 100, "cooldown": 3},
+							{"damage": 150, "radius": 1, "mana_cost": 135, "cooldown": 4},
+							{"damage": 200, "radius": 2, "mana_cost": 170, "cooldown": 4}
 						]
 					},
 					{
-						"id": "frostbite",
-						"name": "Frostbite",
+						"id": "winters_grip",
+						"name": "Winter's Grip",
 						"type": "standard",
-						"description": "Locks an enemy within normal attack range in ice, stunning it for the duration and dealing damage over time on top.",
+						"description": "Frost Daughter calls the frozen earth beneath an enemy to life. Spectral hands of ice burst from the ground and seize the victim, holding them in place while the freezing grip slowly tears away their strength.",
 						"levels": [
-							{"stun_turns": 1, "dot_damage": 30, "dot_duration": 2, "mana_cost": 80, "cooldown": 4},
-							{"stun_turns": 1, "dot_damage": 55, "dot_duration": 2, "mana_cost": 110, "cooldown": 4},
-							{"stun_turns": 2, "dot_damage": 70, "dot_duration": 3, "mana_cost": 145, "cooldown": 5},
-							{"stun_turns": 2, "dot_damage": 90, "dot_duration": 4, "mana_cost": 180, "cooldown": 5}
+							{"stun_turns": 1, "dot_damage": 25, "dot_duration": 2, "mana_cost": 80, "cooldown": 4},
+							{"stun_turns": 1, "dot_damage": 45, "dot_duration": 2, "mana_cost": 110, "cooldown": 4},
+							{"stun_turns": 2, "dot_damage": 60, "dot_duration": 3, "mana_cost": 145, "cooldown": 5},
+							{"stun_turns": 2, "dot_damage": 85, "dot_duration": 4, "mana_cost": 180, "cooldown": 5}
 						]
 					},
 					{
-						"id": "arcane_aura",
-						"name": "Arcane Aura",
+						"id": "frostborn",
+						"name": "Frostborn",
 						"type": "passive",
-						"description": "Passive: adds a flat bonus to the hero's own passive mana regeneration every turn.",
+						"description": "Passive: Frost Daughter draws strength from the Everfrost itself. The unnatural cold flowing through her body restores a portion of her magical energy every turn.",
 						"levels": [
-							{"bonus_mana_regen": 1},
-							{"bonus_mana_regen": 2},
-							{"bonus_mana_regen": 3},
-							{"bonus_mana_regen": 4}
+							{"bonus_mana_regen": 1.5},
+							{"bonus_mana_regen": 2.7},
+							{"bonus_mana_regen": 4},
+							{"bonus_mana_regen": 5.3}
 						]
 					},
 					{
-						"id": "freezing_field",
-						"name": "Freezing Field",
+						"id": "the_frost_tempest",
+						"name": "The Frost Tempest",
 						"type": "ultimate",
-						"description": "Ultimate: cast on herself, dealing damage to every enemy within a radius of her own position at the start of each turn for the duration.",
+						"description": "Ultimate: Frost Daughter rises above the ground and becomes the still center of a violent winter storm. A massive vortex of snow, ice, and freezing wind tears through everything around her, damaging every enemy caught within its reach.",
 						"levels": [
 							{"damage": 90, "duration": 3, "radius": 2, "mana_cost": 200, "cooldown": 8},
 							{"damage": 130, "duration": 3, "radius": 2, "mana_cost": 260, "cooldown": 9},
@@ -1239,6 +1242,7 @@ var zones: Dictionary = {
 				"name": "Everfrost range creep",
 				"image": "res://assets/enemies/the_everfrost_range.png",
 				"type": "range",
+				"projectile": "wooden_spear",
 				"main_stat": "agility",
 				"main_stat_value": 10,
 				"hp": 100,
@@ -1251,8 +1255,8 @@ var zones: Dictionary = {
 			}
 		],
 		"unlocked": true,
-		"background": "res://assets/zones/the_everfrost_crystal_maiden.png",
-		"battle_background": "res://assets/battle_areas/the_everfrost_area.png"
+		"background": "res://assets/zones/the_everfrost_frost_daughter.jpg",
+		"battle_background": "res://assets/battle_areas/the_everfrost_area.jpg"
 	},
 
 	"the_verdant_scar": {
