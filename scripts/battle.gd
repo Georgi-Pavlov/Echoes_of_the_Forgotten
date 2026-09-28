@@ -10770,6 +10770,10 @@ func _cancel_targeting() -> void:
 	for enemy in _valid_targets:
 		if is_instance_valid(enemy["node"]):
 			enemy["node"].modulate = Color(1, 1, 1)
+			# A hit flash running on it right now (_sprite_flash()) would
+			# otherwise fade back to the highlight it started from.
+			if enemy["node"].has_meta(SPRITE_FLASH_REST_META):
+				enemy["node"].set_meta(SPRITE_FLASH_REST_META, Color(1, 1, 1))
 	_update_hero_visibility()
 	_valid_targets.clear()
 	_targeting_mode = false
@@ -12287,7 +12291,7 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 
 	_update_enemy_blood_of_the_wild_state(enemy)
 
-	var enemy_type: String = enemy["static"].get("type", "")
+	var enemy_type: String = _enemy_hero_attack_type(enemy)
 	var hero_distance: int = _distance(enemy["pos_index"], _hero_pos_index)
 	# Slardar's own Corrosive Haze (see _can_enemy_see_hero()'s own
 	# comment) overrides this - true sight lets him keep fighting a
@@ -13312,17 +13316,48 @@ func _play_enemy_cast_feedback(enemy: Dictionary, skill: Dictionary) -> void:
 ## reads as "this caster just did something," bigger and brighter for
 ## an ultimate than a standard cast.
 func _pulse_caster_sprite(node: TextureRect, big: bool) -> void:
-	node.pivot_offset = node.size / 2.0
-	var peak_scale: float = 1.28 if big else 1.12
-	var base_scale: Vector2 = node.get_meta("base_scale", Vector2.ONE)
-	var base_modulate: Color = node.modulate
-	var flash_modulate: Color = Color(1.6, 1.6, 1.6, base_modulate.a)
+	var rest: Color = node.get_meta(SPRITE_FLASH_REST_META, node.modulate)
+	_sprite_flash(node, 1.28 if big else 1.12, Color(1.6, 1.6, 1.6, rest.a))
 
+
+const SPRITE_FLASH_REST_META := "sprite_flash_rest_modulate"
+const SPRITE_FLASH_TWEEN_META := "sprite_flash_tween"
+
+
+## The pop both _pulse_caster_sprite() and _flash_bounce_hit() play: a
+## quick scale-up to `peak_scale` while the sprite's modulate goes to
+## `flash_modulate`, then back to its resting scale/modulate. The resting
+## modulate is remembered on the node for as long as a flash is running,
+## and a new flash replaces a running one rather than stacking on it -
+## otherwise a second flash landing mid-way through the first (an AoE
+## hit plus a bounce/splash on the same enemy) would take the half-red
+## modulate as "normal" and hand it back at the end, leaving the sprite
+## stuck red for good.
+func _sprite_flash(node: TextureRect, peak_scale: float, flash_modulate: Color) -> void:
+	if not is_instance_valid(node):
+		return
+	var running: Variant = node.get_meta(SPRITE_FLASH_TWEEN_META, null)
+	if running is Tween and running.is_valid():
+		running.kill()
+	var rest_modulate: Color = node.get_meta(SPRITE_FLASH_REST_META, node.modulate)
+	node.set_meta(SPRITE_FLASH_REST_META, rest_modulate)
+
+	node.pivot_offset = node.size / 2.0
+	var base_scale: Vector2 = node.get_meta("base_scale", Vector2.ONE)
 	var tween := create_tween()
+	node.set_meta(SPRITE_FLASH_TWEEN_META, tween)
 	tween.tween_property(node, "scale", base_scale * peak_scale, 0.12).set_trans(Tween.TRANS_SINE)
 	tween.parallel().tween_property(node, "modulate", flash_modulate, 0.12)
 	tween.tween_property(node, "scale", base_scale, 0.18).set_trans(Tween.TRANS_SINE)
-	tween.parallel().tween_property(node, "modulate", base_modulate, 0.18)
+	tween.parallel().tween_property(node, "modulate", rest_modulate, 0.18)
+	tween.tween_callback(func() -> void:
+		if is_instance_valid(node):
+			# Whatever the resting modulate is by now - _cancel_targeting()
+			# can update it mid-flash.
+			node.modulate = node.get_meta(SPRITE_FLASH_REST_META, rest_modulate)
+			node.remove_meta(SPRITE_FLASH_REST_META)
+			node.remove_meta(SPRITE_FLASH_TWEEN_META)
+	)
 
 
 ## Same quick scale-up + flash shape as _pulse_caster_sprite() above, but
@@ -13335,15 +13370,7 @@ func _pulse_caster_sprite(node: TextureRect, big: bool) -> void:
 ## `flash_color` defaults to that red; Thornbind passes
 ## THORNBIND_FLASH_COLOR for the same pop in green.
 func _flash_bounce_hit(node: TextureRect, flash_color: Color = BOUNCE_HIT_FLASH_COLOR) -> void:
-	node.pivot_offset = node.size / 2.0
-	var base_scale: Vector2 = node.get_meta("base_scale", Vector2.ONE)
-	var base_modulate: Color = node.modulate
-
-	var tween := create_tween()
-	tween.tween_property(node, "scale", base_scale * 1.12, 0.12).set_trans(Tween.TRANS_SINE)
-	tween.parallel().tween_property(node, "modulate", flash_color, 0.12)
-	tween.tween_property(node, "scale", base_scale, 0.18).set_trans(Tween.TRANS_SINE)
-	tween.parallel().tween_property(node, "modulate", base_modulate, 0.18)
+	_sprite_flash(node, 1.12, flash_color)
 
 
 ## Purely cosmetic: Thornbind's cast visual on `node` (an enemy, the
@@ -14340,11 +14367,21 @@ func _apply_enemy_wildbond_lifesteal(enemy: Dictionary, mitigated_attack_damage:
 # ------------------------------------------------------------------
 # Erynd's Beast of the Elderwild (ultimate), cast by the rival on themselves -
 # mirrors _activate_beast_of_the_elderwild()/_tick_beast_of_the_elderwild()/_end_beast_of_the_elderwild().
-# No forced-melee-range concept here (a hero-fight boss is already
-# always attacking in melee or at range per its own "type", same as
-# any other enemy) - just the bonus hp/damage, plus swapping the
-# boss's own node texture the same way the player's portrait swaps.
+# The bonus hp/damage, swapping the boss's own node texture the same way
+# the player's portrait swaps, and - same as the player's own
+# _is_ranged_hero() - forcing the rival into melee for the duration
+# (see _enemy_hero_attack_type()).
 # ------------------------------------------------------------------
+
+## Whether the rival hero fights at "range" or in "melee" right now: its
+## own "type", except that Beast of the Elderwild's bear form always
+## fights in melee - it closes in and attacks on the player's column
+## instead of keeping its distance.
+func _enemy_hero_attack_type(enemy: Dictionary) -> String:
+	if _enemy_beast_of_the_elderwild_active:
+		return "melee"
+	return enemy["static"].get("type", "")
+
 
 func _activate_enemy_beast_of_the_elderwild(enemy: Dictionary, level_data: Dictionary) -> void:
 	if _enemy_beast_of_the_elderwild_active:
@@ -17449,18 +17486,15 @@ func _fire_enemy_projectile(enemy: Dictionary, target_node: Control) -> void:
 ##
 ## Like _fire_enemy_projectile(), call right BEFORE the damage and clear
 ## _deferred_hit_node right after it, so the target flinches when the
-## effect lands instead of the moment it starts. Still plays while
-## `transformed` (Beast of the Elderwild) - the attack keeps its own look,
-## just launched from the bear art's own "transformed_attack_origin" (its
-## front paw) instead, falling back to "attack_origin" if none is set.
+## effect lands instead of the moment it starts. Skipped while
+## `transformed` (Beast of the Elderwild): the bear fights in melee, so its
+## attack is just its own lunge, no ranged effect.
 func _play_hero_attack_effect(hero_static: Dictionary, caster: TextureRect, target_node: Control, transformed: bool) -> void:
 	var effect: String = hero_static.get("attack_effect", "")
-	if effect == "" or caster == null or not is_instance_valid(target_node):
+	if effect == "" or transformed or caster == null or not is_instance_valid(target_node):
 		return
 
 	var origin: Vector2 = hero_static.get("attack_origin", Vector2(0.5, 0.4))
-	if transformed:
-		origin = hero_static.get("transformed_attack_origin", origin)
 	var origin_art: Vector2 = origin
 	if caster.flip_h:
 		origin.x = 1.0 - origin.x
@@ -17475,6 +17509,11 @@ func _play_hero_attack_effect(hero_static: Dictionary, caster: TextureRect, targ
 		"vine_lash":
 			_deferred_hit_node = target_node
 			VineLashFX.play(_fx_layer, from, to, on_hit)
+		"bite":
+			# Spectral jaws snapping shut on the target itself - `from` only
+			# says which side the bite comes from.
+			_deferred_hit_node = target_node
+			BiteFX.play(_fx_layer, from, target_node, on_hit)
 		"frost_raven":
 			_deferred_hit_node = target_node
 			FrostRavenFX.play(_fx_layer, from, to, on_hit)
@@ -18106,7 +18145,7 @@ func _enemy_skill_target_options(skill_id: String, enemy_type: String, hero_dist
 ## all, or when this hit would likely kill the bear outright (an
 ## estimate - see _estimate_enemy_skill_hit_on_bear()).
 func _choose_enemy_skill_on_bear(enemy: Dictionary, skill_id: String) -> bool:
-	var enemy_type: String = enemy["static"].get("type", "")
+	var enemy_type: String = _enemy_hero_attack_type(enemy)
 	var hero_distance: int = _distance(enemy["pos_index"], _hero_pos_index)
 	var options: Dictionary = _enemy_skill_target_options(skill_id, enemy_type, hero_distance, enemy)
 	if not options["bear"]:

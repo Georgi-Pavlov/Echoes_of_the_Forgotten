@@ -435,8 +435,6 @@ var zones: Dictionary = {
 				"main_stat": "Agility",
 				"attack_effect": "vine_lash",
 				"attack_origin": Vector2(0.85, 0.31),
-				# Beast of the Elderwild's bear art: its raised front paw.
-				"transformed_attack_origin": Vector2(0.90, 0.43),
 				"stats": {
 					"strength": 17,
 					"agility": 24,
@@ -929,6 +927,8 @@ var zones: Dictionary = {
 				"main_stat": "Intelligence",
 				"battle_scale": 1.7,
 				"roar_origin": Vector2(0.76, 0.1),
+				"attack_effect": "bite",
+				"attack_origin": Vector2(0.76, 0.1),
 				"stats": {
 					"strength": 22,
 					"agility": 16,
@@ -1061,7 +1061,6 @@ var zones: Dictionary = {
 				"name": "Frost Daughter",
 				"image": "res://assets/heroes/Frost Daughter.png",
 				"background": "res://assets/zones/the_everfrost_frost_daughter.jpg",
-				# Normal attack: a raven of ice from the crystals in her raised hand.
 				"attack_effect": "frost_raven",
 				"attack_origin": Vector2(0.91, 0.28),
 				"range_type": "Range",

@@ -116,8 +116,8 @@ const STYLES := {
 	"wooden_spear": {
 		"shape": "spear",
 		"launch": Vector2(0.22, 0.36),
-		"length": 96.0,
-		"shaft_width": 4.0,
+		"length": 150.0,
+		"shaft_width": 7.0,
 		"shaft_color": Color(0.42, 0.28, 0.16),
 		"head_color": Color(0.7, 0.88, 1.0),
 		"fletch_color": Color(0.3, 0.19, 0.11),
@@ -317,61 +317,115 @@ static func _build_spike(style: Dictionary) -> Node2D:
 	return spike
 
 
-## A spear pointing right (+x), TIP at the origin: a long wooden haft
-## ("shaft_color") with leather bindings ("fletch_color") near the head,
-## and a jagged, glowing ice-crystal head ("head_color").
+## A spear pointing right (+x), TIP at the origin, drawn after the Everfrost
+## troll's own: a long wooden haft ("shaft_color"), a big faceted
+## ice-crystal blade ("head_color") with a couple of shards jutting back
+## from its base, leather ("fletch_color") wound criss-cross below the
+## blade with loose strips trailing, all edged in a dark outline so the
+## silhouette reads at a glance against any background.
 static func _build_spear(style: Dictionary) -> Node2D:
 	var spear := Node2D.new()
 	var length: float = style["length"]
 	var half: float = float(style["shaft_width"]) / 2.0
-	var head_len := length * 0.24
-	var head_half := half * 3.2
+	var head_len := length * 0.34
+	var head_half := half * 2.8
 	var wood: Color = style["shaft_color"]
 	var ice: Color = style["head_color"]
+	var leather: Color = style["fletch_color"]
+	var outline_color := Color(0.05, 0.07, 0.12, 0.85)
 
 	var glow_color: Color = style["glow_color"]
 	if glow_color.a > 0.0:
 		var glow := Polygon2D.new()
 		glow.color = glow_color
 		glow.polygon = PackedVector2Array([
-			Vector2(-head_len - 4.0, -head_half - 3.0), Vector2(5.0, 0.0), Vector2(-head_len - 4.0, head_half + 3.0)])
+			Vector2(-head_len - 6.0, 0.0), Vector2(-head_len * 0.65, -head_half - 6.0),
+			Vector2(8.0, 0.0), Vector2(-head_len * 0.65, head_half + 6.0)])
 		spear.add_child(glow)
 
+	# Loose leather strips trailing back from the binding, drawn first so
+	# the haft covers their roots.
+	var bind_start := -head_len + 1.0
+	var bind_end := -head_len - length * 0.16
+	for strip in [[-0.6, 0.35], [0.7, 0.6]]:
+		var root := Vector2(bind_end + 4.0, half * float(strip[0]))
+		var tail := Line2D.new()
+		tail.width = 2.0
+		tail.default_color = leather
+		tail.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		tail.end_cap_mode = Line2D.LINE_CAP_ROUND
+		var drop: float = float(strip[1]) * 10.0
+		tail.points = PackedVector2Array([root, root + Vector2(-9.0, drop * 0.6), root + Vector2(-17.0, drop)])
+		spear.add_child(tail)
+
+	# The haft: tapering slightly to the butt, lit along its top edge.
+	var haft_poly := PackedVector2Array([
+		Vector2(-length, -half * 0.75), Vector2(-head_len + 3.0, -half),
+		Vector2(-head_len + 3.0, half), Vector2(-length, half * 0.75)])
+	var haft_edge := Line2D.new()
+	haft_edge.width = 3.0
+	haft_edge.default_color = outline_color
+	haft_edge.closed = true
+	haft_edge.points = haft_poly
+	spear.add_child(haft_edge)
 	var shaft := Polygon2D.new()
-	shaft.polygon = PackedVector2Array([
-		Vector2(-length, -half * 0.8), Vector2(-head_len + 2.0, -half),
-		Vector2(-head_len + 2.0, half), Vector2(-length, half * 0.8)])
-	shaft.vertex_colors = PackedColorArray([wood.darkened(0.25), wood, wood, wood.darkened(0.25)])
+	shaft.polygon = haft_poly
+	shaft.vertex_colors = PackedColorArray([wood.darkened(0.3), wood, wood.darkened(0.2), wood.darkened(0.45)])
 	spear.add_child(shaft)
 	var grain := Line2D.new()
-	grain.width = 1.0
-	grain.default_color = Color(wood.lightened(0.35), 0.6)
-	grain.points = PackedVector2Array([Vector2(-length * 0.95, -half * 0.35), Vector2(-head_len, -half * 0.35)])
+	grain.width = 1.2
+	grain.default_color = Color(wood.lightened(0.4), 0.7)
+	grain.points = PackedVector2Array([Vector2(-length * 0.96, -half * 0.4), Vector2(-head_len, -half * 0.45)])
 	spear.add_child(grain)
 
-	# Leather bindings wound round the haft below the head.
-	for i in 4:
-		var x := -head_len - 3.0 - i * 5.0
-		var band := Line2D.new()
-		band.width = 2.5
-		band.default_color = style["fletch_color"]
-		band.points = PackedVector2Array([Vector2(x - 2.0, -half - 1.0), Vector2(x + 2.0, half + 1.0)])
-		spear.add_child(band)
+	# Leather wound criss-cross round the haft below the blade.
+	var wraps := 5
+	for i in wraps:
+		var x := lerpf(bind_start, bind_end, float(i) / float(wraps - 1))
+		for dir in [1.0, -1.0]:
+			var band := Line2D.new()
+			band.width = 2.6
+			band.default_color = leather if dir > 0.0 else leather.lightened(0.18)
+			band.points = PackedVector2Array([Vector2(x - 3.0 * dir, -half - 1.5), Vector2(x + 3.0 * dir, half + 1.5)])
+			spear.add_child(band)
 
-	# The ice head: a long jagged crystal with a paler core.
-	var head := Polygon2D.new()
-	head.color = Color(ice, 0.95)
-	head.polygon = PackedVector2Array([
-		Vector2(-head_len, -half), Vector2(-head_len * 0.7, -head_half), Vector2(-head_len * 0.45, -head_half * 0.6),
-		Vector2(-head_len * 0.3, -head_half * 0.9), Vector2(0.0, 0.0),
-		Vector2(-head_len * 0.3, head_half * 0.7), Vector2(-head_len * 0.55, head_half * 0.85),
-		Vector2(-head_len * 0.75, head_half * 0.5), Vector2(-head_len, half)])
-	spear.add_child(head)
-	var core := Line2D.new()
-	core.width = 1.5
-	core.default_color = Color(1, 1, 1, 0.85)
-	core.points = PackedVector2Array([Vector2(-head_len * 0.9, 0.0), Vector2(-2.0, 0.0)])
-	spear.add_child(core)
+	# Ice shards jutting back from the blade's base, like the troll's.
+	for side in [-1.0, 1.0]:
+		var barb := Polygon2D.new()
+		barb.color = ice.darkened(0.15)
+		barb.polygon = PackedVector2Array([
+			Vector2(-head_len + 2.0, side * half * 0.6), Vector2(-head_len * 0.8, side * head_half * 0.7),
+			Vector2(-head_len - 9.0, side * (head_half + 2.0))])
+		spear.add_child(barb)
+
+	# The blade: a long faceted crystal - widest a third of the way up,
+	# a dark outline, a shaded lower facet and a lit upper one split by a
+	# bright ridge down its middle.
+	var blade := PackedVector2Array([
+		Vector2(-head_len, -half), Vector2(-head_len * 0.72, -head_half),
+		Vector2(-head_len * 0.35, -head_half * 0.62), Vector2(0.0, 0.0),
+		Vector2(-head_len * 0.35, head_half * 0.62), Vector2(-head_len * 0.72, head_half),
+		Vector2(-head_len, half)])
+	var blade_edge := Line2D.new()
+	blade_edge.width = 3.5
+	blade_edge.default_color = outline_color
+	blade_edge.closed = true
+	blade_edge.joint_mode = Line2D.LINE_JOINT_SHARP
+	blade_edge.points = blade
+	spear.add_child(blade_edge)
+	var lower := Polygon2D.new()
+	lower.color = ice.darkened(0.22)
+	lower.polygon = PackedVector2Array([blade[0], Vector2(-head_len, 0.0), Vector2(0.0, 0.0), blade[4], blade[5], blade[6]])
+	spear.add_child(lower)
+	var upper := Polygon2D.new()
+	upper.color = ice.lightened(0.15)
+	upper.polygon = PackedVector2Array([blade[0], blade[1], blade[2], blade[3], Vector2(-head_len, 0.0)])
+	spear.add_child(upper)
+	var ridge := Line2D.new()
+	ridge.width = 1.6
+	ridge.default_color = Color(1, 1, 1, 0.9)
+	ridge.points = PackedVector2Array([Vector2(-head_len * 0.95, 0.0), Vector2(-3.0, 0.0)])
+	spear.add_child(ridge)
 	return spear
 
 
