@@ -126,6 +126,7 @@ const FROSTSPIRE_HUNGER_BG := "res://assets/zones/frostspire_the_primordial_hung
 const FROSTSPIRE_FX := preload("res://scripts/FrostspireAtmosphere.gd")
 const EVERFROST_BG := "res://assets/zones/the_everfrost_frost_daughter.jpg"
 const EVERFROST_FX := preload("res://scripts/EverfrostAtmosphere.gd")
+const EVERFROST_SKARN_BG := "res://assets/zones/the_everfrost_skarn.jpg"
 
 const ELDERWILD_BG := "res://assets/zones/The Elderwild.jpg"
 const ELDERWILD_SHADER := preload("res://shaders/elderwild_background.gdshader")
@@ -244,7 +245,7 @@ func _ready() -> void:
 ## Called by zone.gd after it has set the background for the shown hero.
 func show_for_background(path: String) -> void:
 	_clear()
-	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG, EVERFROST_BG]:
+	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG, EVERFROST_BG, EVERFROST_SKARN_BG]:
 		return
 	# Guards against a hero switch landing during the await below.
 	_build_id += 1
@@ -264,7 +265,9 @@ func show_for_background(path: String) -> void:
 	elif path == FROSTSPIRE_HUNGER_BG:
 		_build_frostspire("the_primordial_hunger")
 	elif path == EVERFROST_BG:
-		_build_everfrost()
+		_build_everfrost("frost_daughter")
+	elif path == EVERFROST_SKARN_BG:
+		_build_everfrost("skarn")
 	else:
 		_build_elderwild()
 
@@ -989,8 +992,8 @@ func _build_frostspire(hero: String) -> void:
 
 # --- The Everfrost --------------------------------------------------
 
-func _build_everfrost() -> void:
+func _build_everfrost(hero: String) -> void:
 	var fx: Control = EVERFROST_FX.new()
 	add_child(fx)
-	fx.build(self, _background)
+	fx.build(self, _background, hero)
 	_zone = "everfrost"

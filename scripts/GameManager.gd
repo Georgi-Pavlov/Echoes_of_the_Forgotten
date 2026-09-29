@@ -1132,10 +1132,10 @@ var zones: Dictionary = {
 				},
 			},
 			{
-				"id": "tusk",
-				"name": "Tusk",
-				"image": "res://assets/heroes/Tusk.png",
-				"background": "res://assets/zones/the_everfrost_tusk.png",
+				"id": "skarn",
+				"name": "Skarn",
+				"image": "res://assets/heroes/Skarn.png",
+				"background": "res://assets/zones/the_everfrost_skarn.jpg",
 				"range_type": "Melee",
 				"main_stat": "Strength",
 				"stats": {
@@ -1151,10 +1151,10 @@ var zones: Dictionary = {
 				},
 				"skills": [
 					{
-						"id": "ice_shards",
-						"name": "Ice Shards",
+						"id": "frostbound_rupture",
+						"name": "Frostbound Rupture",
 						"type": "standard",
-						"description": "Launches a ball of frozen energy at an enemy within range, dealing damage to it and freezing a line of columns - starting on Tusk's own column and continuing toward the target - for the duration. Enemies already inside a frozen column can't move at all, and none can move into one; they can still attack in range, cast skills, and use items.",
+						"description": "Unleashes a surge of frozen force toward an enemy, dealing damage and freezing a line of columns from Skarn's position toward the target. Enemies caught within the frozen ground cannot move, and no enemy can enter the frozen columns for the duration. Attacks, skills, and items can still be used normally.",
 						"levels": [
 							{"damage": 70, "blocked_columns": 2, "duration": 2, "range": 4, "mana_cost": 70, "cooldown": 4},
 							{"damage": 110, "blocked_columns": 3, "duration": 2, "range": 4, "mana_cost": 95, "cooldown": 4},
@@ -1163,10 +1163,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "snowball",
-						"name": "Snowball",
+						"id": "charge",
+						"name": "Charge",
 						"type": "standard",
-						"description": "Rolls into a snowball and charges an enemy within range, dealing damage and stunning it on impact.",
+						"description": "Skarn locks onto an enemy within range, becoming completely focused on his prey before charging directly at it. He crashes into the target, dealing damage and stunning it on impact.",
 						"levels": [
 							{"damage": 85, "stun_turns": 1, "range": 2, "mana_cost": 90, "cooldown": 5},
 							{"damage": 130, "stun_turns": 1, "range": 3, "mana_cost": 115, "cooldown": 5},
@@ -1175,10 +1175,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "tag_team",
-						"name": "Tag Team",
+						"id": "bestial_rage",
+						"name": "Bestial Rage",
 						"type": "standard",
-						"description": "Adds bonus damage to the hero's own Attacks for the duration.",
+						"description": "Skarn succumbs to his primal fury, entering a savage rage that empowers his Attacks with increased damage for the duration.",
 						"levels": [
 							{"bonus_damage": 30, "duration": 3, "mana_cost": 60, "cooldown": 5},
 							{"bonus_damage": 50, "duration": 3, "mana_cost": 80, "cooldown": 5},
@@ -1187,10 +1187,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "walrus_punch",
-						"name": "Walrus Punch",
+						"id": "glacier_breaker",
+						"name": "Glacier Breaker",
 						"type": "ultimate",
-						"description": "Ultimate: a critical-strike punch on an enemy at melee range, dealing a multiple of the hero's own Attack damage and knocking it back. If the knockback is cut short by the edge of the board or another enemy in the way, it takes 50% bonus damage on top for slamming into it - then it's stunned in place either way.",
+						"description": "Ultimate: Skarn delivers a devastating melee strike, dealing a multiple of his own Attack damage and violently knocking the enemy backward. If the enemy's movement is stopped by the edge of the battlefield or another enemy, it suffers additional impact damage and is stunned. The enemy is stunned after the knockback either way.",
 						"levels": [
 							{"damage_multiplier": 2.0, "knockback": 2, "stun_turns": 1, "mana_cost": 150, "cooldown": 8},
 							{"damage_multiplier": 2.5, "knockback": 3, "stun_turns": 1, "mana_cost": 200, "cooldown": 9},

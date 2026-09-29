@@ -55,22 +55,22 @@ class_name EnemySkillRange
 #     instead of pulling from level data (which would otherwise
 #     silently grab the AoE radius field instead - see that function's
 #     own comment).
-#   - Ice Shards/Snowball (both Tusk's): targeted casts with their own
+#   - Frostbound Rupture/Charge (both Skarn's): targeted casts with their own
 #     per-level `range` field, same "distance <= radius" comparison as
-#     Mark of Stillness's own - Tusk himself fights at melee range, but both are
+#     Mark of Stillness's own - Skarn himself fights at melee range, but both are
 #     thrown/charged well past it.
-#   - Walrus Punch (Tusk's ultimate): strictly melee range (same column
+#   - Glacier Breaker (Skarn's ultimate): strictly melee range (same column
 #     as the player, sharing his own basic-attack reach for "melee" - 0
 #     columns) rather than any range/radius field of its own, mirroring
-#     the player's own _start_walrus_punch_targeting()'s "shares his own
+#     the player's own _start_glacier_breaker_targeting()'s "shares his own
 #     column" requirement - so this uses the same attack_range fallback
 #     Thornbind/Whisper of the Veil do, just against a hero whose own type is
-#     always "melee" (see GameManager's own Tusk entry), where that
+#     always "melee" (see GameManager's own Skarn entry), where that
 #     fallback is always 0 anyway.
 #   - Leech Seed (Treant Protector's): a targeted cast with its own
 #     per-level `range` field (a constant 2 per the design doc), same
-#     "distance <= radius" comparison as Mark of Stillness's/Ice Shards'/
-#     Snowball's own.
+#     "distance <= radius" comparison as Mark of Stillness's/Frostbound Rupture'/
+#     Charge's own.
 #   - Whirling Death (Timbersaw's): an AoE centered on the caster, same
 #     shape as Abyssal Spasm's own - in range whenever the player is within
 #     the skill's own `radius` field. It has no `range` field of its
@@ -92,7 +92,7 @@ class_name EnemySkillRange
 #     described as "within normal attack range" (Snapfire's own is
 #     always "range" type, so that's a real reach, not melee), so both
 #     use the rival's own basic-attack range instead, same fallback
-#     Thornbind/Whisper of the Veil/Walrus Punch already use.
+#     Thornbind/Whisper of the Veil/Glacier Breaker already use.
 #   - Scatterblast (Snapfire's): DIRECTIONAL, not a plain "distance <=
 #     radius" check the way every other AoE skill above is - it only
 #     reaches the player when they're AHEAD of the rival in whichever
@@ -127,7 +127,7 @@ class_name EnemySkillRange
 # shape Overgrowth's/The Frost Tempest's own self-cast ultimates already use
 # (see EnemySkillAI's own _naga_song_of_the_siren_modifier(), which reads
 # `target_distance` itself). Mirror Image is a self-buff with no target
-# of its own to reach at cast time at all, same as Tag Team/Nature's
+# of its own to reach at cast time at all, same as Bestial Rage/Nature's
 # Guise/Living Armor above. Rip Tide is passive and never even reaches
 # this file, same as Reactive Armor/Frostborn.
 # Slardar's Slithereen Crush follows Song of the Siren's own precedent
@@ -156,7 +156,7 @@ class_name EnemySkillRange
 # are both passive and never even reach this file.
 # Every other known skill (Leeching Hunger, Depthsveil, Wildbond,
 # Beast of the Elderwild, Elderwild Companion, Veil of the Forgotten, Frostbound Fangs, The Test of
-# Time, Frost Daughter's own The Frost Tempest, Tusk's own Tag Team, and
+# Time, Frost Daughter's own The Frost Tempest, Skarn's own Bestial Rage, and
 # Treant Protector's own Nature's Guise/Living Armor/Overgrowth) is a
 # self-buff/summon/AoE with no target to range-check, so this always
 # reports those as in range - The Frost Tempest/Overgrowth in particular
@@ -164,7 +164,7 @@ class_name EnemySkillRange
 # _fd_frost_tempest_modifier()/_tp_overgrowth_modifier()), never a
 # selected enemy's, so there's nothing here to check range against in
 # the first place, exactly like every other self-cast skill in this
-# list; Tag Team/Nature's Guise/Living Armor are simpler still - no
+# list; Bestial Rage/Nature's Guise/Living Armor are simpler still - no
 # target of their own to reach at cast time at all (Nature's Guise's own
 # "attack from stealth" follow-up reuses the player's normal Attack
 # range/targeting, not a skill-cast range check here). Timbersaw's own
@@ -179,7 +179,7 @@ class_name EnemySkillRange
 # _snapfire_firesnap_cookie_modifier()), never a candidacy gate here.
 # ============================================================
 
-const RANGE_CHECKED_SKILL_IDS: Array[String] = ["abyssal_spasm", "thornbind", "whisper_of_the_veil", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "ice_shards", "snowball", "walrus_punch", "leech_seed", "whirling_death", "timber_chain", "chakram", "lil_shredder", "mortimer_kisses", "scatterblast", "ensnare", "corrosive_haze", "sacred_arrow", "lucent_beam"]
+const RANGE_CHECKED_SKILL_IDS: Array[String] = ["abyssal_spasm", "thornbind", "whisper_of_the_veil", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "frostbound_rupture", "charge", "glacier_breaker", "leech_seed", "whirling_death", "timber_chain", "chakram", "lil_shredder", "mortimer_kisses", "scatterblast", "ensnare", "corrosive_haze", "sacred_arrow", "lucent_beam"]
 
 
 ## True if `skill_id` needs a range check at all before being cast -
@@ -200,9 +200,9 @@ static func requires_range_check(skill_id: String) -> bool:
 ## requires_range_check().
 static func is_in_range(skill_id: String, distance: int, radius: int, attack_range: int) -> bool:
 	match skill_id:
-		"abyssal_spasm", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "ice_shards", "snowball", "leech_seed", "whirling_death", "timber_chain", "chakram", "ensnare", "corrosive_haze", "sacred_arrow", "lucent_beam":
+		"abyssal_spasm", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "frostbound_rupture", "charge", "leech_seed", "whirling_death", "timber_chain", "chakram", "ensnare", "corrosive_haze", "sacred_arrow", "lucent_beam":
 			return distance <= radius
-		"thornbind", "whisper_of_the_veil", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "walrus_punch", "lil_shredder", "mortimer_kisses":
+		"thornbind", "whisper_of_the_veil", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "glacier_breaker", "lil_shredder", "mortimer_kisses":
 			return distance <= attack_range
 		_:
 			# scatterblast never reaches this generic chain - battle.gd's

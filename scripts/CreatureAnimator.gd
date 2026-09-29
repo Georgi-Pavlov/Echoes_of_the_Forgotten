@@ -152,6 +152,16 @@ const PROFILES := {
 		"glow_color": Color(0.55, 0.85, 1.0),
 		"edge_color": Color(0.6, 0.9, 1.0),
 	},
+	# Skarn - a huge horned beast of the Everfrost: slow, heaving breaths
+	# that swell his whole bulk, barely any sway, a cold blue glow when he
+	# strikes or casts.
+	"skarn": {
+		"breath_amount": 0.022, "breath_speed": 1.1,
+		"sway_amount": 0.006, "sway_speed": 0.5,
+		"ripple_amount": 0.0,
+		"glow_color": Color(0.55, 0.82, 1.0),
+		"edge_color": Color(0.6, 0.88, 1.0),
+	},
 	# Everfrost creeps - hulking ice trolls: heavy, deep breaths, their
 	# frozen crests of ice glinting cold blue when they strike or cast.
 	"everfrost_melee": {
@@ -317,6 +327,46 @@ func play_cast() -> void:
 	t.tween_property(_mat, _param("squash"), Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	t.parallel().tween_property(_mat, _param("action_offset"), Vector2.ZERO, 0.3).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 	t.parallel().tween_property(_mat, _param("glow_amount"), 0.0, 0.45)
+
+
+## Ground slam: rears up and stretches, then crashes down with a heavy
+## squash and recovers. The impact lands SLAM_IMPACT_TIME seconds in -
+## battle.gd times the slam's ground burst to that.
+const SLAM_IMPACT_TIME := 0.34
+
+func play_slam() -> void:
+	var t := _new_action_tween()
+	t.tween_property(_mat, _param("squash"), Vector2(0.93, 1.09), 0.26).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(_mat, _param("action_offset"), Vector2(0.0, -22.0), 0.26).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(_mat, _param("glow_amount"), 0.18, 0.26)
+	t.tween_property(_mat, _param("squash"), Vector2(1.14, 0.86), 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.parallel().tween_property(_mat, _param("action_offset"), Vector2(0.0, 6.0), 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_interval(0.06)
+	t.tween_property(_mat, _param("squash"), Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(_mat, _param("action_offset"), Vector2.ZERO, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(_mat, _param("glow_amount"), 0.0, 0.35)
+
+
+## A headlong charge: battle.gd snaps the node to where the charge ends;
+## this rushes the art there from `from_delta_x` px away (old x - new x)
+## over `duration`, accelerating, low and leaning into it with no hop,
+## then crashes to a stop with a squash.
+func play_charge(from_delta_x: float, duration: float) -> void:
+	if _move_tween != null and _move_tween.is_valid():
+		_move_tween.kill()
+	var dir := -signf(from_delta_x)
+	_mat.set_shader_parameter("move_offset", Vector2(from_delta_x, 0.0))
+	_move_tween = create_tween()
+	_move_tween.tween_property(_mat, _param("move_offset"), Vector2.ZERO, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	var t := _new_action_tween()
+	t.tween_property(_mat, _param("lean"), dir * 0.1, duration * 0.4).set_trans(Tween.TRANS_SINE)
+	t.parallel().tween_property(_mat, _param("squash"), Vector2(1.06, 0.95), duration * 0.4)
+	t.tween_interval(duration * 0.6)
+	# impact
+	t.tween_property(_mat, _param("squash"), Vector2(0.9, 1.08), 0.06)
+	t.parallel().tween_property(_mat, _param("lean"), -dir * 0.05, 0.06)
+	t.tween_property(_mat, _param("squash"), Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(_mat, _param("lean"), 0.0, 0.28).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 
 
 ## battle.gd snaps nodes straight to their new column; this slides the

@@ -29,19 +29,34 @@ var _offset := Vector2.ZERO
 var _time := 0.0
 # fire glows: [TextureRect, base alpha, phase]
 var _fires: Array = []
+var _background: TextureRect
+# Skarn: the exhale plume, blood drips (each {pos, y0, len, age, life, grow})
+var _breath: CPUParticles2D
+var _breath_phase := 0.0
+var _drips: Array[Dictionary] = []
+var _drip_layer: Node2D
 
 
-func build(_atm: Control, background: TextureRect) -> void:
+## `hero` = "frost_daughter" or "skarn" - both share the valley on the
+## right; each has its own effects on the left.
+func build(_atm: Control, background: TextureRect, hero: String = "frost_daughter") -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root = self
+	_background = background
 	_img_size = background.texture.get_size()
 	_scale = max(background.size.x / _img_size.x, background.size.y / _img_size.y)
 	_offset = (background.size - _img_size * _scale) * 0.5
-	_build_frost_daughter()
+	if hero == "skarn":
+		_build_skarn()
+	else:
+		_build_frost_daughter()
+	_build_valley()
 
 
 func _process(delta: float) -> void:
+	if _breath != null:
+		_process_skarn(delta)
 	if _fires.is_empty():
 		return
 	_time += delta
@@ -272,6 +287,11 @@ func _build_frost_daughter() -> void:
 	flakes.color_ramp = _ramp([0.0, 0.1, 0.7, 1.0], [
 		Color(0.85, 0.95, 1.0, 0.0), Color(0.85, 0.95, 1.0, 0.95), Color(0.85, 0.95, 1.0, 0.7), Color(0.85, 0.95, 1.0, 0.0)])
 
+
+
+# --- the valley (right side, the same in both heroes' art) --------------
+
+func _build_valley() -> void:
 	# --- drifting valley mist ---
 	# soft on every side: fades in from the top/bottom and the left/right
 	var band := Image.create(64, 64, false, Image.FORMAT_L8)
@@ -373,3 +393,143 @@ func _build_frost_daughter() -> void:
 		timer.start(total + randf_range(FD_GUST_GAP.x, FD_GUST_GAP.y))
 	timer.timeout.connect(fire_gust)
 	timer.start(randf_range(1.5, 3.0))
+
+
+# --- Skarn (the_everfrost_skarn.jpg) --------------------------------------
+
+const SK_MOUTH := Vector2(484, 262)        # the gaping maw, in image px
+const SK_BREATH_TIME := 1.4                # each exhale lasts this long
+# His body heaving: a slow swell of the art around his chest (the same
+# background shader Veyrik's screen uses, wobble off), the stats frame
+# kept still. He breathes out as the swell falls.
+const SK_BREATHE_CENTER_UV := Vector2(0.269, 0.345)
+const SK_BREATHE_RADIUS := 0.28            # in units of image height
+const SK_BREATHE_AMOUNT := 0.03
+const SK_BREATHE_PERIOD := 3.6
+const SK_FRAME_CALM_RECT := Vector4(0.0, 0.575, 0.49, 1.0)
+const BREATHE_SHADER := preload("res://shaders/underwater_ripple.gdshader")
+# Where the blood running down his horns gathers and drips from.
+const SK_BLOOD := [Vector2(342, 272), Vector2(268, 155), Vector2(647, 238),
+	Vector2(672, 244), Vector2(719, 226), Vector2(600, 210)]
+const SK_DRIP_EVERY := Vector2(0.6, 1.6)   # seconds between drops (any source)
+# The ice crystals on his shoulders and behind his head.
+const SK_CRYSTALS := [Rect2(37, 300, 125, 100), Rect2(719, 187, 93, 75), Rect2(737, 337, 69, 63), Rect2(250, 144, 44, 43)]
+const BLOOD := Color(0.62, 0.03, 0.04)
+const BLOOD_HI := Color(0.95, 0.35, 0.3)
+
+var _next_drip := 0.5
+
+
+func _build_skarn() -> void:
+	# --- his body heaving with each breath ---
+	var mat := ShaderMaterial.new()
+	mat.shader = BREATHE_SHADER
+	mat.set_shader_parameter("strength", 0.0)
+	mat.set_shader_parameter("breathe_center", SK_BREATHE_CENTER_UV)
+	mat.set_shader_parameter("breathe_radius", SK_BREATHE_RADIUS)
+	mat.set_shader_parameter("breathe_amount", SK_BREATHE_AMOUNT)
+	mat.set_shader_parameter("breathe_period", SK_BREATHE_PERIOD)
+	mat.set_shader_parameter("aspect", _img_size.x / _img_size.y)
+	mat.set_shader_parameter("calm_rect", SK_FRAME_CALM_RECT)
+	_background.material = mat
+
+	# --- his breath steaming out of the open maw as the swell falls ---
+	_breath = CPUParticles2D.new()
+	_breath.position = _px(SK_MOUTH)
+	_breath.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	_breath.emission_rect_extents = Vector2(18.0, 10.0) * _scale
+	_breath.texture = _radial(Color.WHITE, Color(1, 1, 1, 0), 0.0, 64)
+	_breath.amount = 70
+	_breath.lifetime = 2.0
+	_breath.lifetime_randomness = 0.3
+	_breath.direction = Vector2(0.15, 1)
+	_breath.spread = 35.0
+	_breath.gravity = Vector2(0, -8) * _scale          # vapour slows and lifts as it cools
+	_breath.initial_velocity_min = 40.0 * _scale
+	_breath.initial_velocity_max = 75.0 * _scale
+	_breath.damping_min = 30.0 * _scale
+	_breath.damping_max = 45.0 * _scale
+	_breath.scale_amount_min = 0.7 * _scale
+	_breath.scale_amount_max = 1.1 * _scale
+	var grow := Curve.new()
+	grow.add_point(Vector2(0.0, 0.35))
+	grow.add_point(Vector2(1.0, 2.4))
+	_breath.scale_amount_curve = grow
+	_breath.color_ramp = _ramp([0.0, 0.15, 0.6, 1.0], [
+		Color(0.92, 0.96, 1.0, 0.0), Color(0.92, 0.96, 1.0, 0.6), Color(0.88, 0.94, 1.0, 0.34), Color(0.88, 0.94, 1.0, 0.0)])
+	_breath.emitting = false
+	_root.add_child(_breath)
+	_breath_phase = _shader_phase()
+
+	# --- the ice crystals on his shoulders catching the light ---
+	for r in SK_CRYSTALS:
+		var rect: Rect2 = r
+		var glints := _particles_in(rect.position, rect.end)
+		glints.texture = _sparkle()
+		glints.material = _additive()
+		glints.amount = maxi(3, int(rect.get_area() / 1800.0))
+		glints.lifetime = 1.2
+		glints.preprocess = 1.2
+		glints.lifetime_randomness = 0.5
+		glints.gravity = Vector2.ZERO
+		glints.initial_velocity_min = 0.0
+		glints.initial_velocity_max = 0.0
+		glints.angle_min = 0.0
+		glints.angle_max = 45.0
+		glints.scale_amount_min = 0.4 * _scale
+		glints.scale_amount_max = 0.9 * _scale
+		glints.scale_amount_curve = _twinkle_curve()
+		glints.color = Color(0.82, 0.94, 1.0, 0.95)
+
+	# --- blood gathering and dripping off his horns ---
+	_drip_layer = Node2D.new()
+	_drip_layer.draw.connect(_draw_drips)
+	_root.add_child(_drip_layer)
+
+
+## 0..1 through the background shader's breathing cycle - the shader
+## runs on the engine clock, so the exhale can be timed to the swell.
+func _shader_phase() -> float:
+	return fposmod(Time.get_ticks_msec() / 1000.0, SK_BREATHE_PERIOD) / SK_BREATHE_PERIOD
+
+
+func _process_skarn(delta: float) -> void:
+	# Breathe out as the chest starts to fall (the swell peaks at half-way).
+	var phase := _shader_phase()
+	if _breath_phase < 0.5 and phase >= 0.5:
+		_breath.emitting = true
+		var stop := _breath.create_tween()
+		stop.tween_interval(SK_BREATH_TIME)
+		stop.tween_callback(func(): _breath.emitting = false)
+	_breath_phase = phase
+
+	_next_drip -= delta
+	if _next_drip <= 0.0:
+		_next_drip = randf_range(SK_DRIP_EVERY.x, SK_DRIP_EVERY.y)
+		var src: Vector2 = SK_BLOOD[randi() % SK_BLOOD.size()]
+		_drips.append({"pos": _px(src), "vel": 0.0, "age": 0.0, "grow": randf_range(0.6, 1.1),
+			"fall": randf_range(40.0, 95.0) * _scale, "y0": _px(src).y, "size": randf_range(2.6, 3.8) * _scale * 1.3})
+	for d in _drips:
+		d.age += delta
+		if d.age > d.grow:   # swollen enough: it lets go and falls
+			d.vel += 260.0 * _scale * delta
+			d.pos.y += d.vel * delta
+	_drips = _drips.filter(func(d): return d.pos.y - d.y0 < d.fall)
+	_drip_layer.queue_redraw()
+
+
+func _draw_drips() -> void:
+	for d in _drips:
+		var p: Vector2 = d.pos
+		var r: float = d.size
+		if d.age <= d.grow:
+			# swelling at the tip of the streak
+			r *= lerpf(0.4, 1.0, d.age / d.grow)
+			_drip_layer.draw_circle(p + Vector2(0, r * 0.6), r, BLOOD)
+		else:
+			# a falling drop, stretched by its speed, fading near the end
+			var fade := 1.0 - smoothstep(0.7, 1.0, (p.y - d.y0) / d.fall)
+			var tail: float = clampf(d.vel * 0.03, 0.0, r * 3.0)
+			_drip_layer.draw_line(p - Vector2(0, tail), p, Color(BLOOD, fade), r * 1.2, true)
+			_drip_layer.draw_circle(p, r, Color(BLOOD, fade))
+			_drip_layer.draw_circle(p - Vector2(r * 0.3, r * 0.3), r * 0.35, Color(BLOOD_HI, 0.7 * fade))

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://lmixwcjrwdeq"
-path="res://.godot/imported/the_everfrost_tusk.png-8ddfeff475f7a023569209a94e5fdc6f.ctex"
+uid="uid://dvrsljjwk5fwp"
+path="res://.godot/imported/Skarn.png-3e259397e773d09858ee582249a3c748.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/zones/the_everfrost_tusk.png"
-dest_files=["res://.godot/imported/the_everfrost_tusk.png-8ddfeff475f7a023569209a94e5fdc6f.ctex"]
+source_file="res://assets/heroes/Skarn.png"
+dest_files=["res://.godot/imported/Skarn.png-3e259397e773d09858ee582249a3c748.ctex"]
 
 [params]
 

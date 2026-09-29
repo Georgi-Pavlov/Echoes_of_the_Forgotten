@@ -76,6 +76,7 @@ const ANIMATED_CREATURE_PROFILES := {
 	"frostspire_melee_2": "frostspire_melee",
 	"frostspire_range": "frostspire_range",
 	"frost_daughter": "frost_daughter",
+	"skarn": "skarn",
 	"the_everfrost_melee": "everfrost_melee",
 	"the_everfrost_melee_2": "everfrost_melee",
 	"the_everfrost_range": "everfrost_range",
@@ -297,22 +298,21 @@ const HERO_ILLUSION_ALPHA := 0.45
 # of skill level - reverted back to the hero's own normal image
 # (_hero_static.image) once it ends (see _end_the_test_of_time()).
 
-# Tusk's Snowball (see _resolve_snowball_cast()) shows this art for the
-# hero's portrait while he's charging across the board, reverted back
-# to his own normal image once he lands on the target (see
-# _end_snowball_animation()) - a purely visual flourish, same "instant,
-# already-resolved damage, cosmetic animation on top" split The Sunken One's
-# own travel already uses.
-const SNOWBALL_IMAGE_PATH := "res://assets/heroes skills/Tusk_Snowball.png"
-# How long the charge takes to visually cross the screen.
-const SNOWBALL_TRAVEL_DURATION := 0.4
+# Skarn's Charge (see _play_charge()): how long he stays locked onto his
+# prey with the battlefield dimmed around the two of them, and how long
+# the charge itself takes (base + per column crossed).
+const CHARGE_LOCK_ON_TIME := 0.8
+const CHARGE_TRAVEL_BASE := 0.16
+const CHARGE_TRAVEL_PER_COLUMN := 0.07
+const CHARGE_DIM_ALPHA := 0.62
+const CHARGE_LOCK_COLOR := Color(1.0, 0.25, 0.2)
 
 # Luna's Lucent Beam (see _play_lucent_beam_impact()) has no dedicated
 # art asset, unlike the skills above - drawn instead as a plain pale
 # moonlight-colored ColorRect that grows downward from above the target
 # onto it, purely cosmetic and played alongside the instant,
 # already-resolved damage (_resolve_lucent_beam_cast()) rather than
-# gating it, same split as The Sunken One's/Snowball's own animation above.
+# gating it, same split as The Sunken One's/Charge's own animation above.
 const LUCENT_BEAM_COLOR := Color(1.5, 1.6, 2.0, 0.85)
 const LUCENT_BEAM_WIDTH := 14.0
 const LUCENT_BEAM_FALL_HEIGHT := 220.0
@@ -385,14 +385,14 @@ const SLITHEREEN_CRUSH_ROCK_COLOR := Color(0.42, 0.36, 0.3, 1.0)
 const SLITHEREEN_CRUSH_WAVE_SECONDS := 0.35
 const SACRED_ARROW_DURATION_PER_COLUMN := 0.025
 
-# Tusk's Walrus Punch (see _resolve_walrus_punch_cast()) deliberately
-# flips Snowball's/The Sunken One's own "instant, already-resolved outcome,
+# Skarn's Glacier Breaker (see _resolve_glacier_breaker_cast()) deliberately
+# flips Charge's/The Sunken One's own "instant, already-resolved outcome,
 # cosmetic animation layered on top" split: the knockback slide plays
 # FIRST, then damage/death/stun are only resolved once it finishes (see
-# _resolve_walrus_punch_damage()) - so a lethal punch still visibly
+# _resolve_glacier_breaker_damage()) - so a lethal punch still visibly
 # sends the target flying before it drops, instead of it just vanishing
 # on the spot mid-hit.
-const WALRUS_PUNCH_KNOCKBACK_DURATION := 0.35
+const GLACIER_BREAKER_KNOCKBACK_DURATION := 0.35
 
 var _hero_static: Dictionary = {}   # full definition from GameManager (stats, skills, image)
 var _recruited: Dictionary = {}     # saved state from PlayerManager (current hp/mana/xp, chosen skill)
@@ -721,10 +721,10 @@ var _eclipse_duration_pending_start: bool = false
 var _chakram: Dictionary = {}
 
 # ------------------------------------------------------------------
-# Tusk's Ice Shards: on cast, deals a straight instant hit to the
+# Skarn's Frostbound Rupture: on cast, deals a straight instant hit to the
 # target, then walls off a line of columns - starting on the hero's OWN
 # column and continuing toward the target, `blocked_columns` of them
-# total - for the duration (see _is_column_ice_shards_blocked(),
+# total - for the duration (see _is_column_frostbound_rupture_blocked(),
 # checked from every plain-movement decision in _enemy_turn()/
 # _enemy_hero_turn()). Fixed at cast time, unlike The Frost Tempest's own
 # radius - the wall doesn't follow the hero if he moves afterward.
@@ -732,43 +732,43 @@ var _chakram: Dictionary = {}
 # outright - there's nothing to give back, same as Frostbound Fangs/The Hunger
 # Calls.
 # ------------------------------------------------------------------
-var _ice_shards_active: bool = false
-var _ice_shards_blocked_columns: Array[int] = []
-var _ice_shards_turns_remaining: int = 0
-var _ice_shards_duration_pending_start: bool = false
+var _frostbound_rupture_active: bool = false
+var _frostbound_rupture_blocked_columns: Array[int] = []
+var _frostbound_rupture_turns_remaining: int = 0
+var _frostbound_rupture_duration_pending_start: bool = false
 
-# Ice Shards' walls (see _refresh_ice_shards_visuals()/
+# Frostbound Rupture's walls (see _refresh_frostbound_rupture_visuals()/
 # _build_ice_block()): drawn as a cluster of jagged ice crystals per
 # walled column rather than loaded from an image - the crystals' body/
 # facet/outline colors, how tall the block is relative to a creature,
 # and how many crystals make one up.
-const ICE_SHARDS_BODY_COLOR := Color(0.62, 0.85, 1.0, 0.72)
-const ICE_SHARDS_FACET_COLOR := Color(0.88, 0.97, 1.0, 0.8)
-const ICE_SHARDS_OUTLINE_COLOR := Color(0.4, 0.68, 0.95, 0.9)
-const ICE_SHARDS_HEIGHT_RATIO := 0.62
-const ICE_SHARDS_CRYSTALS_PER_BLOCK := 4
+const FROSTBOUND_RUPTURE_BODY_COLOR := Color(0.62, 0.85, 1.0, 0.72)
+const FROSTBOUND_RUPTURE_FACET_COLOR := Color(0.88, 0.97, 1.0, 0.8)
+const FROSTBOUND_RUPTURE_OUTLINE_COLOR := Color(0.4, 0.68, 0.95, 0.9)
+const FROSTBOUND_RUPTURE_HEIGHT_RATIO := 0.62
+const FROSTBOUND_RUPTURE_CRYSTALS_PER_BLOCK := 4
 
 # One ice block per currently-walled column (either side's - both use
 # the same visual), keyed by column, kept in sync by
-# _refresh_ice_shards_visuals() every time either side's own blocked-
+# _refresh_frostbound_rupture_visuals() every time either side's own blocked-
 # columns list changes: new columns get a block rising out of the
 # ground, columns no longer walled have theirs shatter, and columns
 # that stay walled keep theirs untouched. Keyed by column (not tracked
 # per side) so a column walled by both at once only ever gets one.
-var _ice_shards_wall_nodes: Dictionary = {}
+var _frostbound_rupture_wall_nodes: Dictionary = {}
 
 # ------------------------------------------------------------------
-# Tusk's Tag Team: a self-cast that adds a flat bonus_damage to the
+# Skarn's Bestial Rage: a self-cast that adds a flat bonus_damage to the
 # hero's own Attacks (folded into _roll_hero_damage(), same slot
 # Frostbound Fangs'/Leeching Hunger's/Beast of the Elderwild's own bonus damage use) for
 # the duration - no attack-count cap, unlike Frostbound Fangs, just a plain
 # turn-based buff. Same "casting turn doesn't count" pattern as every
-# other duration-based buff (see _tick_tag_team()).
+# other duration-based buff (see _tick_bestial_rage()).
 # ------------------------------------------------------------------
-var _tag_team_active: bool = false
-var _tag_team_bonus_damage: float = 0.0
-var _tag_team_turns_remaining: int = 0
-var _tag_team_duration_pending_start: bool = false
+var _bestial_rage_active: bool = false
+var _bestial_rage_bonus_damage: float = 0.0
+var _bestial_rage_turns_remaining: int = 0
+var _bestial_rage_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
 # Erynd's Elderwild Companion (elderwild_companion): a persistent ally
@@ -790,15 +790,15 @@ var _bear: Dictionary = {}
 # _choose_enemy_skill_on_bear() for how the AI picks between the two,
 # and each skill's own _cast_enemy_*_on_bear() for what it does to the
 # bear. Skills left out are either about the player's own position
-# (Undertow, The Sunken One/Timber Chain's line, Chakram's/Ice
-# Shards' placement, Mortimer Kisses' channel, Rimecleaver's area) or
+# (Undertow, The Sunken One/Timber Chain's line, Chakram's/Frostbound
+# Rupture' placement, Mortimer Kisses' channel, Rimecleaver's area) or
 # not targeted at all; those still reach the bear through their own
 # AoE collateral, same as before.
 const ENEMY_BEAR_TARGETABLE_SKILLS: Array[String] = [
 	"thornbind", "whisper_of_the_veil", "drowned_surge", "corrosive_haze", "sacred_arrow",
 	"lucent_beam", "ensnare", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold",
-	"return_to_the_void", "maddening_roar", "the_hunger_calls", "winters_grip", "snowball",
-	"walrus_punch", "leech_seed", "lil_shredder",
+	"return_to_the_void", "maddening_roar", "the_hunger_calls", "winters_grip", "charge",
+	"glacier_breaker", "leech_seed", "lil_shredder",
 ]
 
 # Set by _cast_enemy_skill() for the duration of one cast: true when
@@ -1153,30 +1153,30 @@ var _enemy_frost_tempest_radius: int = 0
 var _enemy_frost_tempest_turns_remaining: int = 0
 var _enemy_frost_tempest_duration_pending_start: bool = false
 
-# Tusk's Ice Shards, cast by the rival - mirrors the player's own
-# _resolve_ice_shards_cast()/_tick_ice_shards()/_end_ice_shards(): walls
+# Skarn's Frostbound Rupture, cast by the rival - mirrors the player's own
+# _resolve_frostbound_rupture_cast()/_tick_frostbound_rupture()/_end_frostbound_rupture(): walls
 # off `blocked_columns` columns, starting on the rival's OWN column and
 # continuing toward the player's, for the duration - see
-# _is_column_enemy_ice_shards_blocked(), checked from _hero_move() so
+# _is_column_enemy_frostbound_rupture_blocked(), checked from _hero_move() so
 # the player can't step into (or act from within) a walled column,
-# mirroring how the player's own _is_column_ice_shards_blocked() gates
+# mirroring how the player's own _is_column_frostbound_rupture_blocked() gates
 # every enemy's own movement in _enemy_turn()/_enemy_hero_turn(). Never
 # blocks the RIVAL's own movement - same asymmetry the player's own copy
 # already has (see _hero_move(), which never checks its own wall).
-var _enemy_ice_shards_active: bool = false
-var _enemy_ice_shards_blocked_columns: Array[int] = []
-var _enemy_ice_shards_turns_remaining: int = 0
-var _enemy_ice_shards_duration_pending_start: bool = false
+var _enemy_frostbound_rupture_active: bool = false
+var _enemy_frostbound_rupture_blocked_columns: Array[int] = []
+var _enemy_frostbound_rupture_turns_remaining: int = 0
+var _enemy_frostbound_rupture_duration_pending_start: bool = false
 
-# Tusk's Tag Team, cast by the rival on himself - mirrors the player's
-# own _activate_tag_team()/_tick_tag_team()/_end_tag_team(): a flat
+# Skarn's Bestial Rage, cast by the rival on himself - mirrors the player's
+# own _activate_bestial_rage()/_tick_bestial_rage()/_end_bestial_rage(): a flat
 # bonus_damage added to _roll_enemy_hero_damage() for the duration, same
 # "add to the bonus sum" spot Frostbound Fangs' own bonus_damage already
 # occupies there.
-var _enemy_tag_team_active: bool = false
-var _enemy_tag_team_bonus_damage: float = 0.0
-var _enemy_tag_team_turns_remaining: int = 0
-var _enemy_tag_team_duration_pending_start: bool = false
+var _enemy_bestial_rage_active: bool = false
+var _enemy_bestial_rage_bonus_damage: float = 0.0
+var _enemy_bestial_rage_turns_remaining: int = 0
+var _enemy_bestial_rage_duration_pending_start: bool = false
 
 # Treant Protector's Nature's Guise, cast by the rival on himself -
 # mirrors the player's own _activate_natures_guise()/_tick_natures_
@@ -1583,23 +1583,23 @@ var _pending_rimecleaver_level_data: Dictionary = {}
 # actually clicked (_resolve_winters_grip_cast()).
 var _pending_winters_grip_level_data: Dictionary = {}
 
-# Tusk's Ice Shards, held the same way as every other targeted skill's
-# own pending level data above, from the moment _start_ice_shards_
+# Skarn's Frostbound Rupture, held the same way as every other targeted skill's
+# own pending level data above, from the moment _start_frostbound_rupture_
 # targeting() opens targeting until a target is actually clicked
-# (_resolve_ice_shards_cast()).
-var _pending_ice_shards_level_data: Dictionary = {}
+# (_resolve_frostbound_rupture_cast()).
+var _pending_frostbound_rupture_level_data: Dictionary = {}
 
-# Tusk's Snowball, held the same way as every other targeted skill's
-# own pending level data above, from the moment _start_snowball_
+# Skarn's Charge, held the same way as every other targeted skill's
+# own pending level data above, from the moment _start_charge_
 # targeting() opens targeting until a target is actually clicked
-# (_resolve_snowball_cast()).
-var _pending_snowball_level_data: Dictionary = {}
+# (_resolve_charge_cast()).
+var _pending_charge_level_data: Dictionary = {}
 
-# Tusk's ultimate, Walrus Punch, held the same way as every other
+# Skarn's ultimate, Glacier Breaker, held the same way as every other
 # targeted skill's own pending level data above, from the moment
-# _start_walrus_punch_targeting() opens targeting until a target is
-# actually clicked (_resolve_walrus_punch_cast()).
-var _pending_walrus_punch_level_data: Dictionary = {}
+# _start_glacier_breaker_targeting() opens targeting until a target is
+# actually clicked (_resolve_glacier_breaker_cast()).
+var _pending_glacier_breaker_level_data: Dictionary = {}
 
 # Treant Protector's Leech Seed, held the same way as every other
 # targeted skill's own pending level data above, from the moment
@@ -1633,7 +1633,7 @@ const ENEMY_KNOWN_SKILL_IDS: Array[String] = [
 	"mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold", "return_to_the_void",
 	"frostbound_fangs", "maddening_roar", "the_test_of_time", "the_hunger_calls",
 	"rimecleaver", "winters_grip", "the_frost_tempest",
-	"ice_shards", "snowball", "tag_team", "walrus_punch",
+	"frostbound_rupture", "charge", "bestial_rage", "glacier_breaker",
 	"nature's_guise", "leech_seed", "living_armor", "overgrowth",
 	"whirling_death", "timber_chain", "chakram",
 	"scatterblast", "firesnap_cookie", "lil_shredder", "mortimer_kisses",
@@ -2173,14 +2173,14 @@ const ENEMY_STATUS_LABEL_COLOR := Color(1, 0.55, 0.3, 1)
 
 ## Every status effect currently on `enemy` that's worth calling out,
 ## as a comma-separated string ("" if none) - one entry per distinct
-## effect a player skill (or a wall the player's own Ice Shards put
+## effect a player skill (or a wall the player's own Frostbound Rupture put
 ## under its feet) can inflict directly on an enemy Dictionary. Mirrors
 ## _enemy_has_harmful_debuff()'s own field list (used for The Test of Time's
 ## AI scoring) plus the effects that helper doesn't need for that
 ## purpose - stun, Winter's Grip's/Leech Seed's/Overgrowth's own DoTs, and
-## an Ice-Shards-blocked column, which isn't a Dictionary field at all
+## an Frostbound-Rupture-blocked column, which isn't a Dictionary field at all
 ## but reads as "rooted" just the same since the enemy can't move
-## either way (see _is_column_ice_shards_blocked()).
+## either way (see _is_column_frostbound_rupture_blocked()).
 func _enemy_status_effect_text(enemy: Dictionary) -> String:
 	var effects: PackedStringArray = []
 
@@ -2206,7 +2206,7 @@ func _enemy_status_effect_text(enemy: Dictionary) -> String:
 	var cursed: bool = enemy.get("curse_active", false)
 	var silenced: bool = enemy.get("silence_turns_left", 0) > 0
 	var thornbound: bool = silenced and (not cursed or enemy.get("thornbind_dot_turns_left", 0) > 0)
-	var rooted: bool = enemy.get("root_turns_left", 0) > 0 or _is_column_ice_shards_blocked(enemy["pos_index"])
+	var rooted: bool = enemy.get("root_turns_left", 0) > 0 or _is_column_frostbound_rupture_blocked(enemy["pos_index"])
 	var overgrown: bool = enemy.get("overgrowth_dot_turns_left", 0) > 0
 
 	if thornbound:
@@ -2999,31 +2999,31 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 			return
 		"the_frost_tempest":
 			_activate_frost_tempest(level_data)
-		"ice_shards":
-			if not _start_ice_shards_targeting(level_data):
+		"frostbound_rupture":
+			if not _start_frostbound_rupture_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_ice_shards_cast), not here.
+			# click resolves (_resolve_frostbound_rupture_cast), not here.
 			return
-		"snowball":
-			if not _start_snowball_targeting(level_data):
+		"charge":
+			if not _start_charge_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_snowball_cast), not here.
+			# click resolves (_resolve_charge_cast), not here.
 			return
-		"tag_team":
-			_activate_tag_team(level_data)
-		"walrus_punch":
-			if not _start_walrus_punch_targeting(level_data):
+		"bestial_rage":
+			_activate_bestial_rage(level_data)
+		"glacier_breaker":
+			if not _start_glacier_breaker_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_walrus_punch_cast), not here.
+			# click resolves (_resolve_glacier_breaker_cast), not here.
 			return
 		"leech_seed":
 			if not _start_leech_seed_targeting(level_data):
@@ -3108,11 +3108,11 @@ func _cast_barbed_lunge(level_data: Dictionary) -> bool:
 		var next_pos: int = pos + direction
 		if next_pos < 0 or next_pos >= GRID_COLUMNS:
 			break
-		# A rival's Ice Shards wall stops the leap dead - it can't carry
+		# A rival's Frostbound Rupture wall stops the leap dead - it can't carry
 		# the hero past a blocked column, same "can't step into one"
 		# rule _melee_move_target()/_ranged_move_target() already
 		# enforce for a normal move.
-		if _is_column_enemy_ice_shards_blocked(next_pos):
+		if _is_column_enemy_frostbound_rupture_blocked(next_pos):
 			break
 		pos = next_pos
 
@@ -3419,7 +3419,7 @@ func _play_scatterblast_effect(origin_node: Control, direction: int, range_colum
 ## Snapfire's Firesnap Cookie: hops level_data.jump_distance columns in
 ## whatever direction she's currently facing (hero_image.flip_h, same
 ## convention Scatterblast reads), same move-distance rules
-## (board edge/Ice Shards wall, ranged-vs-melee straight-through-or-
+## (board edge/Frostbound Rupture wall, ranged-vs-melee straight-through-or-
 ## stop-on-enemy) as a normal move (see _hero_move()) - then, on
 ## landing, deals level_data.damage and stuns for level_data.stun_turns
 ## every enemy within level_data.radius columns of wherever she ends
@@ -3461,7 +3461,7 @@ func _activate_firesnap_cookie(level_data: Dictionary) -> void:
 ## of range_type (the unobstructed "walk straight through" rule
 ## _ranged_move_target() already uses for a ranged hero, applied here
 ## even for a melee one), stopping only at the board edge or a rival's
-## Ice Shards wall. No damage, no target required - always "succeeds",
+## Frostbound Rupture wall. No damage, no target required - always "succeeds",
 ## same as every other self-cast buff.
 func _activate_leap(level_data: Dictionary) -> void:
 	var jump_distance: int = int(level_data.get("jump_distance", 0))
@@ -3894,7 +3894,7 @@ func _pad_the_sunken_one_landings(landings: Array[Vector2], span: Vector2i) -> v
 ## `target`'s own pos_index (read after the damage above, but a dead
 ## enemy keeps its last "pos_index" around, so this still lands in the
 ## right spot even if the chain itself killed `target`) - UNLESS a
-## rival's Ice Shards wall sits somewhere in that path, in which case
+## rival's Frostbound Rupture wall sits somewhere in that path, in which case
 ## the pull itself stops one column short of it (the chain's damage
 ## above still reaches the full line regardless - only the hero's own
 ## physical landing spot is blocked).
@@ -3924,7 +3924,7 @@ func _resolve_timber_chain_cast(target: Dictionary, level_data: Dictionary) -> v
 
 	# The chain's own damage still reaches every enemy across the full
 	# line above (a magical effect, not the hero physically walking it)
-	# but a rival's Ice Shards wall in that same path stops the hero's
+	# but a rival's Frostbound Rupture wall in that same path stops the hero's
 	# own pull short of target's column - same "can't step into one"
 	# rule every other hero movement enforces, just walked one column
 	# at a time here instead of using _melee_move_target()/_ranged_
@@ -3934,7 +3934,7 @@ func _resolve_timber_chain_cast(target: Dictionary, level_data: Dictionary) -> v
 	var landing_pos: int = _hero_pos_index
 	while chain_direction != 0 and landing_pos != target["pos_index"]:
 		var next_pos: int = landing_pos + chain_direction
-		if _is_column_enemy_ice_shards_blocked(next_pos):
+		if _is_column_enemy_frostbound_rupture_blocked(next_pos):
 			break
 		landing_pos = next_pos
 
@@ -6349,7 +6349,7 @@ func _maybe_consume_bash_of_the_deep_stack() -> Dictionary:
 ## Knocks `target` back this level's own `knockback` columns, away from
 ## the hero (his current facing, hero_image.flip_h) - stopping early at
 ## the board edge or another enemy already occupying the next column,
-## same rules Walrus Punch's own knockback follows, just without that
+## same rules Glacier Breaker's own knockback follows, just without that
 ## ultimate's own wall-bonus-damage/stun/animated-slide flourishes
 ## (this is a passive proc off a plain Attack, not its own cast).
 ## Repositions instantly via _move_enemy(), the same helper regular
@@ -6619,10 +6619,10 @@ func _end_eclipse() -> void:
 
 
 # ------------------------------------------------------------------
-# Tusk's Ice Shards.
+# Skarn's Frostbound Rupture.
 # ------------------------------------------------------------------
 
-## Resolves an Ice Shards cast on `target`: `level_data.damage` to
+## Resolves a Frostbound Rupture cast on `target`: `level_data.damage` to
 ## `target` (still mitigated by its own armor, via _deal_fixed_damage_
 ## to_enemy() - same helper every other targeted skill uses), then
 ## walls off `level_data.blocked_columns` columns for `level_data.
@@ -6630,12 +6630,37 @@ func _end_eclipse() -> void:
 ## one column at a time toward `target`'s, stopping early if that walk
 ## would run off either edge of the board. Recasting while a previous
 ## wall is still up simply replaces it outright.
-func _resolve_ice_shards_cast(target: Dictionary, level_data: Dictionary) -> void:
+func _resolve_frostbound_rupture_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
+	# Mana and cooldown are spent right away; nothing else happens this
+	# turn while Skarn slams the ground - the shards, hit and walls all
+	# come out of that slam (_play_ground_slam()).
+	var mana_cost: float = float(level_data.get("mana_cost", 0))
+	spend_mana(mana_cost)
+	_skill_cooldowns["frostbound_rupture"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("frostbound_rupture", _skill_cooldowns["frostbound_rupture"])
+	_refresh_skill_cooldown_labels()
+	_has_acted_this_turn = true
+	_update_action_buttons()
+
+	_play_ground_slam(hero_image, func() -> void:
+		if _battle_over or _stage_generation != generation_before:
+			return
+		if not _enemies.any(func(e: Dictionary) -> bool: return is_same(e, target)):
+			_mark_turn_used()
+			return
+		_land_frostbound_rupture(target, level_data)
+	)
+
+
+## The part of a Frostbound Rupture cast that comes out of the slam: the
+## shards fly, `target` takes the hit and the columns wall off.
+func _land_frostbound_rupture(target: Dictionary, level_data: Dictionary) -> void:
+	var generation_before: int = _stage_generation
 	var damage: float = float(level_data.get("damage", 0))
 	# Thrown before the hit lands - it may kill (and free) the target.
-	_play_ice_shards_hit(hero_image, target.get("node"))
+	_play_frostbound_rupture_hit(hero_image, target.get("node"))
 	_deal_fixed_damage_to_enemy(target, damage)
 
 	var direction: int = _step_toward(_hero_pos_index, target["pos_index"])
@@ -6651,20 +6676,14 @@ func _resolve_ice_shards_cast(target: Dictionary, level_data: Dictionary) -> voi
 		columns.append(col)
 		col += direction
 
-	_ice_shards_active = true
-	_ice_shards_blocked_columns = columns
-	_ice_shards_turns_remaining = int(level_data.get("duration", 0))
+	_frostbound_rupture_active = true
+	_frostbound_rupture_blocked_columns = columns
+	_frostbound_rupture_turns_remaining = int(level_data.get("duration", 0))
 	# The casting turn itself doesn't count - duration only starts
-	# ticking from the turn after (see _tick_ice_shards()), same as
+	# ticking from the turn after (see _tick_frostbound_rupture()), same as
 	# every other duration-based effect.
-	_ice_shards_duration_pending_start = true
-	_refresh_ice_shards_visuals()
-
-	var mana_cost: float = float(level_data.get("mana_cost", 0))
-	spend_mana(mana_cost)
-	_skill_cooldowns["ice_shards"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("ice_shards", _skill_cooldowns["ice_shards"])
-	_refresh_skill_cooldown_labels()
+	_frostbound_rupture_duration_pending_start = true
+	_refresh_frostbound_rupture_visuals()
 
 	if _battle_over or _stage_generation != generation_before:
 		return
@@ -6672,35 +6691,84 @@ func _resolve_ice_shards_cast(target: Dictionary, level_data: Dictionary) -> voi
 	_mark_turn_used()
 
 
-## Ticks Ice Shards' duration down once per End Turn, same timing (and
+## Purely cosmetic: `node` (a hero's sprite) rears up and slams the
+## ground (CreatureAnimator.play_slam()); on impact the screen shakes,
+## a burst of ice and snow erupts at its feet and cracks of frost race
+## out across the ground - then `on_impact` fires. Fires right away if
+## the sprite is gone, so the caller's turn flow never stalls.
+func _play_ground_slam(node: Variant, on_impact: Callable) -> void:
+	if not is_instance_valid(node) or not (node is Control):
+		on_impact.call()
+		return
+	var animator := CreatureAnimator.of(node)
+	if animator != null:
+		animator.play_slam()
+	var feet: Vector2 = node.global_position - global_position + Vector2(node.size.x * 0.5, node.size.y * 0.96)
+	var width: float = node.size.x
+	get_tree().create_timer(CreatureAnimator.SLAM_IMPACT_TIME if animator != null else 0.0).timeout.connect(func() -> void:
+		if not is_inside_tree():
+			return
+		_shake_screen()
+		_play_orb_impact(feet, FROSTBOUND_RUPTURE_FACET_COLOR, 1.6)
+		var cracks := Node2D.new()
+		cracks.position = feet
+		add_child(cracks)
+		move_child(cracks, enemies_layer.get_index())
+		var lines: Array = []
+		for i in 9:
+			var ang: float = TAU * (float(i) + randf_range(0.2, 0.8)) / 9.0
+			var pts := PackedVector2Array([Vector2.ZERO])
+			var p := Vector2.ZERO
+			for k in 4:
+				p += Vector2.from_angle(ang + randf_range(-0.35, 0.35)) * width * randf_range(0.12, 0.2) * Vector2(1.0, 0.3)
+				pts.append(p)
+			lines.append(pts)
+		var grow := [0.0]
+		cracks.draw.connect(func() -> void:
+			for pts in lines:
+				var n: int = maxi(2, int(ceil(pts.size() * grow[0])))
+				cracks.draw_polyline(pts.slice(0, n), Color(0.85, 0.95, 1.0, 0.9), 2.2, true)
+		)
+		var tw := cracks.create_tween()
+		tw.tween_method(func(v: float) -> void:
+			grow[0] = v
+			cracks.queue_redraw(), 0.0, 1.0, 0.18)
+		tw.tween_interval(0.35)
+		tw.tween_property(cracks, "modulate:a", 0.0, 0.4)
+		tw.tween_callback(cracks.queue_free)
+		on_impact.call()
+	)
+
+
+## Ticks Frostbound Rupture's duration down once per End Turn, same timing (and
 ## same "the casting turn doesn't count" skip) as every other duration-
 ## based effect.
-func _tick_ice_shards() -> void:
-	if not _ice_shards_active:
+func _tick_frostbound_rupture() -> void:
+	if not _frostbound_rupture_active:
 		return
 
-	if _ice_shards_duration_pending_start:
-		_ice_shards_duration_pending_start = false
+	if _frostbound_rupture_duration_pending_start:
+		_frostbound_rupture_duration_pending_start = false
 		return
 
-	_ice_shards_turns_remaining -= 1
-	if _ice_shards_turns_remaining <= 0:
-		_end_ice_shards()
+	_frostbound_rupture_turns_remaining -= 1
+	if _frostbound_rupture_turns_remaining <= 0:
+		_end_frostbound_rupture()
 
 
-## Ends Ice Shards once its duration runs out - the walled-off columns
+## Ends Frostbound Rupture once its duration runs out - the walled-off columns
 ## reopen to movement immediately.
-func _end_ice_shards() -> void:
-	_ice_shards_active = false
-	_ice_shards_blocked_columns = []
-	_ice_shards_turns_remaining = 0
-	_ice_shards_duration_pending_start = false
-	_refresh_ice_shards_visuals()
+func _end_frostbound_rupture() -> void:
+	_frostbound_rupture_active = false
+	_frostbound_rupture_blocked_columns = []
+	_frostbound_rupture_turns_remaining = 0
+	_frostbound_rupture_duration_pending_start = false
+	_refresh_frostbound_rupture_visuals()
 
 
 ## Keeps the on-screen ice blocks in sync with whatever's actually
-## walled off right now, on either side (the player's own Ice Shards and
-## a rival Tusk's both use the same look) - called from every place
+## walled off right now, on either side (the player's own Frostbound Rupture and
+## a rival Skarn's both use the same look) - called from every place
 ## either side's own blocked-columns list changes (cast, natural expiry,
 ## a recast replacing the old columns). Columns newly walled get a block
 ## rising out of the ground (_build_ice_block()), columns no longer
@@ -6710,26 +6778,26 @@ func _end_ice_shards() -> void:
 ## (drawing over the hero/enemy sprites without a z-order fight), so a
 ## creature standing in a walled column - very likely, both sides'
 ## walls always start on the caster's own column - still reads through.
-func _refresh_ice_shards_visuals() -> void:
+func _refresh_frostbound_rupture_visuals() -> void:
 	var columns: Array[int] = []
-	if _ice_shards_active:
-		columns.append_array(_ice_shards_blocked_columns)
-	if _enemy_ice_shards_active:
-		for col in _enemy_ice_shards_blocked_columns:
+	if _frostbound_rupture_active:
+		columns.append_array(_frostbound_rupture_blocked_columns)
+	if _enemy_frostbound_rupture_active:
+		for col in _enemy_frostbound_rupture_blocked_columns:
 			if col not in columns:
 				columns.append(col)
 
-	for col in _ice_shards_wall_nodes.keys():
+	for col in _frostbound_rupture_wall_nodes.keys():
 		if col not in columns:
-			_shatter_ice_block(_ice_shards_wall_nodes[col])
-			_ice_shards_wall_nodes.erase(col)
+			_shatter_ice_block(_frostbound_rupture_wall_nodes[col])
+			_frostbound_rupture_wall_nodes.erase(col)
 
 	var ground_y: float = _creature_y() + get_viewport_rect().size.y / 4.0
-	var block_height: float = get_viewport_rect().size.y / 4.0 * ICE_SHARDS_HEIGHT_RATIO
+	var block_height: float = get_viewport_rect().size.y / 4.0 * FROSTBOUND_RUPTURE_HEIGHT_RATIO
 	var block_width: float = _grid_unit() * 0.9
 	for i in columns.size():
 		var col: int = columns[i]
-		if _ice_shards_wall_nodes.has(col) and is_instance_valid(_ice_shards_wall_nodes[col]):
+		if _frostbound_rupture_wall_nodes.has(col) and is_instance_valid(_frostbound_rupture_wall_nodes[col]):
 			continue
 		var block: Node2D = _build_ice_block(block_width, block_height)
 		# Origin at the ground, so scaling it grows the ice up out of it.
@@ -6737,27 +6805,27 @@ func _refresh_ice_shards_visuals() -> void:
 		block.scale = Vector2(1.0, 0.0)
 		add_child(block)
 		move_child(block, enemies_layer.get_index() + 1)
-		_ice_shards_wall_nodes[col] = block
+		_frostbound_rupture_wall_nodes[col] = block
 
 		# Each new block bursts up in turn along the wall.
 		var rise: Tween = block.create_tween()
 		rise.tween_interval(i * 0.06)
 		rise.tween_callback(func() -> void:
-			_play_orb_impact(block.position, ICE_SHARDS_FACET_COLOR, 1.0)
+			_play_orb_impact(block.position, FROSTBOUND_RUPTURE_FACET_COLOR, 1.0)
 		)
 		rise.tween_property(block, "scale:y", 1.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
-## Purely cosmetic: Ice Shards' hit on its target - a volley of five
-## sharp ice shards flying from `from_node` (Tusk) to `to_node` (the
+## Purely cosmetic: Frostbound Rupture's hit on its target - a volley of five
+## sharp ice shards flying from `from_node` (Skarn) to `to_node` (the
 ## target), slightly spread and staggered, each pointed along its own
 ## flight. When the volley lands: an icy burst, the target's icy-blue
 ## flash, and a small ice spike (a miniature _build_ice_block()) erupting
 ## at its feet, which shatters a moment later. The walls themselves are
-## _refresh_ice_shards_visuals()'s. Start/end points are captured up
+## _refresh_frostbound_rupture_visuals()'s. Start/end points are captured up
 ## front, so a target killed by the hit still gets its volley and spike.
 ## Same layering as _play_scatterblast_effect().
-func _play_ice_shards_hit(from_node: Variant, to_node: Variant) -> void:
+func _play_frostbound_rupture_hit(from_node: Variant, to_node: Variant) -> void:
 	if not (from_node is Control) or not (to_node is Control):
 		return
 	if not is_instance_valid(from_node) or not is_instance_valid(to_node):
@@ -6775,7 +6843,7 @@ func _play_ice_shards_hit(from_node: Variant, to_node: Variant) -> void:
 		var shard := Polygon2D.new()
 		# A long, thin diamond pointing along +x.
 		shard.polygon = PackedVector2Array([Vector2(-11, 0), Vector2(0, -3.5), Vector2(13, 0), Vector2(0, 3.5)])
-		shard.color = ICE_SHARDS_FACET_COLOR
+		shard.color = FROSTBOUND_RUPTURE_FACET_COLOR
 		var shard_start: Vector2 = start + normal * randf_range(-10.0, 10.0)
 		var shard_end: Vector2 = end + normal * randf_range(-16.0, 16.0)
 		shard.position = shard_start
@@ -6790,7 +6858,7 @@ func _play_ice_shards_hit(from_node: Variant, to_node: Variant) -> void:
 		tween.tween_property(shard, "position", shard_end, flight_time).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		if i == shard_count - 1:
 			tween.tween_callback(func() -> void:
-				_play_orb_impact(end, ICE_SHARDS_FACET_COLOR, 1.4)
+				_play_orb_impact(end, FROSTBOUND_RUPTURE_FACET_COLOR, 1.4)
 				if is_instance_valid(to_node) and to_node is TextureRect:
 					_flash_bounce_hit(to_node, MARK_OF_STILLNESS_FLASH_COLOR)
 				_play_ice_spike(feet, target_width)
@@ -6800,8 +6868,8 @@ func _play_ice_shards_hit(from_node: Variant, to_node: Variant) -> void:
 
 
 ## A small ice spike erupting at `feet` under a unit about `unit_width`
-## px wide - a miniature Ice Shards block (_build_ice_block()) that
-## shoots up, holds for a beat, then shatters. Used for Ice Shards'
+## px wide - a miniature Frostbound Rupture block (_build_ice_block()) that
+## shoots up, holds for a beat, then shatters. Used for Frostbound Rupture'
 ## own hit on its target.
 func _play_ice_spike(feet: Vector2, unit_width: float) -> void:
 	var height: float = get_viewport_rect().size.y / 4.0 * 0.3
@@ -6816,15 +6884,15 @@ func _play_ice_spike(feet: Vector2, unit_width: float) -> void:
 	rise.tween_callback(func() -> void: _shatter_ice_block(spike, height, 1.0))
 
 
-## One Ice Shards block, `width` x `height` px, drawn from plain shapes
+## One Frostbound Rupture block, `width` x `height` px, drawn from plain shapes
 ## with its origin at the middle of its base (on the ground): a cluster
-## of ICE_SHARDS_CRYSTALS_PER_BLOCK jagged crystals of varied height and
+## of FROSTBOUND_RUPTURE_CRYSTALS_PER_BLOCK jagged crystals of varied height and
 ## lean, the tallest in the middle, each a translucent icy body with a
 ## lighter facet down one side and a darker outline. Same "no art asset"
 ## approach as _build_saw_blade()/_build_star().
 func _build_ice_block(width: float, height: float) -> Node2D:
 	var block := Node2D.new()
-	var count: int = ICE_SHARDS_CRYSTALS_PER_BLOCK
+	var count: int = FROSTBOUND_RUPTURE_CRYSTALS_PER_BLOCK
 	var crystal_width: float = width / float(count) * 1.5
 	for k in range(count):
 		# -1..1 across the block; taller toward the middle.
@@ -6844,7 +6912,7 @@ func _build_ice_block(width: float, height: float) -> Node2D:
 
 		var body := Polygon2D.new()
 		body.polygon = outline_points
-		body.color = ICE_SHARDS_BODY_COLOR
+		body.color = FROSTBOUND_RUPTURE_BODY_COLOR
 		block.add_child(body)
 
 		# The lit face: from the tip down the left shoulder to the base's
@@ -6853,13 +6921,13 @@ func _build_ice_block(width: float, height: float) -> Node2D:
 		facet.polygon = PackedVector2Array([
 			Vector2(base_x - half, 0.0), left_shoulder, tip, Vector2(base_x + lean * 0.2, 0.0),
 		])
-		facet.color = ICE_SHARDS_FACET_COLOR
+		facet.color = FROSTBOUND_RUPTURE_FACET_COLOR
 		facet.modulate.a = 0.55
 		block.add_child(facet)
 
 		var outline := Line2D.new()
 		outline.width = 2.0
-		outline.default_color = ICE_SHARDS_OUTLINE_COLOR
+		outline.default_color = FROSTBOUND_RUPTURE_OUTLINE_COLOR
 		outline.joint_mode = Line2D.LINE_JOINT_ROUND
 		outline.antialiased = true
 		outline.points = outline_points
@@ -6868,7 +6936,7 @@ func _build_ice_block(width: float, height: float) -> Node2D:
 	return block
 
 
-## An Ice Shards block breaking apart when its wall ends: a burst of ice
+## A Frostbound Rupture block breaking apart when its wall ends: a burst of ice
 ## shards (_play_orb_impact(), at `burst_scale`) from its middle while
 ## the block itself quickly collapses back into the ground and fades.
 ## `height` is the block's own height (defaults to a full wall block's).
@@ -6877,159 +6945,249 @@ func _shatter_ice_block(block: Variant, height: float = -1.0, burst_scale: float
 	if not is_instance_valid(block) or not (block is Node2D):
 		return
 	if height < 0.0:
-		height = get_viewport_rect().size.y / 4.0 * ICE_SHARDS_HEIGHT_RATIO
-	_play_orb_impact(block.position - Vector2(0.0, height * 0.5), ICE_SHARDS_FACET_COLOR, burst_scale)
+		height = get_viewport_rect().size.y / 4.0 * FROSTBOUND_RUPTURE_HEIGHT_RATIO
+	_play_orb_impact(block.position - Vector2(0.0, height * 0.5), FROSTBOUND_RUPTURE_FACET_COLOR, burst_scale)
 	var collapse: Tween = block.create_tween()
 	collapse.tween_property(block, "scale", Vector2(1.15, 0.2), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	collapse.parallel().tween_property(block, "modulate:a", 0.0, 0.18)
 	collapse.tween_callback(block.queue_free)
 
 
-## Whether `col` is currently walled off by Ice Shards - checked from
+## Whether `col` is currently walled off by Frostbound Rupture - checked from
 ## every PLAIN movement decision in _enemy_turn()/_enemy_hero_turn()
 ## (flee, "close in", The Hunger Calls's own redirect) so an enemy
 ## standing in a blocked column can't move at all and one standing
 ## outside it can't step into one, i.e. can't move past it. A true
 ## teleport (Undertow) still isn't checked against this - it
 ## doesn't travel through the columns in between at all, unlike a jump
-## (Barbed Lunge, Snowball) or a pull (Timber Chain), which now ARE stopped
+## (Barbed Lunge, Charge) or a pull (Timber Chain), which now ARE stopped
 ## by a wall in their path on both sides (see _cast_barbed_lunge()/
-## _resolve_snowball_cast()/_resolve_timber_chain_cast() and their own
-## _is_column_enemy_ice_shards_blocked() checks for the player's own
-## copies, _cast_enemy_barbed_lunge()/_cast_enemy_snowball() for the rival's).
-func _is_column_ice_shards_blocked(col: int) -> bool:
-	return _ice_shards_active and col in _ice_shards_blocked_columns
+## _resolve_charge_cast()/_resolve_timber_chain_cast() and their own
+## _is_column_enemy_frostbound_rupture_blocked() checks for the player's own
+## copies, _cast_enemy_barbed_lunge()/_cast_enemy_charge() for the rival's).
+func _is_column_frostbound_rupture_blocked(col: int) -> bool:
+	return _frostbound_rupture_active and col in _frostbound_rupture_blocked_columns
 
 
 # ------------------------------------------------------------------
-# Tusk's Snowball.
+# Skarn's Charge.
 # ------------------------------------------------------------------
 
-## Resolves a Snowball cast on `target`: moves the hero straight onto
-## `target`'s own column - or, if a rival's Ice Shards wall sits
+## Resolves a Charge cast on `target`: moves the hero straight onto
+## `target`'s own column - or, if a rival's Frostbound Rupture wall sits
 ## somewhere in that path, only as far as one column short of it -
 ## updating his LOGICAL position immediately, same as every other
 ## action, so anything checked right after (range, _stage_generation,
-## etc.) already sees him there - then deals
-## `level_data.damage` and stuns it for `level_data.stun_turns` if it
-## survives, same stun mechanism Drowned Surge's/Return to the Void's/Winter's Grip's own
-## use. The charge itself (portrait swap to SNOWBALL_IMAGE_PATH, a
-## tween sliding his VISUAL position across to match) is purely
-## cosmetic and layered on top afterward, same "instant, already-
-## resolved outcome, cosmetic animation played alongside it" split
-## The Sunken One's own travel already uses - see _end_snowball_animation()
-## for the revert.
-func _resolve_snowball_cast(target: Dictionary, level_data: Dictionary) -> void:
+## etc.) already sees him there - then deals `level_data.damage` and
+## stuns it for `level_data.stun_turns` if it survives, same stun
+## mechanism Drowned Surge's/Return to the Void's/Winter's Grip's own use.
+##
+## The hit lands when he crashes into it (see _play_charge()): mana and
+## cooldown are spent right away, the turn stays locked while he locks
+## on and charges, then the turn ends.
+func _resolve_charge_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	var start_pos_index: int = _hero_pos_index
 	var target_pos_index: int = target["pos_index"]
 
-	var damage: float = float(level_data.get("damage", 0))
-	_deal_fixed_damage_to_enemy(target, damage)
-	if target.get("current_hp", 0) > 0:
-		target["stun_turns_left"] = int(level_data.get("stun_turns", 1))
-
 	# The charge physically carries the hero across every column in
 	# between (unlike Undertow's true teleport), so a rival's
-	# Ice Shards wall in its path stops it one column short of
+	# Frostbound Rupture wall in its path stops it one column short of
 	# target_pos_index, same rule Barbed Lunge's own leap and Timber Chain's
 	# own pull now follow.
 	var charge_direction: int = _step_toward(start_pos_index, target_pos_index)
 	var landing_pos_index: int = start_pos_index
 	while charge_direction != 0 and landing_pos_index != target_pos_index:
 		var next_pos: int = landing_pos_index + charge_direction
-		if _is_column_enemy_ice_shards_blocked(next_pos):
+		if _is_column_enemy_frostbound_rupture_blocked(next_pos):
 			break
 		landing_pos_index = next_pos
-
 	_hero_pos_index = landing_pos_index
-	# Hero art is drawn facing right by default (see _hero_move()'s own
-	# note on art orientation), so charging left mirrors it to face
-	# that way.
-	hero_image.flip_h = landing_pos_index < start_pos_index
-	_set_hero_image(SNOWBALL_IMAGE_PATH)
-
-	var tween := create_tween()
-	tween.tween_property(hero_image, "position:x", _index_to_x(landing_pos_index), SNOWBALL_TRAVEL_DURATION)
-	tween.finished.connect(_end_snowball_animation)
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["snowball"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("snowball", _skill_cooldowns["snowball"])
+	_skill_cooldowns["charge"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("charge", _skill_cooldowns["charge"])
 	_refresh_skill_cooldown_labels()
+	_has_acted_this_turn = true
+	_update_action_buttons()
 
-	if _battle_over or _stage_generation != generation_before:
+	var damage: float = float(level_data.get("damage", 0))
+	var start_x: float = hero_image.position.x
+	_play_charge(hero_image, target.get("node"), func() -> float:
+		# Hero art is drawn facing right by default (see _hero_move()'s own
+		# note on art orientation), so charging left mirrors it to face
+		# that way. Snapped to where he lands; the animator rushes the art
+		# across from where he stood.
+		hero_image.flip_h = landing_pos_index < start_pos_index
+		hero_image.position.x = _index_to_x(landing_pos_index)
+		return start_x - hero_image.position.x
+	, func() -> void:
+		if _battle_over or _stage_generation != generation_before:
+			return
+		if _enemies.any(func(e: Dictionary) -> bool: return is_same(e, target)):
+			_deal_fixed_damage_to_enemy(target, damage)
+			if target.get("current_hp", 0) > 0:
+				target["stun_turns_left"] = int(level_data.get("stun_turns", 1))
+			_refresh_bars()
+		if _battle_over or _stage_generation != generation_before:
+			return
+		_mark_turn_used()
+	)
+
+
+## Purely cosmetic: Skarn's Charge from `attacker` (his sprite) at
+## `target` (its sprite).
+##   1. Lock-on: the whole battlefield dims except the two of them; he
+##      snarls with a cold glow and a red ring closes onto his prey.
+##   2. The charge: `start` runs - it snaps the attacker to where the
+##      charge ends (logically it's there already) and returns how far it
+##      moved (old x - new x); the animator then rushes the art across
+##      that distance, accelerating (CreatureAnimator.play_charge()).
+##   3. Impact: the screen shakes, ice bursts off the target, the target
+##      reels - `on_impact` fires (the damage/stun are the caller's) and
+##      the dimness lifts.
+## If either sprite is already gone the whole thing is skipped straight
+## to `start` and `on_impact`, so the caller's turn flow never stalls.
+func _play_charge(attacker: Variant, target: Variant, start: Callable, on_impact: Callable) -> void:
+	if not is_instance_valid(attacker) or not is_instance_valid(target) or not (attacker is Control) or not (target is Control):
+		start.call()
+		on_impact.call()
 		return
+	# Dim everything but the two of them: an overlay over the whole
+	# battle, with attacker and target lifted above it.
+	var dim := ColorRect.new()
+	dim.color = Color(0.0, 0.01, 0.03, 0.0)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dim.size = get_viewport_rect().size * 1.2
+	dim.position = -get_viewport_rect().size * 0.1
+	dim.z_index = 50
+	add_child(dim)
+	var lifted: Array = [attacker, target]
+	var old_z: Array = []
+	for n in lifted:
+		old_z.append(n.z_index)
+		n.z_index = 51
+	var restore := func() -> void:
+		for k in lifted.size():
+			if is_instance_valid(lifted[k]):
+				lifted[k].z_index = old_z[k]
 
-	_mark_turn_used()
+	# The red lock-on ring closing onto the target.
+	var reticle := Node2D.new()
+	reticle.z_index = 52
+	add_child(reticle)
+	var centre: Vector2 = target.global_position - global_position + target.size * Vector2(0.5, 0.5)
+	var ring_r: float = maxf(target.size.x, target.size.y) * 0.55
+	var lock := [0.0]   # 0 = wide and faint, 1 = locked on
+	reticle.draw.connect(func() -> void:
+		var u: float = lock[0]
+		var r: float = lerpf(ring_r * 2.2, ring_r, u)
+		var a: float = lerpf(0.2, 0.95, u)
+		var spin: float = (1.0 - u) * 1.6
+		for q in 4:
+			var mid: float = spin + q * PI * 0.5
+			reticle.draw_arc(centre, r, mid - 0.45, mid + 0.45, 12, Color(CHARGE_LOCK_COLOR, a), 3.0, true)
+			var d := Vector2.from_angle(mid + PI * 0.25)
+			reticle.draw_line(centre + d * r * 0.8, centre + d * r * 1.15, Color(CHARGE_LOCK_COLOR, a), 2.5, true)
+		reticle.draw_circle(centre, 3.0 + 3.0 * u, Color(CHARGE_LOCK_COLOR, a))
+	)
+	var attacker_anim := CreatureAnimator.of(attacker)
+	if attacker_anim != null:
+		attacker_anim.play_cast()
+	var target_node: Control = target
 
-
-## Reverts the hero's portrait back to normal and snaps his visual
-## position to match his (already-updated) logical one, once the
-## charge's own travel tween finishes.
-func _end_snowball_animation() -> void:
-	_set_hero_image(_hero_static.get("image", ""))
-	_update_hero_position()
+	var tw := create_tween()
+	tw.tween_property(dim, "color:a", CHARGE_DIM_ALPHA, 0.22)
+	tw.parallel().tween_method(func(v: float) -> void:
+		lock[0] = v
+		reticle.queue_redraw(), 0.0, 1.0, CHARGE_LOCK_ON_TIME * 0.75).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(CHARGE_LOCK_ON_TIME * 0.25)
+	tw.tween_callback(func() -> void:
+		var moved: float = start.call()
+		var travel: float = CHARGE_TRAVEL_BASE + CHARGE_TRAVEL_PER_COLUMN * absf(moved) / _grid_unit()
+		var anim := CreatureAnimator.of(attacker)
+		if anim != null and absf(moved) > 1.0:
+			anim.play_charge(moved, travel)
+		else:
+			travel = 0.12
+		var impact := create_tween()
+		impact.tween_interval(travel)
+		impact.tween_callback(func() -> void:
+			reticle.queue_free()
+			_shake_screen()
+			if is_instance_valid(target_node):
+				_play_orb_impact(target_node.global_position - global_position + target_node.size * Vector2(0.5, 0.55), FROSTBOUND_RUPTURE_FACET_COLOR, 1.4)
+				var hit := CreatureAnimator.of(target_node)
+				if hit != null:
+					hit.play_hit(signf(moved))
+			on_impact.call()
+			var lift := create_tween()
+			lift.tween_property(dim, "color:a", 0.0, 0.35)
+			lift.tween_callback(func() -> void:
+				restore.call()
+				dim.queue_free())
+		)
+	)
 
 
 # ------------------------------------------------------------------
-# Tusk's Tag Team.
+# Skarn's Bestial Rage.
 # ------------------------------------------------------------------
 
-## Activates Tag Team: arms this level's own bonus_damage for
+## Activates Bestial Rage: arms this level's own bonus_damage for
 ## `level_data.duration` turns. Always "succeeds" - no target or range
 ## requirement to cast it, same as every other self-cast buff.
-func _activate_tag_team(level_data: Dictionary) -> void:
-	_tag_team_active = true
-	_tag_team_bonus_damage = float(level_data.get("bonus_damage", 0))
-	_tag_team_turns_remaining = int(level_data.get("duration", 0))
+func _activate_bestial_rage(level_data: Dictionary) -> void:
+	_bestial_rage_active = true
+	_bestial_rage_bonus_damage = float(level_data.get("bonus_damage", 0))
+	_bestial_rage_turns_remaining = int(level_data.get("duration", 0))
 	# The casting turn itself doesn't count - duration only starts
-	# ticking from the turn after (see _tick_tag_team()), same as every
+	# ticking from the turn after (see _tick_bestial_rage()), same as every
 	# other duration-based buff.
-	_tag_team_duration_pending_start = true
+	_bestial_rage_duration_pending_start = true
 	_set_hero_enlarged(hero_image, true)
 
-	_show_message_over_hero("Tag Team!")
+	_show_message_over_hero("Bestial Rage!")
 
 
-## Ticks Tag Team's duration down once per End Turn, same timing (and
+## Ticks Bestial Rage's duration down once per End Turn, same timing (and
 ## same "the casting turn doesn't count" skip) as every other duration-
 ## based buff.
-func _tick_tag_team() -> void:
-	if not _tag_team_active:
+func _tick_bestial_rage() -> void:
+	if not _bestial_rage_active:
 		return
 
-	if _tag_team_duration_pending_start:
-		_tag_team_duration_pending_start = false
+	if _bestial_rage_duration_pending_start:
+		_bestial_rage_duration_pending_start = false
 		return
 
-	_tag_team_turns_remaining -= 1
-	if _tag_team_turns_remaining <= 0:
-		_end_tag_team()
+	_bestial_rage_turns_remaining -= 1
+	if _bestial_rage_turns_remaining <= 0:
+		_end_bestial_rage()
 
 
-## Ends Tag Team once its duration runs out.
-func _end_tag_team() -> void:
-	_tag_team_active = false
-	_tag_team_bonus_damage = 0.0
-	_tag_team_turns_remaining = 0
-	_tag_team_duration_pending_start = false
+## Ends Bestial Rage once its duration runs out.
+func _end_bestial_rage() -> void:
+	_bestial_rage_active = false
+	_bestial_rage_bonus_damage = 0.0
+	_bestial_rage_turns_remaining = 0
+	_bestial_rage_duration_pending_start = false
 	_set_hero_enlarged(hero_image, false)
 
-	_show_message_over_hero("Tag Team wears off")
+	_show_message_over_hero("Bestial Rage wears off")
 
 
 # ------------------------------------------------------------------
-# Tusk's ultimate, Walrus Punch.
+# Skarn's ultimate, Glacier Breaker.
 # ------------------------------------------------------------------
 
-## Resolves a Walrus Punch cast on `target`: rolls the hero's own
+## Resolves a Glacier Breaker cast on `target`: rolls the hero's own
 ## Attack damage (_roll_hero_damage(), same roll a plain Attack uses)
 ## and multiplies it by this level's own damage_multiplier, then works
 ## out how far the knockback actually carries - walking one column at a
-## time, away from Tusk's current facing direction (hero_image.flip_h),
+## time, away from Skarn's current facing direction (hero_image.flip_h),
 ## for up to `level_data.knockback` columns, stopping early at the edge
 ## of the board or at the first column another living, targetable enemy
 ## already occupies. Coming up short either way ("hits a wall or
@@ -7039,14 +7197,14 @@ func _end_tag_team() -> void:
 ## boosted total.
 ## Unlike every other targeted skill here, the knockback plays out
 ## BEFORE damage: `target`'s LOGICAL position updates immediately (same
-## as always), but its VISUAL slide (WALRUS_PUNCH_KNOCKBACK_DURATION)
-## has to actually finish before _resolve_walrus_punch_damage() deals
+## as always), but its VISUAL slide (GLACIER_BREAKER_KNOCKBACK_DURATION)
+## has to actually finish before _resolve_glacier_breaker_damage() deals
 ## the hit, checks for death, and stuns it if it survives - so a punch
 ## that kills still visibly sends its target flying first, instead of
 ## it just vanishing on the spot. Skips the tween entirely (resolving
 ## instantly) if the target never actually moved - already pinned
 ## against something this same turn, so there's nothing to show.
-func _resolve_walrus_punch_cast(target: Dictionary, level_data: Dictionary) -> void:
+func _resolve_glacier_breaker_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	var multiplier: float = float(level_data.get("damage_multiplier", 1.0))
@@ -7077,23 +7235,23 @@ func _resolve_walrus_punch_cast(target: Dictionary, level_data: Dictionary) -> v
 		target["node"].flip_h = (direction < 0) if native_faces_right else (direction > 0)
 
 		var tween := create_tween()
-		tween.tween_property(target["node"], "position:x", _index_to_x(pos), WALRUS_PUNCH_KNOCKBACK_DURATION)
-		tween.finished.connect(_resolve_walrus_punch_damage.bind(target, punch_damage, hit_wall, level_data, generation_before))
+		tween.tween_property(target["node"], "position:x", _index_to_x(pos), GLACIER_BREAKER_KNOCKBACK_DURATION)
+		tween.finished.connect(_resolve_glacier_breaker_damage.bind(target, punch_damage, hit_wall, level_data, generation_before))
 	else:
-		_resolve_walrus_punch_damage(target, punch_damage, hit_wall, level_data, generation_before)
+		_resolve_glacier_breaker_damage(target, punch_damage, hit_wall, level_data, generation_before)
 
 
-## Second half of a Walrus Punch cast, deferred until the knockback
-## slide (see _resolve_walrus_punch_cast()) has actually finished
+## Second half of a Glacier Breaker cast, deferred until the knockback
+## slide (see _resolve_glacier_breaker_cast()) has actually finished
 ## playing: deals the punch's own damage, shows "Wall hit!" if it fell
 ## short of its full knockback distance, and - if the target survived -
 ## stuns it in place for `level_data.stun_turns`, the same shared
-## stun_turns_left field Drowned Surge's/Return to the Void's/Winter's Grip's/Snowball's
+## stun_turns_left field Drowned Surge's/Return to the Void's/Winter's Grip's/Charge's
 ## own stun already uses. Bails out first if a stage/hero-fight
 ## transition already happened while the slide was playing - the same
 ## generation guard every other targeted cast checks before spending
 ## anything.
-func _resolve_walrus_punch_damage(target: Dictionary, punch_damage: float, hit_wall: bool, level_data: Dictionary, generation_before: int) -> void:
+func _resolve_glacier_breaker_damage(target: Dictionary, punch_damage: float, hit_wall: bool, level_data: Dictionary, generation_before: int) -> void:
 	if _stage_generation != generation_before:
 		return
 
@@ -7107,8 +7265,8 @@ func _resolve_walrus_punch_damage(target: Dictionary, punch_damage: float, hit_w
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["walrus_punch"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("walrus_punch", _skill_cooldowns["walrus_punch"])
+	_skill_cooldowns["glacier_breaker"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("glacier_breaker", _skill_cooldowns["glacier_breaker"])
 	_refresh_skill_cooldown_labels()
 
 	if _battle_over or _stage_generation != generation_before:
@@ -7364,7 +7522,7 @@ func _apply_reactive_armor_regen() -> void:
 ## Activates Overgrowth: every living, targetable enemy within
 ## `level_data.radius` columns of the hero's CURRENT position gets
 ## rooted (target["root_turns_left"], the same shared per-enemy field
-## Thornbind's/Nature's Guise's/Ice Shards'/The Hunger Calls's own root/
+## Thornbind's/Nature's Guise's/Frostbound Rupture'/The Hunger Calls's own root/
 ## freeze effects already use - it can still attack and cast skills
 ## while rooted, same as any other rooted enemy) for `level_data.
 ## root_duration` turns, and armed with that same level's own DoT
@@ -8332,7 +8490,7 @@ func _end_wildbond() -> void:
 
 
 ## Purely cosmetic: while an empowering self-buff is active - Spirit
-## Link (Erynd), Frostbound Fangs (The Primordial Hunger) or Tag Team (Tusk) -
+## Link (Erynd), Frostbound Fangs (The Primordial Hunger) or Bestial Rage (Skarn) -
 ## `node` (the player's hero_image, or the rival's own node) grows to
 ## HERO_ENLARGED_SCALE. Shared because no hero has more than one of
 ## them, so they never overlap on one sprite. Only does anything when the state
@@ -8698,7 +8856,7 @@ func _bear_turn() -> void:
 		return
 
 	# A rival's stun (Drowned Surge/Sacred Arrow/Lucent Beam/Return to the Void/
-	# Winter's Grip/The Hunger Calls/Snowball/Walrus Punch aimed at the bear)
+	# Winter's Grip/The Hunger Calls/Charge/Glacier Breaker aimed at the bear)
 	# costs it this whole turn; a root (Thornbind/Ensnare) still lets it
 	# attack what's already on its column, just not walk. Both are
 	# checked with their CURRENT value before ticking down - the same
@@ -8784,7 +8942,7 @@ func _refresh_skill_cooldown_labels() -> void:
 
 ## Ticks every tracked skill cooldown down by one turn, clamped at 0,
 ## and ticks Leeching Hunger's, Depthsveil's, Frostbound Fangs', The Test of
-## Time's, The Frost Tempest's, Ice Shards', Tag Team's, Nature's
+## Time's, The Frost Tempest's, Frostbound Rupture', Bestial Rage's, Nature's
 ## Guise's, Living Armor's, Reactive Armor's (each stack independently),
 ## Chakram's, Wildbond's, Beast of the Elderwild's, Veil of the Forgotten's, and The Mist
 ## Remembers's durations, plus Mark of the Mist's own (enemy- and player-side)
@@ -8810,8 +8968,8 @@ func _tick_skill_cooldowns() -> void:
 	_tick_the_test_of_time()
 	_tick_frost_tempest()
 	_tick_eclipse()
-	_tick_ice_shards()
-	_tick_tag_team()
+	_tick_frostbound_rupture()
+	_tick_bestial_rage()
 	_tick_living_armor()
 	_tick_wildbond()
 	_tick_beast_of_the_elderwild()
@@ -8838,8 +8996,8 @@ func _tick_skill_cooldowns() -> void:
 		_tick_enemy_frostbound_fangs()
 		_tick_enemy_the_test_of_time()
 		_tick_enemy_frost_tempest()
-		_tick_enemy_ice_shards()
-		_tick_enemy_tag_team()
+		_tick_enemy_frostbound_rupture()
+		_tick_enemy_bestial_rage()
 		_tick_enemy_natures_guise()
 		_tick_enemy_living_armor()
 		_tick_enemy_reactive_armor_stacks()
@@ -9842,7 +10000,7 @@ func _is_ranged_hero() -> bool:
 ## so a multi-column move that would otherwise carry them past one
 ## stops right on top of it instead - covering less distance than
 ## their full speed, but landing somewhere they can actually attack.
-## `_is_column_enemy_ice_shards_blocked()` stops the walk one column
+## `_is_column_enemy_frostbound_rupture_blocked()` stops the walk one column
 ## short of entering a rival-walled one, exactly like it already stops
 ## one column short of an occupied one below - a wall blocks movement
 ## the same way an enemy standing in the way does, it just isn't a
@@ -9855,7 +10013,7 @@ func _melee_move_target(start: int, direction: int, distance: int) -> int:
 		var next_pos := pos + direction
 		if next_pos < 0 or next_pos >= GRID_COLUMNS:
 			break
-		if _is_column_enemy_ice_shards_blocked(next_pos):
+		if _is_column_enemy_frostbound_rupture_blocked(next_pos):
 			break
 		pos = next_pos
 
@@ -9866,7 +10024,7 @@ func _melee_move_target(start: int, direction: int, distance: int) -> int:
 
 
 ## A ranged hero's own movement is normally a single unobstructed jump
-## (see _hero_move()) - this only exists so a rival's Ice Shards wall
+## (see _hero_move()) - this only exists so a rival's Frostbound Rupture wall
 ## still stops it early, same "can't move into a blocked column" rule
 ## _melee_move_target() enforces for a melee one, just without that
 ## function's own "stop on top of an enemy" rule (a ranged hero doesn't
@@ -9878,7 +10036,7 @@ func _ranged_move_target(start: int, direction: int, distance: int) -> int:
 		var next_pos := pos + direction
 		if next_pos < 0 or next_pos >= GRID_COLUMNS:
 			break
-		if _is_column_enemy_ice_shards_blocked(next_pos):
+		if _is_column_enemy_frostbound_rupture_blocked(next_pos):
 			break
 		pos = next_pos
 
@@ -9887,7 +10045,7 @@ func _ranged_move_target(start: int, direction: int, distance: int) -> int:
 
 ## Guardian Sprint's own movement rule: walks up to `distance` columns
 ## from `start` in `direction`, stopping early at the board edge, a
-## rival's Ice Shards wall, OR - unlike a plain ranged move, and
+## rival's Frostbound Rupture wall, OR - unlike a plain ranged move, and
 ## regardless of the hero's own range_type - the first enemy's column
 ## along the way, same "stop on top of an enemy" rule
 ## _melee_move_target() already uses. Returns both the landing column
@@ -9902,7 +10060,7 @@ func _guardian_sprint_move_target(start: int, direction: int, distance: int) -> 
 		var next_pos: int = pos + direction
 		if next_pos < 0 or next_pos >= GRID_COLUMNS:
 			break
-		if _is_column_ice_shards_blocked(next_pos):
+		if _is_column_frostbound_rupture_blocked(next_pos):
 			break
 		pos = next_pos
 
@@ -9975,7 +10133,7 @@ func _hero_move(direction: int) -> void:
 		_show_message_over_hero("Focused on Mortimer Kisses!")
 		return
 
-	if _is_column_enemy_ice_shards_blocked(_hero_pos_index):
+	if _is_column_enemy_frostbound_rupture_blocked(_hero_pos_index):
 		_show_message_over_hero("Frozen in place!")
 		return
 
@@ -10610,13 +10768,13 @@ func _start_winters_grip_targeting(level_data: Dictionary) -> bool:
 	return true
 
 
-## Tusk's Ice Shards target picking: unlike every "normal attack range"
+## Skarn's Frostbound Rupture target picking: unlike every "normal attack range"
 ## targeted skill above, this uses the skill's OWN level_data.range
 ## field instead of _hero_attack_column_range() - same reasoning as
-## Drowned Surge's own targeting (_start_drowned_surge_targeting()), since Tusk
-## fights at melee range but Ice Shards is thrown well past it. Returns
+## Drowned Surge's own targeting (_start_drowned_surge_targeting()), since Skarn
+## fights at melee range but Frostbound Rupture is thrown well past it. Returns
 ## false (and shows a message) if nothing is in range.
-func _start_ice_shards_targeting(level_data: Dictionary) -> bool:
+func _start_frostbound_rupture_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = int(level_data.get("range", 0))
@@ -10631,17 +10789,17 @@ func _start_ice_shards_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "ice_shards"
-	_pending_ice_shards_level_data = level_data
+	_targeting_purpose = "frostbound_rupture"
+	_pending_frostbound_rupture_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
 
-## Tusk's Snowball target picking: same skill-specific level_data.range
-## reasoning as Ice Shards' own targeting - Tusk fights at melee range,
-## but Snowball charges well past it. Returns false (and shows a
+## Skarn's Charge target picking: same skill-specific level_data.range
+## reasoning as Frostbound Rupture's own targeting - Skarn fights at melee range,
+## but Charges well past it. Returns false (and shows a
 ## message) if nothing is in range.
-func _start_snowball_targeting(level_data: Dictionary) -> bool:
+func _start_charge_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = int(level_data.get("range", 0))
@@ -10656,18 +10814,18 @@ func _start_snowball_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "snowball"
-	_pending_snowball_level_data = level_data
+	_targeting_purpose = "charge"
+	_pending_charge_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
 
-## Tusk's Walrus Punch target picking: strictly melee range (sharing
+## Skarn's Glacier Breaker target picking: strictly melee range (sharing
 ## his own column, same as a plain melee Attack - _resolve_melee_
 ## attack()) rather than any column-range field, since the design doc
 ## calls for "melee range" specifically. Returns false (and shows a
 ## message) if nothing shares his column.
-func _start_walrus_punch_targeting(level_data: Dictionary) -> bool:
+func _start_glacier_breaker_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	for enemy in _enemies:
@@ -10681,8 +10839,8 @@ func _start_walrus_punch_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "walrus_punch"
-	_pending_walrus_punch_level_data = level_data
+	_targeting_purpose = "glacier_breaker"
+	_pending_glacier_breaker_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
@@ -10891,9 +11049,9 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 	var the_hunger_calls_level_data: Dictionary = _pending_the_hunger_calls_level_data
 	var rimecleaver_level_data: Dictionary = _pending_rimecleaver_level_data
 	var winters_grip_level_data: Dictionary = _pending_winters_grip_level_data
-	var ice_shards_level_data: Dictionary = _pending_ice_shards_level_data
-	var snowball_level_data: Dictionary = _pending_snowball_level_data
-	var walrus_punch_level_data: Dictionary = _pending_walrus_punch_level_data
+	var frostbound_rupture_level_data: Dictionary = _pending_frostbound_rupture_level_data
+	var charge_level_data: Dictionary = _pending_charge_level_data
+	var glacier_breaker_level_data: Dictionary = _pending_glacier_breaker_level_data
 	var leech_seed_level_data: Dictionary = _pending_leech_seed_level_data
 	_cancel_targeting()
 
@@ -10937,12 +11095,12 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 		_resolve_rimecleaver_cast(enemy, rimecleaver_level_data)
 	elif purpose == "winters_grip":
 		_resolve_winters_grip_cast(enemy, winters_grip_level_data)
-	elif purpose == "ice_shards":
-		_resolve_ice_shards_cast(enemy, ice_shards_level_data)
-	elif purpose == "snowball":
-		_resolve_snowball_cast(enemy, snowball_level_data)
-	elif purpose == "walrus_punch":
-		_resolve_walrus_punch_cast(enemy, walrus_punch_level_data)
+	elif purpose == "frostbound_rupture":
+		_resolve_frostbound_rupture_cast(enemy, frostbound_rupture_level_data)
+	elif purpose == "charge":
+		_resolve_charge_cast(enemy, charge_level_data)
+	elif purpose == "glacier_breaker":
+		_resolve_glacier_breaker_cast(enemy, glacier_breaker_level_data)
 	elif purpose == "leech_seed":
 		_resolve_leech_seed_cast(enemy, leech_seed_level_data)
 	else:
@@ -11137,8 +11295,8 @@ func _deal_damage_to_enemy(target: Dictionary) -> void:
 ## checked here since every source of damage to an enemy (attacks,
 ## Abyssal Spasm, DoTs) already funnels through this one function.
 ## `is_critical` just forwards to _show_damage_number()'s own bigger-
-## and-golden-with-a-"!" treatment (see Walrus Punch's own
-## _resolve_walrus_punch_cast()) - it has no effect on the damage math
+## and-golden-with-a-"!" treatment (see Glacier Breaker's own
+## _resolve_glacier_breaker_cast()) - it has no effect on the damage math
 ## itself, only how the number reads. `is_hero_action` gates Slardar's
 ## own Corrosive Haze bonus (see below) - true for every hero attack/
 ## skill call site (the overwhelming majority, so it defaults true),
@@ -11300,7 +11458,7 @@ func _is_target_hidden(target: Dictionary) -> bool:
 
 ## Rolls a hero attack's damage, adding Leeching Hunger's ongoing
 ## borrowed damage, Beast of the Elderwild's bonus damage, The Primordial Hunger's Frostbound
-## Fangs bonus damage, and Tusk's Tag Team bonus damage (while each is
+## Fangs bonus damage, and Skarn's Bestial Rage bonus damage (while each is
 ## active) plus (for the single hit that triggers it) Depthsveil's
 ## one-shot `extra_bonus`, before mitigation. Luna's Lunar Blessing then
 ## scales the resulting total by its own bonus_damage_pct, same as a
@@ -11313,19 +11471,19 @@ func _roll_hero_damage(extra_bonus: float = 0.0) -> float:
 	var max_dmg: float = float(parts[1]) if parts.size() > 1 else min_dmg
 
 	# Leeching Hunger's borrowed damage, Beast of the Elderwild's bonus damage, Frostbound
-	# Fangs's bonus damage, and Tag Team's bonus damage (while each is
+	# Fangs's bonus damage, and Bestial Rage's bonus damage (while each is
 	# active) apply on top of both ends of the roll, same as a permanent
 	# damage bonus would - Depthsveil's bonus (passed in by the
 	# caller, only for the specific hit that triggers it) stacks on top
 	# of that the same way.
-	var bonus_damage: float = _leeching_hunger_bonus.get("damage", 0.0) + _beast_of_the_elderwild_bonus_damage + _frostbound_fangs_bonus_damage + _tag_team_bonus_damage + extra_bonus - _player_leeching_hunger_penalty.get("damage", 0.0)
+	var bonus_damage: float = _leeching_hunger_bonus.get("damage", 0.0) + _beast_of_the_elderwild_bonus_damage + _frostbound_fangs_bonus_damage + _bestial_rage_bonus_damage + extra_bonus - _player_leeching_hunger_penalty.get("damage", 0.0)
 	min_dmg += bonus_damage
 	max_dmg += bonus_damage
 
 	# Lunar Blessing - read fresh off the player's current level every
 	# roll (see _get_lunar_blessing_level_data()) rather than tracked in
 	# a field, since it's never toggled on/off like Depthsveil/Frostbound
-	# Fangs/Tag Team above, just always-on once learned. Applied last so
+	# Fangs/Bestial Rage above, just always-on once learned. Applied last so
 	# it scales the whole roll (base weapon damage plus every flat bonus
 	# above), not just the hero's own base stat.
 	var lunar_blessing_bonus_pct: float = float(_get_lunar_blessing_level_data().get("bonus_damage_pct", 0.0))
@@ -11336,8 +11494,8 @@ func _roll_hero_damage(extra_bonus: float = 0.0) -> float:
 	return randi_range(int(min_dmg), int(max_dmg))
 
 
-## `is_critical` (Walrus Punch's own multiplied hit - see
-## _resolve_walrus_punch_cast()) renders bigger, in gold instead of the
+## `is_critical` (Glacier Breaker's own multiplied hit - see
+## _resolve_glacier_breaker_cast()) renders bigger, in gold instead of the
 ## usual red, with a trailing "!" - the same "stands out from a normal
 ## hit" treatment a critical usually gets, layered on top of the plain
 ## damage-number styling below rather than replacing it outright.
@@ -11713,16 +11871,16 @@ func _reset_enemy_hero_state(hero_static: Dictionary) -> void:
 	_enemy_frost_tempest_turns_remaining = 0
 	_enemy_frost_tempest_duration_pending_start = false
 
-	_enemy_ice_shards_active = false
-	_enemy_ice_shards_blocked_columns = []
-	_enemy_ice_shards_turns_remaining = 0
-	_enemy_ice_shards_duration_pending_start = false
-	_refresh_ice_shards_visuals()
+	_enemy_frostbound_rupture_active = false
+	_enemy_frostbound_rupture_blocked_columns = []
+	_enemy_frostbound_rupture_turns_remaining = 0
+	_enemy_frostbound_rupture_duration_pending_start = false
+	_refresh_frostbound_rupture_visuals()
 
-	_enemy_tag_team_active = false
-	_enemy_tag_team_bonus_damage = 0.0
-	_enemy_tag_team_turns_remaining = 0
-	_enemy_tag_team_duration_pending_start = false
+	_enemy_bestial_rage_active = false
+	_enemy_bestial_rage_bonus_damage = 0.0
+	_enemy_bestial_rage_turns_remaining = 0
+	_enemy_bestial_rage_duration_pending_start = false
 	_set_hero_enlarged(_get_hero_fight_boss().get("node"), false)
 
 	_enemy_natures_guise_active = false
@@ -12029,8 +12187,8 @@ var _auto_skip_generation: int = -1
 ## skipped. Its attack is untouched, though - if it's already within
 ## range/on the hero's column, a root doesn't stop it from swinging.
 ##
-## Tusk's Ice Shards works alongside root rather than replacing it: an
-## enemy standing IN a walled-off column (_is_column_ice_shards_
+## Skarn's Frostbound Rupture works alongside root rather than replacing it: an
+## enemy standing IN a walled-off column (_is_column_frostbound_rupture_
 ## blocked()) is frozen exactly like a rooted one - see `ice_frozen`
 ## below, folded into every `not rooted` movement gate the same way -
 ## and one standing outside the wall simply can't step INTO a blocked
@@ -12102,7 +12260,7 @@ func _enemy_turn() -> void:
 		# decrement" order stun_turns_left uses just above - so a 1-turn
 		# root actually blocks the one movement it's meant to, instead of
 		# expiring before it's ever consulted.
-		var rooted: bool = _is_enemy_rooted(enemy) or _is_column_ice_shards_blocked(enemy["pos_index"])
+		var rooted: bool = _is_enemy_rooted(enemy) or _is_column_frostbound_rupture_blocked(enemy["pos_index"])
 		if enemy.get("root_turns_left", 0) > 0:
 			enemy["root_turns_left"] -= 1
 		# Silence has nothing to gate for a regular creep - only
@@ -12134,7 +12292,7 @@ func _enemy_turn() -> void:
 				elif not rooted:
 					var step: int = _step_toward(enemy["pos_index"], curse_target_pos)
 					var next_pos: int = enemy["pos_index"] + step
-					if not _is_column_ice_shards_blocked(next_pos):
+					if not _is_column_frostbound_rupture_blocked(next_pos):
 						_move_enemy(enemy, next_pos)
 			elif enemy_type == "melee":
 				if enemy["pos_index"] == curse_target_pos:
@@ -12144,7 +12302,7 @@ func _enemy_turn() -> void:
 				elif not rooted:
 					var step: int = _step_toward(enemy["pos_index"], curse_target_pos)
 					var next_pos: int = enemy["pos_index"] + step
-					if not _is_column_ice_shards_blocked(next_pos):
+					if not _is_column_frostbound_rupture_blocked(next_pos):
 						_move_enemy(enemy, next_pos)
 			continue
 
@@ -12160,7 +12318,7 @@ func _enemy_turn() -> void:
 				# all if the flee spot itself is walled off, same as any
 				# other blocked destination.
 				var flee_pos: int = _get_flee_position(enemy)
-				if not _is_column_ice_shards_blocked(flee_pos):
+				if not _is_column_frostbound_rupture_blocked(flee_pos):
 					_move_enemy(enemy, flee_pos)
 				continue
 
@@ -12193,7 +12351,7 @@ func _enemy_turn() -> void:
 				if target_pos != -1:
 					var step: int = _step_toward(enemy["pos_index"], target_pos)
 					var next_pos: int = enemy["pos_index"] + step
-					if not _is_column_ice_shards_blocked(next_pos):
+					if not _is_column_frostbound_rupture_blocked(next_pos):
 						_move_enemy(enemy, next_pos)
 
 		elif enemy_type == "melee":
@@ -12212,7 +12370,7 @@ func _enemy_turn() -> void:
 				if target_pos != -1:
 					var step: int = _step_toward(enemy["pos_index"], target_pos)
 					var next_pos: int = enemy["pos_index"] + step
-					if not _is_column_ice_shards_blocked(next_pos):
+					if not _is_column_frostbound_rupture_blocked(next_pos):
 						_move_enemy(enemy, next_pos)
 
 
@@ -12297,7 +12455,7 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 	# comment) overrides this - true sight lets him keep fighting a
 	# hidden player normally, stealth notwithstanding.
 	var hero_hidden: bool = not _can_enemy_see_hero()
-	# Ice Shards (the player's own, cast on this rival's turn) freezes
+	# Frostbound Rupture (the player's own, cast on this rival's turn) freezes
 	# movement exactly like a root does - see _enemy_turn()'s own
 	# comment for the full reasoning - so it's folded into the same
 	# `rooted` flag rather than tracked separately here.
@@ -12306,7 +12464,7 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 	# uses in _enemy_turn() - so a 1-turn root/silence actually blocks
 	# the one turn it's meant to, instead of expiring before it's ever
 	# consulted (see _tick_enemy_turn_start_effects()'s own comment).
-	var rooted: bool = _is_enemy_rooted(enemy) or _is_column_ice_shards_blocked(enemy["pos_index"])
+	var rooted: bool = _is_enemy_rooted(enemy) or _is_column_frostbound_rupture_blocked(enemy["pos_index"])
 	if enemy.get("root_turns_left", 0) > 0:
 		enemy["root_turns_left"] -= 1
 	var silenced: bool = _is_enemy_silenced(enemy)
@@ -12343,7 +12501,7 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 	if enemy_type == "range":
 		if not hero_hidden and not rooted and hero_distance <= RANGE_ENEMY_FLEE_DISTANCE:
 			var flee_pos: int = _get_flee_position(enemy)
-			if not _is_column_ice_shards_blocked(flee_pos):
+			if not _is_column_frostbound_rupture_blocked(flee_pos):
 				_move_enemy(enemy, flee_pos)
 			return
 
@@ -12373,7 +12531,7 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 					apply_damage(charge_damage)
 			else:
 				var next_pos: int = enemy["pos_index"] + step
-				if not _is_column_ice_shards_blocked(next_pos):
+				if not _is_column_frostbound_rupture_blocked(next_pos):
 					_move_enemy(enemy, next_pos)
 
 
@@ -12503,7 +12661,7 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 ## range.
 func _roll_enemy_hero_damage(enemy: Dictionary, extra_bonus: float = 0.0) -> float:
 	var base_damage: float = float(enemy["static"].get("damage", 0))
-	var bonus: float = _enemy_leeching_hunger_bonus.get("damage", 0.0) + _enemy_beast_of_the_elderwild_bonus_damage + _enemy_frostbound_fangs_bonus_damage + _enemy_tag_team_bonus_damage + extra_bonus
+	var bonus: float = _enemy_leeching_hunger_bonus.get("damage", 0.0) + _enemy_beast_of_the_elderwild_bonus_damage + _enemy_frostbound_fangs_bonus_damage + _enemy_bestial_rage_bonus_damage + extra_bonus
 	var total: float = maxf(0.0, base_damage + bonus)
 
 	# Luna's Lunar Blessing - read fresh off the rival's current level
@@ -12619,8 +12777,8 @@ func _enemy_skill_worth_casting(skill_id: String) -> bool:
 			# rely on a single flag like this - recasting here can only
 			# ever land on the same, already-frozen player).
 			return _enemy_skill_worth_on_target("winters_grip", false) or (_is_bear_alive() and _enemy_skill_worth_on_target("winters_grip", true))
-		"tag_team":
-			return not _enemy_tag_team_active
+		"bestial_rage":
+			return not _enemy_bestial_rage_active
 		"nature's_guise":
 			return not _enemy_natures_guise_active
 		"living_armor":
@@ -12820,13 +12978,13 @@ func _enemy_has_unaffordable_ready_skill(enemy_type: String, hero_distance: int,
 ##     to the player) and "the player's distance to the rival" are the
 ##     same number, so there's no separate field to compute.
 ##   - caster_pos_index/target_pos_index/grid_columns/caster_facing_left:
-##     for Tusk's own Ice Shards (whether its wall actually reaches the
+##     for Skarn's own Frostbound Rupture (whether its wall actually reaches the
 ##     player's column, and how close to either board edge that leaves
-##     them) and Walrus Punch (working out the knockback's actual
-##     landing column, the same walk _cast_enemy_walrus_punch() itself
+##     them) and Glacier Breaker (working out the knockback's actual
+##     landing column, the same walk _cast_enemy_glacier_breaker() itself
 ##     does, just to SCORE it beforehand rather than to resolve it) -
-##     see EnemySkillAI's own _tusk_ice_shards_modifier()/_tusk_walrus_
-##     punch_modifier(). Never present in the simulation (no positions
+##     see EnemySkillAI's own _skarn_frostbound_rupture_modifier()/_skarn_glacier_
+##     breaker_modifier(). Never present in the simulation (no positions
 ##     there at all - see EnemyHeroManager's own _build_npc_ai_context()
 ##     docstring), where `grid_columns` defaults to 0 and both modifiers
 ##     fall back to their own no-columns proxy instead.
@@ -13196,14 +13354,14 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 			_cast_enemy_winters_grip(level_data)
 		"the_frost_tempest":
 			_cast_enemy_frost_tempest(level_data)
-		"ice_shards":
-			_cast_enemy_ice_shards(enemy, level_data)
-		"snowball":
-			_cast_enemy_snowball(enemy, level_data)
-		"tag_team":
-			_cast_enemy_tag_team(level_data)
-		"walrus_punch":
-			_cast_enemy_walrus_punch(enemy, level_data)
+		"frostbound_rupture":
+			_cast_enemy_frostbound_rupture(enemy, level_data)
+		"charge":
+			_cast_enemy_charge(enemy, level_data)
+		"bestial_rage":
+			_cast_enemy_bestial_rage(level_data)
+		"glacier_breaker":
+			_cast_enemy_glacier_breaker(enemy, level_data)
 		"nature's_guise":
 			_activate_enemy_natures_guise(level_data)
 		"leech_seed":
@@ -14073,10 +14231,10 @@ func _cast_enemy_barbed_lunge(enemy: Dictionary, level_data: Dictionary) -> void
 		var next_pos: int = pos + direction
 		if next_pos < 0 or next_pos >= GRID_COLUMNS:
 			break
-		# The player's own Ice Shards wall stops the leap dead, same
+		# The player's own Frostbound Rupture wall stops the leap dead, same
 		# "can't jump past a wall in its path" rule the player's own
 		# Barbed Lunge follows now (see _cast_barbed_lunge()).
-		if _is_column_ice_shards_blocked(next_pos):
+		if _is_column_frostbound_rupture_blocked(next_pos):
 			break
 		pos = next_pos
 		if pos == _hero_pos_index:
@@ -15673,15 +15831,36 @@ func _end_enemy_frost_tempest() -> void:
 
 
 # ------------------------------------------------------------------
-# Tusk's Ice Shards, cast by the rival on the player - mirrors the
-# player's own _resolve_ice_shards_cast()/_tick_ice_shards()/_end_ice_
-# shards(). Walls off `blocked_columns` columns starting on the rival's
+# Skarn's Frostbound Rupture, cast by the rival on the player - mirrors the
+# player's own _resolve_frostbound_rupture_cast()/_tick_frostbound_rupture()/_end_frostbound_
+# rupture(). Walls off `blocked_columns` columns starting on the rival's
 # OWN column and continuing toward the player's, same directional walk
 # the player's own copy uses, just from the other side.
 # ------------------------------------------------------------------
 
-func _cast_enemy_ice_shards(enemy: Dictionary, level_data: Dictionary) -> void:
-	_play_ice_shards_hit(enemy.get("node"), hero_image)
+func _cast_enemy_frostbound_rupture(enemy: Dictionary, level_data: Dictionary) -> void:
+	_show_message_over_hero("Frostbound Rupture!")
+	# The player can't act until the rival's slam has landed and the
+	# shards have hit - same as the rival's Rimecleaver.
+	_rival_fx_in_flight = true
+	_update_action_buttons()
+	var generation_before: int = _stage_generation
+	_play_ground_slam(enemy.get("node"), func() -> void:
+		_rival_fx_in_flight = false
+		if _battle_over or _stage_generation != generation_before:
+			_update_action_buttons()
+			return
+		_land_enemy_frostbound_rupture(enemy, level_data)
+		_refresh_bars()
+		if _recruited.get("current_hp", 0) <= 0:
+			_handle_defeat()
+			return
+		_update_action_buttons()
+	)
+
+
+func _land_enemy_frostbound_rupture(enemy: Dictionary, level_data: Dictionary) -> void:
+	_play_frostbound_rupture_hit(enemy.get("node"), hero_image)
 	apply_damage(float(level_data.get("damage", 0)))
 
 	var direction: int = _step_toward(enemy["pos_index"], _hero_pos_index)
@@ -15697,116 +15876,136 @@ func _cast_enemy_ice_shards(enemy: Dictionary, level_data: Dictionary) -> void:
 		columns.append(col)
 		col += direction
 
-	_enemy_ice_shards_active = true
-	_enemy_ice_shards_blocked_columns = columns
-	_enemy_ice_shards_turns_remaining = int(level_data.get("duration", 0))
-	_enemy_ice_shards_duration_pending_start = true
-	_refresh_ice_shards_visuals()
-	_show_message_over_hero("Ice Shards!")
+	_enemy_frostbound_rupture_active = true
+	_enemy_frostbound_rupture_blocked_columns = columns
+	_enemy_frostbound_rupture_turns_remaining = int(level_data.get("duration", 0))
+	_enemy_frostbound_rupture_duration_pending_start = true
+	_refresh_frostbound_rupture_visuals()
 
 
-func _tick_enemy_ice_shards() -> void:
-	if not _enemy_ice_shards_active:
+func _tick_enemy_frostbound_rupture() -> void:
+	if not _enemy_frostbound_rupture_active:
 		return
 
-	if _enemy_ice_shards_duration_pending_start:
-		_enemy_ice_shards_duration_pending_start = false
+	if _enemy_frostbound_rupture_duration_pending_start:
+		_enemy_frostbound_rupture_duration_pending_start = false
 		return
 
-	_enemy_ice_shards_turns_remaining -= 1
-	if _enemy_ice_shards_turns_remaining <= 0:
-		_end_enemy_ice_shards()
+	_enemy_frostbound_rupture_turns_remaining -= 1
+	if _enemy_frostbound_rupture_turns_remaining <= 0:
+		_end_enemy_frostbound_rupture()
 
 
-func _end_enemy_ice_shards() -> void:
-	_enemy_ice_shards_active = false
-	_enemy_ice_shards_blocked_columns = []
-	_enemy_ice_shards_turns_remaining = 0
-	_enemy_ice_shards_duration_pending_start = false
-	_refresh_ice_shards_visuals()
+func _end_enemy_frostbound_rupture() -> void:
+	_enemy_frostbound_rupture_active = false
+	_enemy_frostbound_rupture_blocked_columns = []
+	_enemy_frostbound_rupture_turns_remaining = 0
+	_enemy_frostbound_rupture_duration_pending_start = false
+	_refresh_frostbound_rupture_visuals()
 
 
-## Whether `col` is currently walled off by the RIVAL's own Ice Shards -
+## Whether `col` is currently walled off by the RIVAL's own Frostbound Rupture -
 ## checked from _hero_move() (and the movement helpers it delegates to)
 ## so the player can't move at all while standing in one, and can't step
-## into one from outside it, mirroring the player's own _is_column_ice_
-## shards_blocked() (which does the same to every enemy's own movement).
+## into one from outside it, mirroring the player's own _is_column_frostbound_
+## rupture_blocked() (which does the same to every enemy's own movement).
 ## Attacking, casting a skill, and using an item are all untouched
 ## either way, same as the player's own copy.
-func _is_column_enemy_ice_shards_blocked(col: int) -> bool:
-	return _enemy_ice_shards_active and col in _enemy_ice_shards_blocked_columns
+func _is_column_enemy_frostbound_rupture_blocked(col: int) -> bool:
+	return _enemy_frostbound_rupture_active and col in _enemy_frostbound_rupture_blocked_columns
 
 
 # ------------------------------------------------------------------
-# Tusk's Snowball, cast by the rival on the player - mirrors the
-# player's own _resolve_snowball_cast(): moves the rival straight onto
+# Skarn's Charge, cast by the rival on the player - mirrors the
+# player's own _resolve_charge_cast(): moves the rival straight onto
 # the player's own column, dealing damage and stunning on impact.
 # ------------------------------------------------------------------
 
-func _cast_enemy_snowball(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_charge(enemy: Dictionary, level_data: Dictionary) -> void:
 	if _enemy_skill_on_bear:
-		_cast_enemy_snowball_on_bear(enemy, level_data)
+		_cast_enemy_charge_on_bear(enemy, level_data)
 		return
-	apply_damage(float(level_data.get("damage", 0)))
-	_player_stun_turns_left = int(level_data.get("stun_turns", 1))
 
 	# The charge physically carries the rival across every column in
-	# between, so the player's own Ice Shards wall in its path stops it
-	# one column short - same rule the player's own Snowball charge
-	# follows now (see _resolve_snowball_cast()).
+	# between, so the player's own Frostbound Rupture wall in its path stops it
+	# one column short - same rule the player's own Charge
+	# follows now (see _resolve_charge_cast()).
 	var charge_direction: int = _step_toward(enemy["pos_index"], _hero_pos_index)
 	var landing_pos: int = enemy["pos_index"]
 	while charge_direction != 0 and landing_pos != _hero_pos_index:
 		var next_pos: int = landing_pos + charge_direction
-		if _is_column_ice_shards_blocked(next_pos):
+		if _is_column_frostbound_rupture_blocked(next_pos):
 			break
 		landing_pos = next_pos
 
-	_move_enemy(enemy, landing_pos)
-	_show_message_over_hero("Snowball!")
+	_show_message_over_hero("Charge!")
+	# The player can't act until the rival has locked on, charged and hit -
+	# same as the rival's Rimecleaver.
+	_rival_fx_in_flight = true
+	_update_action_buttons()
+	var generation_before: int = _stage_generation
+	var damage: float = float(level_data.get("damage", 0))
+	var stun: int = int(level_data.get("stun_turns", 1))
+	_play_charge(enemy.get("node"), hero_image, func() -> float:
+		var old_x: float = enemy["node"].position.x
+		_move_enemy(enemy, landing_pos)
+		return old_x - enemy["node"].position.x
+	, func() -> void:
+		_rival_fx_in_flight = false
+		if _battle_over or _stage_generation != generation_before:
+			_update_action_buttons()
+			return
+		apply_damage(damage)
+		_player_stun_turns_left = stun
+		_refresh_bars()
+		if _recruited.get("current_hp", 0) <= 0:
+			_handle_defeat()
+			return
+		_update_action_buttons()
+	)
 
 
 # ------------------------------------------------------------------
-# Tusk's Tag Team, cast by the rival on himself - mirrors the player's
-# own _activate_tag_team()/_tick_tag_team()/_end_tag_team(): a flat
+# Skarn's Bestial Rage, cast by the rival on himself - mirrors the player's
+# own _activate_bestial_rage()/_tick_bestial_rage()/_end_bestial_rage(): a flat
 # bonus_damage added to _roll_enemy_hero_damage() for the duration.
 # ------------------------------------------------------------------
 
-func _cast_enemy_tag_team(level_data: Dictionary) -> void:
-	_enemy_tag_team_active = true
-	_enemy_tag_team_bonus_damage = float(level_data.get("bonus_damage", 0))
-	_enemy_tag_team_turns_remaining = int(level_data.get("duration", 0))
-	_enemy_tag_team_duration_pending_start = true
-	_show_message_over_hero("Tag Team!")
+func _cast_enemy_bestial_rage(level_data: Dictionary) -> void:
+	_enemy_bestial_rage_active = true
+	_enemy_bestial_rage_bonus_damage = float(level_data.get("bonus_damage", 0))
+	_enemy_bestial_rage_turns_remaining = int(level_data.get("duration", 0))
+	_enemy_bestial_rage_duration_pending_start = true
+	_show_message_over_hero("Bestial Rage!")
 	_set_hero_enlarged(_get_hero_fight_boss().get("node"), true)
 
 
-func _tick_enemy_tag_team() -> void:
-	if not _enemy_tag_team_active:
+func _tick_enemy_bestial_rage() -> void:
+	if not _enemy_bestial_rage_active:
 		return
 
-	if _enemy_tag_team_duration_pending_start:
-		_enemy_tag_team_duration_pending_start = false
+	if _enemy_bestial_rage_duration_pending_start:
+		_enemy_bestial_rage_duration_pending_start = false
 		return
 
-	_enemy_tag_team_turns_remaining -= 1
-	if _enemy_tag_team_turns_remaining <= 0:
-		_end_enemy_tag_team()
+	_enemy_bestial_rage_turns_remaining -= 1
+	if _enemy_bestial_rage_turns_remaining <= 0:
+		_end_enemy_bestial_rage()
 
 
-func _end_enemy_tag_team() -> void:
-	_enemy_tag_team_active = false
-	_enemy_tag_team_bonus_damage = 0.0
-	_enemy_tag_team_turns_remaining = 0
-	_enemy_tag_team_duration_pending_start = false
+func _end_enemy_bestial_rage() -> void:
+	_enemy_bestial_rage_active = false
+	_enemy_bestial_rage_bonus_damage = 0.0
+	_enemy_bestial_rage_turns_remaining = 0
+	_enemy_bestial_rage_duration_pending_start = false
 	_set_hero_enlarged(_get_hero_fight_boss().get("node"), false)
 
 
 # ------------------------------------------------------------------
-# Tusk's ultimate, Walrus Punch, cast by the rival on the player -
-# mirrors the player's own _resolve_walrus_punch_cast(): rolls the
+# Skarn's ultimate, Glacier Breaker, cast by the rival on the player -
+# mirrors the player's own _resolve_glacier_breaker_cast(): rolls the
 # rival's own Attack damage (_roll_enemy_hero_damage(), already folding
-# in Tag Team's bonus while active) times this level's own
+# in Bestial Rage's bonus while active) times this level's own
 # damage_multiplier, then works out how far the knockback actually
 # carries - walking one column at a time, away from the rival's current
 # facing (its node's own flip_h, the enemy-side mirror of the player's
@@ -15819,9 +16018,9 @@ func _end_enemy_tag_team() -> void:
 # lands, then stuns the player in place if they survive.
 # ------------------------------------------------------------------
 
-func _cast_enemy_walrus_punch(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_glacier_breaker(enemy: Dictionary, level_data: Dictionary) -> void:
 	if _enemy_skill_on_bear:
-		_cast_enemy_walrus_punch_on_bear(enemy, level_data)
+		_cast_enemy_glacier_breaker_on_bear(enemy, level_data)
 		return
 	var multiplier: float = float(level_data.get("damage_multiplier", 1.0))
 	var punch_damage: float = _roll_enemy_hero_damage(enemy) * multiplier
@@ -15836,11 +16035,11 @@ func _cast_enemy_walrus_punch(enemy: Dictionary, level_data: Dictionary) -> void
 			break
 		if not _get_enemy_at(next_pos).is_empty():
 			break
-		# Knocked straight into the rival's own Ice Shards wall (if
+		# Knocked straight into the rival's own Frostbound Rupture wall (if
 		# they've cast it) - stops here same as hitting the board edge
 		# or another enemy, and counts as the same "hit_wall" bonus
 		# damage below (a literal wall, this time).
-		if _is_column_enemy_ice_shards_blocked(next_pos):
+		if _is_column_enemy_frostbound_rupture_blocked(next_pos):
 			break
 		pos = next_pos
 		actual_distance += 1
@@ -16047,7 +16246,7 @@ func _cast_enemy_whirling_death(enemy: Dictionary, level_data: Dictionary) -> vo
 # the player (there's only one possible target/path occupant in a hero
 # fight - see this section's own header comment above), then pulls the
 # rival onto the player's own column, stopping one column short of a
-# player-cast Ice Shards wall in the way, exactly the same "the damage
+# player-cast Frostbound Rupture wall in the way, exactly the same "the damage
 # still reaches the full line, only the physical landing spot is
 # blocked" split the player's own copy uses.
 # ------------------------------------------------------------------
@@ -16069,7 +16268,7 @@ func _cast_enemy_timber_chain(enemy: Dictionary, level_data: Dictionary) -> void
 	var landing_pos: int = enemy["pos_index"]
 	while chain_direction != 0 and landing_pos != _hero_pos_index:
 		var next_pos: int = landing_pos + chain_direction
-		if _is_column_ice_shards_blocked(next_pos):
+		if _is_column_frostbound_rupture_blocked(next_pos):
 			break
 		landing_pos = next_pos
 
@@ -16248,8 +16447,8 @@ func _cast_enemy_scatterblast(enemy: Dictionary, level_data: Dictionary) -> void
 # Snapfire's Firesnap Cookie, cast by the rival - mirrors the player's
 # own _activate_firesnap_cookie(): hops `jump_distance` columns in
 # whichever direction the rival is currently facing (walked one column
-# at a time here, stopping early at the board edge or a player-cast Ice
-# Shards wall - Snapfire's own range_type is always "Range", so this
+# at a time here, stopping early at the board edge or a player-cast Frostbound
+# Rupture wall - Snapfire's own range_type is always "Range", so this
 # never needs the melee "stop on top of an enemy" rule the way a
 # point-blank hero's own copy would), then - on landing - deals damage
 # and stuns the player if they're within `radius` columns of wherever it
@@ -16266,7 +16465,7 @@ func _cast_enemy_firesnap_cookie(enemy: Dictionary, level_data: Dictionary) -> v
 		var next_pos: int = landing_pos + direction
 		if next_pos < 0 or next_pos >= GRID_COLUMNS:
 			break
-		if _is_column_ice_shards_blocked(next_pos):
+		if _is_column_frostbound_rupture_blocked(next_pos):
 			break
 		landing_pos = next_pos
 
@@ -16748,7 +16947,7 @@ func _cast_enemy_guardian_sprint(level_data: Dictionary) -> void:
 ## only ever the one possible "enemy" to stop on in a hero fight - see
 ## this section's own header comment). Walks up to `distance` columns
 ## from `start` in `direction`, stopping early at the board edge, a
-## player-cast Ice Shards wall, OR the player's own column - regardless
+## player-cast Frostbound Rupture wall, OR the player's own column - regardless
 ## of the rival's own type, same "stop on top of an enemy" rule every
 ## other rival gap-closer (Firesnap Cookie's hop, Timber Chain's pull)
 ## already follows. Returns both the landing column and whether it
@@ -16762,7 +16961,7 @@ func _enemy_guardian_sprint_move_target(start: int, direction: int, distance: in
 		var next_pos: int = pos + direction
 		if next_pos < 0 or next_pos >= GRID_COLUMNS:
 			break
-		if _is_column_ice_shards_blocked(next_pos):
+		if _is_column_frostbound_rupture_blocked(next_pos):
 			break
 		pos = next_pos
 
@@ -16884,7 +17083,7 @@ func _maybe_consume_enemy_bash_of_the_deep_stack() -> Dictionary:
 ## the rival (its own distance-to-player direction, falling back to its
 ## own facing on the rare column-share tie, same "still shove SOMEWHERE"
 ## reasoning Barbed Lunge's own leap uses for the mirror-image case) - stopping
-## early at the board edge or a player-cast Ice Shards wall. Repositions
+## early at the board edge or a player-cast Frostbound Rupture wall. Repositions
 ## instantly via _hero_pos_index/_update_hero_position(), the same path
 ## every other player-repositioning effect in this file uses.
 func _apply_enemy_bash_of_the_deep_knockback(enemy: Dictionary, level_data: Dictionary) -> void:
@@ -16898,7 +17097,7 @@ func _apply_enemy_bash_of_the_deep_knockback(enemy: Dictionary, level_data: Dict
 		var next_pos: int = pos + direction
 		if next_pos < 0 or next_pos >= GRID_COLUMNS:
 			break
-		if _is_column_ice_shards_blocked(next_pos):
+		if _is_column_frostbound_rupture_blocked(next_pos):
 			break
 		pos = next_pos
 
@@ -17013,7 +17212,7 @@ func _cast_enemy_sacred_arrow(enemy: Dictionary, level_data: Dictionary) -> void
 # _activate_leap(): hops `jump_distance` columns, always sailing clean
 # over the player regardless of range_type (the unobstructed "walk
 # straight through" rule _ranged_move_target() already uses), stopping
-# only at the board edge or a player-cast Ice Shards wall. No damage, no
+# only at the board edge or a player-cast Frostbound Rupture wall. No damage, no
 # target required - always "succeeds". Unlike a gap-closer that always
 # steps toward the nearest enemy, the direction here is CHOSEN by the
 # rival's own current danger, mirroring the exact hp_ratio threshold
@@ -17042,7 +17241,7 @@ func _cast_enemy_leap(enemy: Dictionary, level_data: Dictionary) -> void:
 		var next_pos: int = pos + direction
 		if next_pos < 0 or next_pos >= GRID_COLUMNS:
 			break
-		if _is_column_ice_shards_blocked(next_pos):
+		if _is_column_frostbound_rupture_blocked(next_pos):
 			break
 		pos = next_pos
 
@@ -18164,14 +18363,14 @@ func _choose_enemy_skill_on_bear(enemy: Dictionary, skill_id: String) -> bool:
 func _estimate_enemy_skill_hit_on_bear(enemy: Dictionary, skill_id: String, level_data: Dictionary) -> float:
 	var raw: float = 0.0
 	match skill_id:
-		"whisper_of_the_veil", "drowned_surge", "ensnare", "lucent_beam", "return_to_the_void", "maddening_roar", "snowball":
+		"whisper_of_the_veil", "drowned_surge", "ensnare", "lucent_beam", "return_to_the_void", "maddening_roar", "charge":
 			raw = float(level_data.get("damage", 0))
 		"sacred_arrow":
 			var distance: int = _distance(enemy["pos_index"], _bear["pos_index"])
 			raw = float(level_data.get("base_damage", 0)) + float(level_data.get("bonus_per_column", 0)) * distance
 		"touch_of_the_first_cold":
 			raw = _roll_enemy_hero_damage(enemy) + float(level_data.get("bonus_damage", 0))
-		"walrus_punch":
+		"glacier_breaker":
 			raw = _roll_enemy_hero_damage(enemy) * float(level_data.get("damage_multiplier", 1.0))
 		"lil_shredder":
 			raw = _roll_enemy_hero_damage(enemy) * float(level_data.get("damage_pct", 0)) * int(level_data.get("shots", 3))
@@ -18483,30 +18682,45 @@ func _cast_enemy_winters_grip_on_bear(level_data: Dictionary) -> void:
 	_refresh_winters_grip_hands()
 
 
-func _cast_enemy_snowball_on_bear(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_charge_on_bear(enemy: Dictionary, level_data: Dictionary) -> void:
 	var bear_pos: int = _bear["pos_index"]
-	_show_message_over_bear("Snowball!")
-	_deal_damage_to_bear(float(level_data.get("damage", 0)))
-	_stun_bear(int(level_data.get("stun_turns", 1)))
+	_show_message_over_bear("Charge!")
 
 	# Same charge as the player-aimed copy, just ending on the bear's
-	# column (captured before the hit, in case it died).
+	# column.
 	var charge_direction: int = _step_toward(enemy["pos_index"], bear_pos)
 	var landing_pos: int = enemy["pos_index"]
 	while charge_direction != 0 and landing_pos != bear_pos:
 		var next_pos: int = landing_pos + charge_direction
-		if _is_column_ice_shards_blocked(next_pos):
+		if _is_column_frostbound_rupture_blocked(next_pos):
 			break
 		landing_pos = next_pos
-	_move_enemy(enemy, landing_pos)
+	_rival_fx_in_flight = true
+	_update_action_buttons()
+	var generation_before: int = _stage_generation
+	var damage: float = float(level_data.get("damage", 0))
+	var stun: int = int(level_data.get("stun_turns", 1))
+	_play_charge(enemy.get("node"), _bear.get("node"), func() -> float:
+		var old_x: float = enemy["node"].position.x
+		_move_enemy(enemy, landing_pos)
+		return old_x - enemy["node"].position.x
+	, func() -> void:
+		_rival_fx_in_flight = false
+		if not _battle_over and _stage_generation == generation_before and _is_bear_alive():
+			_deal_damage_to_bear(damage)
+			if _is_bear_alive():
+				_stun_bear(stun)
+			_refresh_bars()
+		_update_action_buttons()
+	)
 
 
-func _cast_enemy_walrus_punch_on_bear(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_glacier_breaker_on_bear(enemy: Dictionary, level_data: Dictionary) -> void:
 	var punch_damage: float = _roll_enemy_hero_damage(enemy) * float(level_data.get("damage_multiplier", 1.0))
 
 	# Same knockback rules as the player-aimed copy, applied to the
 	# bear: pushed the way the rival is facing, stopped by the board's
-	# edge, an enemy's column or an Ice Shards wall - hitting one of
+	# edge, an enemy's column or a Frostbound Rupture wall - hitting one of
 	# those deals 50% extra.
 	var knockback_columns: int = int(level_data.get("knockback", 0))
 	var direction: int = -1 if enemy["node"].flip_h else 1
@@ -18518,7 +18732,7 @@ func _cast_enemy_walrus_punch_on_bear(enemy: Dictionary, level_data: Dictionary)
 			break
 		if not _get_enemy_at(next_pos).is_empty():
 			break
-		if _is_column_enemy_ice_shards_blocked(next_pos):
+		if _is_column_enemy_frostbound_rupture_blocked(next_pos):
 			break
 		pos = next_pos
 		actual_distance += 1

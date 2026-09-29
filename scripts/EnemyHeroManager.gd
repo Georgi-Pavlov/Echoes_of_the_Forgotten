@@ -265,7 +265,7 @@ const NEW_SIM_HP_RESTORE_PCT: float = 0.30
 const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 
 # Every ACTIVE skill across Veyrik, Erynd, Morvael, Kaelen Varr, Nhal,
-# The Primordial Hunger, Frost Daughter, Tusk, Treant Protector,
+# The Primordial Hunger, Frost Daughter, Skarn, Treant Protector,
 # Timbersaw, and Snapfire, the only eleven heroes with any simulated
 # skill logic today - anything else a hero knows just never gets cast
 # here. This is the full candidate pool
@@ -301,19 +301,19 @@ const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 # "the lowest HP enemy" with no travel cost to begin with, so a
 # guaranteed teleport would have literally nothing to accomplish here.
 # It's simulated in the real fight (battle.gd's own _enemy_hero_turn())
-# since that one has real columns for it to matter on. Tusk's Ice
-# Shards is a similar story: its whole "wall off columns" mechanic has
+# since that one has real columns for it to matter on. Skarn's Frostbound
+# Rupture is a similar story: its whole "wall off columns" mechanic has
 # nothing to act on here (nothing in this sim moves at all - creeps are
 # a pure HP pool the hero attacks each turn, never a flee/positioning
 # decision of their own), so its sim copy is just a flat hit to the
 # primary target, same as every other single-target damage skill's own
-# copy (see this file's "ice_shards" case in _cast_skill() below) -
-# EnemySkillAI's own _tusk_ice_shards_modifier() already accounts for
+# copy (see this file's "frostbound_rupture" case in _cast_skill() below) -
+# EnemySkillAI's own _skarn_frostbound_rupture_modifier() already accounts for
 # this by falling back to a generic "more living enemies, more a
 # control effect is worth" proxy rather than any real column math here.
-# Walrus Punch's own knockback/collision is approximated the same way -
+# Glacier Breaker's own knockback/collision is approximated the same way -
 # no real destination to walk out, so its sim copy never adds the 50%
-# collision bonus at all (see _tusk_walrus_punch_modifier()'s own
+# collision bonus at all (see _skarn_glacier_breaker_modifier()'s own
 # sim-side proxy for how the AI still accounts for the POSSIBILITY of
 # one without the actual cast ever guaranteeing it). Treant Protector's
 # Nature's Guise mirrors Depthsveil's own sim copy exactly (see this
@@ -363,7 +363,7 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 	"mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold", "return_to_the_void",
 	"frostbound_fangs", "maddening_roar", "the_test_of_time", "the_hunger_calls",
 	"rimecleaver", "winters_grip", "the_frost_tempest",
-	"ice_shards", "snowball", "tag_team", "walrus_punch",
+	"frostbound_rupture", "charge", "bestial_rage", "glacier_breaker",
 	"nature's_guise", "leech_seed", "living_armor", "overgrowth",
 	"whirling_death", "timber_chain", "chakram",
 	"scatterblast", "firesnap_cookie", "lil_shredder", "mortimer_kisses",
@@ -377,10 +377,10 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # Sprint's whole "close distance, charge damage if it lands on an enemy"
 # concept has no columns to close distance ACROSS here (see this file's
 # own header comment) - same "no real destination to walk out" honesty
-# Walrus Punch's own sim copy already follows for its knockback - so it
+# Glacier Breaker's own sim copy already follows for its knockback - so it
 # falls back to a flat charge_damage_pct hit on whichever enemy the hero
 # would attack anyway, same "no columns, always hit the lowest-HP enemy"
-# simplification Ice Shards'/Whisper of the Veil's own sim copies use. Slithereen
+# simplification Frostbound Rupture'/Whisper of the Veil's own sim copies use. Slithereen
 # Crush is a self-centered AoE with nothing to center it on here, so -
 # like Return to the Void/Overgrowth/Song of the Siren above - it stuns and damages
 # every living enemy at once. Corrosive Haze marks whichever enemy the
@@ -397,8 +397,8 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # _build_npc_ai_context()'s own "bash_*" fields, and its own bonus damage
 # only ever lands through the hero's own basic-attack branch in
 # _run_stage_fight() (mirroring Pull of the Abyss's own stack there) - its
-# knockback has nothing to act on here either, same reasoning Walrus
-# Punch's own collision bonus is dropped for.
+# knockback has nothing to act on here either, same reasoning Glacier
+# Breaker's own collision bonus is dropped for.
 # Mirana's Starstorm is a self-centered AoE with nothing to center it on
 # here, so - like Return to the Void/Overgrowth/Song of the Siren above - it hits
 # every living enemy at once. Sacred Arrow has no columns to travel
@@ -934,7 +934,7 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		_tick_npc_beast_of_the_elderwild(state["beast_of_the_elderwild"])
 		_tick_npc_veil_of_the_forgotten(state["veil_of_the_forgotten"])
 		_tick_npc_the_mist_remembers(state["the_mist_remembers"], cooldowns)
-		_tick_npc_tag_team(state["tag_team"])
+		_tick_npc_bestial_rage(state["bestial_rage"])
 		_tick_npc_natures_guise(state["nature's_guise"])
 		_tick_npc_thornbind_effects(enemies)
 		_tick_npc_mark_of_the_mist_effects(enemies, turn_index)
@@ -1279,7 +1279,7 @@ func _new_npc_combat_state() -> Dictionary:
 		"the_test_of_time": {"active": false, "heal_per_turn": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"the_hunger_calls": {"target_ref": {}, "bonus_damage_pct": 0.0},
 		"the_frost_tempest": {"active": false, "damage_per_turn": 0.0, "turns_remaining": 0, "duration_pending_start": false},
-		"tag_team": {"active": false, "bonus_damage": 0.0, "turns_remaining": 0, "duration_pending_start": false},
+		"bestial_rage": {"active": false, "bonus_damage": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"nature's_guise": {"active": false, "root_turns": 0, "turns_remaining": 0, "duration_pending_start": false},
 		"living_armor": {"active": false, "bonus_armor": 0.0, "bonus_hp_regen": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"chakram": {"active": false, "damage_per_turn": 0.0, "turns_remaining": 0, "duration_pending_start": false},
@@ -1458,20 +1458,20 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 				winters_grip_target["stun_turns_left"] = int(level_data.get("stun_turns", 1))
 		"the_frost_tempest":
 			_activate_npc_frost_tempest(state["the_frost_tempest"], level_data)
-		"ice_shards":
+		"frostbound_rupture":
 			# The wall itself has nothing to act on here - nothing in this
 			# sim moves at all (see KNOWN_ACTIVE_SKILL_IDS's own comment
 			# above) - so this is just a flat hit to the primary target,
 			# same as Whisper of the Veil/Touch of the First Cold's own sim copies.
 			_apply_damage_to_enemy(_lowest_hp_enemy(living), float(level_data.get("damage", 0)))
-		"snowball":
-			var snowball_target: Dictionary = _lowest_hp_enemy(living)
-			_apply_damage_to_enemy(snowball_target, float(level_data.get("damage", 0)))
-			if snowball_target["current_hp"] > 0:
-				snowball_target["stun_turns_left"] = int(level_data.get("stun_turns", 1))
-		"tag_team":
-			_activate_npc_tag_team(state["tag_team"], level_data)
-		"walrus_punch":
+		"charge":
+			var charge_target: Dictionary = _lowest_hp_enemy(living)
+			_apply_damage_to_enemy(charge_target, float(level_data.get("damage", 0)))
+			if charge_target["current_hp"] > 0:
+				charge_target["stun_turns_left"] = int(level_data.get("stun_turns", 1))
+		"bestial_rage":
+			_activate_npc_bestial_rage(state["bestial_rage"], level_data)
+		"glacier_breaker":
 			# No real knockback/collision to resolve here (see
 			# KNOWN_ACTIVE_SKILL_IDS's own comment above) - just the base
 			# hero_damage x damage_multiplier hit, same "no columns" honesty
@@ -1594,7 +1594,7 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 				enemy["armor_reduction_turns_left"] = song_stun_turns
 		"guardian_sprint":
 			# No columns to close distance across here - same "no real
-			# destination to walk out" honesty Walrus Punch's own sim copy
+			# destination to walk out" honesty Glacier Breaker's own sim copy
 			# already follows (see KNOWN_ACTIVE_SKILL_IDS's own comment
 			# above), so only the charge damage half lands, on whichever
 			# enemy the hero would attack anyway.
@@ -1697,8 +1697,8 @@ func _npc_skill_worth_casting(skill_id: String, state: Dictionary) -> bool:
 			return not state["the_test_of_time"]["active"]
 		"the_frost_tempest":
 			return not state["the_frost_tempest"]["active"]
-		"tag_team":
-			return not state["tag_team"]["active"]
+		"bestial_rage":
+			return not state["bestial_rage"]["active"]
 		"nature's_guise":
 			return not state["nature's_guise"]["active"]
 		"living_armor":
@@ -1958,7 +1958,7 @@ func _npc_estimate_damage(damage_range: String, state: Dictionary) -> float:
 	var parts: PackedStringArray = damage_range.split("-")
 	var min_dmg: float = float(parts[0]) if parts.size() > 0 else 0.0
 	var max_dmg: float = float(parts[1]) if parts.size() > 1 else min_dmg
-	var bonus_damage: float = state["leeching_hunger"]["bonus"].get("damage", 0.0) + state["beast_of_the_elderwild"]["bonus_damage"] + state["tag_team"]["bonus_damage"]
+	var bonus_damage: float = state["leeching_hunger"]["bonus"].get("damage", 0.0) + state["beast_of_the_elderwild"]["bonus_damage"] + state["bestial_rage"]["bonus_damage"]
 	var estimate: float = (min_dmg + max_dmg) / 2.0 + bonus_damage
 	# Luna's Lunar Blessing - see _npc_roll_damage()'s own comment for why
 	# this reads state's own cached percentage. Applied last, same order
@@ -2501,20 +2501,20 @@ func _end_npc_frost_tempest(ff: Dictionary) -> void:
 
 
 # ------------------------------------------------------------------
-# Tusk's Tag Team - mirrors battle.gd's own _activate_tag_team()/_tick_
-# tag_team()/_end_tag_team(): a flat bonus_damage added to
+# Skarn's Bestial Rage - mirrors battle.gd's own _activate_bestial_rage()/_tick_
+# bestial_rage()/_end_bestial_rage(): a flat bonus_damage added to
 # _npc_roll_damage()/_npc_estimate_damage() for the duration, same spot
 # Frostbound Fangs'/Beast of the Elderwild's own bonus_damage already occupy there.
 # ------------------------------------------------------------------
 
-func _activate_npc_tag_team(tt: Dictionary, level_data: Dictionary) -> void:
+func _activate_npc_bestial_rage(tt: Dictionary, level_data: Dictionary) -> void:
 	tt["active"] = true
 	tt["bonus_damage"] = float(level_data.get("bonus_damage", 0))
 	tt["turns_remaining"] = int(level_data.get("duration", 0))
 	tt["duration_pending_start"] = true
 
 
-func _tick_npc_tag_team(tt: Dictionary) -> void:
+func _tick_npc_bestial_rage(tt: Dictionary) -> void:
 	if not tt["active"]:
 		return
 	if tt["duration_pending_start"]:
@@ -2522,10 +2522,10 @@ func _tick_npc_tag_team(tt: Dictionary) -> void:
 		return
 	tt["turns_remaining"] -= 1
 	if tt["turns_remaining"] <= 0:
-		_end_npc_tag_team(tt)
+		_end_npc_bestial_rage(tt)
 
 
-func _end_npc_tag_team(tt: Dictionary) -> void:
+func _end_npc_bestial_rage(tt: Dictionary) -> void:
 	tt["active"] = false
 	tt["bonus_damage"] = 0.0
 	tt["turns_remaining"] = 0
@@ -3325,7 +3325,7 @@ func _npc_roll_damage(damage_range: String, state: Dictionary, extra_bonus: floa
 	var min_dmg: float = float(parts[0]) if parts.size() > 0 else 0.0
 	var max_dmg: float = float(parts[1]) if parts.size() > 1 else min_dmg
 
-	var bonus_damage: float = state["leeching_hunger"]["bonus"].get("damage", 0.0) + state["beast_of_the_elderwild"]["bonus_damage"] + state["frostbound_fangs"]["bonus_damage"] + state["tag_team"]["bonus_damage"] + extra_bonus
+	var bonus_damage: float = state["leeching_hunger"]["bonus"].get("damage", 0.0) + state["beast_of_the_elderwild"]["bonus_damage"] + state["frostbound_fangs"]["bonus_damage"] + state["bestial_rage"]["bonus_damage"] + extra_bonus
 	min_dmg += bonus_damage
 	max_dmg += bonus_damage
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dvawdcp4fpkp6"
-path="res://.godot/imported/Tusk_Snowball.png-99dc2f4437adc74b66f70285dead8049.ctex"
+uid="uid://cswx8mi1gdn4t"
+path="res://.godot/imported/the_everfrost_skarn.jpg-e33a8227a38ba5f69918d53394a852a8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/heroes skills/Tusk_Snowball.png"
-dest_files=["res://.godot/imported/Tusk_Snowball.png-99dc2f4437adc74b66f70285dead8049.ctex"]
+source_file="res://assets/zones/the_everfrost_skarn.jpg"
+dest_files=["res://.godot/imported/the_everfrost_skarn.jpg-e33a8227a38ba5f69918d53394a852a8.ctex"]
 
 [params]
 

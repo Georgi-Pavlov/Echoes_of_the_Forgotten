@@ -40,7 +40,7 @@ class_name EnemySkillAI
 # genuinely be the better play than any of Kaelen Varr's real skills.
 #
 # Eleven heroes have real AI logic today: Veyrik, Erynd, Morvael,
-# Kaelen Varr, Nhal, The Primordial Hunger, Frost Daughter, Tusk,
+# Kaelen Varr, Nhal, The Primordial Hunger, Frost Daughter, Skarn,
 # Treant Protector, Timbersaw, and Snapfire - see resolve_hero_
 # archetype() for how a hero_static maps to one of them,
 # and each one's own _*_modifier() function below for its personality.
@@ -63,16 +63,16 @@ class_name EnemySkillAI
 # file a hero's KNOWN active skills to begin with (see battle.gd's
 # ENEMY_KNOWN_SKILL_IDS/EnemyHeroManager's KNOWN_ACTIVE_SKILL_IDS,
 # neither of which lists it), so it can never become a scored candidate.
-# Tusk's Ice Shards is the one skill in this file whose main value is
+# Skarn's Frostbound Rupture is the one skill in this file whose main value is
 # positional rather than a raw damage/control number - see
-# _tusk_ice_shards_modifier()'s own "grid_columns" check, real board
+# _skarn_frostbound_rupture_modifier()'s own "grid_columns" check, real board
 # data battle.gd's own _build_enemy_ai_context() supplies (never present
 # in the simulation - see EnemyHeroManager's own _build_npc_ai_context()
 # docstring - where a missing value falls back to a generic "more
 # enemies around, more this matters" proxy, same spirit as The Hunger
-# Calls's own redirect_candidate_count). Walrus Punch's own damage is
-# Tusk's actual (rolled) Attack damage times a multiplier, not a flat
-# number - see its own "walrus_punch" case in _estimate_skill_damage().
+# Calls's own redirect_candidate_count). Glacier Breaker's own damage is
+# Skarn's actual (rolled) Attack damage times a multiplier, not a flat
+# number - see its own "glacier_breaker" case in _estimate_skill_damage().
 # Treant Protector's Nature's Guise is "defensive" category, exactly
 # like Veyrik's own Depthsveil (functionally the same invisibility) -
 # in the simulation it relies ENTIRELY on that shared category term, no
@@ -115,7 +115,7 @@ class_name EnemySkillAI
 # The Frost Tempest's own is) - _snapfire_firesnap_cookie_modifier()
 # projects the landing column itself from the context's own
 # `caster_pos_index`/`caster_facing_left`/`grid_columns` fields (the
-# same ones Tusk's own Ice Shards/Walrus Punch modifiers already read)
+# same ones Skarn's own Frostbound Rupture/Glacier Breaker modifiers already read)
 # rather than needing a new one. Mortimer Kisses' own splash always
 # collapses to 0 extra targets in a real hero fight (there's only ever
 # the one player to hit - see _cast_enemy_mortimer_kisses()'s own "no
@@ -245,10 +245,10 @@ const SKILL_INFO := {
 	"rimecleaver": {"category": "offensive", "base_score": 45.0},
 	"winters_grip": {"category": "offensive", "base_score": 50.0},
 	"the_frost_tempest": {"category": "offensive", "base_score": 65.0},
-	"ice_shards": {"category": "offensive", "base_score": 40.0},
-	"snowball": {"category": "offensive", "base_score": 50.0},
-	"tag_team": {"category": "utility", "base_score": 35.0},
-	"walrus_punch": {"category": "offensive", "base_score": 65.0},
+	"frostbound_rupture": {"category": "offensive", "base_score": 40.0},
+	"charge": {"category": "offensive", "base_score": 50.0},
+	"bestial_rage": {"category": "utility", "base_score": 35.0},
+	"glacier_breaker": {"category": "offensive", "base_score": 65.0},
 	"nature's_guise": {"category": "defensive", "base_score": 40.0},
 	"leech_seed": {"category": "offensive", "base_score": 45.0},
 	"living_armor": {"category": "defensive", "base_score": 35.0},
@@ -308,7 +308,7 @@ const HERO_TIE_BREAK := {
 	"nhal": ["return_to_the_void", "touch_of_the_first_cold", "mark_of_stillness", "the_hollow_cold"],
 	"the_primordial_hunger": ["the_hunger_calls", "maddening_roar", "the_test_of_time", "frostbound_fangs"],
 	"frost_daughter": ["the_frost_tempest", "winters_grip", "rimecleaver"],
-	"tusk": ["walrus_punch", "snowball", "ice_shards", "tag_team"],
+	"skarn": ["glacier_breaker", "charge", "frostbound_rupture", "bestial_rage"],
 	"treant_protector": ["overgrowth", "leech_seed", "nature's_guise", "living_armor"],
 	"timbersaw": ["chakram", "timber_chain", "whirling_death"],
 	"snapfire": ["mortimer_kisses", "firesnap_cookie", "scatterblast", "lil_shredder"],
@@ -349,8 +349,8 @@ static func resolve_hero_archetype(hero_static: Dictionary) -> String:
 		return "the_primordial_hunger"
 	if "the_frost_tempest" in skill_ids:
 		return "frost_daughter"
-	if "walrus_punch" in skill_ids:
-		return "tusk"
+	if "glacier_breaker" in skill_ids:
+		return "skarn"
 	if "overgrowth" in skill_ids:
 		return "treant_protector"
 	if "chakram" in skill_ids:
@@ -406,11 +406,11 @@ static func evaluate_skill(skill_id: String, level_data: Dictionary, context: Di
 ## Daughter opts in too: her whole kit is mana-hungry (70-330 a cast), so a
 ## plain Attack that can already finish a low-HP target off deserves a
 ## real shot at beating one of them outright - see
-## _fd_basic_attack_modifier(). Tusk opts in for the same reason - his
-## Walrus Punch in particular is an expensive ultimate that a cheap
+## _fd_basic_attack_modifier(). Skarn opts in for the same reason - his
+## Glacier Breaker in particular is an expensive ultimate that a cheap
 ## plain Attack can already make redundant against a low-HP target (see
-## _tusk_basic_attack_modifier()/_tusk_walrus_punch_modifier()'s own
-## early-out). Treant Protector opts in for the same reason as Snowball/
+## _skarn_basic_attack_modifier()/_skarn_glacier_breaker_modifier()'s own
+## early-out). Treant Protector opts in for the same reason as Charge/
 ## Overgrowth's own early-outs (see _tp_leech_seed_modifier()/_tp_
 ## overgrowth_modifier()) - a free kill beats spending mana/cooldown for
 ## the same result. Timbersaw opts in too - Chakram in particular is a
@@ -438,7 +438,7 @@ static func evaluate_skill(skill_id: String, level_data: Dictionary, context: Di
 ## own right, not just the fallback for "nothing else qualified" (see
 ## _luna_basic_attack_modifier()'s own docstring).
 static func basic_attack_participates(archetype: String) -> bool:
-	return archetype == "kaelen_varr" or archetype == "the_primordial_hunger" or archetype == "frost_daughter" or archetype == "tusk" or archetype == "treant_protector" or archetype == "timbersaw" or archetype == "snapfire" or archetype == "naga_siren" or archetype == "slardar" or archetype == "mirana" or archetype == "luna"
+	return archetype == "kaelen_varr" or archetype == "the_primordial_hunger" or archetype == "frost_daughter" or archetype == "skarn" or archetype == "treant_protector" or archetype == "timbersaw" or archetype == "snapfire" or archetype == "naga_siren" or archetype == "slardar" or archetype == "mirana" or archetype == "luna"
 
 
 ## The score for a plain Attack, for a hero basic_attack_participates()
@@ -581,10 +581,10 @@ static func _estimate_skill_damage(skill_id: String, level_data: Dictionary, con
 			# whoever's in range each tick) - damage x duration, same
 			# reasoning as Mark of Stillness/The Hollow Cold/Winter's Grip above.
 			return float(level_data.get("damage", 0.0)) * float(level_data.get("duration", 0.0))
-		"ice_shards", "snowball":
+		"frostbound_rupture", "charge":
 			return float(level_data.get("damage", 0.0))
-		"walrus_punch":
-			# NOT a flat number - Walrus Punch's damage is Tusk's own
+		"glacier_breaker":
+			# NOT a flat number - Glacier Breaker's damage is Skarn's own
 			# actual (already-rolled) Attack damage times this level's
 			# own multiplier (see the design doc's own "do not treat
 			# damage_multiplier as flat damage" note). `hero_damage` is
@@ -592,7 +592,7 @@ static func _estimate_skill_damage(skill_id: String, level_data: Dictionary, con
 			# evaluate_basic_attack()). The 50% collision bonus is
 			# deliberately NOT folded in here - it's conditional on
 			# knockback actually being cut short, which only
-			# _tusk_walrus_punch_modifier() (with real board data, or the
+			# _skarn_glacier_breaker_modifier() (with real board data, or the
 			# simulation's own proxy) is in a position to judge; this
 			# stays the conservative no-collision baseline, same split
 			# Return to the Void's own execute bonus uses versus its base estimate.
@@ -680,8 +680,8 @@ static func _hero_specific_modifier(archetype: String, skill_id: String, level_d
 			return _the_primordial_hunger_modifier(skill_id, level_data, context)
 		"frost_daughter":
 			return _frost_daughter_modifier(skill_id, level_data, context)
-		"tusk":
-			return _tusk_modifier(skill_id, level_data, context)
+		"skarn":
+			return _skarn_modifier(skill_id, level_data, context)
 		"treant_protector":
 			return _treant_modifier(skill_id, level_data, context)
 		"timbersaw":
@@ -1502,30 +1502,30 @@ static func _fd_basic_attack_modifier(context: Dictionary) -> float:
 	return score
 
 
-## Tusk: aggressive, melee, burst/control/positioning. Ice Shards and
-## Snowball are "offensive" category (generic kill-potential/target-
+## Skarn: aggressive, melee, burst/control/positioning. Frostbound Rupture and
+## Charge are "offensive" category (generic kill-potential/target-
 ## value terms, fed by their own flat-damage _estimate_skill_damage()
-## cases); Walrus Punch is "offensive" too (fed by its own hero_damage x
-## damage_multiplier case); Tag Team is "utility" (no damage of its own
+## cases); Glacier Breaker is "offensive" too (fed by its own hero_damage x
+## damage_multiplier case); Bestial Rage is "utility" (no damage of its own
 ## at all - its entire value is computed here, as an expected-value
 ## calculation over the duration, never a flat "add bonus_damage once").
-static func _tusk_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
+static func _skarn_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
 	match skill_id:
-		"ice_shards":
-			return _tusk_ice_shards_modifier(level_data, context)
-		"snowball":
-			return _tusk_snowball_modifier(level_data, context)
-		"tag_team":
-			return _tusk_tag_team_modifier(level_data, context)
-		"walrus_punch":
-			return _tusk_walrus_punch_modifier(level_data, context)
+		"frostbound_rupture":
+			return _skarn_frostbound_rupture_modifier(level_data, context)
+		"charge":
+			return _skarn_charge_modifier(level_data, context)
+		"bestial_rage":
+			return _skarn_bestial_rage_modifier(level_data, context)
+		"glacier_breaker":
+			return _skarn_glacier_breaker_modifier(level_data, context)
 		BASIC_ATTACK_ID:
-			return _tusk_basic_attack_modifier(context)
+			return _skarn_basic_attack_modifier(context)
 		_:
 			return 0.0
 
 
-## Ice Shards: movement denial, not a normal AoE nuke - the generic
+## Frostbound Rupture: movement denial, not a normal AoE nuke - the generic
 ## offensive scoring above already covers its own primary hit (target
 ## value, kill potential); this only adds for whether the wall it throws
 ## up actually matters. `grid_columns` (battle.gd's GRID_COLUMNS, always
@@ -1535,18 +1535,18 @@ static func _tusk_modifier(skill_id: String, level_data: Dictionary, context: Di
 ## control effect is worth" proxy The Hunger Calls's own sim-side
 ## redirect_candidate_count uses. Deliberately does NOT reward
 ## blocked_columns just for being a big number (see the design doc's own
-## "do not give Ice Shards a huge score merely because it blocks many
+## "do not give Frostbound Rupture a huge score merely because it blocks many
 ## columns" instruction) - only for what it actually reaches: the
 ## target's own column (frozen in place outright) or the one column
 ## needed to safely retreat past it, plus a small bonus for pinning
-## against the far edge too and for Tusk staying close enough to keep
-## following up. The wall never blocks TUSK'S OWN movement (see
-## _resolve_ice_shards_cast()/_cast_enemy_ice_shards() - it walls off
+## against the far edge too and for Skarn staying close enough to keep
+## following up. The wall never blocks SKARN'S OWN movement (see
+## _resolve_frostbound_rupture_cast()/_cast_enemy_frostbound_rupture() - it walls off
 ## columns starting on the CASTER's own column outward, and (mirroring
 ## the player's own copy, which never checks it in _hero_move() either)
 ## the caster is never gated against their own wall in _hero_move()'s
 ## own enemy-side check), so that's not a real cost to weigh here.
-static func _tusk_ice_shards_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _skarn_frostbound_rupture_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var blocked_columns: int = int(level_data.get("blocked_columns", 0))
 	var score: float = 0.0
 
@@ -1573,8 +1573,8 @@ static func _tusk_ice_shards_modifier(level_data: Dictionary, context: Dictionar
 			score += 20.0
 
 		if target_distance <= 1:
-			# Tusk himself stays close enough to keep following up next
-			# turn (Snowball/Walrus Punch/a plain Attack) once it wears
+			# Skarn himself stays close enough to keep following up next
+			# turn (Charge/Glacier Breaker/a plain Attack) once it wears
 			# off - a wall he can't capitalize on is worth less.
 			score += 10.0
 	else:
@@ -1594,16 +1594,16 @@ static func _tusk_ice_shards_modifier(level_data: Dictionary, context: Dictionar
 	return score
 
 
-## Snowball: direct offensive/control - the generic offensive scoring
+## Charge: direct offensive/control - the generic offensive scoring
 ## above already covers its own damage/kill-potential; this layers
 ## control value (stun_turns) and "how much does removing an action
 ## matter right now" (hero_hp_ratio, same danger signal Winter's Grip's own
-## defensive bonus uses) on top. Early-out mirrors Walrus Punch's own
+## defensive bonus uses) on top. Early-out mirrors Glacier Breaker's own
 ## below: a target a plain Attack can already kill outright leaves
 ## nothing for the stun to prevent, so it's not worth the mana (see the
-## design doc's own "do not waste Snowball simply because it is
+## design doc's own "do not waste Charge simply because it is
 ## available" instruction).
-static func _tusk_snowball_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _skarn_charge_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
 	var target_hp: float = float(context.get("target_hp", 0.0))
 	if target_hp > 0.0 and hero_damage >= target_hp:
@@ -1627,21 +1627,21 @@ static func _tusk_snowball_modifier(level_data: Dictionary, context: Dictionary)
 	return score
 
 
-## Tag Team: NOT an instant hit - a temporary buff to Tusk's own plain
+## Bestial Rage: NOT an instant hit - a temporary buff to Skarn's own plain
 ## Attacks, so its whole value has to be the expected bonus damage over
 ## however many Attacks he realistically lands during the duration, per
 ## the design doc's own "expected_value = bonus_damage x expected_
 ## attacks_during_duration" formula - never a flat one-time add the way
 ## a real damage skill's _estimate_skill_damage() case would (which is
-## exactly why Tag Team is "utility" category with no such case at all;
+## exactly why Bestial Rage is "utility" category with no such case at all;
 ## every point of its value is computed right here). "Already active" is
 ## gated at the candidacy level instead (see battle.gd's own
 ## _enemy_skill_worth_casting()'s/EnemyHeroManager's own _npc_skill_
-## worth_casting()'s "tag_team" case), same as every other self-buff in
+## worth_casting()'s "bestial_rage" case), same as every other self-buff in
 ## this file - so this never has to ask that question itself. The
 ## shared _evaluate_utility() term this skill's "utility" category
 ## already gets (a flat -15 once hero_hp_ratio < 0.35) covers the design
-## doc's own "lower value when Tusk is low HP" instruction without this
+## doc's own "lower value when Skarn is low HP" instruction without this
 ## needing its own separate copy of that penalty. `target_distance`
 ## defaults to 0 (adjacent) rather than "far away" when absent - that's
 ## the simulation, where every attack already reaches its target with no
@@ -1649,7 +1649,7 @@ static func _tusk_snowball_modifier(level_data: Dictionary, context: Dictionary)
 ## context() docstring, and its "in_attack_range_now"/"in_attack_range_
 ## with_frostbound_fangs_bonus" fields making the same unconditional-true
 ## call for Frostbound Fangs' own copy there).
-static func _tusk_tag_team_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _skarn_bestial_rage_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var bonus_damage: float = float(level_data.get("bonus_damage", 0.0))
 	var duration: int = int(level_data.get("duration", 0))
 	var already_adjacent: bool = int(context.get("target_distance", 0)) <= 0
@@ -1665,7 +1665,7 @@ static func _tusk_tag_team_modifier(level_data: Dictionary, context: Dictionary)
 		if target_hp > 0.0 and hero_damage > 0.0:
 			expected_attacks = minf(expected_attacks, ceil(target_hp / hero_damage))
 	else:
-		# Tusk still needs to close the distance first - a real
+		# Skarn still needs to close the distance first - a real
 		# possibility (he might well get there next turn), just a
 		# smaller and less certain one than already being adjacent.
 		expected_attacks = maxf(0.0, float(duration) - 1.0) * 0.5
@@ -1679,24 +1679,24 @@ static func _tusk_tag_team_modifier(level_data: Dictionary, context: Dictionary)
 	return expected_value * 0.35
 
 
-## Walrus Punch: the highest-value skill in Tusk's kit, but not an
-## unconditional "if ready, use it" - the early-out mirrors Snowball's
+## Glacier Breaker: the highest-value skill in Skarn's kit, but not an
+## unconditional "if ready, use it" - the early-out mirrors Charge's
 ## own above (a target a plain Attack can already kill outright makes
 ## spending the ultimate's mana/cooldown wasteful, collision/stun
 ## flourishes included, per the design doc's own Example A). Otherwise,
-## `base_punch_damage` (Tusk's actual hero_damage x damage_multiplier,
-## the same figure _estimate_skill_damage()'s own "walrus_punch" case
+## `base_punch_damage` (Skarn's actual hero_damage x damage_multiplier,
+## the same figure _estimate_skill_damage()'s own "glacier_breaker" case
 ## already fed into the generic kill-potential term above) determines
 ## whether a knockback that gets cut short would ALSO cross the kill
 ## threshold via its 50% collision bonus - credited here rather than
 ## twice, since the generic term only ever sees the no-collision
 ## estimate. `grid_columns` gates real knockback-destination math (see
-## _tusk_ice_shards_modifier()'s own docstring for why); without it
+## _skarn_frostbound_rupture_modifier()'s own docstring for why); without it
 ## (the simulation), collision is approximated as "likely when at least
 ## one other living enemy exists to run into," same "no columns, but
 ## more enemies still means more" proxy every position-dependent skill
 ## in this file falls back to there.
-static func _tusk_walrus_punch_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _skarn_glacier_breaker_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
 	var target_hp: float = float(context.get("target_hp", 0.0))
 
@@ -1748,14 +1748,14 @@ static func _tusk_walrus_punch_modifier(level_data: Dictionary, context: Diction
 	return score
 
 
-## A plain Attack is only worth scoring above its flat baseline for Tusk
+## A plain Attack is only worth scoring above its flat baseline for Skarn
 ## when it can finish the target off outright (see basic_attack_
-## participates()'s own docstring for why he opts in at all) - Walrus
-## Punch/Snowball are both real mana/cooldown investments, so a free
+## participates()'s own docstring for why he opts in at all) - Glacier
+## Breaker/Charge are both real mana/cooldown investments, so a free
 ## kill deserves a real shot at winning over spending either (see the
 ## design doc's own Example A). Same small mana-scarcity nudge as
 ## Frost Daughter's own copy.
-static func _tusk_basic_attack_modifier(context: Dictionary) -> float:
+static func _skarn_basic_attack_modifier(context: Dictionary) -> float:
 	var score: float = 0.0
 
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
@@ -1867,7 +1867,7 @@ static func _tp_natures_guise_modifier(level_data: Dictionary, context: Dictiona
 ## needing it (0 extra value at full HP, per the design doc's own "do
 ## not automatically use Leech Seed simply because Treant is damaged"
 ## instruction - kill potential/target value alone can still justify it
-## at full HP). Early-out mirrors Snowball's/Walrus Punch's own below: a
+## at full HP). Early-out mirrors Charge's/Glacier Breaker's own below: a
 ## target a plain Attack can already kill outright leaves nothing for a
 ## multi-turn DoT to finish first, so it's not worth the mana (see the
 ## design doc's own Basic Attack example).
@@ -1945,8 +1945,8 @@ static func _tp_living_armor_modifier(level_data: Dictionary, context: Dictionar
 ## explicit "rooting does NOT prevent attacks/skills/items" instruction
 ## - Overgrowth's root shares the same generic root_turns_left field
 ## Thornbind's own does, which every attack/skill/item check already
-## ignores). The early-out mirrors Leech Seed's/Snowball's/Walrus
-## Punch's own: a single target a plain Attack can already kill outright
+## ignores). The early-out mirrors Leech Seed's/Charge's/Glacier
+## Breaker's own: a single target a plain Attack can already kill outright
 ## isn't worth an ultimate's mana/cooldown, but ONLY when just one enemy
 ## is actually affected - a multi-target opportunity is never penalized
 ## this way, per the design doc's own "if the ultimate can affect 3-4
@@ -2148,7 +2148,7 @@ static func _timbersaw_whirling_death_modifier(level_data: Dictionary, context: 
 ## matters a lot - same AoE tiers Whirling Death's own modifier uses,
 ## reused rather than inventing a second curve) plus movement value.
 ## Deliberately has NO "a plain Attack could already kill this" early-out
-## the way Snowball's/Leech Seed's/Chakram's own do - per the design
+## the way Charge's/Leech Seed's/Chakram's own do - per the design
 ## doc's own explicit instruction, Timber Chain must be allowed to score
 ## highly purely for a meaningful escape, "even when its damage is low"
 ## and "do not require the target itself to be low HP". `grid_columns`
@@ -2214,7 +2214,7 @@ static func _timbersaw_timber_chain_modifier(level_data: Dictionary, context: Di
 ## from firing at an unreachable target, so - unlike The Frost Tempest's/
 ## Overgrowth's/Whirling Death's own self-centered "is the caster's own
 ## radius even reaching anything" gate - there's no separate range check
-## to repeat here. The early-out mirrors Leech Seed's/Snowball's own: a
+## to repeat here. The early-out mirrors Leech Seed's/Charge's own: a
 ## single affected target a plain Attack can already kill outright isn't
 ## worth an expensive ultimate's mana/cooldown, but ONLY when just one
 ## enemy is actually affected - per the design doc's own explicit "if 3
@@ -2314,7 +2314,7 @@ static func _timbersaw_basic_attack_modifier(context: Dictionary) -> float:
 ## opportunity-cost value on top. None of the four needs anything beyond
 ## context fields this file already exposes generically (living_target_
 ## hps/target_distance/caster_pos_index/target_pos_index/grid_columns/
-## caster_facing_left, all already established by Tusk's/Frost
+## caster_facing_left, all already established by Skarn's/Frost
 ## Daughter's own modifiers) plus two new ones scoped to this file's own
 ## header comment: "target_is_hero" (Timbersaw's own, reused as-is) and
 ## "target_armor" (new, for Lil' Shredder specifically).
