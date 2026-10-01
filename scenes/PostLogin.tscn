@@ -66,7 +66,7 @@ anchor_bottom = 0.749
 offset_left = -110.56006
 offset_top = -242.28003
 offset_right = 109.43994
-offset_bottom = -0.2800293
+offset_bottom = 65.71997
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 22
@@ -90,6 +90,11 @@ text = "High Scores"
 custom_minimum_size = Vector2(220, 44)
 layout_mode = 2
 text = "How to Play"
+
+[node name="IntroButton" type="Button" parent="ButtonsContainer"]
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+text = "Intro"
 
 [node name="SettingsButton" type="TextureButton" parent="." unique_id=1492437982]
 layout_mode = 1

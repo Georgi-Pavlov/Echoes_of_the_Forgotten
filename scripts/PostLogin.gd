@@ -10,6 +10,7 @@ func _ready() -> void:
 	$ButtonsContainer/ContinueButton.pressed.connect(_on_continue_pressed)
 	$ButtonsContainer/HighScoresButton.pressed.connect(_on_high_scores_pressed)
 	$ButtonsContainer/HowToPlayButton.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/HowToPlay.tscn"))
+	$ButtonsContainer/IntroButton.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Intro.tscn"))
 	confirm_ok_button.pressed.connect(_on_confirm_new_game_ok)
 	confirm_cancel_button.pressed.connect(_on_confirm_new_game_cancel)
 	$SettingsButton.pressed.connect(func(): $SettingsPopup.open())

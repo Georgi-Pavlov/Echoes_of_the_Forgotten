@@ -35,7 +35,9 @@ func _on_submit_pressed() -> void:
 
 	PlayerManager.register_player(username, password)
 	PlayerManager.current_player = username
-	get_tree().change_scene_to_file("res://scenes/PostLogin.tscn")
+	# A brand-new player sees the story intro first; it moves on to
+	# PostLogin by itself when it ends or is skipped.
+	get_tree().change_scene_to_file("res://scenes/Intro.tscn")
 
 func _on_back_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")

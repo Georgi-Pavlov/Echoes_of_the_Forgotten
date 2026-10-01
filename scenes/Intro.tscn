@@ -1,0 +1,124 @@
+[gd_scene format=3 uid="uid://bpcisxejwr7rn"]
+
+[ext_resource type="Script" uid="uid://bmf16cry3w5q5" path="res://scripts/Intro.gd" id="1"]
+
+[sub_resource type="Gradient" id="TextShadeGradient"]
+offsets = PackedFloat32Array(0, 0.45, 1)
+colors = PackedColorArray(0, 0, 0, 0, 0, 0, 0, 0.55, 0, 0, 0, 0.85)
+
+[sub_resource type="GradientTexture2D" id="TextShadeTexture"]
+gradient = SubResource("TextShadeGradient")
+width = 8
+height = 128
+fill_to = Vector2(0, 1)
+
+[node name="Intro" type="Control" unique_id=1884275632]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+start_scene = 6
+loop_scene = true
+
+[node name="Black" type="ColorRect" parent="." unique_id=846546407]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+
+[node name="ImageHolder" type="Control" parent="." unique_id=816510854]
+clip_contents = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ImageB" type="TextureRect" parent="ImageHolder" unique_id=219024287]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="ImageA" type="TextureRect" parent="ImageHolder" unique_id=1267447086]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="TextShade" type="TextureRect" parent="." unique_id=1551289914]
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 0.6
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+texture = SubResource("TextShadeTexture")
+expand_mode = 1
+
+[node name="StoryLabel" type="Label" parent="." unique_id=1827915368]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.14
+anchor_top = 0.8
+anchor_right = 0.86
+anchor_bottom = 0.96
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 0.93, 0.8, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.6)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 3
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 26
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="Fade" type="ColorRect" parent="." unique_id=966966416]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+
+[node name="SkipButton" type="Button" parent="." unique_id=2135918802]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -140.0
+offset_top = -56.0
+offset_right = -20.0
+offset_bottom = -16.0
+grow_horizontal = 0
+grow_vertical = 0
+focus_mode = 0
+text = "Skip"
