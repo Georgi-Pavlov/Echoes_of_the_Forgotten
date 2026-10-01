@@ -10,8 +10,8 @@ shader_type canvas_item;
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
 // Where the beat spreads from, in screen pixels, and how fast it spreads.
 uniform vec2 source_px = vec2(913.0, 40.0);
-uniform float spread_px_per_sec = 500.0;
-uniform float beat_period = 1.6;
+uniform float spread_px_per_sec = 250.0;
+uniform float beat_period = 3.2;
 uniform float strength = 0.9;
 uniform vec4 glow_color : source_color = vec4(1.0, 0.15, 0.2, 1.0);
 uniform vec4 edge_fade = vec4(0.001, 0.08, 0.001, 0.001);

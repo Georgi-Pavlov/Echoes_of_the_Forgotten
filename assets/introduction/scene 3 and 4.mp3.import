@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://bfxxn5s66knjh"
+path="res://.godot/imported/scene 3 and 4.mp3-95a1ae50d44519e59ba3af1395f6805d.mp3str"
+
+[deps]
+
+source_file="res://assets/introduction/scene 3 and 4.mp3"
+dest_files=["res://.godot/imported/scene 3 and 4.mp3-95a1ae50d44519e59ba3af1395f6805d.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -13,6 +13,8 @@ extends Control
 ## with no narration yet types its text out instead and holds it for a
 ## reading pause. Tap/click/Space moves on to the next scene (or, mid-typing, just
 ## finishes the line); Skip (or Esc) leaves for PostLogin straight away.
+## Told to the end, the story goes out in a flash of light straight off the
+## last scene's finale, fading away over PostLogin (see _flash_out()).
 
 const NEXT_SCENE := "res://scenes/PostLogin.tscn"
 const BURN_SHADER := preload("res://shaders/intro_burn.gdshader")
@@ -22,7 +24,13 @@ const BURN_SHADER := preload("res://shaders/intro_burn.gdshader")
 ##   "audio" - the narration - plus "subtitles": [start, end, text] per
 ##   line, in seconds into the narration, shown while that line is spoken.
 ##   The last line's end is where the speech itself stops: the burn starts
-##   right there, without waiting out the silence at the end of the file;
+##   right there, without waiting out the silence at the end of the file.
+##   Two scenes can share one file: the second gives the same "audio" plus
+##   "audio_from" - where in the file its part starts (in the pause before
+##   its first line) - and its subtitles in seconds into the whole file.
+##   The narration then runs straight on through the burn between them; it
+##   only starts afresh from "audio_from" if the scene is reached any other
+##   way (tapped to, started on, looped);
 ## or, until a scene has narration, "text" - typed out over the image.
 const SCENES: Array[Dictionary] = [
 	{
@@ -47,7 +55,7 @@ const SCENES: Array[Dictionary] = [
 	{
 		"image": "res://assets/introduction/scene 3.jpg",
 		"effects": "res://scripts/IntroScene3FX.gd",
-		"audio": "res://assets/introduction/scene 3.mp3",
+		"audio": "res://assets/introduction/scene 3 and 4.mp3",
 		"subtitles": [
 			[0.0, 2.9, "Nature flourished beneath their hands."],
 			[3.4, 10.5, "Forests stretched beyond the horizon, rivers ran clear, and life filled every corner of the land."],
@@ -58,13 +66,14 @@ const SCENES: Array[Dictionary] = [
 	{
 		"image": "res://assets/introduction/scene 4.jpg",
 		"effects": "res://scripts/IntroScene4FX.gd",
-		"audio": "res://assets/introduction/scene 4.mp3",
+		"audio": "res://assets/introduction/scene 3 and 4.mp3",
+		"audio_from": 19.6,
 		"subtitles": [
-			[0.0, 2.0, "Death."],
-			[2.2, 5.9, "They sought a way beyond the limits of mortal flesh."],
-			[6.3, 8.8, "And they found a door."],
-			[9.4, 14.6, "Beyond it lay a realm where thought had weight, and will could shape reality."],
-			[15.1, 18.9, "They believed they had found the power to become more than mortal."],
+			[19.9, 20.9, "Death."],
+			[21.2, 24.5, "They sought a way beyond the limits of mortal flesh."],
+			[24.9, 26.4, "And they found a door."],
+			[26.8, 32.1, "Beyond it lay a realm where thought had weight, and will could shape reality."],
+			[32.6, 36.3, "They believed they had found the power to become more than mortal."],
 		],
 	},
 	{
@@ -95,6 +104,7 @@ const SCENES: Array[Dictionary] = [
 	},
 	{
 		"image": "res://assets/introduction/scene 7.jpg",
+		"effects": "res://scripts/IntroScene7FX.gd",
 		"audio": "res://assets/introduction/scene 7.mp3",
 		"subtitles": [
 			[0.0, 2.1, "The old world is gone."],
@@ -104,6 +114,7 @@ const SCENES: Array[Dictionary] = [
 	},
 	{
 		"image": "res://assets/introduction/scene 8.jpg",
+		"effects": "res://scripts/IntroScene8FX.gd",
 		"audio": "res://assets/introduction/scene 8.mp3",
 		"subtitles": [
 			[0.0, 3.5, "The Echoes call to your kind, the Remembered."],
@@ -128,9 +139,15 @@ const SUBTITLE_FADE_TIME := 0.25
 ## Pause before scene 1's narration starts, so the image has mostly faded
 ## in from black first.
 const FIRST_VOICE_DELAY := 0.8
-## How long the final line stays on screen after the narration ends,
-## before the closing fade to black.
-const FINAL_HOLD_TIME := 3.0
+## When the last line has been spoken, the story ends on the last scene's
+## finale (IntroScene8FX.gd) at its height: a beat for the line to land,
+## then a flash of light that swells over the scene, holds while the menu
+## loads underneath it, and fades away there.
+const FINAL_HOLD_TIME := 0.3
+const FLASH_COLOR := Color(1.0, 0.84, 0.68)
+const FLASH_IN_TIME := 0.5
+const FLASH_HOLD_TIME := 0.15
+const FLASH_OUT_TIME := 1.4
 ## How long after one scene's narration ends (and its burn starts) the
 ## next scene's narration begins - partway through the burn, not after it.
 const NEXT_VOICE_DELAY := 1.0
@@ -213,7 +230,7 @@ func _process(_delta: float) -> void:
 		var time := _voice.get_playback_position() + AudioServer.get_time_since_last_mix()
 		var subtitles: Array = SCENES[_index]["subtitles"]
 		if time >= subtitles[-1][1]:
-			_next_scene()
+			_next_scene(true)
 		else:
 			_update_subtitle(time)
 
@@ -260,6 +277,9 @@ func _play_scene(voice_delay := 0.0) -> void:
 	_subtitle_index = -1
 	_story_label.text = ""
 	_story_label.visible_ratio = 1.0
+	# Already playing on into this scene's part of a shared file.
+	if _voice_runs_into(_index):
+		return
 	if _voice_tween:
 		_voice_tween.kill()
 	_voice.volume_db = 0.0
@@ -268,7 +288,20 @@ func _play_scene(voice_delay := 0.0) -> void:
 		await get_tree().create_timer(voice_delay).timeout
 		if _phase != Phase.NARRATING:
 			return
-	_voice.play()
+	_voice.play(scene.get("audio_from", 0.0))
+
+
+## Whether the narration playing now is the previous scene's part of a
+## file scene `index` shares with it, nearly through to where scene
+## `index`'s part starts - so it can just play on into it.
+func _voice_runs_into(index: int) -> bool:
+	var scene: Dictionary = SCENES[index]
+	if not scene.has("audio_from") or not _voice.playing or _voice.stream == null:
+		return false
+	if _voice.stream.resource_path != scene["audio"]:
+		return false
+	var position := _voice.get_playback_position()
+	return position >= scene["audio_from"] - 2.0 and position <= scene["audio_from"] + 0.3
 
 
 ## Shows whichever subtitle line covers `time` (seconds into the
@@ -303,7 +336,7 @@ func _on_voice_finished() -> void:
 		return
 	# Only reached if the last subtitle runs past the end of the file -
 	# normally _process() starts the burn when the speech stops.
-	_next_scene()
+	_next_scene(true)
 
 
 func _type_text(text: String) -> void:
@@ -325,13 +358,18 @@ func _hold(duration: float) -> void:
 		_next_scene()
 
 
-func _next_scene() -> void:
+## Moves on from the current scene - `ended` when its narration has run
+## to the end, rather than the player tapping past it.
+func _next_scene(ended := false) -> void:
 	if _index + 1 >= SCENES.size() and not loop_scene:
-		# Let the story's last line sink in before fading out.
-		if _phase == Phase.NARRATING:
-			_phase = Phase.WAITING
-			await get_tree().create_timer(FINAL_HOLD_TIME).timeout
-		_finish(FADE_OUT_TIME)
+		# The story told to the end goes out in a flash; tapped past, it
+		# just fades to black.
+		if not ended:
+			_finish(FADE_OUT_TIME)
+			return
+		_phase = Phase.WAITING
+		await get_tree().create_timer(FINAL_HOLD_TIME).timeout
+		_flash_out()
 		return
 	# Narration shorter than a burn could end before the last burn does -
 	# let that one finish before starting the next.
@@ -346,7 +384,8 @@ func _next_scene() -> void:
 	if _text_tween:
 		_text_tween.kill()
 	create_tween().tween_property(_story_label, "modulate:a", 0.0, TEXT_FADE_TIME)
-	_cut_voice(VOICE_CUT_FADE_TIME)
+	if not _voice_runs_into(_index):
+		_cut_voice(VOICE_CUT_FADE_TIME)
 	_burn_to(_index)
 
 	await get_tree().create_timer(NEXT_VOICE_DELAY).timeout
@@ -451,3 +490,32 @@ func _finish(fade_time: float) -> void:
 	tween.tween_property(_fade, "color:a", 1.0, fade_time)
 	await tween.finished
 	get_tree().change_scene_to_file(NEXT_SCENE)
+
+
+## Ends the story in a flash of light (see FLASH_COLOR): it swells over the
+## scene, the menu loads underneath it, and it fades away over the menu.
+## The flash lives on the root viewport rather than in this scene, so it
+## outlasts the scene change, and frees itself once it's gone.
+func _flash_out() -> void:
+	if _phase == Phase.DONE:
+		return
+	_phase = Phase.DONE
+	_skip_button.disabled = true
+	_cut_voice(FLASH_IN_TIME)
+
+	var layer := CanvasLayer.new()
+	layer.layer = 128
+	var flash := ColorRect.new()
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	flash.color = Color(FLASH_COLOR, 0.0)
+	layer.add_child(flash)
+	get_tree().root.add_child(layer)
+
+	var tree := get_tree()
+	var tween := layer.create_tween()
+	tween.tween_property(flash, "color:a", 1.0, FLASH_IN_TIME).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func(): tree.change_scene_to_file(NEXT_SCENE))
+	tween.tween_interval(FLASH_HOLD_TIME)
+	tween.tween_property(flash, "color:a", 0.0, FLASH_OUT_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(layer.queue_free)

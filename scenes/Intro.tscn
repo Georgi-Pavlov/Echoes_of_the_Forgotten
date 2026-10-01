@@ -20,8 +20,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1")
-start_scene = 6
-loop_scene = true
 
 [node name="Black" type="ColorRect" parent="." unique_id=846546407]
 layout_mode = 1
