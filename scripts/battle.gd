@@ -25,6 +25,8 @@ extends Control
 @onready var defeat_popup: PanelContainer = $DefeatPopup
 @onready var defeat_ok_button: Button = $DefeatPopup/DefeatMargin/DefeatVBox/DefeatOkButton
 @onready var level_up_popup: PanelContainer = $LevelUpPopup
+@onready var echo_popup: PanelContainer = $EchoPopup
+@onready var echo_ok_button: Button = $EchoPopup/EchoMargin/EchoVBox/EchoOkButton
 @onready var level_up_level_label: Label = $LevelUpPopup/LevelUpMargin/LevelUpVBox/LevelUpLevelLabel
 @onready var level_up_ok_button: Button = $LevelUpPopup/LevelUpMargin/LevelUpVBox/LevelUpOkButton
 @onready var level_up_strength_old: Label = $LevelUpPopup/LevelUpMargin/LevelUpVBox/StatsGrid/StrengthOld
@@ -1683,6 +1685,24 @@ var _in_hero_fight: bool = false
 # mark defeated via PlayerManager.mark_hero_defeated() when it's won.
 var _hero_fight_target_id: String = ""
 
+# The fallen rival's Echo (see HeroEchoFX), left in the column where
+# they died - a hero fight isn't won until the hero goes over it with
+# no enemies left standing (see _try_collect_hero_echo()). null while
+# there's no Echo waiting.
+var _hero_echo: HeroEchoFX = null
+var _hero_echo_pos_index: int = -1
+
+# The Echo can't be collected until the player has closed EchoPopup,
+# which opens once it's collectible (see _show_hero_echo_popup()).
+# Pending while the level-up flow is still open on top of it.
+var _echo_popup_acknowledged: bool = false
+var _echo_popup_pending: bool = false
+
+# Where the hero stood as of the last _update_hero_position(), so a
+# move that carries him across several columns still counts as going
+# over the Echo, not only one that lands right on it.
+var _last_hero_pos_index: int = -1
+
 # Bumped every time _advance_to_next_stage() runs. Action handlers
 # that might kill the last enemy of a stage (attack, Barbed Lunge, Dark
 # Pact) capture this before acting and check it again after - if it
@@ -1705,6 +1725,7 @@ func _ready() -> void:
 	attack_button.pressed.connect(_on_attack_pressed)
 	hero_image.gui_input.connect(_on_hero_image_gui_input)
 	level_up_ok_button.pressed.connect(_on_level_up_continue_pressed)
+	echo_ok_button.pressed.connect(_on_echo_popup_ok_pressed)
 	skill_choice_desc_ok_button.pressed.connect(_on_skill_choice_desc_ok_pressed)
 	skill_choice_desc_cancel_button.pressed.connect(_on_skill_choice_desc_cancel_pressed)
 
@@ -1967,6 +1988,10 @@ func _update_hero_position() -> void:
 	var animator := CreatureAnimator.of(hero_image)
 	if animator != null and not is_equal_approx(old_x, hero_image.position.x):
 		animator.play_move(old_x - hero_image.position.x)
+
+	var from_index: int = _last_hero_pos_index if _last_hero_pos_index >= 0 else _hero_pos_index
+	_last_hero_pos_index = _hero_pos_index
+	_try_collect_hero_echo(from_index, _hero_pos_index)
 	
 
 ## Spawns the current stage's enemies: GameManager.STAGE_ENEMY_COUNTS
@@ -9784,7 +9809,7 @@ func _build_level_up_input_blocker() -> void:
 	add_child(_level_up_input_blocker)
 	move_child(_level_up_input_blocker, level_up_popup.get_index())
 
-	for popup in [level_up_popup, skill_choice_popup, skill_choice_desc_popup]:
+	for popup in [level_up_popup, skill_choice_popup, skill_choice_desc_popup, echo_popup]:
 		popup.visibility_changed.connect(_refresh_level_up_input_blocker)
 	_refresh_level_up_input_blocker()
 
@@ -9793,8 +9818,14 @@ func _is_level_up_flow_open() -> bool:
 	return level_up_popup.visible or skill_choice_popup.visible or skill_choice_desc_popup.visible
 
 
+## Also blocks input under EchoPopup (drawn above the blocker, like the
+## level-up popups), and opens a held-back EchoPopup once the level-up
+## flow closes - deferred, since closing LevelUpPopup can immediately
+## open SkillChoicePopup in the same call.
 func _refresh_level_up_input_blocker() -> void:
-	_level_up_input_blocker.visible = _is_level_up_flow_open()
+	_level_up_input_blocker.visible = _is_level_up_flow_open() or echo_popup.visible
+	if _echo_popup_pending and not _is_level_up_flow_open():
+		_show_hero_echo_popup.call_deferred()
 
 
 func _set_stat_row(old_label: Label, new_label: Label, old_value, new_value) -> void:
@@ -11584,6 +11615,8 @@ func _kill_enemy(enemy: Dictionary, claimed_by_void: bool = false) -> void:
 		ReturnToVoidFX.claim(enemy["node"], _fx_layer)
 	else:
 		CreatureAnimator.spawn_death_ghost(enemy["node"], _fx_layer)
+	if _in_hero_fight and enemy["static"].get("is_hero_fight_boss", false):
+		_spawn_hero_echo(enemy)
 	enemy["node"].queue_free()
 	if enemy.get("hp_label") != null:
 		enemy["hp_label"].queue_free()
@@ -11657,6 +11690,12 @@ func _handle_victory() -> void:
 		return
 
 	if _in_hero_fight:
+		# The rival already fell (see _spawn_hero_echo()) - the fight is
+		# only won once the hero goes over the Echo they left behind,
+		# which may be right where he's standing.
+		if _hero_echo != null:
+			_try_collect_hero_echo(_hero_pos_index, _hero_pos_index)
+			return
 		PlayerManager.mark_hero_defeated(_hero_fight_target_id)
 		_in_hero_fight = false
 		_finish_zone_victory()
@@ -11672,7 +11711,74 @@ func _handle_victory() -> void:
 	_finish_zone_victory()
 
 
+## The rival hero has fallen: they're marked defeated on the spot (their
+## kill message is queued now, whatever happens after), and their Echo
+## opens in the column they died in, waiting to be collected.
+func _spawn_hero_echo(boss: Dictionary) -> void:
+	PlayerManager.mark_hero_defeated(_hero_fight_target_id)
+	var node: Control = boss["node"]
+	var center: Vector2 = node.global_position + node.size * 0.5
+	_hero_echo = HeroEchoFX.spawn(_fx_layer, center, get_viewport_rect().size.y / 4.0 * 0.5)
+	_hero_echo_pos_index = int(boss["pos_index"])
+	_echo_popup_acknowledged = false
+	_echo_popup_pending = false
+
+
+## Collects the Echo if the hero's move from `from_index` to `to_index`
+## went over it - but only once every enemy is dead; with any still
+## standing, he just passes over it. The first time it's collectible,
+## EchoPopup opens instead, and it can only be collected once that's
+## been closed.
+func _try_collect_hero_echo(from_index: int, to_index: int) -> void:
+	if _hero_echo == null or _battle_over or not _enemies.is_empty():
+		return
+	if not _echo_popup_acknowledged:
+		_show_hero_echo_popup()
+		return
+	if _hero_echo_pos_index < mini(from_index, to_index) or _hero_echo_pos_index > maxi(from_index, to_index):
+		return
+	# Nothing left to fight - the battle is locked while the Echo flows
+	# into the hero, then the fight is won for real.
+	_battle_over = true
+	_cancel_targeting()
+	_update_action_buttons()
+	_hero_echo.collect(hero_image, _on_hero_echo_collected)
+
+
+## Opens EchoPopup - or, if the killing blow also opened the level-up
+## flow, holds it back until that's closed (see
+## _refresh_level_up_input_blocker()).
+func _show_hero_echo_popup() -> void:
+	if _hero_echo == null or _echo_popup_acknowledged or echo_popup.visible or _battle_over:
+		return
+	if _is_level_up_flow_open():
+		_echo_popup_pending = true
+		return
+	_echo_popup_pending = false
+	_cancel_targeting()
+	echo_popup.visible = true
+
+
+## Closing EchoPopup frees the Echo to be collected - straight away if
+## the hero is already standing on it.
+func _on_echo_popup_ok_pressed() -> void:
+	echo_popup.visible = false
+	_echo_popup_acknowledged = true
+	_try_collect_hero_echo(_hero_pos_index, _hero_pos_index)
+
+
+func _on_hero_echo_collected() -> void:
+	_hero_echo = null
+	_in_hero_fight = false
+	_finish_zone_victory()
+
+
 func _finish_zone_victory() -> void:
+	# The first clear of the player's own home zone is what opens up the
+	# rest of the world (see PlayerManager.is_home_zone_cleared()) - so
+	# it gets a moment of story before heading back to the Map.
+	var first_home_clear: bool = GameManager.selected_zone == PlayerManager.get_home_zone_id() \
+			and not PlayerManager.is_zone_cleared(GameManager.selected_zone)
 	PlayerManager.set_zone_cleared(GameManager.selected_zone)
 
 	_battle_over = true
@@ -11681,6 +11787,9 @@ func _finish_zone_victory() -> void:
 	# Let the killing blow's death dissolve finish before leaving.
 	if not get_tree().get_nodes_in_group(CreatureAnimator.DEATH_GHOST_GROUP).is_empty():
 		await get_tree().create_timer(CreatureAnimator.DEATH_DURATION + 0.15).timeout
+	if first_home_clear:
+		await StoryBanner.play(self, "Your journey has only begun.",
+				"The world lies beyond your home. Seek the other Remembered and gather their Echoes.").finished
 	get_tree().change_scene_to_file("res://scenes/Map.tscn")
 
 
@@ -12004,7 +12113,15 @@ func _end_turn() -> void:
 		return
 
 	_turn_count += 1
-	if _turn_count >= _next_reinforcement_turn and not _enemies.is_empty():
+	# Only turns with an enemy still alive count toward reinforcements -
+	# once they're all down and only the Echo is left to collect, the
+	# countdown holds where it is.
+	if _enemies.is_empty():
+		_next_reinforcement_turn += 1
+		# Covers the last enemy leaving the field some way other than
+		# _kill_enemy() (e.g. a rival's Elderwild Companion despawning).
+		_try_collect_hero_echo(_hero_pos_index, _hero_pos_index)
+	elif _turn_count >= _next_reinforcement_turn:
 		_spawn_reinforcements()
 		_next_reinforcement_turn += REINFORCEMENT_REPEAT_INTERVAL
 

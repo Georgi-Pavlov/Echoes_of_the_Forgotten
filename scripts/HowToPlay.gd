@@ -14,7 +14,7 @@ Potions and stat-boost items in your inventory can be used any time, free of you
 
 Clear every stage in a zone and you may be challenged by one of that zone's rival heroes in a duel.
 
-Win, and you take their bounty in XP and gold. Clear your starting zone entirely and you unlock all other zones on the map.
+Win, and you take their bounty in XP and gold. Clear all 3 stages of your starting zone and you unlock all other zones on the map.
 
 You're not the only hero out there. Every other zone's hero is fighting their way through their own home turf in the background, leveling up and dueling their own rivals even while you're elsewhere.
 

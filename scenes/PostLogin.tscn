@@ -59,42 +59,71 @@ horizontal_alignment = 1
 [node name="ButtonsContainer" type="VBoxContainer" parent="." unique_id=1815192438]
 layout_mode = 1
 anchors_preset = -1
-anchor_left = 0.50200003
-anchor_top = 0.749
-anchor_right = 0.50200003
-anchor_bottom = 0.749
-offset_left = -110.56006
-offset_top = -242.28003
-offset_right = 109.43994
-offset_bottom = 65.71997
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -237.0
+offset_top = -48.0
+offset_right = 237.0
+offset_bottom = 152.0
 grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/separation = 22
+theme_override_constants/separation = 14
 
 [node name="NewGameButton" type="Button" parent="ButtonsContainer" unique_id=536682063]
-custom_minimum_size = Vector2(220, 44)
+custom_minimum_size = Vector2(260, 52)
 layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 22
 text = "New Game"
 
 [node name="ContinueButton" type="Button" parent="ButtonsContainer" unique_id=185328039]
-custom_minimum_size = Vector2(220, 44)
+custom_minimum_size = Vector2(260, 52)
 layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 22
 text = "Continue"
 
-[node name="HighScoresButton" type="Button" parent="ButtonsContainer" unique_id=723863277]
-custom_minimum_size = Vector2(220, 44)
+[node name="Gap" type="Control" parent="ButtonsContainer"]
+custom_minimum_size = Vector2(0, 10)
 layout_mode = 2
+mouse_filter = 2
+
+[node name="ExtraButtons" type="HBoxContainer" parent="ButtonsContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="HighScoresButton" type="Button" parent="ButtonsContainer/ExtraButtons" unique_id=723863277]
+custom_minimum_size = Vector2(150, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
 text = "High Scores"
 
-[node name="HowToPlayButton" type="Button" parent="ButtonsContainer" unique_id=434628330]
-custom_minimum_size = Vector2(220, 44)
+[node name="HowToPlayButton" type="Button" parent="ButtonsContainer/ExtraButtons" unique_id=434628330]
+custom_minimum_size = Vector2(150, 38)
 layout_mode = 2
+theme_override_font_sizes/font_size = 16
 text = "How to Play"
 
-[node name="IntroButton" type="Button" parent="ButtonsContainer"]
-custom_minimum_size = Vector2(220, 44)
+[node name="IntroButton" type="Button" parent="ButtonsContainer/ExtraButtons"]
+custom_minimum_size = Vector2(150, 38)
 layout_mode = 2
+theme_override_font_sizes/font_size = 16
 text = "Intro"
+
+[node name="LogOutButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -56.0
+offset_right = 140.0
+offset_bottom = -16.0
+grow_vertical = 0
+theme_override_font_sizes/font_size = 16
+text = "Log Out"
 
 [node name="SettingsButton" type="TextureButton" parent="." unique_id=1492437982]
 layout_mode = 1

@@ -1,8 +1,8 @@
 extends Control
 
 # The player can only enter their own recruited hero's home zone until
-# it's fully cleared (final stage beaten AND every hero in it defeated
-# - see PlayerManager.is_home_zone_cleared()). Computed once here so
+# its 3 stages have been cleared once (see PlayerManager.
+# is_home_zone_cleared()). Computed once here so
 # _spawn_region_buttons() and _on_region_pressed() agree on the same
 # snapshot for this Map visit.
 var _home_zone_id: String = ""
@@ -356,7 +356,7 @@ func _show_lock_message(text: String) -> void:
 
 # ------------------------------------------------------------------
 # "While you were away" popup: every rival-hero kill (and zone-wipe)
-# that happened in the background gets queued as a one-line event by
+# that happened in the background gets queued as an event by
 # PlayerManager (see its "Event queue" section) - shown here, once,
 # the next time the Map loads, then cleared so they never repeat.
 # ------------------------------------------------------------------

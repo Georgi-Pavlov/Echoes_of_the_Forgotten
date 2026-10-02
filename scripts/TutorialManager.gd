@@ -2,7 +2,9 @@ extends Node
 # ------------------------------------------------------------------
 # TutorialManager (autoload / singleton)
 # Drives the scripted, forced-input walkthrough started from the
-# "Tutorial" button on the How To Play screen (see HowToPlay.gd).
+# "Tutorial" button on the How To Play screen (see HowToPlay.gd), and
+# automatically the first time a newly registered player presses New
+# Game (see PostLogin.gd).
 # Runs entirely against PlayerManager's tutorial sandbox (see
 # PlayerManager.begin_tutorial_sandbox()) so recruiting a hero,
 # spending gold, draining potions, etc. never touches the player's
@@ -36,6 +38,10 @@ var _overlay: CanvasLayer = null
 # restore it by hand instead.
 var _pre_tutorial_selected_zone: String = ""
 
+# Where exit_tutorial() goes afterwards - back to wherever it was started
+# from (How To Play, or the map when it ran in place of a first New Game).
+var _return_scene: String = "res://scenes/HowToPlay.tscn"
+
 
 func _ready() -> void:
 	var overlay_scene: PackedScene = load("res://scenes/TutorialOverlay.tscn")
@@ -43,12 +49,15 @@ func _ready() -> void:
 	add_child(_overlay)
 
 
-## Entry point - called from the Tutorial button on HowToPlay.gd. Wipes
+## Entry point - called from the Tutorial button on HowToPlay.gd (and by
+## PostLogin.gd on a new player's first New Game, with `return_scene` set
+## to send them on into the real game when it's over). Wipes
 ## any real recruited hero out of the SANDBOXED copy of the player's
 ## data (same wipe "New Game" uses) so Zone.tscn's hero picker actually
 ## shows Kaelen Varr's recruitment screen instead of dropping straight into
 ## a real in-progress battle.
-func start_tutorial() -> void:
+func start_tutorial(return_scene: String = "res://scenes/HowToPlay.tscn") -> void:
+	_return_scene = return_scene
 	PlayerManager.begin_tutorial_sandbox()
 	PlayerManager.clear_recruited_hero()
 
@@ -197,7 +206,7 @@ func start_stage3() -> void:
 
 ## Ends the tutorial from wherever it currently is (an explicit "Exit
 ## Tutorial" checkpoint, or finishing the last stage) and returns to
-## How To Play. Always safe to call even if a stage left the player
+## wherever it was started from (see start_tutorial()). Always safe to call even if a stage left the player
 ## mid-battle/mid-shop - the sandbox restore means nothing there was
 ## ever real.
 func exit_tutorial() -> void:
@@ -211,7 +220,7 @@ func exit_tutorial() -> void:
 	if _overlay:
 		_overlay.hide_popup()
 		_overlay.set_exit_button_visible(false)
-	get_tree().change_scene_to_file("res://scenes/HowToPlay.tscn")
+	get_tree().change_scene_to_file(_return_scene)
 
 
 ## Restricts input to exactly these action ids until the next call -

@@ -85,9 +85,32 @@ func register_player(username: String, password: String) -> bool:
 	pf.store_line("level=1")
 	pf.store_line("gold=0")
 	pf.store_line("stats=")
+	# A brand-new player gets the tutorial the first time they press
+	# New Game (see PostLogin.gd and is_tutorial_pending()).
+	pf.store_line("tutorial_pending=1")
 	pf.close()
 
 	return true
+
+## True until this player has been sent into the tutorial once - set on
+## registration, cleared by clear_tutorial_pending(). Saves made before
+## this existed have no such key, so they never get it.
+func is_tutorial_pending() -> bool:
+	if current_player == "":
+		return false
+	return _read_player_data(current_player).get("tutorial_pending", "0") == "1"
+
+
+## Marks the tutorial as done for good, straight to disk - call it before
+## TutorialManager.start_tutorial(), so the sandbox snapshot it takes (and
+## restores afterwards) already has the flag cleared.
+func clear_tutorial_pending() -> void:
+	if current_player == "":
+		return
+	var data := _read_player_data(current_player)
+	data.erase("tutorial_pending")
+	_write_player_data(current_player, data)
+	flush_player_data()
 
 ## Checks username + password against players.txt
 func validate_login(username: String, password: String) -> bool:
@@ -636,7 +659,7 @@ func mark_hero_defeated(hero_id: String) -> void:
 func _queue_hero_defeat_events(hero_id: String) -> void:
 	var hero_static: Dictionary = GameManager.get_hero_by_id(hero_id)
 	var hero_name: String = hero_static.get("name", hero_id)
-	queue_event(hero_name + " has been slain!")
+	queue_event(hero_name + " has become an Echo.\nSuch is the fate of the fallen Remembered.")
 
 	var zone_id: String = GameManager.get_zone_id_for_hero(hero_id)
 	if zone_id == "":
@@ -652,7 +675,7 @@ func _queue_hero_defeat_events(hero_id: String) -> void:
 			return
 
 	var zone_name: String = GameManager.get_zone(zone_id).get("name", zone_id)
-	queue_event("All " + zone_name + " protectors are dead!")
+	queue_event("All Remembered from " + zone_name + " have fallen.\nTheir Echoes linger among the ruins.")
 
 
 # ------------------------------------------------------------------
@@ -665,13 +688,15 @@ func _queue_hero_defeat_events(hero_id: String) -> void:
 # free-form sentences that could themselves contain commas.
 # ------------------------------------------------------------------
 
-## Appends one event message to the end of the queue.
+## Appends one event message to the end of the queue. Line breaks are
+## stored escaped as a literal "\n" (the save file is one key=value per
+## line) and restored by get_queued_events().
 func queue_event(text: String) -> void:
 	if current_player == "" or text == "":
 		return
 	var data := _read_player_data(current_player)
 	var count: int = int(data.get("event_count", "0"))
-	data["event_" + str(count)] = text
+	data["event_" + str(count)] = text.replace("\n", "\\n")
 	data["event_count"] = str(count + 1)
 	_write_player_data(current_player, data)
 
@@ -686,7 +711,7 @@ func get_queued_events() -> Array:
 	var count: int = int(data.get("event_count", "0"))
 	var events: Array = []
 	for i in range(count):
-		events.append(data.get("event_" + str(i), ""))
+		events.append(data.get("event_" + str(i), "").replace("\\n", "\n"))
 	return events
 
 
@@ -710,33 +735,11 @@ func clear_queued_events() -> void:
 
 # ------------------------------------------------------------------
 # Home-zone lock: the player can only enter their own recruited
-# hero's home zone until it's genuinely done with - not just
-# is_zone_cleared() (which flips true the moment the FIRST hero fight
-# there is won, since re-clearing that same zone offers a different
-# hero each time), but every hero in it defeated. Every other zone
-# opens up once that's true.
+# hero's home zone until its 3 stages have been cleared once (see
+# is_zone_cleared() - that first clear never includes a hero fight,
+# see battle.gd's _try_start_hero_fight()). Every other zone opens up
+# once that's true.
 # ------------------------------------------------------------------
-
-## True once `zone_id` has been cleared at all (see is_zone_cleared)
-## AND every hero in that zone's own roster - other than
-## `exclude_hero_id`, if given - has been individually defeated (a
-## zone with no other heroes only needs the first part). Excluding a
-## hero matters for the player's own recruited hero: it can never
-## appear in defeated_heroes (see _get_eligible_hero_fight_heroes in
-## battle.gd, which never offers a fight against yourself), so without
-## excluding it here, a hero's own home zone could never register as
-## fully cleared.
-func is_zone_fully_cleared(zone_id: String, exclude_hero_id: String = "") -> bool:
-	if not is_zone_cleared(zone_id):
-		return false
-	for hero in GameManager.get_zone(zone_id).get("heroes", []):
-		var hero_id: String = hero.get("id", "")
-		if hero_id == exclude_hero_id:
-			continue
-		if not is_hero_defeated(hero_id):
-			return false
-	return true
-
 
 ## The player's own recruited hero's home zone id - "" if it can't be
 ## determined (e.g. no hero recruited yet).
@@ -744,15 +747,15 @@ func get_home_zone_id() -> String:
 	return GameManager.get_zone_id_for_hero(get_recruited_hero().get("id", ""))
 
 
-## True once the home zone is fully cleared - the condition that
-## unlocks every other zone on the Map. Defaults to true if the home
-## zone can't be determined, so a data problem never locks the player
-## out of the whole game.
+## True once the home zone's 3 stages have been cleared - the
+## condition that unlocks every other zone on the Map. Defaults to true
+## if the home zone can't be determined, so a data problem never locks
+## the player out of the whole game.
 func is_home_zone_cleared() -> bool:
 	var home_zone_id: String = get_home_zone_id()
 	if home_zone_id == "":
 		return true
-	return is_zone_fully_cleared(home_zone_id, get_recruited_hero().get("id", ""))
+	return is_zone_cleared(home_zone_id)
 
 
 # ------------------------------------------------------------------
