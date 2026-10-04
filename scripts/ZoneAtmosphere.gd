@@ -8,7 +8,8 @@ extends Control
 # exist for backgrounds that have them (currently Veyrik's Iron Abyss,
 # Erynd's Elderwild, Morvael's Kingdom of Morvain, Kaelen Varr's
 # Ironbound Isles, Nhal's and The Primordial Hunger's Frostspire and
-# Frost Daughter's Everfrost) and are
+# Frost Daughter's Everfrost, and the shared background of zones with
+# no heroes yet - UnknownZoneAtmosphere.gd) and are
 # torn down again when switching to any other hero. Morvain's, the
 # Ironbound Isles' and Frostspire's effects live in their own scripts
 # (MorvainAtmosphere.gd, IronboundAtmosphere.gd, FrostspireAtmosphere.gd),
@@ -127,6 +128,8 @@ const FROSTSPIRE_FX := preload("res://scripts/FrostspireAtmosphere.gd")
 const EVERFROST_BG := "res://assets/zones/the_everfrost_frost_daughter.jpg"
 const EVERFROST_FX := preload("res://scripts/EverfrostAtmosphere.gd")
 const EVERFROST_SKARN_BG := "res://assets/zones/the_everfrost_skarn.jpg"
+const UNKNOWN_BG := "res://assets/zones/empty_zone.jpg"
+const UNKNOWN_FX := preload("res://scripts/UnknownZoneAtmosphere.gd")
 
 const ELDERWILD_BG := "res://assets/zones/The Elderwild.jpg"
 const ELDERWILD_SHADER := preload("res://shaders/elderwild_background.gdshader")
@@ -245,7 +248,7 @@ func _ready() -> void:
 ## Called by zone.gd after it has set the background for the shown hero.
 func show_for_background(path: String) -> void:
 	_clear()
-	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG, EVERFROST_BG, EVERFROST_SKARN_BG]:
+	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG, EVERFROST_BG, EVERFROST_SKARN_BG, UNKNOWN_BG]:
 		return
 	# Guards against a hero switch landing during the await below.
 	_build_id += 1
@@ -266,6 +269,8 @@ func show_for_background(path: String) -> void:
 		_build_frostspire("the_primordial_hunger")
 	elif path == EVERFROST_BG:
 		_build_everfrost("frost_daughter")
+	elif path == UNKNOWN_BG:
+		_build_unknown()
 	elif path == EVERFROST_SKARN_BG:
 		_build_everfrost("skarn")
 	else:
@@ -997,3 +1002,12 @@ func _build_everfrost(hero: String) -> void:
 	add_child(fx)
 	fx.build(self, _background, hero)
 	_zone = "everfrost"
+
+
+# --- Zones with no heroes yet ---------------------------------------
+
+func _build_unknown() -> void:
+	var fx: Control = UNKNOWN_FX.new()
+	add_child(fx)
+	fx.build(self, _background)
+	_zone = "unknown"

@@ -11,6 +11,7 @@ extends Control
 @onready var accept_button: Button = $AcceptButton
 @onready var prev_hero_button: Button = $PrevHeroButton
 @onready var next_hero_button: Button = $NextHeroButton
+@onready var no_echo_label: Label = $NoEchoLabel
 
 @onready var stats_grid: GridContainer = $StatsPanel/StatsMargin/StatsGrid
 @onready var skill_buttons_container: HBoxContainer = $SkillsPanel/SkillsMargin/SkillButtons
@@ -26,6 +27,12 @@ extends Control
 # read any skill's description (including the ultimate) before
 # recruiting - but the ultimate itself can't be chosen as the
 # starting skill (see _on_skill_ok_pressed()).
+## Zones no hero has been made for yet all share this background (see
+## UnknownZoneAtmosphere.gd), and show only their name and, fading in
+## at the centre, the "no Echo" message.
+const EMPTY_ZONE_BACKGROUND := "res://assets/zones/empty_zone.jpg"
+const NO_ECHO_FADE_TIME := 1.5
+
 const ULTIMATE_FIRST_SKILL_ERROR := "You can't start with your ultimate - pick it after recruiting, once you've earned skill points."
 
 # Friendly labels for the stat dictionary keys, in the order they're shown.
@@ -115,12 +122,39 @@ func _ready() -> void:
 
 	_heroes = _zone_data.get("heroes", [])
 	if _heroes.is_empty():
+		# No heroes here yet: nothing is known of these lands - no lore,
+		# just the name and, in the middle of the mist, the message. And
+		# nothing that only makes sense with a hero to recruit.
+		description_label.visible = false
+		$TextScrim.visible = false
+		# The name moves from its usual corner to just above the message.
+		title_label.anchor_left = 0.0
+		title_label.anchor_right = 1.0
+		title_label.anchor_top = 0.5
+		title_label.anchor_bottom = 0.5
+		title_label.offset_left = 120.0
+		title_label.offset_right = -120.0
+		title_label.offset_top = -95.0
+		title_label.offset_bottom = -45.0
 		hero_name_label.text = ""
 		hero_range_type.text = ""
 		hero_main_stat.text = ""
 		prev_hero_button.visible = false
 		next_hero_button.visible = false
-		print("No hero defined for zone: ", _zone_data["name"])
+		$StatsPanel.visible = false
+		$SkillsPanel.visible = false
+		skill_error_label.visible = false
+		accept_button.visible = false
+		# The shared mist-drowned background (and its effects) unless the
+		# zone has art of its own.
+		var background_path: String = _zone_data.get("background", "")
+		if background_path == "":
+			background_path = EMPTY_ZONE_BACKGROUND
+		background.texture = load(background_path)
+		atmosphere.show_for_background(background_path)
+		no_echo_label.visible = true
+		no_echo_label.modulate.a = 0.0
+		create_tween().tween_property(no_echo_label, "modulate:a", 1.0, NO_ECHO_FADE_TIME).set_delay(0.4)
 		return
 
 	# No point showing arrows when there's only one hero to look at.

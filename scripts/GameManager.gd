@@ -273,7 +273,8 @@ func get_stage_cumulative_gold_bonus(stage: int) -> int:
 # ============================================================
 # "background" is optional per zone - point it at a texture path
 # (e.g. "res://assets/zones/the_veiled_reach.jpg") once you have per-region art.
-# Leave it "" to just use the plain background already in Zone.tscn.
+# Leave it "" to use the hero's own background - or, for a zone with no
+# heroes yet, the shared mist-drowned one (zone.gd's EMPTY_ZONE_BACKGROUND).
 
 var zones: Dictionary = {
 
