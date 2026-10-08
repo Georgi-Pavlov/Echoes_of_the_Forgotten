@@ -82,6 +82,14 @@ const ANIMATED_CREATURE_PROFILES := {
 	"the_everfrost_melee": "everfrost_melee",
 	"the_everfrost_melee_2": "everfrost_melee",
 	"the_everfrost_range": "everfrost_range",
+	"the_rootmother": "the_rootmother",
+	# Scorchlands fights in the same arena with the same creep art.
+	"the_verdant_scar_melee": "verdant_scar_melee",
+	"the_verdant_scar_melee_2": "verdant_scar_melee",
+	"the_verdant_scar_range": "verdant_scar_range",
+	"scorchlands_melee": "verdant_scar_melee",
+	"scorchlands_melee_2": "verdant_scar_melee",
+	"scorchlands_range": "verdant_scar_range",
 	# A rival Erynd's own bear; the player's is attached in
 	# _elderwild_companion() (it isn't spawned through _spawn_enemy()).
 	"enemy_elderwild_companion": "elderwild_companion",
@@ -162,28 +170,8 @@ const LIFESTEAL_MOTE_COLOR := Color(1.0, 0.2, 0.15, 1.0)
 # (same trick as BOUNCE_HIT_FLASH_COLOR).
 const WHISPER_OF_THE_VEIL_FLASH_COLOR := Color(0.7, 1.8, 1.7, 1)
 
-# Living Armor's orbiting leaves (see _set_living_armor_leaves()): how
-# many, their two alternating greens, their size in px, and how long
-# one full orbit takes. The ring is a child node named
-# LIVING_ARMOR_LEAVES_NAME, so its presence can be looked up.
-const LIVING_ARMOR_LEAF_COUNT := 10
-const LIVING_ARMOR_LEAF_COLOR_A := Color(0.3, 0.78, 0.25, 1.0)
-const LIVING_ARMOR_LEAF_COLOR_B := Color(0.55, 0.9, 0.3, 1.0)
-const LIVING_ARMOR_LEAF_SIZE := Vector2(16, 9)
-const LIVING_ARMOR_ORBIT_SECONDS := 3.2
-const LIVING_ARMOR_LEAVES_NAME := "LivingArmorLeaves"
-
-# Overgrowth's roots on a rooted unit (see _set_overgrowth_roots()): the
-# vines' base-to-tip colors, how many sprout per unit, the mossy mound
-# at its feet, and the dirt kicked up when they sprout. A child node
-# named OVERGROWTH_ROOTS_NAME, so its presence can be looked up.
-const OVERGROWTH_VINE_BASE_COLOR := Color(0.36, 0.22, 0.1, 1.0)
-const OVERGROWTH_VINE_TIP_COLOR := Color(0.35, 0.65, 0.2, 1.0)
-const OVERGROWTH_VINE_COUNT := 6
-const OVERGROWTH_VINE_WIDTH := 7.0
-const OVERGROWTH_MOUND_COLOR := Color(0.28, 0.35, 0.14, 0.95)
-const OVERGROWTH_DIRT_COLOR := Color(0.45, 0.32, 0.18, 1.0)
-const OVERGROWTH_ROOTS_NAME := "OvergrowthRoots"
+# The dirt kicked up when the ground bursts open (see _play_ground_dirt()).
+const GROUND_DIRT_COLOR := Color(0.45, 0.32, 0.18, 1.0)
 
 # Veil of the Forgotten's visuals (see _show_veil_shell() and friends): a
 # shroud of swirling mist (mist_shroud.gdshader) wrapped around the
@@ -470,7 +458,7 @@ var _depthsveil_turns_remaining: int = 0
 var _depthsveil_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
-# Treant Protector's Nature's Guise: functionally the same invisibility
+# The Rootmother's Rootveil: functionally the same invisibility
 # as Veyrik's own Depthsveil - folded into the very same _is_hero_
 # hidden() check, so every "enemies can't target or chase a hidden
 # hero" rule in _enemy_turn() already applies here for free - just with
@@ -478,16 +466,16 @@ var _depthsveil_duration_pending_start: bool = false
 # damage, the target gets rooted (root_turns_left, the same shared
 # per-enemy field Thornbind's own root uses and _tick_enemy_turn_start_
 # effects() already ticks down - it can still attack/cast/use items while rooted,
-# same as any other rooted enemy) for _natures_guise_root_turns turns.
+# same as any other rooted enemy) for _rootveil_root_turns turns.
 # Casting any OTHER skill still just ends it early with no root, same
 # as Depthsveil's own "no bonus damage" rule for that case. While
 # active, the hero also moves a flat +1 column further per move (see
 # _hero_move_distance()) - moving unseen covers more ground.
 # ------------------------------------------------------------------
-var _natures_guise_active: bool = false
-var _natures_guise_root_turns: int = 0
-var _natures_guise_turns_remaining: int = 0
-var _natures_guise_duration_pending_start: bool = false
+var _rootveil_active: bool = false
+var _rootveil_root_turns: int = 0
+var _rootveil_turns_remaining: int = 0
+var _rootveil_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
 # Mirana's ultimate, Moonlight Shadow: functionally the same
@@ -500,7 +488,7 @@ var _natures_guise_duration_pending_start: bool = false
 # bonus_damage - see _apply_hero_attack()'s own read of whichever of
 # the two is actually active (only one hero's kit ever has either, but
 # each still gets its own flag/fields rather than reusing Shadow
-# Dance's, same reasoning Nature's Guise's own separate flag above
+# Dance's, same reasoning Rootveil's own separate flag above
 # already follows). Casting any OTHER skill still just ends it early
 # with no bonus damage, same as Depthsveil's own rule for that case.
 # ------------------------------------------------------------------
@@ -510,20 +498,20 @@ var _moonlight_shadow_turns_remaining: int = 0
 var _moonlight_shadow_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
-# Treant Protector's Living Armor: a self-cast that adds a flat
+# The Rootmother's Woven Flesh: a self-cast that adds a flat
 # bonus_armor (folded into _hero_armor(), same slot Wildbond's own
 # bonus armor uses) plus a flat bonus_hp_regen healed every turn on top
 # of the hero's own baseline passive regen (_apply_passive_hero_regen()
 # - same "bonus stacks on top of the baseline" relationship Arcane
 # Aura's own regen already has) for the duration. Same "casting turn
 # doesn't count" pattern as every other duration-based buff (see
-# _tick_living_armor()).
+# _tick_woven_flesh()).
 # ------------------------------------------------------------------
-var _living_armor_active: bool = false
-var _living_armor_bonus_armor: float = 0.0
-var _living_armor_bonus_hp_regen: float = 0.0
-var _living_armor_turns_remaining: int = 0
-var _living_armor_duration_pending_start: bool = false
+var _woven_flesh_active: bool = false
+var _woven_flesh_bonus_armor: float = 0.0
+var _woven_flesh_bonus_hp_regen: float = 0.0
+var _woven_flesh_turns_remaining: int = 0
+var _woven_flesh_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
 # Slardar's Guardian Sprint: a self-cast that arms this level's own
@@ -553,7 +541,7 @@ var _guardian_sprint_duration_pending_start: bool = false
 # off individually rather than all at once. Gaining a stack past this
 # level's own max_stacks drops the oldest one first, same as it being
 # replaced. Folds bonus_armor_per_stack * stack count into _hero_armor()
-# (same slot Living Armor's/Wildbond's own bonus armor use) and
+# (same slot Woven Flesh's/Wildbond's own bonus armor use) and
 # heals bonus_hp_regen_per_stack * stack count every hero turn
 # (_apply_reactive_armor_regen(), same timing/stacking relationship as
 # Frostborn's/the baseline passive regen).
@@ -644,7 +632,7 @@ var _mortimer_kisses_level_data: Dictionary = {}
 # "casting turn doesn't count" pattern as every other duration-based
 # buff. Ends (despawning every surviving illusion) once the duration
 # runs out; recasting mid-duration replaces the set outright, same as
-# Living Armor/Chakram's own "recast overwrites" reasoning.
+# Woven Flesh/Chakram's own "recast overwrites" reasoning.
 # ------------------------------------------------------------------
 var _illusions: Array = []
 var _illusion_damage_pct: float = 0.0
@@ -800,7 +788,7 @@ const ENEMY_BEAR_TARGETABLE_SKILLS: Array[String] = [
 	"thornbind", "whisper_of_the_veil", "drowned_surge", "corrosive_haze", "sacred_arrow",
 	"lucent_beam", "ensnare", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold",
 	"return_to_the_void", "maddening_roar", "the_hunger_calls", "winters_grip", "charge",
-	"glacier_breaker", "leech_seed", "lil_shredder",
+	"glacier_breaker", "sanguine_bloom", "lil_shredder",
 ]
 
 # Set by _cast_enemy_skill() for the duration of one cast: true when
@@ -1180,32 +1168,31 @@ var _enemy_bestial_rage_bonus_damage: float = 0.0
 var _enemy_bestial_rage_turns_remaining: int = 0
 var _enemy_bestial_rage_duration_pending_start: bool = false
 
-# Treant Protector's Nature's Guise, cast by the rival on himself -
-# mirrors the player's own _activate_natures_guise()/_tick_natures_
-# guise()/_end_natures_guise(): folded into _is_target_hidden() (the
+# The Rootmother's Rootveil, cast by the rival on himself -
+# mirrors the player's own _activate_rootveil()/_tick_rootveil()/_end_rootveil(): folded into _is_target_hidden() (the
 # enemy-side mirror of the player's own _is_hero_hidden()) so the
 # player can't target/select the hidden boss, same as Depthsveil's own
 # copy - see _is_target_hidden()/_update_enemy_hero_visibility(). The
 # Attack that breaks it roots the player instead of dealing bonus damage
 # - see _resolve_enemy_hero_attack()'s own "attacking_from_enemy_
-# natures_guise" capture.
-var _enemy_natures_guise_active: bool = false
-var _enemy_natures_guise_root_turns: int = 0
-var _enemy_natures_guise_turns_remaining: int = 0
-var _enemy_natures_guise_duration_pending_start: bool = false
+# rootveil" capture.
+var _enemy_rootveil_active: bool = false
+var _enemy_rootveil_root_turns: int = 0
+var _enemy_rootveil_turns_remaining: int = 0
+var _enemy_rootveil_duration_pending_start: bool = false
 
-# Treant Protector's Living Armor, cast by the rival on himself - mirrors
-# the player's own _activate_living_armor()/_tick_living_armor()/
-# _end_living_armor(): bonus_armor folds into _enemy_hero_bonus_armor()
+# The Rootmother's Woven Flesh, cast by the rival on himself - mirrors
+# the player's own _activate_woven_flesh()/_tick_woven_flesh()/
+# _end_woven_flesh(): bonus_armor folds into _enemy_hero_bonus_armor()
 # (the same slot Leeching Hunger's/Wildbond's own bonus armor already
 # share there), bonus_hp_regen heals the rival on top of his own
 # baseline passive regen (_tick_enemy_passive_regen()) every tick - see
-# _tick_enemy_living_armor().
-var _enemy_living_armor_active: bool = false
-var _enemy_living_armor_bonus_armor: float = 0.0
-var _enemy_living_armor_bonus_hp_regen: float = 0.0
-var _enemy_living_armor_turns_remaining: int = 0
-var _enemy_living_armor_duration_pending_start: bool = false
+# _tick_enemy_woven_flesh().
+var _enemy_woven_flesh_active: bool = false
+var _enemy_woven_flesh_bonus_armor: float = 0.0
+var _enemy_woven_flesh_bonus_hp_regen: float = 0.0
+var _enemy_woven_flesh_turns_remaining: int = 0
+var _enemy_woven_flesh_duration_pending_start: bool = false
 
 # Timbersaw's Reactive Armor, on the rival - mirrors the player's own
 # _reactive_armor_stack_turns/_apply_reactive_armor_stack()/_tick_
@@ -1380,28 +1367,27 @@ var _player_winters_grip_dot_turns_left: int = 0
 # _refresh_winters_grip_hands().
 var _player_winters_grip_hold: bool = false
 
-# Treant Protector's Leech Seed, cast by the rival on the player -
-# mirrors the player-side per-enemy leech_seed_dot_damage/leech_seed_
-# heal_per_turn/leech_seed_dot_turns_left fields (see _resolve_leech_
-# seed_cast()), just held as battle-local vars since there's only one
+# The Rootmother's Sanguine Bloom, cast by the rival on the player -
+# mirrors the player-side per-enemy sanguine_bloom_dot_damage/sanguine_bloom_
+# heal_per_turn/sanguine_bloom_dot_turns_left fields (see _resolve_sanguine_bloom_cast()), just held as battle-local vars since there's only one
 # player to track them on. Unlike every other DoT here, the healing half
 # goes to the CASTER (the rival), not the player - see _tick_player_
-# turn_start_effects()'s own "leech_seed" case, which heals the boss
+# turn_start_effects()'s own "sanguine_bloom" case, which heals the boss
 # directly (via _get_hero_fight_boss()) each tick instead.
-var _player_leech_seed_dot_damage: float = 0.0
-var _player_leech_seed_heal_per_turn: float = 0.0
-var _player_leech_seed_dot_turns_left: int = 0
+var _player_sanguine_bloom_dot_damage: float = 0.0
+var _player_sanguine_bloom_heal_per_turn: float = 0.0
+var _player_sanguine_bloom_dot_turns_left: int = 0
 
-# Treant Protector's ultimate, Overgrowth, cast by the rival - mirrors
-# the player-side per-enemy overgrowth_dot_damage/overgrowth_dot_turns_
-# left fields (see _activate_overgrowth()), just held as battle-local
+# The Rootmother's ultimate, Mother's Grasp, cast by the rival - mirrors
+# the player-side per-enemy mothers_grasp_dot_damage/mothers_grasp_dot_turns_
+# left fields (see _activate_mothers_grasp()), just held as battle-local
 # vars since there's only one player to track them on. The root shares
 # _player_root_turns_left above, the same field Thornbind's own root
-# already uses - Overgrowth's own "can't move, can still attack/cast/
+# already uses - Mother's Grasp's own "can't move, can still attack/cast/
 # use items" rule is exactly what that field already means everywhere
 # it's checked (_hero_move()), so there's nothing extra to enforce here.
-var _player_overgrowth_dot_damage: float = 0.0
-var _player_overgrowth_dot_turns_left: int = 0
+var _player_mothers_grasp_dot_damage: float = 0.0
+var _player_mothers_grasp_dot_turns_left: int = 0
 
 # Snapfire's Lil' Shredder, cast by the rival on the player - mirrors
 # the player-side per-enemy armor_reduction/armor_reduction_turns_left
@@ -1603,11 +1589,11 @@ var _pending_charge_level_data: Dictionary = {}
 # actually clicked (_resolve_glacier_breaker_cast()).
 var _pending_glacier_breaker_level_data: Dictionary = {}
 
-# Treant Protector's Leech Seed, held the same way as every other
+# The Rootmother's Sanguine Bloom, held the same way as every other
 # targeted skill's own pending level data above, from the moment
-# _start_leech_seed_targeting() opens targeting until a target is
-# actually clicked (_resolve_leech_seed_cast()).
-var _pending_leech_seed_level_data: Dictionary = {}
+# _start_sanguine_bloom_targeting() opens targeting until a target is
+# actually clicked (_resolve_sanguine_bloom_cast()).
+var _pending_sanguine_bloom_level_data: Dictionary = {}
 
 const RANGE_ENEMY_ATTACK_RANGE := 3
 const RANGE_ENEMY_FLEE_DISTANCE := 1
@@ -1636,7 +1622,7 @@ const ENEMY_KNOWN_SKILL_IDS: Array[String] = [
 	"frostbound_fangs", "maddening_roar", "the_test_of_time", "the_hunger_calls",
 	"rimecleaver", "winters_grip", "the_frost_tempest",
 	"frostbound_rupture", "charge", "bestial_rage", "glacier_breaker",
-	"nature's_guise", "leech_seed", "living_armor", "overgrowth",
+	"rootveil", "sanguine_bloom", "woven_flesh", "mother's_grasp",
 	"whirling_death", "timber_chain", "chakram",
 	"scatterblast", "firesnap_cookie", "lil_shredder", "mortimer_kisses",
 	"mirror_image", "ensnare", "song_of_the_siren",
@@ -1876,12 +1862,12 @@ func _hero_max_hp() -> float:
 ## Hero's total armor: base stat from GameManager plus any permanent
 ## bonus picked up from items (mirrors how damage bonus is combined
 ## in _roll_hero_damage), plus any armor currently borrowed via
-## Leeching Hunger, plus Wildbond's flat bonus, Living Armor's own
+## Leeching Hunger, plus Wildbond's flat bonus, Woven Flesh's own
 ## flat bonus, and Reactive Armor's own per-stack bonus, each while
 ## active.
 func _hero_armor() -> float:
 	var stats: Dictionary = _recruited.get("stats", {})
-	return float(stats.get("armor", 0)) + _leeching_hunger_bonus.get("armor", 0.0) + _wildbond_bonus_armor + _living_armor_bonus_armor + _reactive_armor_bonus_armor() - _player_leeching_hunger_penalty.get("armor", 0.0) - _player_armor_reduction
+	return float(stats.get("armor", 0)) + _leeching_hunger_bonus.get("armor", 0.0) + _wildbond_bonus_armor + _woven_flesh_bonus_armor + _reactive_armor_bonus_armor() - _player_leeching_hunger_penalty.get("armor", 0.0) - _player_armor_reduction
 
 
 ## Blood of the Wild's current level data ({} if not learned yet) - looked
@@ -2202,7 +2188,7 @@ const ENEMY_STATUS_LABEL_COLOR := Color(1, 0.55, 0.3, 1)
 ## under its feet) can inflict directly on an enemy Dictionary. Mirrors
 ## _enemy_has_harmful_debuff()'s own field list (used for The Test of Time's
 ## AI scoring) plus the effects that helper doesn't need for that
-## purpose - stun, Winter's Grip's/Leech Seed's/Overgrowth's own DoTs, and
+## purpose - stun, Winter's Grip's/Sanguine Bloom's/Mother's Grasp's own DoTs, and
 ## an Frostbound-Rupture-blocked column, which isn't a Dictionary field at all
 ## but reads as "rooted" just the same since the enemy can't move
 ## either way (see _is_column_frostbound_rupture_blocked()).
@@ -2216,9 +2202,9 @@ func _enemy_status_effect_text(enemy: Dictionary) -> String:
 	# level's own data sets root_turns == silence_turns, and both now
 	# tick down together every turn (see _enemy_turn()'s own silence
 	# decrement, added to match root's) - so silence_turns_left > 0 is
-	# a reliable "this root is Thornbind's, not Nature's Guise's" signal
-	# (Nature's Guise only ever sets root_turns_left, never silence -
-	# see _apply_hero_attack()'s own "attacking_from_natures_guise"
+	# a reliable "this root is Thornbind's, not Rootveil's" signal
+	# (Rootveil only ever sets root_turns_left, never silence -
+	# see _apply_hero_attack()'s own "attacking_from_rootveil"
 	# branch), without needing thornbind_dot_turns_left at all - that
 	# field's own duration runs one turn longer than root/silence by
 	# design, but the "Thornbound" status itself shouldn't outlive the
@@ -2232,14 +2218,14 @@ func _enemy_status_effect_text(enemy: Dictionary) -> String:
 	var silenced: bool = enemy.get("silence_turns_left", 0) > 0
 	var thornbound: bool = silenced and (not cursed or enemy.get("thornbind_dot_turns_left", 0) > 0)
 	var rooted: bool = enemy.get("root_turns_left", 0) > 0 or _is_column_frostbound_rupture_blocked(enemy["pos_index"])
-	var overgrown: bool = enemy.get("overgrowth_dot_turns_left", 0) > 0
+	var grasped: bool = enemy.get("mothers_grasp_dot_turns_left", 0) > 0
 
 	if thornbound:
 		effects.append("Thornbound")
-	elif rooted and not overgrown:
-		# Overgrowth's own root already gets its own label below - so
+	elif rooted and not grasped:
+		# Mother's Grasp's own root already gets its own label below - so
 		# only fall back to plain "Rooted" when nothing more specific
-		# (Thornbind, Overgrowth) is already covering it.
+		# (Thornbind, Mother's Grasp) is already covering it.
 		effects.append("Rooted")
 	if silenced:
 		effects.append("Silenced")
@@ -2253,10 +2239,10 @@ func _enemy_status_effect_text(enemy: Dictionary) -> String:
 		effects.append("Return to the Void")
 	if enemy.get("winters_grip_dot_turns_left", 0) > 0:
 		effects.append("Frostbitten")
-	if enemy.get("leech_seed_dot_turns_left", 0) > 0:
-		effects.append("Leeched")
-	if enemy.get("overgrowth_dot_turns_left", 0) > 0:
-		effects.append("Overgrowth")
+	if enemy.get("sanguine_bloom_dot_turns_left", 0) > 0:
+		effects.append("Sanguine Bloom")
+	if enemy.get("mothers_grasp_dot_turns_left", 0) > 0:
+		effects.append("Mother's Grasp")
 
 	return ", ".join(effects)
 
@@ -2539,7 +2525,7 @@ func _refresh_bars() -> void:
 	_refresh_thornbind_vines()
 	_refresh_winters_grip_hands()
 	_refresh_frost_tempest_fx()
-	_refresh_overgrowth_roots()
+	_refresh_mothers_grasp_roots()
 	_refresh_siren_lullabies()
 	_refresh_corrosive_haze()
 	_refresh_mark_of_stillness_frost()
@@ -2908,8 +2894,8 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 			_activate_leeching_hunger(level_data)
 		"depthsveil":
 			_activate_depthsveil(level_data)
-		"nature's_guise":
-			_activate_natures_guise(level_data)
+		"rootveil":
+			_activate_rootveil(level_data)
 		"frostbound_fangs":
 			_activate_frostbound_fangs(level_data)
 		"the_test_of_time":
@@ -3050,35 +3036,35 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 			# above - the mana/cooldown/turn spend happens once the
 			# click resolves (_resolve_glacier_breaker_cast), not here.
 			return
-		"leech_seed":
-			if not _start_leech_seed_targeting(level_data):
+		"sanguine_bloom":
+			if not _start_sanguine_bloom_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_leech_seed_cast), not here.
+			# click resolves (_resolve_sanguine_bloom_cast), not here.
 			return
-		"living_armor":
-			_activate_living_armor(level_data)
-		"overgrowth":
-			_activate_overgrowth(level_data)
+		"woven_flesh":
+			_activate_woven_flesh(level_data)
+		"mother's_grasp":
+			_activate_mothers_grasp(level_data)
 		_:
 			# No effect implemented yet for other skills - this is the
 			# hook point for when they're added. For now it just
 			# confirms the wiring works end to end.
 			print("Used skill: ", skill.get("name", ""))
 
-	# Depthsveil/Nature's Guise/Moonlight Shadow only break from
+	# Depthsveil/Rootveil/Moonlight Shadow only break from
 	# attacking or casting ANOTHER skill - not from the cast that just
 	# activated them in the first place, and not from items/potions
 	# (those never reach this function at all). Only one of the three
 	# could ever be active in a given battle (different heroes' own
 	# kits), so this just ends whichever one actually is.
-	if _is_hero_hidden() and skill_id != "depthsveil" and skill_id != "nature's_guise" and skill_id != "moonlight_shadow":
+	if _is_hero_hidden() and skill_id != "depthsveil" and skill_id != "rootveil" and skill_id != "moonlight_shadow":
 		if _depthsveil_active:
 			_end_depthsveil()
-		elif _natures_guise_active:
-			_end_natures_guise()
+		elif _rootveil_active:
+			_end_rootveil()
 		elif _moonlight_shadow_active:
 			_end_moonlight_shadow()
 
@@ -4535,7 +4521,7 @@ func _refresh_corrosive_haze() -> void:
 ## follows the sprite's position/scale for free - but NOT its stealth
 ## fade: the haze is the mark's true sight, so its inner layer divides
 ## out the sprite's own alpha every frame, staying fully visible over a
-## faded (Depthsveil/Nature's Guise/Moonlight Shadow) target. Fades
+## faded (Depthsveil/Rootveil/Moonlight Shadow) target. Fades
 ## in/out; only does anything when the state actually changes (the
 ## child's presence is the marker).
 func _set_corrosive_haze(node: Variant, active: bool) -> void:
@@ -7301,29 +7287,37 @@ func _resolve_glacier_breaker_damage(target: Dictionary, punch_damage: float, hi
 
 
 # ------------------------------------------------------------------
-# Treant Protector's Leech Seed.
+# The Rootmother's Sanguine Bloom.
 # ------------------------------------------------------------------
 
-## Resolves a Leech Seed cast on `target`: no immediate damage, just
+## Resolves a Sanguine Bloom cast on `target`: no immediate damage, just
 ## arms this level's own dot_damage/heal_per_turn onto `target`'s own
-## dedicated leech_seed_dot_turns_left counter - a separate pair of
+## dedicated sanguine_bloom_dot_turns_left counter - a separate pair of
 ## fields from Mark of Stillness's/The Hollow Cold's/Return to the Void's/Winter's Grip's own
 ## DoTs, same "never silently shares or clobbers another skill's
 ## counters on the same target" reasoning those already follow - ticked
 ## once per turn, at the start of that enemy's own turn, by
 ## _tick_enemy_turn_start_effects(), healing the hero the same amount
 ## it damages the target.
-func _resolve_leech_seed_cast(target: Dictionary, level_data: Dictionary) -> void:
+func _resolve_sanguine_bloom_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
-	target["leech_seed_dot_damage"] = float(level_data.get("dot_damage", 0))
-	target["leech_seed_heal_per_turn"] = float(level_data.get("heal_per_turn", 0))
-	target["leech_seed_dot_turns_left"] = int(level_data.get("duration", 0))
+	target["sanguine_bloom_dot_damage"] = float(level_data.get("dot_damage", 0))
+	target["sanguine_bloom_heal_per_turn"] = float(level_data.get("heal_per_turn", 0))
+	target["sanguine_bloom_dot_turns_left"] = int(level_data.get("duration", 0))
+
+	# The seed is flung from whichever of her hands faces the target, and
+	# takes root in it (see SanguineBloomFX).
+	var target_node: Variant = target.get("node")
+	if target_node is Control and is_instance_valid(target_node):
+		var side: float = signf((target_node.global_position.x + target_node.size.x * 0.5) - (hero_image.global_position.x + hero_image.size.x * 0.5))
+		var hand: Vector2 = hero_image.global_position + hero_image.size * Vector2(0.5 + 0.36 * (side if side != 0.0 else 1.0), 0.5)
+		SanguineBloomFX.plant(_fx_layer, hand, target_node)
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["leech_seed"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("leech_seed", _skill_cooldowns["leech_seed"])
+	_skill_cooldowns["sanguine_bloom"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("sanguine_bloom", _skill_cooldowns["sanguine_bloom"])
 	_refresh_skill_cooldown_labels()
 
 	if _battle_over or _stage_generation != generation_before:
@@ -7334,138 +7328,58 @@ func _resolve_leech_seed_cast(target: Dictionary, level_data: Dictionary) -> voi
 
 
 # ------------------------------------------------------------------
-# Treant Protector's Living Armor.
+# The Rootmother's Woven Flesh.
 # ------------------------------------------------------------------
 
-## Activates Living Armor: arms this level's own bonus_armor/
+## Activates Woven Flesh: arms this level's own bonus_armor/
 ## bonus_hp_regen for `level_data.duration` turns. Always "succeeds" -
 ## cast on the hero himself, no target or range requirement, same as
 ## every other self-cast buff.
-func _activate_living_armor(level_data: Dictionary) -> void:
-	_living_armor_active = true
-	_living_armor_bonus_armor = float(level_data.get("bonus_armor", 0))
-	_living_armor_bonus_hp_regen = float(level_data.get("bonus_hp_regen", 0))
-	_living_armor_turns_remaining = int(level_data.get("duration", 0))
+func _activate_woven_flesh(level_data: Dictionary) -> void:
+	_woven_flesh_active = true
+	_woven_flesh_bonus_armor = float(level_data.get("bonus_armor", 0))
+	_woven_flesh_bonus_hp_regen = float(level_data.get("bonus_hp_regen", 0))
+	_woven_flesh_turns_remaining = int(level_data.get("duration", 0))
 	# The casting turn itself doesn't count - duration only starts
-	# ticking from the turn after (see _tick_living_armor()), same as
+	# ticking from the turn after (see _tick_woven_flesh()), same as
 	# every other duration-based buff.
-	_living_armor_duration_pending_start = true
-	_set_living_armor_leaves(hero_image, true)
+	_woven_flesh_duration_pending_start = true
+	WovenFleshFX.set_on(hero_image, true)
 
-	_show_message_over_hero("Living Armor!")
+	_show_message_over_hero("Woven Flesh!")
 
 
-## Ticks Living Armor's duration down once per End Turn, same timing
+## Ticks Woven Flesh's duration down once per End Turn, same timing
 ## (and same "the casting turn doesn't count" skip) as every other
 ## duration-based buff - healing the hero for this level's own
 ## bonus_hp_regen, on top of his baseline passive regen
 ## (_apply_passive_hero_regen()), on every tick that actually counts
 ## against the duration.
-func _tick_living_armor() -> void:
-	if not _living_armor_active:
+func _tick_woven_flesh() -> void:
+	if not _woven_flesh_active:
 		return
 
-	if _living_armor_duration_pending_start:
-		_living_armor_duration_pending_start = false
+	if _woven_flesh_duration_pending_start:
+		_woven_flesh_duration_pending_start = false
 		return
 
-	heal(_living_armor_bonus_hp_regen)
-	_living_armor_turns_remaining -= 1
-	if _living_armor_turns_remaining <= 0:
-		_end_living_armor()
+	heal(_woven_flesh_bonus_hp_regen)
+	WovenFleshFX.pulse_on(hero_image)
+	_woven_flesh_turns_remaining -= 1
+	if _woven_flesh_turns_remaining <= 0:
+		_end_woven_flesh()
 
 
-## Ends Living Armor once its duration runs out.
-func _end_living_armor() -> void:
-	_living_armor_active = false
-	_living_armor_bonus_armor = 0.0
-	_living_armor_bonus_hp_regen = 0.0
-	_living_armor_turns_remaining = 0
-	_living_armor_duration_pending_start = false
-	_set_living_armor_leaves(hero_image, false)
+## Ends Woven Flesh once its duration runs out.
+func _end_woven_flesh() -> void:
+	_woven_flesh_active = false
+	_woven_flesh_bonus_armor = 0.0
+	_woven_flesh_bonus_hp_regen = 0.0
+	_woven_flesh_turns_remaining = 0
+	_woven_flesh_duration_pending_start = false
+	WovenFleshFX.set_on(hero_image, false)
 
-	_show_message_over_hero("Living Armor wears off")
-
-
-## Purely cosmetic: puts Living Armor's ring of green leaves around
-## `node` (the player's hero_image, or the rival Treant's own node) -
-## or takes it off. LIVING_ARMOR_LEAF_COUNT leaf-shaped pieces orbit
-## the sprite on a flat ellipse around its middle, each tipped along
-## its path and fluttering slightly; the ones passing behind the sprite
-## are dimmed so the ring reads as going AROUND him. All of it lives
-## under one child Control, so it follows the sprite's position/scale/
-## fades for free. Spirals in from a tight ring on cast and dissolves
-## outward when it ends. Only does anything when the state actually
-## changes (the child's presence is the "currently on" marker).
-func _set_living_armor_leaves(node: Variant, active: bool) -> void:
-	if not is_instance_valid(node) or not (node is Control):
-		return
-	var ring: Control = node.get_node_or_null(LIVING_ARMOR_LEAVES_NAME)
-	if active == (ring != null):
-		return
-
-	if not active:
-		# Renamed right away so a quick recast during the fade creates a
-		# fresh ring instead of finding this dying one.
-		ring.name = LIVING_ARMOR_LEAVES_NAME + "Fading"
-		var fade: Tween = ring.create_tween()
-		fade.tween_method(func(r: float) -> void: ring.set_meta("radius_scale", r), 1.0, 1.6, 0.45)
-		fade.parallel().tween_property(ring, "modulate:a", 0.0, 0.45)
-		fade.tween_callback(ring.queue_free)
-		return
-
-	ring = Control.new()
-	ring.name = LIVING_ARMOR_LEAVES_NAME
-	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	ring.set_meta("radius_scale", 0.3)
-	ring.modulate.a = 0.0
-	node.add_child(ring)
-
-	var leaves: Array = []
-	for i in LIVING_ARMOR_LEAF_COUNT:
-		var style := StyleBoxFlat.new()
-		style.bg_color = LIVING_ARMOR_LEAF_COLOR_A if i % 2 == 0 else LIVING_ARMOR_LEAF_COLOR_B
-		# Two opposite rounded corners, two sharp ones - a leaf shape.
-		style.corner_radius_top_left = int(LIVING_ARMOR_LEAF_SIZE.y)
-		style.corner_radius_bottom_right = int(LIVING_ARMOR_LEAF_SIZE.y)
-		style.corner_detail = 6
-		var leaf := Panel.new()
-		leaf.add_theme_stylebox_override("panel", style)
-		leaf.size = LIVING_ARMOR_LEAF_SIZE
-		leaf.pivot_offset = leaf.size / 2.0
-		leaf.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ring.add_child(leaf)
-		leaves.append(leaf)
-
-	# Spiral in on cast.
-	var appear: Tween = ring.create_tween()
-	appear.tween_property(ring, "modulate:a", 1.0, 0.35)
-	appear.parallel().tween_method(func(r: float) -> void: ring.set_meta("radius_scale", r), 0.3, 1.0, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
-	# The orbit itself: 0 -> 1 is one full lap, looped for as long as
-	# the ring exists (the tween is bound to it, so it dies with it).
-	var orbit: Tween = ring.create_tween().set_loops()
-	orbit.tween_method(
-		func(phase: float) -> void:
-			if not is_instance_valid(node):
-				return
-			var radius_scale: float = float(ring.get_meta("radius_scale", 1.0))
-			var center: Vector2 = Vector2(node.size.x / 2.0, node.size.y * 0.55)
-			var rx: float = node.size.x * 0.55 * radius_scale
-			var ry: float = node.size.y * 0.12 * radius_scale
-			for i in leaves.size():
-				var leaf: Panel = leaves[i]
-				var angle: float = phase * TAU + i * TAU / leaves.size()
-				# A little vertical flutter, out of step per leaf.
-				var bob: float = sin(phase * TAU * 3.0 + i) * 4.0
-				leaf.position = center + Vector2(cos(angle) * rx, sin(angle) * ry + bob) - leaf.pivot_offset
-				# Tipped along its direction of travel, plus a flutter.
-				leaf.rotation = angle + PI / 2.0 + sin(phase * TAU * 2.0 + i * 1.7) * 0.4
-				# sin(angle) < 0 is the far side of the ring - behind him.
-				leaf.modulate.a = 1.0 if sin(angle) >= 0.0 else 0.4,
-		0.0, 1.0, LIVING_ARMOR_ORBIT_SECONDS
-	)
+	_show_message_over_hero("Woven Flesh wears off")
 
 
 # ------------------------------------------------------------------
@@ -7541,23 +7455,23 @@ func _apply_reactive_armor_regen() -> void:
 
 
 # ------------------------------------------------------------------
-# Treant Protector's ultimate, Overgrowth.
+# The Rootmother's ultimate, Mother's Grasp.
 # ------------------------------------------------------------------
 
-## Activates Overgrowth: every living, targetable enemy within
+## Activates Mother's Grasp: every living, targetable enemy within
 ## `level_data.radius` columns of the hero's CURRENT position gets
 ## rooted (target["root_turns_left"], the same shared per-enemy field
-## Thornbind's/Nature's Guise's/Frostbound Rupture'/The Hunger Calls's own root/
+## Thornbind's/Rootveil's/Frostbound Rupture'/The Hunger Calls's own root/
 ## freeze effects already use - it can still attack and cast skills
 ## while rooted, same as any other rooted enemy) for `level_data.
 ## root_duration` turns, and armed with that same level's own DoT
-## (target["overgrowth_dot_damage"]/["overgrowth_dot_turns_left"], a
+## (target["mothers_grasp_dot_damage"]/["mothers_grasp_dot_turns_left"], a
 ## dedicated pair of fields so it never clobbers another skill's DoT on
 ## the same enemy) for the same duration - ticked, at the start of each
 ## enemy's own turn, by _tick_enemy_turn_start_effects(). Always
 ## "succeeds" - cast on the hero himself, no target or range
 ## requirement, same as every other self-cast buff/AoE.
-func _activate_overgrowth(level_data: Dictionary) -> void:
+func _activate_mothers_grasp(level_data: Dictionary) -> void:
 	var dot_damage: float = float(level_data.get("dot_damage", 0))
 	var root_duration: int = int(level_data.get("root_duration", 0))
 	var radius: int = int(level_data.get("radius", 0))
@@ -7567,17 +7481,18 @@ func _activate_overgrowth(level_data: Dictionary) -> void:
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= radius:
 			enemy["root_turns_left"] = root_duration
-			enemy["overgrowth_dot_damage"] = dot_damage
-			enemy["overgrowth_dot_turns_left"] = root_duration
+			enemy["mothers_grasp_dot_damage"] = dot_damage
+			enemy["mothers_grasp_dot_turns_left"] = root_duration
 
 	# A rival's own illusion (Naga Siren's Mirror Image) has no root/DoT
 	# of its own to carry the way a regular enemy does above - just a
 	# one-time hit for whatever's caught in the burst, centered on the
 	# hero's own position, same as the check above.
 	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, radius, dot_damage)
-	_refresh_overgrowth_roots()
+	_play_mothers_grasp_slam(hero_image)
+	_refresh_mothers_grasp_roots()
 
-	_show_message_over_hero("Overgrowth!")
+	_show_message_over_hero("Mother's Grasp!")
 
 
 ## Resolves a Whisper of the Veil cast on Morvael himself: pays `level_data.
@@ -7644,9 +7559,8 @@ func _apply_root(target: Dictionary, level_data: Dictionary) -> void:
 ## (ending the curse once its own duration runs out - stack decay for a
 ## NOT-yet-activated curse is a separate, turn-count-based check handled
 ## by _tick_mark_of_the_mist_effects() instead, since it isn't a DoT),
-## Mark of Stillness's/The Hollow Cold's/Winter's Grip's/Leech Seed's own DoTs (Leech
-## Seed also healing the hero back), Return to the Void's DoT plus its own
-## execute-threshold check, and Treant Protector's Overgrowth DoT -
+## Mark of Stillness's/The Hollow Cold's/Winter's Grip's/Sanguine Bloom's own DoTs (also healing the hero back), Return to the Void's DoT plus its own
+## execute-threshold check, and The Rootmother's Mother's Grasp DoT -
 ## each a dedicated pair of fields so none of them ever clobber each
 ## other on the same enemy. Every damage instance is still mitigated by
 ## the enemy's own armor, via _deal_fixed_damage_to_enemy(). Bails out
@@ -7656,7 +7570,7 @@ func _apply_root(target: Dictionary, level_data: Dictionary) -> void:
 ## this replaces used to need individually. Also stops early (without
 ## ending the battle) the moment `enemy` itself dies partway through,
 ## since there's nothing left on it worth ticking further that turn.
-## Root/silence (Thornbind's own counters, also reused by Nature's Guise's
+## Root/silence (Thornbind's own counters, also reused by Rootveil's
 ## root) are deliberately NOT decremented here, unlike everything else in
 ## this function - unlike a DoT, they GATE a decision later in this same
 ## turn (_is_enemy_rooted()/_is_enemy_silenced(), checked from _enemy_
@@ -7763,27 +7677,36 @@ func _tick_enemy_turn_start_effects(enemy: Dictionary) -> void:
 			if _battle_over or enemy.get("current_hp", 0) <= 0:
 				return
 
-	if enemy.get("leech_seed_dot_turns_left", 0) > 0:
-		enemy["leech_seed_dot_turns_left"] -= 1
+	if enemy.get("sanguine_bloom_dot_turns_left", 0) > 0:
+		enemy["sanguine_bloom_dot_turns_left"] -= 1
 		# Captured before the tick - a kill frees the node.
 		var seeded_node: Variant = enemy.get("node")
-		var leech_seed_dot: float = float(enemy.get("leech_seed_dot_damage", 0))
-		if leech_seed_dot > 0.0:
-			_deal_fixed_damage_to_enemy(enemy, leech_seed_dot, false, false)
+		var sanguine_bloom_dot: float = float(enemy.get("sanguine_bloom_dot_damage", 0))
+		if sanguine_bloom_dot > 0.0:
+			_deal_fixed_damage_to_enemy(enemy, sanguine_bloom_dot, false, false)
 			if _battle_over:
 				return
-		var leech_seed_heal: float = float(enemy.get("leech_seed_heal_per_turn", 0))
-		if leech_seed_heal > 0.0:
-			heal(leech_seed_heal)
+		# The bloom flares as it drains (right as the red motes fly to
+		# her), and wilts once this was its last tick.
+		if enemy.get("sanguine_bloom_dot_turns_left", 0) <= 0:
+			SanguineBloomFX.wither_on(seeded_node)
+		else:
+			SanguineBloomFX.pulse_on(seeded_node)
+		var sanguine_bloom_heal: float = float(enemy.get("sanguine_bloom_heal_per_turn", 0))
+		if sanguine_bloom_heal > 0.0:
+			heal(sanguine_bloom_heal)
 			_play_lifesteal_effect(seeded_node, hero_image)
 		if enemy.get("current_hp", 0) <= 0:
 			return
 
-	if enemy.get("overgrowth_dot_turns_left", 0) > 0:
-		enemy["overgrowth_dot_turns_left"] -= 1
-		var overgrowth_dot: float = float(enemy.get("overgrowth_dot_damage", 0))
-		if overgrowth_dot > 0.0:
-			_deal_fixed_damage_to_enemy(enemy, overgrowth_dot, false, false)
+	if enemy.get("mothers_grasp_dot_turns_left", 0) > 0:
+		enemy["mothers_grasp_dot_turns_left"] -= 1
+		var mothers_grasp_dot: float = float(enemy.get("mothers_grasp_dot_damage", 0))
+		if mothers_grasp_dot > 0.0:
+			# Captured before the tick - a kill frees the node.
+			var grasped_node: Variant = enemy.get("node")
+			_deal_fixed_damage_to_enemy(enemy, mothers_grasp_dot, false, false)
+			MothersGraspFX.pulse_on(grasped_node)
 
 
 ## The player-side mirror of _tick_enemy_turn_start_effects(): every
@@ -7794,11 +7717,11 @@ func _tick_enemy_turn_start_effects(enemy: Dictionary) -> void:
 ## Mist's DoT (stack decay lives in _tick_enemy_mark_of_the_mist_
 ## effects() instead, same "not a DoT" reasoning as the enemy-side
 ## version), Mark of Stillness's/The Hollow Cold's/Winter's Grip's own DoTs, Return to the Void's
-## DoT plus its own execute-threshold check, Treant Protector's Leech
-## Seed (unlike every other DoT here, its own healing half goes to the
+## DoT plus its own execute-threshold check, The Rootmother's Sanguine
+## Bloom (unlike every other DoT here, its own healing half goes to the
 ## CASTER - the rival - not the player, so this heals the boss directly
 ## via _get_hero_fight_boss() each tick instead of calling heal()), and
-## Overgrowth's own DoT (its root shares _player_root_turns_left above,
+## Mother's Grasp's own DoT (its root shares _player_root_turns_left above,
 ## the same field Thornbind's own root already ticks down), Snapfire's
 ## Lil' Shredder armor reduction (a plain countdown, zeroing the
 ## reduction itself once it runs out - no damage of its own to deal,
@@ -7864,26 +7787,27 @@ func _tick_player_turn_start_effects() -> void:
 		if _player_winters_grip_dot_damage > 0.0:
 			apply_damage(_player_winters_grip_dot_damage)
 
-	if _player_leech_seed_dot_turns_left > 0:
-		_player_leech_seed_dot_turns_left -= 1
-		if _player_leech_seed_dot_damage > 0.0:
-			apply_damage(_player_leech_seed_dot_damage)
+	if _player_sanguine_bloom_dot_turns_left > 0:
+		_player_sanguine_bloom_dot_turns_left -= 1
+		if _player_sanguine_bloom_dot_damage > 0.0:
+			apply_damage(_player_sanguine_bloom_dot_damage)
 		# Unlike every other DoT above, the healing half goes to the
 		# CASTER (the rival), not the player - mirrors the player's own
-		# _resolve_leech_seed_cast()/_tick_enemy_turn_start_effects()
-		# ("leech_seed" case), just healing the boss directly here
+		# _resolve_sanguine_bloom_cast()/_tick_enemy_turn_start_effects()
+		# ("sanguine_bloom" case), just healing the boss directly here
 		# instead of the player.
-		if _player_leech_seed_heal_per_turn > 0.0:
-			var leech_seed_caster: Dictionary = _get_hero_fight_boss()
-			if not leech_seed_caster.is_empty():
-				var caster_max_hp: float = _enemy_hero_effective_max_hp(leech_seed_caster)
-				leech_seed_caster["current_hp"] = minf(caster_max_hp, float(leech_seed_caster.get("current_hp", 0.0)) + _player_leech_seed_heal_per_turn)
-				_play_lifesteal_effect(hero_image, leech_seed_caster.get("node"))
+		if _player_sanguine_bloom_heal_per_turn > 0.0:
+			var sanguine_bloom_caster: Dictionary = _get_hero_fight_boss()
+			if not sanguine_bloom_caster.is_empty():
+				var caster_max_hp: float = _enemy_hero_effective_max_hp(sanguine_bloom_caster)
+				sanguine_bloom_caster["current_hp"] = minf(caster_max_hp, float(sanguine_bloom_caster.get("current_hp", 0.0)) + _player_sanguine_bloom_heal_per_turn)
+				_play_lifesteal_effect(hero_image, sanguine_bloom_caster.get("node"))
 
-	if _player_overgrowth_dot_turns_left > 0:
-		_player_overgrowth_dot_turns_left -= 1
-		if _player_overgrowth_dot_damage > 0.0:
-			apply_damage(_player_overgrowth_dot_damage)
+	if _player_mothers_grasp_dot_turns_left > 0:
+		_player_mothers_grasp_dot_turns_left -= 1
+		if _player_mothers_grasp_dot_damage > 0.0:
+			apply_damage(_player_mothers_grasp_dot_damage)
+			MothersGraspFX.pulse_on(hero_image)
 
 	if _player_armor_reduction_turns_left > 0:
 		_player_armor_reduction_turns_left -= 1
@@ -8205,8 +8129,8 @@ func _activate_the_test_of_time(level_data: Dictionary) -> void:
 ## belong to other heroes, but this stays generic and correct regardless
 ## of whose battle it runs in - plus every debuff a rival hero fight
 ## boss could have inflicted (root, silence, Thornbind's/Mark of the
-## Mist's/Mark of Stillness's/The Hollow Cold's/Return to the Void's/Winter's Grip's/Leech
-## Seed's/Overgrowth's/Mortimer Kisses' burn damage-over-time, Ice
+## Mist's/Mark of Stillness's/The Hollow Cold's/Return to the Void's/Winter's Grip's/Sanguine
+## Bloom's/Mother's Grasp's/Mortimer Kisses' burn damage-over-time, Ice
 ## Blast's execute threshold, Barbed Lunge's/Drowned Surge's stun, Lil' Shredder's
 ## own armor reduction, and a hostile Leeching Hunger's stat penalty) -
 ## the same field list _reset_enemy_hero_state() clears fresh for each
@@ -8251,11 +8175,11 @@ func _dispel_all_hero_effects() -> void:
 	_player_winters_grip_dot_damage = 0.0
 	_player_winters_grip_dot_turns_left = 0
 	_player_winters_grip_hold = false
-	_player_leech_seed_dot_damage = 0.0
-	_player_leech_seed_heal_per_turn = 0.0
-	_player_leech_seed_dot_turns_left = 0
-	_player_overgrowth_dot_damage = 0.0
-	_player_overgrowth_dot_turns_left = 0
+	_player_sanguine_bloom_dot_damage = 0.0
+	_player_sanguine_bloom_heal_per_turn = 0.0
+	_player_sanguine_bloom_dot_turns_left = 0
+	_player_mothers_grasp_dot_damage = 0.0
+	_player_mothers_grasp_dot_turns_left = 0
 	_player_armor_reduction = 0.0
 	_player_armor_reduction_turns_left = 0
 	_player_corrosive_haze_bonus_pct = 0.0
@@ -8306,17 +8230,16 @@ func _end_the_test_of_time() -> void:
 # Veyrik's Depthsveil.
 # ------------------------------------------------------------------
 
-## True while the hero is hidden by Depthsveil OR Nature's Guise -
+## True while the hero is hidden by Depthsveil OR Rootveil -
 ## whichever the current hero actually has, since only one of the two
 ## could ever be active in a given battle. Enemy attacks check this in
 ## _enemy_turn() and simply don't land while it's true.
 func _is_hero_hidden() -> bool:
-	return _depthsveil_active or _natures_guise_active or _moonlight_shadow_active
+	return _depthsveil_active or _rootveil_active or _moonlight_shadow_active
 
 
 ## Whether the rival can currently see (and therefore attack, chase, or
-## otherwise target) the player, despite Depthsveil's/Nature's
-## Guise's/Moonlight Shadow's own stealth - true sight from a rival
+## otherwise target) the player, despite Depthsveil's/Rootveil's/Moonlight Shadow's own stealth - true sight from a rival
 ## Slardar's own Corrosive Haze (_player_corrosive_haze_bonus_pct > 0,
 ## the same field _cast_enemy_corrosive_haze() writes and apply_damage()
 ## reads for its own damage bonus, both sharing _player_armor_reduction_
@@ -8375,46 +8298,46 @@ func _end_depthsveil() -> void:
 
 
 # ------------------------------------------------------------------
-# Treant Protector's Nature's Guise.
+# The Rootmother's Rootveil.
 # ------------------------------------------------------------------
 
-## Activates Nature's Guise: hides the hero for `level_data.duration`
+## Activates Rootveil: hides the hero for `level_data.duration`
 ## turns (not counting the casting turn itself) and arms `level_data.
 ## root_turns` for whichever comes first, his next Attack or the
 ## duration running out - same "casting turn doesn't count"/"one-shot
 ## payoff on the breaking Attack" shape as Depthsveil's own
 ## _activate_depthsveil(), just with a root instead of bonus damage.
-func _activate_natures_guise(level_data: Dictionary) -> void:
-	_natures_guise_active = true
-	_natures_guise_root_turns = int(level_data.get("root_turns", 0))
-	_natures_guise_turns_remaining = int(level_data.get("duration", 0))
-	_natures_guise_duration_pending_start = true
+func _activate_rootveil(level_data: Dictionary) -> void:
+	_rootveil_active = true
+	_rootveil_root_turns = int(level_data.get("root_turns", 0))
+	_rootveil_turns_remaining = int(level_data.get("duration", 0))
+	_rootveil_duration_pending_start = true
 	_update_hero_visibility()
 
 
-## Ticks Nature's Guise's duration down once per End Turn, same timing
+## Ticks Rootveil's duration down once per End Turn, same timing
 ## and same "casting turn doesn't count" rule as Depthsveil's own
 ## _tick_depthsveil().
-func _tick_natures_guise() -> void:
-	if not _natures_guise_active:
+func _tick_rootveil() -> void:
+	if not _rootveil_active:
 		return
 
-	if _natures_guise_duration_pending_start:
-		_natures_guise_duration_pending_start = false
+	if _rootveil_duration_pending_start:
+		_rootveil_duration_pending_start = false
 		return
 
-	_natures_guise_turns_remaining -= 1
-	if _natures_guise_turns_remaining <= 0:
-		_end_natures_guise()
+	_rootveil_turns_remaining -= 1
+	if _rootveil_turns_remaining <= 0:
+		_end_rootveil()
 
 
-## Ends Nature's Guise, whether from its duration running out, the hero
+## Ends Rootveil, whether from its duration running out, the hero
 ## attacking while hidden, or casting another skill while hidden.
-func _end_natures_guise() -> void:
-	_natures_guise_active = false
-	_natures_guise_root_turns = 0
-	_natures_guise_turns_remaining = 0
-	_natures_guise_duration_pending_start = false
+func _end_rootveil() -> void:
+	_rootveil_active = false
+	_rootveil_root_turns = 0
+	_rootveil_turns_remaining = 0
+	_rootveil_duration_pending_start = false
 	_update_hero_visibility()
 
 
@@ -8465,7 +8388,7 @@ func _end_moonlight_shadow() -> void:
 
 
 ## Slight fade to represent invisibility - fully opaque and visible
-## otherwise. Called whenever Depthsveil, Nature's Guise, or
+## otherwise. Called whenever Depthsveil, Rootveil, or
 ## Moonlight Shadow starts or ends.
 func _update_hero_visibility() -> void:
 	hero_image.modulate = Color(1, 1, 1, 0.4) if _is_hero_hidden() else Color(1, 1, 1, 1)
@@ -8967,8 +8890,7 @@ func _refresh_skill_cooldown_labels() -> void:
 
 ## Ticks every tracked skill cooldown down by one turn, clamped at 0,
 ## and ticks Leeching Hunger's, Depthsveil's, Frostbound Fangs', The Test of
-## Time's, The Frost Tempest's, Frostbound Rupture', Bestial Rage's, Nature's
-## Guise's, Living Armor's, Reactive Armor's (each stack independently),
+## Time's, The Frost Tempest's, Frostbound Rupture', Bestial Rage's, Rootveil's, Woven Flesh's, Reactive Armor's (each stack independently),
 ## Chakram's, Wildbond's, Beast of the Elderwild's, Veil of the Forgotten's, and The Mist
 ## Remembers's durations, plus Mark of the Mist's own (enemy- and player-side)
 ## un-activated-stack decay - not a DoT, so it
@@ -8987,7 +8909,7 @@ func _tick_skill_cooldowns() -> void:
 
 	_tick_leeching_hunger()
 	_tick_depthsveil()
-	_tick_natures_guise()
+	_tick_rootveil()
 	_tick_moonlight_shadow()
 	_tick_frostbound_fangs()
 	_tick_the_test_of_time()
@@ -8995,7 +8917,7 @@ func _tick_skill_cooldowns() -> void:
 	_tick_eclipse()
 	_tick_frostbound_rupture()
 	_tick_bestial_rage()
-	_tick_living_armor()
+	_tick_woven_flesh()
 	_tick_wildbond()
 	_tick_beast_of_the_elderwild()
 	_tick_veil_of_the_forgotten()
@@ -9023,8 +8945,8 @@ func _tick_skill_cooldowns() -> void:
 		_tick_enemy_frost_tempest()
 		_tick_enemy_frostbound_rupture()
 		_tick_enemy_bestial_rage()
-		_tick_enemy_natures_guise()
-		_tick_enemy_living_armor()
+		_tick_enemy_rootveil()
+		_tick_enemy_woven_flesh()
 		_tick_enemy_reactive_armor_stacks()
 		_apply_enemy_reactive_armor_regen()
 		_tick_enemy_chakram()
@@ -10007,15 +9929,14 @@ func _on_skill_choice_desc_cancel_pressed() -> void:
 ## of 1.5-2.7 rounds to 2-3 columns per move, while every enemy
 ## always takes exactly one column per turn (see _enemy_turn()). Adds
 ## Blood of the Wild's bonus columns while it's active (see
-## _update_blood_of_the_wild_state()), plus a flat +1 column while Nature's
-## Guise is active - moving unseen covers more ground, same "bonus on
+## _update_blood_of_the_wild_state()), plus a flat +1 column while Rootveil is active - moving unseen covers more ground, same "bonus on
 ## top of the normal speed-based distance" shape Blood of the Wild's own
-## bonus already has, just gated on _natures_guise_active instead of an
+## bonus already has, just gated on _rootveil_active instead of an
 ## HP threshold.
 func _hero_move_distance() -> int:
 	var speed: float = float(_recruited.get("stats", {}).get("speed", 1.0))
-	var natures_guise_bonus: int = 1 if _natures_guise_active else 0
-	return maxi(1, roundi(speed)) + _blood_of_the_wild_bonus_movement + natures_guise_bonus
+	var rootveil_bonus: int = 1 if _rootveil_active else 0
+	return maxi(1, roundi(speed)) + _blood_of_the_wild_bonus_movement + rootveil_bonus
 
 
 ## Whether the hero currently fights at range - normally just his
@@ -10116,7 +10037,7 @@ func _activate_guardian_sprint(level_data: Dictionary) -> void:
 	# The casting turn itself doesn't count - duration only starts
 	# ticking from the turn after (see _tick_guardian_sprint()), same as
 	# every other duration-based buff. The bonus itself is already live
-	# the instant this returns, same as Living Armor's own bonus_armor -
+	# the instant this returns, same as Woven Flesh's own bonus_armor -
 	# only the countdown toward it running out is delayed.
 	_guardian_sprint_duration_pending_start = true
 
@@ -10876,12 +10797,12 @@ func _start_glacier_breaker_targeting(level_data: Dictionary) -> bool:
 	return true
 
 
-## Treant Protector's Leech Seed target picking: same column-range/
+## The Rootmother's Sanguine Bloom target picking: same column-range/
 ## highlight mechanism as every other targeted skill above, using this
 ## level's own fixed range field (a constant 2 columns per the design
 ## doc, still stored per-level like every other skill's own range).
 ## Returns false (and shows a message) if nothing is in range.
-func _start_leech_seed_targeting(level_data: Dictionary) -> bool:
+func _start_sanguine_bloom_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = int(level_data.get("range", 0))
@@ -10896,8 +10817,8 @@ func _start_leech_seed_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "leech_seed"
-	_pending_leech_seed_level_data = level_data
+	_targeting_purpose = "sanguine_bloom"
+	_pending_sanguine_bloom_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
@@ -10943,11 +10864,11 @@ func _highlight_hero_self_target() -> void:
 ## (_update_hero_visibility(), not a hardcoded Color(1,1,1)) - Whisper of the
 ## Veil's own self-target highlight tints hero_image the same way a
 ## valid enemy target gets tinted, so this needs to undo that without
-## also stomping Depthsveil's/Nature's Guise's own invisibility fade
+## also stomping Depthsveil's/Rootveil's own invisibility fade
 ## if either is still active. _cancel_targeting() runs constantly -
 ## every _end_turn() call, every new targeting session - so a hardcoded
 ## reset here was clobbering the invisibility fade back to fully opaque
-## one turn after casting Nature's Guise, even though _natures_guise_
+## one turn after casting Rootveil, even though _rootveil_
 ## active stayed true for its whole duration. Kills every pulsing
 ## highlight tween FIRST (see _highlight_valid_targets()) so none of
 ## them are still running to immediately overwrite the reset below.
@@ -11083,7 +11004,7 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 	var frostbound_rupture_level_data: Dictionary = _pending_frostbound_rupture_level_data
 	var charge_level_data: Dictionary = _pending_charge_level_data
 	var glacier_breaker_level_data: Dictionary = _pending_glacier_breaker_level_data
-	var leech_seed_level_data: Dictionary = _pending_leech_seed_level_data
+	var sanguine_bloom_level_data: Dictionary = _pending_sanguine_bloom_level_data
 	_cancel_targeting()
 
 	if purpose == "thornbind":
@@ -11132,8 +11053,8 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 		_resolve_charge_cast(enemy, charge_level_data)
 	elif purpose == "glacier_breaker":
 		_resolve_glacier_breaker_cast(enemy, glacier_breaker_level_data)
-	elif purpose == "leech_seed":
-		_resolve_leech_seed_cast(enemy, leech_seed_level_data)
+	elif purpose == "sanguine_bloom":
+		_resolve_sanguine_bloom_cast(enemy, sanguine_bloom_level_data)
 	else:
 		_apply_hero_attack(enemy)
 
@@ -11192,11 +11113,10 @@ func _apply_hero_attack(target: Dictionary) -> void:
 	# (different heroes' own kits), so this never double-counts either
 	# way.
 	var moonlight_shadow_active_bonus_pct: float = _moonlight_shadow_bonus_damage_pct if _moonlight_shadow_active else 0.0
-	# Same idea for Nature's Guise, just with a root on the target
+	# Same idea for Rootveil, just with a root on the target
 	# instead of bonus damage - captured now, before the attack (and
-	# possibly _end_natures_guise()) below can change what _natures_
-	# guise_active reads.
-	var attacking_from_natures_guise: bool = _natures_guise_active
+	# possibly _end_rootveil()) below can change what _rootveil_active reads.
+	var attacking_from_rootveil: bool = _rootveil_active
 	# Pull of the Abyss counts this Attack toward its own threshold - once
 	# reached, THIS hit's roll gets its bonus damage folded in below
 	# (so the cleave that follows is based on the same empowered
@@ -11283,10 +11203,10 @@ func _apply_hero_attack(target: Dictionary) -> void:
 	elif moonlight_shadow_active_bonus_pct > 0.0:
 		_end_moonlight_shadow()
 
-	if attacking_from_natures_guise:
+	if attacking_from_rootveil:
 		if target.get("current_hp", 0) > 0:
-			target["root_turns_left"] = _natures_guise_root_turns
-		_end_natures_guise()
+			target["root_turns_left"] = _rootveil_root_turns
+		_end_rootveil()
 
 	# If that kill cleared the stage (or won a hero fight) and a fresh
 	# encounter started, the turn lock has already been reset for it -
@@ -11442,7 +11362,7 @@ func _deal_fixed_damage_to_enemy(target: Dictionary, amount: float, is_critical:
 func _enemy_hero_bonus_armor(target: Dictionary) -> float:
 	if not target["static"].get("is_hero_fight_boss", false):
 		return 0.0
-	return _enemy_leeching_hunger_bonus.get("armor", 0.0) + _enemy_wildbond_bonus_armor + _enemy_living_armor_bonus_armor + _enemy_reactive_armor_bonus_armor()
+	return _enemy_leeching_hunger_bonus.get("armor", 0.0) + _enemy_wildbond_bonus_armor + _enemy_woven_flesh_bonus_armor + _enemy_reactive_armor_bonus_armor()
 
 
 ## The enemy to actually hit for whatever's on `pos_index` - the
@@ -11466,10 +11386,10 @@ func _get_enemy_at(pos_index: int) -> Dictionary:
 
 
 ## True for the rival hero currently hidden by their own Depthsveil or
-## Nature's Guise - the player can't select, attack, or target them with
+## Rootveil - the player can't select, attack, or target them with
 ## a skill while this holds (see _get_enemy_at(), _start_ranged_
 ## targeting(), _start_thornbind_targeting(), _cast_abyssal_spasm()), exactly
-## mirroring what the player's own Depthsveil/Nature's Guise does to
+## mirroring what the player's own Depthsveil/Rootveil does to
 ## him in _enemy_turn() (both folded into his own _is_hero_hidden()).
 ## Slardar's Corrosive Haze overrides this for whichever enemy it's
 ## currently marked (target["corrosive_haze_bonus_pct"] > 0, the same
@@ -11484,7 +11404,7 @@ func _get_enemy_at(pos_index: int) -> Dictionary:
 func _is_target_hidden(target: Dictionary) -> bool:
 	if float(target.get("corrosive_haze_bonus_pct", 0.0)) > 0.0:
 		return false
-	return target["static"].get("is_hero_fight_boss", false) and (_enemy_depthsveil_active or _enemy_natures_guise_active or _enemy_moonlight_shadow_active)
+	return target["static"].get("is_hero_fight_boss", false) and (_enemy_depthsveil_active or _enemy_rootveil_active or _enemy_moonlight_shadow_active)
 
 
 ## Rolls a hero attack's damage, adding Leeching Hunger's ongoing
@@ -11992,17 +11912,17 @@ func _reset_enemy_hero_state(hero_static: Dictionary) -> void:
 	_enemy_bestial_rage_duration_pending_start = false
 	_set_hero_enlarged(_get_hero_fight_boss().get("node"), false)
 
-	_enemy_natures_guise_active = false
-	_enemy_natures_guise_root_turns = 0
-	_enemy_natures_guise_turns_remaining = 0
-	_enemy_natures_guise_duration_pending_start = false
+	_enemy_rootveil_active = false
+	_enemy_rootveil_root_turns = 0
+	_enemy_rootveil_turns_remaining = 0
+	_enemy_rootveil_duration_pending_start = false
 
-	_enemy_living_armor_active = false
-	_enemy_living_armor_bonus_armor = 0.0
-	_enemy_living_armor_bonus_hp_regen = 0.0
-	_enemy_living_armor_turns_remaining = 0
-	_enemy_living_armor_duration_pending_start = false
-	_set_living_armor_leaves(_get_hero_fight_boss().get("node"), false)
+	_enemy_woven_flesh_active = false
+	_enemy_woven_flesh_bonus_armor = 0.0
+	_enemy_woven_flesh_bonus_hp_regen = 0.0
+	_enemy_woven_flesh_turns_remaining = 0
+	_enemy_woven_flesh_duration_pending_start = false
+	WovenFleshFX.set_on(_get_hero_fight_boss().get("node"), false)
 
 	_enemy_reactive_armor_stack_turns = []
 	_despawn_enemy_chakram()
@@ -12042,11 +11962,11 @@ func _reset_enemy_hero_state(hero_static: Dictionary) -> void:
 	_player_winters_grip_dot_damage = 0.0
 	_player_winters_grip_dot_turns_left = 0
 	_player_winters_grip_hold = false
-	_player_leech_seed_dot_damage = 0.0
-	_player_leech_seed_heal_per_turn = 0.0
-	_player_leech_seed_dot_turns_left = 0
-	_player_overgrowth_dot_damage = 0.0
-	_player_overgrowth_dot_turns_left = 0
+	_player_sanguine_bloom_dot_damage = 0.0
+	_player_sanguine_bloom_heal_per_turn = 0.0
+	_player_sanguine_bloom_dot_turns_left = 0
+	_player_mothers_grasp_dot_damage = 0.0
+	_player_mothers_grasp_dot_turns_left = 0
 	_player_armor_reduction = 0.0
 	_player_armor_reduction_turns_left = 0
 	_player_corrosive_haze_bonus_pct = 0.0
@@ -12372,7 +12292,7 @@ func _enemy_turn() -> void:
 		# comment) overrides this - true sight lets him keep fighting a
 		# hidden player normally, stealth notwithstanding.
 		var hero_hidden: bool = not _can_enemy_see_hero()
-		# Root (Thornbind's own, or Nature's Guise's) is checked with its
+		# Root (Thornbind's own, or Rootveil's) is checked with its
 		# CURRENT value before ticking it down - same "use it, then
 		# decrement" order stun_turns_left uses just above - so a 1-turn
 		# root actually blocks the one movement it's meant to, instead of
@@ -12698,11 +12618,11 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 	# (a melee one shares his column, so this leaves its facing alone).
 	_play_enemy_attack_lunge(enemy, _hero_pos_index)
 	var shadow_bonus: float = _enemy_depthsveil_bonus_damage if _enemy_depthsveil_active else 0.0
-	# Same idea for Nature's Guise, just with a root on the player
+	# Same idea for Rootveil, just with a root on the player
 	# instead of bonus damage - captured now, before the attack (and
-	# possibly _end_enemy_natures_guise()) below can change what
-	# _enemy_natures_guise_active reads.
-	var attacking_from_enemy_natures_guise: bool = _enemy_natures_guise_active
+	# possibly _end_enemy_rootveil()) below can change what
+	# _enemy_rootveil_active reads.
+	var attacking_from_enemy_rootveil: bool = _enemy_rootveil_active
 	var pull_of_the_abyss_level_data: Dictionary = _maybe_consume_enemy_pull_of_the_abyss_stack()
 	var pull_of_the_abyss_bonus: float = float(pull_of_the_abyss_level_data.get("bonus_damage", 0.0))
 	# Bash of the Deep counts this Attack toward its own threshold too,
@@ -12763,10 +12683,10 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 	elif moonlight_shadow_active_bonus_pct > 0.0:
 		_end_enemy_moonlight_shadow()
 
-	if attacking_from_enemy_natures_guise:
+	if attacking_from_enemy_rootveil:
 		if _recruited.get("current_hp", 0) > 0:
-			_player_root_turns_left = _enemy_natures_guise_root_turns
-		_end_enemy_natures_guise()
+			_player_root_turns_left = _enemy_rootveil_root_turns
+		_end_enemy_rootveil()
 
 
 ## The rival hero's flat "damage" stat (see GameManager.build_hero_
@@ -12896,17 +12816,17 @@ func _enemy_skill_worth_casting(skill_id: String) -> bool:
 			return _enemy_skill_worth_on_target("winters_grip", false) or (_is_bear_alive() and _enemy_skill_worth_on_target("winters_grip", true))
 		"bestial_rage":
 			return not _enemy_bestial_rage_active
-		"nature's_guise":
-			return not _enemy_natures_guise_active
-		"living_armor":
-			return not _enemy_living_armor_active
-		"leech_seed":
+		"rootveil":
+			return not _enemy_rootveil_active
+		"woven_flesh":
+			return not _enemy_woven_flesh_active
+		"sanguine_bloom":
 			# Same "no benefit from resetting your own DoT" reasoning as
 			# Mark of Stillness/The Hollow Cold/Winter's Grip above - recasting on an
 			# already-seeded player just restarts the same level's own
 			# damage/healing back to full, no extra total value over
 			# letting the existing one run its course.
-			return _enemy_skill_worth_on_target("leech_seed", false) or (_is_bear_alive() and _enemy_skill_worth_on_target("leech_seed", true))
+			return _enemy_skill_worth_on_target("sanguine_bloom", false) or (_is_bear_alive() and _enemy_skill_worth_on_target("sanguine_bloom", true))
 		"mortimer_kisses":
 			# Purely defensive/documentation consistency, mirroring The Test of
 			# Time's own case above - _enemy_hero_turn()'s own top-of-
@@ -13479,14 +13399,14 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 			_cast_enemy_bestial_rage(level_data)
 		"glacier_breaker":
 			_cast_enemy_glacier_breaker(enemy, level_data)
-		"nature's_guise":
-			_activate_enemy_natures_guise(level_data)
-		"leech_seed":
-			_cast_enemy_leech_seed(level_data)
-		"living_armor":
-			_activate_enemy_living_armor(level_data)
-		"overgrowth":
-			_cast_enemy_overgrowth(enemy, level_data)
+		"rootveil":
+			_activate_enemy_rootveil(level_data)
+		"sanguine_bloom":
+			_cast_enemy_sanguine_bloom(level_data)
+		"woven_flesh":
+			_activate_enemy_woven_flesh(level_data)
+		"mother's_grasp":
+			_cast_enemy_mothers_grasp(enemy, level_data)
 		"whirling_death":
 			_cast_enemy_whirling_death(enemy, level_data)
 		"timber_chain":
@@ -13526,7 +13446,7 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 		"eclipse":
 			_cast_enemy_eclipse(level_data)
 
-	# Depthsveil/Nature's Guise only break from casting ANOTHER skill
+	# Depthsveil/Rootveil only break from casting ANOTHER skill
 	# (or attacking, handled separately in _resolve_enemy_hero_attack()),
 	# never from a cast/recast of themselves - mirrors the player's own
 	# _on_skill_pressed(). Only one of the two could ever be active at
@@ -13537,8 +13457,8 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 
 	if _enemy_depthsveil_active and skill_id != "depthsveil":
 		_end_enemy_depthsveil()
-	if _enemy_natures_guise_active and skill_id != "nature's_guise":
-		_end_enemy_natures_guise()
+	if _enemy_rootveil_active and skill_id != "rootveil":
+		_end_enemy_rootveil()
 	# Sacred Arrow is deliberately exempt - mirrors the player's own
 	# _on_skill_pressed(), where a TARGETED skill's deferred-spend path
 	# (_resolve_sacred_arrow_cast()) never reaches the equivalent check at
@@ -13656,7 +13576,7 @@ func _flash_bounce_hit(node: TextureRect, flash_color: Color = BOUNCE_HIT_FLASH_
 ## already been applied by the time this plays.
 func _play_thornbind_effect(node: TextureRect) -> void:
 	_flash_bounce_hit(node, THORNBIND_FLASH_COLOR)
-	_play_overgrowth_dirt(node.position + Vector2(node.size.x / 2.0, node.size.y * ThornbindVines.FEET_Y), node.size.x * ThornbindVines.WRAP_RADIUS * 3.0)
+	_play_ground_dirt(node.position + Vector2(node.size.x / 2.0, node.size.y * ThornbindVines.FEET_Y), node.size.x * ThornbindVines.WRAP_RADIUS * 3.0)
 
 	var lifetime: float = 0.7
 	var leaves := CPUParticles2D.new()
@@ -13688,140 +13608,45 @@ func _play_thornbind_effect(node: TextureRect) -> void:
 	get_tree().create_timer(lifetime + 0.2).timeout.connect(leaves.queue_free)
 
 
-## Keeps Overgrowth's roots in sync with who's currently held by it -
+## Keeps Mother's Grasp's roots in sync with who's currently held by it -
 ## every enemy carrying its DoT, and the player (a rival's cast) - called
 ## from _refresh_bars() (i.e. constantly), same approach as
-## _refresh_thornbind_vines(). Overgrowth's DoT runs exactly as long as
+## _refresh_thornbind_vines(). Mother's Grasp's DoT runs exactly as long as
 ## its root (both armed with the same root_duration) and ticks down
 ## right as the last rooted turn begins, so the vines sink back into
 ## the ground just as the unit is about to be free - and a root from
 ## anything else (Thornbind, Ensnare) never grows vines.
-func _refresh_overgrowth_roots() -> void:
+func _refresh_mothers_grasp_roots() -> void:
+	# The ridge of upheaval runs from the caster's feet - the hero's for
+	# his own cast, the rival's for theirs.
+	var hero_feet: Vector2 = hero_image.global_position + Vector2(hero_image.size.x * 0.5, hero_image.size.y * 0.95)
 	for enemy in _enemies:
-		_set_overgrowth_roots(enemy.get("node"), enemy.get("overgrowth_dot_turns_left", 0) > 0)
-	_set_overgrowth_roots(hero_image, _player_overgrowth_dot_turns_left > 0)
+		MothersGraspFX.set_on(enemy.get("node"), enemy.get("mothers_grasp_dot_turns_left", 0) > 0, hero_feet, _fx_layer)
+	var caster_feet: Vector2 = hero_feet
+	var boss: Dictionary = _get_hero_fight_boss()
+	if not boss.is_empty() and is_instance_valid(boss.get("node")):
+		var boss_node: Control = boss["node"]
+		caster_feet = boss_node.global_position + Vector2(boss_node.size.x * 0.5, boss_node.size.y * 0.95)
+	MothersGraspFX.set_on(hero_image, _player_mothers_grasp_dot_turns_left > 0, caster_feet, _fx_layer)
 
 
-## Purely cosmetic: roots `node` to the ground (or frees it) - a mossy
-## mound at its feet with OVERGROWTH_VINE_COUNT twisting vines climbing
-## up and around the lower part of the sprite, brown at the root and
-## green toward the tip, tapering as they go. On rooting, the vines
-## sprout up out of the ground with a burst of dirt; while it holds they
-## sway gently; when it ends they sink back down and fade. Everything is
-## under one child Control, so it follows the sprite's position/scale/
-## fades for free. Only does anything when the state actually changes
-## (the child's presence is the "currently on" marker).
-func _set_overgrowth_roots(node: Variant, active: bool) -> void:
-	if not is_instance_valid(node) or not (node is Control):
-		return
-	var roots: Control = node.get_node_or_null(OVERGROWTH_ROOTS_NAME)
-	if active == (roots != null):
-		return
-
-	if not active:
-		# Renamed right away so a quick re-root during the fade creates a
-		# fresh set instead of finding this dying one.
-		roots.name = OVERGROWTH_ROOTS_NAME + "Fading"
-		var sway: Variant = roots.get_meta("sway_tween", null)
-		if sway is Tween and sway.is_valid():
-			sway.kill()
-		var sink: Tween = roots.create_tween()
-		for holder in roots.get_meta("vine_holders", []):
-			sink.parallel().tween_property(holder, "scale:y", 0.0, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		sink.parallel().tween_property(roots, "modulate:a", 0.0, 0.45)
-		sink.tween_callback(roots.queue_free)
-		return
-
-	roots = Control.new()
-	roots.name = OVERGROWTH_ROOTS_NAME
-	roots.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	roots.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	node.add_child(roots)
-
-	var base_y: float = node.size.y * 0.95
-	var center_x: float = node.size.x / 2.0
-
-	# The mound the vines grow out of.
-	var mound_size := Vector2(node.size.x * 0.75, 16.0)
-	var mound_style := StyleBoxFlat.new()
-	mound_style.bg_color = OVERGROWTH_MOUND_COLOR
-	mound_style.set_corner_radius_all(int(mound_size.y / 2.0))
-	mound_style.corner_detail = 12
-	var mound := Panel.new()
-	mound.add_theme_stylebox_override("panel", mound_style)
-	mound.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mound.size = mound_size
-	mound.pivot_offset = mound_size / 2.0
-	mound.position = Vector2(center_x, base_y) - mound_size / 2.0
-	mound.scale = Vector2(0.2, 1.0)
-	roots.add_child(mound)
-
-	var width_curve := Curve.new()
-	width_curve.add_point(Vector2(0.0, 1.0))
-	width_curve.add_point(Vector2(1.0, 0.25))
-	var gradient := Gradient.new()
-	gradient.set_color(0, OVERGROWTH_VINE_BASE_COLOR)
-	gradient.set_color(1, OVERGROWTH_VINE_TIP_COLOR)
-
-	var holders: Array = []
-	for i in OVERGROWTH_VINE_COUNT:
-		# Spread along the mound, leaning outward the farther from the
-		# middle they start.
-		var t: float = (float(i) + 0.5) / OVERGROWTH_VINE_COUNT
-		var start_x: float = center_x + (t - 0.5) * mound_size.x * 0.9
-		var height: float = node.size.y * randf_range(0.28, 0.5)
-		var lean: float = (t - 0.5) * node.size.x * 0.25
-		var wiggle: float = randf_range(8.0, 14.0) * (1.0 if i % 2 == 0 else -1.0)
-		var phase: float = randf_range(0.0, TAU)
-
-		var vine := Line2D.new()
-		vine.width = OVERGROWTH_VINE_WIDTH
-		vine.width_curve = width_curve
-		vine.gradient = gradient
-		vine.joint_mode = Line2D.LINE_JOINT_ROUND
-		vine.begin_cap_mode = Line2D.LINE_CAP_ROUND
-		vine.end_cap_mode = Line2D.LINE_CAP_ROUND
-		vine.antialiased = true
-		var segments: int = 8
-		for k in range(segments + 1):
-			var f: float = float(k) / segments
-			# Points go UP from the holder's origin (negative y), twisting
-			# side to side as they climb.
-			vine.add_point(Vector2(sin(f * PI * 2.0 + phase) * wiggle * f + lean * f, -height * f))
-
-		# The holder sits at the vine's base, so scaling it grows/sinks
-		# the vine from the ground up and rotating it sways from the root.
-		var holder := Node2D.new()
-		holder.position = Vector2(start_x, base_y)
-		holder.scale = Vector2(1.0, 0.0)
-		holder.add_child(vine)
-		roots.add_child(holder)
-		holders.append(holder)
-	roots.set_meta("vine_holders", holders)
-
-	# Sprout: mound spreads, vines shoot up one after another.
-	var sprout: Tween = roots.create_tween()
-	sprout.tween_property(mound, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	for i in holders.size():
-		sprout.parallel().tween_property(holders[i], "scale:y", 1.0, 0.35).set_delay(0.05 + i * 0.04).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_play_overgrowth_dirt(node.position + Vector2(center_x, base_y), mound_size.x)
-
-	# Gentle sway from the root while it holds: 0 -> 1 is one full sway.
-	var sway_tween: Tween = roots.create_tween().set_loops()
-	sway_tween.tween_method(
-		func(p: float) -> void:
-			for i in holders.size():
-				if is_instance_valid(holders[i]):
-					holders[i].rotation = sin(p * TAU + i * 1.3) * 0.06,
-		0.0, 1.0, 2.4
+## Purely cosmetic: the caster (`node`) rears up and slams the ground, and
+## the screen shakes as it lands - the blow that sends the roots out (see
+## MothersGraspFX, which waits for it).
+func _play_mothers_grasp_slam(node: Variant) -> void:
+	var animator := CreatureAnimator.of(node)
+	if animator != null:
+		animator.play_slam()
+	get_tree().create_timer(CreatureAnimator.SLAM_IMPACT_TIME if animator != null else 0.0).timeout.connect(func() -> void:
+		if is_inside_tree():
+			_shake_screen()
 	)
-	roots.set_meta("sway_tween", sway_tween)
 
 
-## Overgrowth's sprouting burst: a one-shot spray of dirt clods kicked
-## up across `width` px of ground centered on `pos`. Same CPUParticles2D
-## one-shot-burst recipe as _spawn_lil_shredder_impact().
-func _play_overgrowth_dirt(pos: Vector2, width: float) -> void:
+## A one-shot spray of dirt clods kicked up across `width` px of ground
+## centered on `pos` (Thornbind's burst). Same CPUParticles2D one-shot-burst
+## recipe as _spawn_lil_shredder_impact().
+func _play_ground_dirt(pos: Vector2, width: float) -> void:
 	var lifetime: float = 0.6
 	var particles := CPUParticles2D.new()
 	particles.position = pos
@@ -13841,7 +13666,7 @@ func _play_overgrowth_dirt(pos: Vector2, width: float) -> void:
 	particles.angle_max = 360.0
 	particles.scale_amount_min = 3.0
 	particles.scale_amount_max = 6.0
-	particles.color = OVERGROWTH_DIRT_COLOR
+	particles.color = GROUND_DIRT_COLOR
 	add_child(particles)
 	move_child(particles, enemies_layer.get_index() + 1)
 	particles.emitting = true
@@ -13854,7 +13679,7 @@ func _play_overgrowth_dirt(pos: Vector2, width: float) -> void:
 ## follow current state instead of being toggled at every cast/tick/
 ## dispel/reset site, same approach as _refresh_status_effects().
 ## "Thornbound" = rooted AND still carrying Thornbind's own DoT, so
-## Ensnare's/Overgrowth's plain roots (which never set the Thornbind DoT)
+## Ensnare's/Mother's Grasp's plain roots (which never set the Thornbind DoT)
 ## don't grow them.
 func _refresh_thornbind_vines() -> void:
 	for enemy in _enemies:
@@ -14511,7 +14336,7 @@ func _update_enemy_hero_visibility() -> void:
 	var boss: Dictionary = _get_hero_fight_boss()
 	if boss.is_empty() or not is_instance_valid(boss["node"]):
 		return
-	var hidden: bool = _enemy_depthsveil_active or _enemy_natures_guise_active or _enemy_moonlight_shadow_active
+	var hidden: bool = _enemy_depthsveil_active or _enemy_rootveil_active or _enemy_moonlight_shadow_active
 	boss["node"].modulate = Color(1, 1, 1, 0.4) if hidden else Color(1, 1, 1, 1)
 
 
@@ -16181,119 +16006,118 @@ func _cast_enemy_glacier_breaker(enemy: Dictionary, level_data: Dictionary) -> v
 
 
 # ------------------------------------------------------------------
-# Treant Protector's Nature's Guise, cast by the rival on himself -
-# mirrors the player's own _activate_natures_guise()/_tick_natures_
-# guise()/_end_natures_guise(): functionally the same invisibility as
+# The Rootmother's Rootveil, cast by the rival on himself -
+# mirrors the player's own _activate_rootveil()/_tick_rootveil()/_end_rootveil(): functionally the same invisibility as
 # Depthsveil (folded into the very same _is_target_hidden()/_update_
 # enemy_hero_visibility() checks), just with a root on the player
 # instead of bonus damage for the Attack that breaks it - see
-# _resolve_enemy_hero_attack()'s own "attacking_from_enemy_natures_
-# guise" capture.
+# _resolve_enemy_hero_attack()'s own "attacking_from_enemy_rootveil" capture.
 # ------------------------------------------------------------------
 
-func _activate_enemy_natures_guise(level_data: Dictionary) -> void:
-	_enemy_natures_guise_active = true
-	_enemy_natures_guise_root_turns = int(level_data.get("root_turns", 0))
-	_enemy_natures_guise_turns_remaining = int(level_data.get("duration", 0))
-	_enemy_natures_guise_duration_pending_start = true
+func _activate_enemy_rootveil(level_data: Dictionary) -> void:
+	_enemy_rootveil_active = true
+	_enemy_rootveil_root_turns = int(level_data.get("root_turns", 0))
+	_enemy_rootveil_turns_remaining = int(level_data.get("duration", 0))
+	_enemy_rootveil_duration_pending_start = true
 	_update_enemy_hero_visibility()
 
 
-func _tick_enemy_natures_guise() -> void:
-	if not _enemy_natures_guise_active:
+func _tick_enemy_rootveil() -> void:
+	if not _enemy_rootveil_active:
 		return
-	if _enemy_natures_guise_duration_pending_start:
-		_enemy_natures_guise_duration_pending_start = false
+	if _enemy_rootveil_duration_pending_start:
+		_enemy_rootveil_duration_pending_start = false
 		return
-	_enemy_natures_guise_turns_remaining -= 1
-	if _enemy_natures_guise_turns_remaining <= 0:
-		_end_enemy_natures_guise()
+	_enemy_rootveil_turns_remaining -= 1
+	if _enemy_rootveil_turns_remaining <= 0:
+		_end_enemy_rootveil()
 
 
-func _end_enemy_natures_guise() -> void:
-	_enemy_natures_guise_active = false
-	_enemy_natures_guise_root_turns = 0
-	_enemy_natures_guise_turns_remaining = 0
-	_enemy_natures_guise_duration_pending_start = false
+func _end_enemy_rootveil() -> void:
+	_enemy_rootveil_active = false
+	_enemy_rootveil_root_turns = 0
+	_enemy_rootveil_turns_remaining = 0
+	_enemy_rootveil_duration_pending_start = false
 	_update_enemy_hero_visibility()
 
 
 # ------------------------------------------------------------------
-# Treant Protector's Leech Seed, cast by the rival on the player -
-# mirrors the player's own _resolve_leech_seed_cast(): no immediate
+# The Rootmother's Sanguine Bloom, cast by the rival on the player -
+# mirrors the player's own _resolve_sanguine_bloom_cast(): no immediate
 # damage, just arms this level's own dot_damage/heal_per_turn on the
-# player's own dedicated _player_leech_seed_* fields, ticked once per
+# player's own dedicated _player_sanguine_bloom_* fields, ticked once per
 # turn (alongside every other rival-inflicted DoT) by _tick_player_
 # turn_start_effects() - which, unlike every other DoT there, also heals
 # the CASTER (the rival, via _get_hero_fight_boss()) each tick instead
 # of the player.
 # ------------------------------------------------------------------
 
-func _cast_enemy_leech_seed(level_data: Dictionary) -> void:
+func _cast_enemy_sanguine_bloom(level_data: Dictionary) -> void:
 	if _enemy_skill_on_bear:
-		_cast_enemy_leech_seed_on_bear(level_data)
+		_cast_enemy_sanguine_bloom_on_bear(level_data)
 		return
-	_player_leech_seed_dot_damage = float(level_data.get("dot_damage", 0))
-	_player_leech_seed_heal_per_turn = float(level_data.get("heal_per_turn", 0))
-	_player_leech_seed_dot_turns_left = int(level_data.get("duration", 0))
-	_show_message_over_hero("Leech Seed!")
+	_player_sanguine_bloom_dot_damage = float(level_data.get("dot_damage", 0))
+	_player_sanguine_bloom_heal_per_turn = float(level_data.get("heal_per_turn", 0))
+	_player_sanguine_bloom_dot_turns_left = int(level_data.get("duration", 0))
+	_show_message_over_hero("Sanguine Bloom!")
 
 
 # ------------------------------------------------------------------
-# Treant Protector's Living Armor, cast by the rival on himself - mirrors
-# the player's own _activate_living_armor()/_tick_living_armor()/
-# _end_living_armor(): bonus_armor folds into _enemy_hero_bonus_armor(),
+# The Rootmother's Woven Flesh, cast by the rival on himself - mirrors
+# the player's own _activate_woven_flesh()/_tick_woven_flesh()/
+# _end_woven_flesh(): bonus_armor folds into _enemy_hero_bonus_armor(),
 # bonus_hp_regen heals the rival on top of his own baseline passive
 # regen (_tick_enemy_passive_regen()) every tick, same "on top of the
 # baseline, not instead of it" relationship the player's own copy has
 # with _apply_passive_hero_regen().
 # ------------------------------------------------------------------
 
-func _activate_enemy_living_armor(level_data: Dictionary) -> void:
-	_enemy_living_armor_active = true
-	_enemy_living_armor_bonus_armor = float(level_data.get("bonus_armor", 0))
-	_enemy_living_armor_bonus_hp_regen = float(level_data.get("bonus_hp_regen", 0))
-	_enemy_living_armor_turns_remaining = int(level_data.get("duration", 0))
-	_enemy_living_armor_duration_pending_start = true
-	_show_message_over_hero("Living Armor!")
-	_set_living_armor_leaves(_get_hero_fight_boss().get("node"), true)
+func _activate_enemy_woven_flesh(level_data: Dictionary) -> void:
+	_enemy_woven_flesh_active = true
+	_enemy_woven_flesh_bonus_armor = float(level_data.get("bonus_armor", 0))
+	_enemy_woven_flesh_bonus_hp_regen = float(level_data.get("bonus_hp_regen", 0))
+	_enemy_woven_flesh_turns_remaining = int(level_data.get("duration", 0))
+	_enemy_woven_flesh_duration_pending_start = true
+	_show_message_over_hero("Woven Flesh!")
+	WovenFleshFX.set_on(_get_hero_fight_boss().get("node"), true)
 
 
-func _tick_enemy_living_armor() -> void:
-	if not _enemy_living_armor_active:
+func _tick_enemy_woven_flesh() -> void:
+	if not _enemy_woven_flesh_active:
 		return
-	if _enemy_living_armor_duration_pending_start:
-		_enemy_living_armor_duration_pending_start = false
+	if _enemy_woven_flesh_duration_pending_start:
+		_enemy_woven_flesh_duration_pending_start = false
 		return
 
 	var boss: Dictionary = _get_hero_fight_boss()
 	if not boss.is_empty():
 		var max_hp: float = _enemy_hero_effective_max_hp(boss)
-		boss["current_hp"] = minf(max_hp, float(boss.get("current_hp", 0.0)) + _enemy_living_armor_bonus_hp_regen)
+		boss["current_hp"] = minf(max_hp, float(boss.get("current_hp", 0.0)) + _enemy_woven_flesh_bonus_hp_regen)
+		WovenFleshFX.pulse_on(boss.get("node"))
 
-	_enemy_living_armor_turns_remaining -= 1
-	if _enemy_living_armor_turns_remaining <= 0:
-		_end_enemy_living_armor()
+	_enemy_woven_flesh_turns_remaining -= 1
+	if _enemy_woven_flesh_turns_remaining <= 0:
+		_end_enemy_woven_flesh()
 
 
-func _end_enemy_living_armor() -> void:
-	_enemy_living_armor_active = false
-	_enemy_living_armor_bonus_armor = 0.0
-	_enemy_living_armor_bonus_hp_regen = 0.0
-	_enemy_living_armor_turns_remaining = 0
-	_enemy_living_armor_duration_pending_start = false
-	_set_living_armor_leaves(_get_hero_fight_boss().get("node"), false)
+func _end_enemy_woven_flesh() -> void:
+	_enemy_woven_flesh_active = false
+	_enemy_woven_flesh_bonus_armor = 0.0
+	_enemy_woven_flesh_bonus_hp_regen = 0.0
+	_enemy_woven_flesh_turns_remaining = 0
+	_enemy_woven_flesh_duration_pending_start = false
+	WovenFleshFX.set_on(_get_hero_fight_boss().get("node"), false)
 
 
 # ------------------------------------------------------------------
-# Treant Protector's ultimate, Overgrowth, cast by the rival - mirrors
-# the player's own _activate_overgrowth(): every living, targetable
+# The Rootmother's ultimate, Mother's Grasp, cast by the rival - mirrors
+# the player's own _activate_mothers_grasp(): every living, targetable
 # enemy within `radius` columns of the rival's CURRENT position gets
 # rooted (_player_root_turns_left, the same shared field Thornbind's own
 # root already uses - it can still attack and cast skills while rooted,
 # same as any other rooted enemy) for `root_duration` turns, armed with
-# that same level's own DoT (_player_overgrowth_dot_damage/_player_
-# overgrowth_dot_turns_left, a dedicated pair so it never clobbers
+# that same level's own DoT (_player_mothers_grasp_dot_damage/_player_
+# mothers_grasp_dot_turns_left, a dedicated pair so it never clobbers
 # another skill's DoT on the player) for the same duration - ticked, at
 # the start of the player's own turn, by _tick_player_turn_start_
 # effects(). There's only one possible target in a hero fight, so this
@@ -16302,14 +16126,14 @@ func _end_enemy_living_armor() -> void:
 # already uses.
 # ------------------------------------------------------------------
 
-func _cast_enemy_overgrowth(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_mothers_grasp(enemy: Dictionary, level_data: Dictionary) -> void:
 	var radius: int = int(level_data.get("radius", 0))
 	var dot_damage: float = float(level_data.get("dot_damage", 0))
 	if _distance(enemy["pos_index"], _hero_pos_index) <= radius:
 		var root_duration: int = int(level_data.get("root_duration", 0))
 		_player_root_turns_left = root_duration
-		_player_overgrowth_dot_damage = dot_damage
-		_player_overgrowth_dot_turns_left = root_duration
+		_player_mothers_grasp_dot_damage = dot_damage
+		_player_mothers_grasp_dot_turns_left = root_duration
 
 	# Illusions have no root/DoT of their own to carry the way the hero
 	# does above - just a one-time hit for whatever's caught in the
@@ -16317,9 +16141,10 @@ func _cast_enemy_overgrowth(enemy: Dictionary, level_data: Dictionary) -> void:
 	# above.
 	_deal_aoe_damage_to_illusions(enemy["pos_index"], radius, dot_damage)
 	_deal_aoe_damage_to_bear(enemy["pos_index"], radius, dot_damage)
-	_refresh_overgrowth_roots()
+	_play_mothers_grasp_slam(enemy.get("node"))
+	_refresh_mothers_grasp_roots()
 
-	_show_message_over_hero("Overgrowth!")
+	_show_message_over_hero("Mother's Grasp!")
 
 
 # ------------------------------------------------------------------
@@ -16330,7 +16155,7 @@ func _cast_enemy_overgrowth(enemy: Dictionary, level_data: Dictionary) -> void:
 # collapses to a single conditional hit rather than a loop over multiple
 # enemies, same simplification every other self-centered AoE's own
 # rival copy already uses (see _cast_enemy_frost_tempest()/_cast_enemy_
-# overgrowth()). "Pure damage" and the primary-attribute reduction are
+# mothers_grasp()). "Pure damage" and the primary-attribute reduction are
 # both purely descriptive here - neither is mechanically implemented
 # anywhere in this project (the player's own _cast_whirling_death() also
 # just calls _deal_fixed_damage_to_enemy(), the same armor-mitigated
@@ -16976,7 +16801,7 @@ func _deal_directional_aoe_damage_to_enemy_illusions(origin_pos_index: int, dire
 # player's own _resolve_ensnare_cast(): this level's own `damage`
 # (through normal armor mitigation, via apply_damage()) plus a root for
 # `root_turns` of the player's own turns (_player_root_turns_left, the
-# same shared field Thornbind's/Overgrowth's own root already use) -
+# same shared field Thornbind's/Mother's Grasp's own root already use) -
 # unlike Thornbind, no silence/DoT fields are touched at all, so (per the
 # design doc's own explicit "Ensnare is not a stun" instruction) the
 # player can still attack/cast skills while rooted, just not move. Only
@@ -17119,14 +16944,14 @@ func _end_enemy_guardian_sprint() -> void:
 # there's only one possible target in a hero fight, so this collapses to
 # a single conditional hit rather than a loop over multiple enemies, same
 # simplification every other self-centered rival AoE cast already uses
-# (see _cast_enemy_overgrowth()'s own docstring). Only stuns if the hit
+# (see _cast_enemy_mothers_grasp()'s own docstring). Only stuns if the hit
 # actually left the player alive. Centered on the caster's own column,
 # same as the check above - an illusion/the player's own Elderwild Companion can
 # be in range independently of whether the player himself currently is,
 # same "one-time hit for whatever's caught in the burst" reasoning
 # _cast_enemy_whirling_death()'s own copy already follows (illusions have
 # no stun of their own to carry, same as they have no root/DoT in
-# Overgrowth's own copy).
+# Mother's Grasp's own copy).
 # ------------------------------------------------------------------
 
 func _cast_enemy_slithereen_crush(enemy: Dictionary, level_data: Dictionary) -> void:
@@ -17262,7 +17087,7 @@ func _cast_enemy_corrosive_haze(level_data: Dictionary) -> void:
 # target in a hero fight, so this collapses to a single conditional hit
 # rather than a loop over multiple enemies, same simplification every
 # other self-centered rival AoE cast already uses (see
-# _cast_enemy_overgrowth()'s own docstring). No stun of its own - purely
+# _cast_enemy_mothers_grasp()'s own docstring). No stun of its own - purely
 # a damage nuke, same as the player-side copy. Centered on the caster's
 # own column, same as the check above - an illusion/the player's own
 # Elderwild Companion can be in range independently of whether the player himself
@@ -17759,6 +17584,11 @@ func _face_enemy_toward(enemy: Dictionary, target_pos: int) -> void:
 
 const PROJECTILE_RELEASE_DELAY := 0.08
 
+## A creep whose "projectile" is this doesn't shoot anything: a thorned
+## vine lashes out from BEHIND it to the target, then withers back and
+## vanishes (see _fire_enemy_rear_vine()).
+const REAR_VINE_STYLE := "rear_vine"
+
 
 ## A ranged enemy's attack projectile - only for enemies whose
 ## GameManager definition names one ("projectile": a ProjectileFX style
@@ -17774,6 +17604,9 @@ func _fire_enemy_projectile(enemy: Dictionary, target_node: Control) -> void:
 	var style_id: String = enemy["static"].get("projectile", "")
 	var node: Control = enemy.get("node")
 	if style_id == "" or node == null or not is_instance_valid(target_node):
+		return
+	if style_id == REAR_VINE_STYLE:
+		_fire_enemy_rear_vine(enemy, target_node)
 		return
 
 	var native_faces_right: bool = enemy["static"].get("is_hero_fight", false)
@@ -17792,6 +17625,37 @@ func _fire_enemy_projectile(enemy: Dictionary, target_node: Control) -> void:
 			if animator != null:
 				animator.play_hit(signf(from.x - to.x))
 		)
+	)
+
+
+## The Verdant Scar's ranged creep attack: a thorned vine rises from behind
+## the creep, arcs over it to the target, strikes, then withers back and
+## disappears. The vine lives in enemies_layer, placed just UNDER the
+## creep's own sprite, so it really does come out from behind the creep
+## (and still draws over the hero, who sits below that layer). Same
+## deferred-hit contract as _fire_enemy_projectile().
+func _fire_enemy_rear_vine(enemy: Dictionary, target_node: Control) -> void:
+	var node: Control = enemy.get("node")
+	var native_faces_right: bool = enemy["static"].get("is_hero_fight", false)
+	var facing_left: bool = node.flip_h if native_faces_right else not node.flip_h
+	var facing: float = -1.0 if facing_left else 1.0
+	# Low on the creep's back - the side away from its target.
+	var from: Vector2 = node.global_position + node.size * Vector2(0.5 - 0.3 * facing, 0.78)
+	var to: Vector2 = target_node.global_position + target_node.size * Vector2(0.5, 0.45)
+	var lift: float = clampf(from.distance_to(to) * 0.3, 50.0, 130.0)
+
+	_deferred_hit_node = target_node
+	get_tree().create_timer(PROJECTILE_RELEASE_DELAY).timeout.connect(func() -> void:
+		if not is_instance_valid(node) or not is_instance_valid(enemies_layer):
+			return
+		var style: Dictionary = VineLashFX.CREEP_STYLE.duplicate()
+		style["lift"] = lift
+		var vine := VineLashFX.play(enemies_layer, from, to, func() -> void:
+			var animator := CreatureAnimator.of(target_node)
+			if animator != null:
+				animator.play_hit(signf(from.x - to.x))
+		, style)
+		enemies_layer.move_child(vine, node.get_index())
 	)
 
 
@@ -18428,10 +18292,10 @@ func _enemy_skill_worth_on_target(skill_id: String, on_bear: bool) -> bool:
 			field = "winters_grip_dot_turns_left"
 			if not on_bear:
 				return _player_winters_grip_dot_turns_left <= 0
-		"leech_seed":
-			field = "leech_seed_dot_turns_left"
+		"sanguine_bloom":
+			field = "sanguine_bloom_dot_turns_left"
 			if not on_bear:
-				return _player_leech_seed_dot_turns_left <= 0
+				return _player_sanguine_bloom_dot_turns_left <= 0
 		_:
 			return true
 	return int(_bear.get(field, 0)) <= 0
@@ -18476,7 +18340,7 @@ func _choose_enemy_skill_on_bear(enemy: Dictionary, skill_id: String) -> bool:
 ## Roughly how much damage `skill_id`'s own immediate hit would do to
 ## the bear after its armor - only used to judge whether a cast would
 ## finish it off. DoT-only skills (Thornbind/Mark of Stillness/The Hollow Cold/
-## Winter's Grip/Leech Seed/Corrosive Haze/The Hunger Calls) return 0.
+## Winter's Grip/Sanguine Bloom/Corrosive Haze/The Hunger Calls) return 0.
 func _estimate_enemy_skill_hit_on_bear(enemy: Dictionary, skill_id: String, level_data: Dictionary) -> float:
 	var raw: float = 0.0
 	match skill_id:
@@ -18540,16 +18404,16 @@ func _tick_bear_turn_start_effects() -> void:
 		if int(_bear.get("return_to_the_void_dot_turns_left", 0)) <= 0:
 			_bear["return_to_the_void_execute_pct"] = 0.0
 
-	if int(_bear.get("leech_seed_dot_turns_left", 0)) > 0:
-		_bear["leech_seed_dot_turns_left"] -= 1
+	if int(_bear.get("sanguine_bloom_dot_turns_left", 0)) > 0:
+		_bear["sanguine_bloom_dot_turns_left"] -= 1
 		# Captured before the tick - a kill clears _bear and frees the node.
 		var seeded_bear_node: Variant = _bear.get("node")
-		var leech_seed_dot: float = float(_bear.get("leech_seed_dot_damage", 0))
-		if leech_seed_dot > 0.0:
-			_deal_damage_to_bear(leech_seed_dot)
+		var sanguine_bloom_dot: float = float(_bear.get("sanguine_bloom_dot_damage", 0))
+		if sanguine_bloom_dot > 0.0:
+			_deal_damage_to_bear(sanguine_bloom_dot)
 		# The healing half goes to the caster (the rival), same as the
 		# player-side tick.
-		var heal_per_turn: float = float(_bear.get("leech_seed_heal_per_turn", 0.0))
+		var heal_per_turn: float = float(_bear.get("sanguine_bloom_heal_per_turn", 0.0))
 		if heal_per_turn > 0.0:
 			var caster: Dictionary = _get_hero_fight_boss()
 			if not caster.is_empty():
@@ -18868,11 +18732,11 @@ func _cast_enemy_glacier_breaker_on_bear(enemy: Dictionary, level_data: Dictiona
 	_stun_bear(int(level_data.get("stun_turns", 1)))
 
 
-func _cast_enemy_leech_seed_on_bear(level_data: Dictionary) -> void:
-	_bear["leech_seed_dot_damage"] = float(level_data.get("dot_damage", 0))
-	_bear["leech_seed_heal_per_turn"] = float(level_data.get("heal_per_turn", 0))
-	_bear["leech_seed_dot_turns_left"] = int(level_data.get("duration", 0))
-	_show_message_over_bear("Leech Seed!")
+func _cast_enemy_sanguine_bloom_on_bear(level_data: Dictionary) -> void:
+	_bear["sanguine_bloom_dot_damage"] = float(level_data.get("dot_damage", 0))
+	_bear["sanguine_bloom_heal_per_turn"] = float(level_data.get("heal_per_turn", 0))
+	_bear["sanguine_bloom_dot_turns_left"] = int(level_data.get("duration", 0))
+	_show_message_over_bear("Sanguine Bloom!")
 
 
 func _cast_enemy_lil_shredder_on_bear(enemy: Dictionary, level_data: Dictionary) -> void:

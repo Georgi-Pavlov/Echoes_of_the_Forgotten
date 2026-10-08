@@ -265,7 +265,7 @@ const NEW_SIM_HP_RESTORE_PCT: float = 0.30
 const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 
 # Every ACTIVE skill across Veyrik, Erynd, Morvael, Kaelen Varr, Nhal,
-# The Primordial Hunger, Frost Daughter, Skarn, Treant Protector,
+# The Primordial Hunger, Frost Daughter, Skarn, The Rootmother,
 # Timbersaw, and Snapfire, the only eleven heroes with any simulated
 # skill logic today - anything else a hero knows just never gets cast
 # here. This is the full candidate pool
@@ -315,12 +315,12 @@ const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 # no real destination to walk out, so its sim copy never adds the 50%
 # collision bonus at all (see _skarn_glacier_breaker_modifier()'s own
 # sim-side proxy for how the AI still accounts for the POSSIBILITY of
-# one without the actual cast ever guaranteeing it). Treant Protector's
-# Nature's Guise mirrors Depthsveil's own sim copy exactly (see this
-# file's "nature's_guise" cases below and in _npc_skill_worth_casting()/
+# one without the actual cast ever guaranteeing it). The Rootmother's
+# Rootveil mirrors Depthsveil's own sim copy exactly (see this
+# file's "rootveil" cases below and in _npc_skill_worth_casting()/
 # the retaliation-loop guard) - invisibility skips enemy retaliation for
 # the turn, and the Attack that breaks it roots whichever enemy it hits
-# instead of adding bonus damage. Overgrowth is a self-centered AoE with
+# instead of adding bonus damage. Mother's Grasp is a self-centered AoE with
 # nothing to center it on here, so - like Return to the Void/Maddening Roar - it
 # falls back to rooting and DoTing every living enemy at once rather
 # than just whichever ones would really be within radius.
@@ -364,7 +364,7 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 	"frostbound_fangs", "maddening_roar", "the_test_of_time", "the_hunger_calls",
 	"rimecleaver", "winters_grip", "the_frost_tempest",
 	"frostbound_rupture", "charge", "bestial_rage", "glacier_breaker",
-	"nature's_guise", "leech_seed", "living_armor", "overgrowth",
+	"rootveil", "sanguine_bloom", "woven_flesh", "mother's_grasp",
 	"whirling_death", "timber_chain", "chakram",
 	"scatterblast", "firesnap_cookie", "lil_shredder", "mortimer_kisses",
 	"mirror_image", "ensnare", "song_of_the_siren",
@@ -382,7 +382,7 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # would attack anyway, same "no columns, always hit the lowest-HP enemy"
 # simplification Frostbound Rupture'/Whisper of the Veil's own sim copies use. Slithereen
 # Crush is a self-centered AoE with nothing to center it on here, so -
-# like Return to the Void/Overgrowth/Song of the Siren above - it stuns and damages
+# like Return to the Void/Mother's Grasp/Song of the Siren above - it stuns and damages
 # every living enemy at once. Corrosive Haze marks whichever enemy the
 # hero would attack anyway (a new "corrosive_haze_bonus_pct" per-enemy
 # field, read by _apply_damage_to_enemy() to boost every hit THAT enemy
@@ -400,7 +400,7 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # knockback has nothing to act on here either, same reasoning Glacier
 # Breaker's own collision bonus is dropped for.
 # Mirana's Starstorm is a self-centered AoE with nothing to center it on
-# here, so - like Return to the Void/Overgrowth/Song of the Siren above - it hits
+# here, so - like Return to the Void/Mother's Grasp/Song of the Siren above - it hits
 # every living enemy at once. Sacred Arrow has no columns to travel
 # across here, so (same "no columns" honesty EnemySkillAI's own _mirana_
 # sacred_arrow_expected_damage() already follows) its sim copy deals only
@@ -437,10 +437,10 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # block) - see this file's own "mirror_image" state in _new_npc_combat_
 # state()/_tick_npc_mirror_image(). Ensnare roots (state-lessly - see
 # this match's own "ensnare" case, which just writes root_turns_left the
-# same way Overgrowth's own sim copy does) whichever enemy the hero would
+# same way Mother's Grasp's own sim copy does) whichever enemy the hero would
 # attack anyway. Song of the Siren, her ultimate, has no columns to
 # center an AoE stun on either, so - like Return to the Void/Maddening Roar/
-# Overgrowth above - it falls back to stunning and shredding the armor of
+# Mother's Grasp above - it falls back to stunning and shredding the armor of
 # every living enemy at once, reusing the same armor_reduction/armor_
 # reduction_turns_left fields (and their own already-existing _tick_npc_
 # armor_reduction_effects() tick) Lil' Shredder's own sim copy already
@@ -935,7 +935,7 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		_tick_npc_veil_of_the_forgotten(state["veil_of_the_forgotten"])
 		_tick_npc_the_mist_remembers(state["the_mist_remembers"], cooldowns)
 		_tick_npc_bestial_rage(state["bestial_rage"])
-		_tick_npc_natures_guise(state["nature's_guise"])
+		_tick_npc_rootveil(state["rootveil"])
 		_tick_npc_thornbind_effects(enemies)
 		_tick_npc_mark_of_the_mist_effects(enemies, turn_index)
 		_tick_npc_mark_of_stillness_effects(enemies)
@@ -943,7 +943,7 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		_tick_npc_return_to_the_void_effects(enemies)
 		_tick_npc_winters_grip_effects(enemies)
 		_tick_npc_frost_tempest(state["the_frost_tempest"], enemies)
-		_tick_npc_overgrowth_effects(enemies)
+		_tick_npc_mothers_grasp_effects(enemies)
 		_tick_npc_chakram(state["chakram"], enemies)
 		_tick_npc_mirror_image(state["mirror_image"])
 		_tick_npc_armor_reduction_effects(enemies)
@@ -954,16 +954,16 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 
 		var effective_max_hp: float = _npc_effective_max_hp(max_hp, state)
 		current_hp = _tick_npc_the_test_of_time(state["the_test_of_time"], current_hp, effective_max_hp)
-		current_hp = _tick_npc_living_armor(state["living_armor"], current_hp, effective_max_hp)
-		# Unlike every other DoT ticked above, Leech Seed's own healing
+		current_hp = _tick_npc_woven_flesh(state["woven_flesh"], current_hp, effective_max_hp)
+		# Unlike every other DoT ticked above, Sanguine Bloom's own healing
 		# half goes to the CASTER (this hero), not the enemy it damages -
-		# see _tick_npc_leech_seed_effects()'s own docstring - so it needs
+		# see _tick_npc_sanguine_bloom_effects()'s own docstring - so it needs
 		# current_hp/effective_max_hp the same way The Test of Time's/Living
 		# Armor's own ticks just above do.
-		current_hp = _tick_npc_leech_seed_effects(enemies, current_hp, effective_max_hp)
+		current_hp = _tick_npc_sanguine_bloom_effects(enemies, current_hp, effective_max_hp)
 		# Timbersaw's Reactive Armor: healing (per stack) is its own tick
 		# here, same "current_hp in, current_hp out" shape as The Test of
-		# Time's/Living Armor's own ticks just above; the armor half
+		# Time's/Woven Flesh's own ticks just above; the armor half
 		# is read live from _npc_reactive_armor_bonus_armor() wherever
 		# effective_armor is computed instead (see this function's own
 		# retaliation-loop call site below).
@@ -1024,11 +1024,11 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 			else:
 				var target: Dictionary = _lowest_hp_enemy(living)
 				var shadow_bonus: float = state["depthsveil"]["bonus_damage"] if state["depthsveil"]["active"] else 0.0
-				# Same idea for Nature's Guise, just with a root on the
+				# Same idea for Rootveil, just with a root on the
 				# target instead of bonus damage - captured now, before the
-				# attack (and possibly _end_npc_natures_guise()) below can
-				# change what state["nature's_guise"]["active"] reads.
-				var attacking_from_natures_guise: bool = state["nature's_guise"]["active"]
+				# attack (and possibly _end_npc_rootveil()) below can
+				# change what state["rootveil"]["active"] reads.
+				var attacking_from_rootveil: bool = state["rootveil"]["active"]
 				var pull_of_the_abyss_level_data: Dictionary = _maybe_consume_npc_pull_of_the_abyss_stack(hero_id, hero_static, state)
 				var pull_of_the_abyss_bonus: float = float(pull_of_the_abyss_level_data.get("bonus_damage", 0.0))
 				# Bash of the Deep counts this Attack toward its own
@@ -1070,24 +1070,24 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 					# battle.gd's own copy follows.
 					_end_npc_moonlight_shadow(state["moonlight_shadow"])
 
-				if attacking_from_natures_guise:
+				if attacking_from_rootveil:
 					if target.get("current_hp", 0) > 0:
-						target["root_turns_left"] = int(state["nature's_guise"]["root_turns"])
-					_end_npc_natures_guise(state["nature's_guise"])
+						target["root_turns_left"] = int(state["rootveil"]["root_turns"])
+					_end_npc_rootveil(state["rootveil"])
 
-		# Depthsveil/Nature's Guise only break from attacking or casting
+		# Depthsveil/Rootveil only break from attacking or casting
 		# ANOTHER skill, never from a cast/recast of themselves and never
 		# from drinking a potion - exactly mirroring battle.gd's own
-		# _on_skill_pressed()/_apply_hero_attack(). Nature's Guise's own
+		# _on_skill_pressed()/_apply_hero_attack(). Rootveil's own
 		# break (a successful stealth Attack) already happened above, right
 		# where its root gets applied, but ending it again here is harmless
-		# (_end_npc_natures_guise() is a no-op once it's already inactive)
+		# (_end_npc_rootveil() is a no-op once it's already inactive)
 		# and still correctly covers the "broke by casting another skill"
 		# case this shared check exists for.
 		if state["depthsveil"]["active"] and acted_with != "" and acted_with != "depthsveil":
 			_end_npc_depthsveil(state["depthsveil"])
-		if state["nature's_guise"]["active"] and acted_with != "" and acted_with != "nature's_guise":
-			_end_npc_natures_guise(state["nature's_guise"])
+		if state["rootveil"]["active"] and acted_with != "" and acted_with != "rootveil":
+			_end_npc_rootveil(state["rootveil"])
 		# Sacred Arrow is deliberately exempt - mirrors battle.gd's own
 		# equivalent guard (see that file's own _cast_enemy_skill()
 		# comment for why firing Sacred Arrow from stealth never breaks
@@ -1187,7 +1187,7 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 				break
 
 		# --- Enemies retaliate, skipping anyone Barbed Lunge just stunned,
-		# while Depthsveil or Nature's Guise is hiding the hero entirely
+		# while Depthsveil or Rootveil is hiding the hero entirely
 		# (mirrors battle.gd's _is_hero_hidden() check in _enemy_turn()),
 		# or while
 		# The Test of Time makes the hero fully immune (mirrors battle.gd's
@@ -1203,7 +1203,7 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		# partway through this same loop once its turn comes up, so
 		# every enemy this pass needs to see the same answer regardless
 		# of iteration order. ---
-		if not state["depthsveil"]["active"] and not state["the_test_of_time"]["active"] and not state["nature's_guise"]["active"] and not state["moonlight_shadow"]["active"]:
+		if not state["depthsveil"]["active"] and not state["the_test_of_time"]["active"] and not state["rootveil"]["active"] and not state["moonlight_shadow"]["active"]:
 			# Timbersaw's Reactive Armor bonus is added on top of the base
 			# armor here, at the single call site, rather than inside
 			# _npc_effective_armor() itself (which has no hero_id/hero_
@@ -1280,8 +1280,8 @@ func _new_npc_combat_state() -> Dictionary:
 		"the_hunger_calls": {"target_ref": {}, "bonus_damage_pct": 0.0},
 		"the_frost_tempest": {"active": false, "damage_per_turn": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"bestial_rage": {"active": false, "bonus_damage": 0.0, "turns_remaining": 0, "duration_pending_start": false},
-		"nature's_guise": {"active": false, "root_turns": 0, "turns_remaining": 0, "duration_pending_start": false},
-		"living_armor": {"active": false, "bonus_armor": 0.0, "bonus_hp_regen": 0.0, "turns_remaining": 0, "duration_pending_start": false},
+		"rootveil": {"active": false, "root_turns": 0, "turns_remaining": 0, "duration_pending_start": false},
+		"woven_flesh": {"active": false, "bonus_armor": 0.0, "bonus_hp_regen": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"chakram": {"active": false, "damage_per_turn": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"reactive_armor": {"stack_turns": []},
 		"mortimer_kisses": {"active": false, "turns_remaining": 0, "level_data": {}},
@@ -1482,29 +1482,29 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 			_apply_damage_to_enemy(punch_target, punch_dmg)
 			if punch_target["current_hp"] > 0:
 				punch_target["stun_turns_left"] = int(level_data.get("stun_turns", 1))
-		"nature's_guise":
-			_activate_npc_natures_guise(state["nature's_guise"], level_data)
-		"leech_seed":
-			var leech_target: Dictionary = _lowest_hp_enemy(living)
-			leech_target["leech_seed_dot_damage"] = float(level_data.get("dot_damage", 0))
-			leech_target["leech_seed_heal_per_turn"] = float(level_data.get("heal_per_turn", 0))
-			leech_target["leech_seed_dot_turns_left"] = int(level_data.get("duration", 0))
-		"living_armor":
-			_activate_npc_living_armor(state["living_armor"], level_data)
-		"overgrowth":
+		"rootveil":
+			_activate_npc_rootveil(state["rootveil"], level_data)
+		"sanguine_bloom":
+			var bloom_target: Dictionary = _lowest_hp_enemy(living)
+			bloom_target["sanguine_bloom_dot_damage"] = float(level_data.get("dot_damage", 0))
+			bloom_target["sanguine_bloom_heal_per_turn"] = float(level_data.get("heal_per_turn", 0))
+			bloom_target["sanguine_bloom_dot_turns_left"] = int(level_data.get("duration", 0))
+		"woven_flesh":
+			_activate_npc_woven_flesh(state["woven_flesh"], level_data)
+		"mother's_grasp":
 			# Self-centered AoE with nothing to center it on here (see
 			# KNOWN_ACTIVE_SKILL_IDS's own comment above) - roots and DoTs
 			# every living enemy at once, same "no columns, hit everyone"
 			# fallback Return to the Void's/Maddening Roar's own sim copies use.
-			var overgrowth_dot_damage: float = float(level_data.get("dot_damage", 0))
-			var overgrowth_root_duration: int = int(level_data.get("root_duration", 0))
+			var mothers_grasp_dot_damage: float = float(level_data.get("dot_damage", 0))
+			var mothers_grasp_root_duration: int = int(level_data.get("root_duration", 0))
 			for enemy in living:
-				enemy["root_turns_left"] = overgrowth_root_duration
-				enemy["overgrowth_dot_damage"] = overgrowth_dot_damage
-				enemy["overgrowth_dot_turns_left"] = overgrowth_root_duration
+				enemy["root_turns_left"] = mothers_grasp_root_duration
+				enemy["mothers_grasp_dot_damage"] = mothers_grasp_dot_damage
+				enemy["mothers_grasp_dot_turns_left"] = mothers_grasp_root_duration
 		"whirling_death":
 			# Self-centered AoE, same "no columns, hit everyone" fallback
-			# as Overgrowth's own case just above.
+			# as Mother's Grasp's own case just above.
 			var whirling_damage: float = float(level_data.get("damage", 0))
 			for enemy in living:
 				_apply_damage_to_enemy(enemy, whirling_damage)
@@ -1536,7 +1536,7 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 			# A self-directed hop with an AoE landing - no columns to hop
 			# ACROSS here, so it falls back to hitting (and stunning)
 			# every living enemy at once, same "no columns, hit everyone"
-			# fallback Overgrowth's own sim copy already uses.
+			# fallback Mother's Grasp's own sim copy already uses.
 			var cookie_damage: float = float(level_data.get("damage", 0))
 			var cookie_stun_turns: int = int(level_data.get("stun_turns", 0))
 			for enemy in living:
@@ -1580,7 +1580,7 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 		"song_of_the_siren":
 			# No columns to center an AoE stun on here - same "no columns,
 			# hit everyone" fallback Return to the Void's/Maddening Roar's/
-			# Overgrowth's own sim copies already use (see KNOWN_ACTIVE_
+			# Mother's Grasp's own sim copies already use (see KNOWN_ACTIVE_
 			# SKILL_IDS's own comment above), so every living enemy is
 			# stunned and armor-shredded at once, reusing the same
 			# armor_reduction/armor_reduction_turns_left fields (and their
@@ -1699,10 +1699,10 @@ func _npc_skill_worth_casting(skill_id: String, state: Dictionary) -> bool:
 			return not state["the_frost_tempest"]["active"]
 		"bestial_rage":
 			return not state["bestial_rage"]["active"]
-		"nature's_guise":
-			return not state["nature's_guise"]["active"]
-		"living_armor":
-			return not state["living_armor"]["active"]
+		"rootveil":
+			return not state["rootveil"]["active"]
+		"woven_flesh":
+			return not state["woven_flesh"]["active"]
 		"mortimer_kisses":
 			# Purely defensive/documentation consistency, mirroring The Test of
 			# Time's own case above - the turn-loop's own "mortimer_
@@ -2533,22 +2533,22 @@ func _end_npc_bestial_rage(tt: Dictionary) -> void:
 
 
 # ------------------------------------------------------------------
-# Treant Protector's Nature's Guise - mirrors battle.gd's own
-# _activate_natures_guise()/_tick_natures_guise()/_end_natures_guise(),
+# The Rootmother's Rootveil - mirrors battle.gd's own
+# _activate_rootveil()/_tick_rootveil()/_end_rootveil(),
 # and this file's own _activate_npc_depthsveil()/_tick_npc_shadow_
 # dance()/_end_npc_depthsveil() (functionally the same invisibility -
 # see this file's own retaliation-loop guard and the Attack branch's own
-# "attacking_from_natures_guise" case in _run_stage_fight()).
+# "attacking_from_rootveil" case in _run_stage_fight()).
 # ------------------------------------------------------------------
 
-func _activate_npc_natures_guise(ng: Dictionary, level_data: Dictionary) -> void:
+func _activate_npc_rootveil(ng: Dictionary, level_data: Dictionary) -> void:
 	ng["active"] = true
 	ng["root_turns"] = int(level_data.get("root_turns", 0))
 	ng["turns_remaining"] = int(level_data.get("duration", 0))
 	ng["duration_pending_start"] = true
 
 
-func _tick_npc_natures_guise(ng: Dictionary) -> void:
+func _tick_npc_rootveil(ng: Dictionary) -> void:
 	if not ng["active"]:
 		return
 	if ng["duration_pending_start"]:
@@ -2556,10 +2556,10 @@ func _tick_npc_natures_guise(ng: Dictionary) -> void:
 		return
 	ng["turns_remaining"] -= 1
 	if ng["turns_remaining"] <= 0:
-		_end_npc_natures_guise(ng)
+		_end_npc_rootveil(ng)
 
 
-func _end_npc_natures_guise(ng: Dictionary) -> void:
+func _end_npc_rootveil(ng: Dictionary) -> void:
 	ng["active"] = false
 	ng["root_turns"] = 0
 	ng["turns_remaining"] = 0
@@ -2567,8 +2567,8 @@ func _end_npc_natures_guise(ng: Dictionary) -> void:
 
 
 # ------------------------------------------------------------------
-# Treant Protector's Living Armor - mirrors battle.gd's own _activate_
-# living_armor()/_tick_living_armor()/_end_living_armor(): bonus_armor
+# The Rootmother's Woven Flesh - mirrors battle.gd's own _activate_
+# woven_flesh()/_tick_woven_flesh()/_end_woven_flesh(): bonus_armor
 # folds into _npc_effective_armor() (the same slot Wildbond's own
 # bonus armor already shares there), bonus_hp_regen heals the hero every
 # tick. Unlike the player's own copy, there's no baseline passive regen
@@ -2579,7 +2579,7 @@ func _end_npc_natures_guise(ng: Dictionary) -> void:
 # same "no benefit invented that doesn't already exist" rule.
 # ------------------------------------------------------------------
 
-func _activate_npc_living_armor(la: Dictionary, level_data: Dictionary) -> void:
+func _activate_npc_woven_flesh(la: Dictionary, level_data: Dictionary) -> void:
 	la["active"] = true
 	la["bonus_armor"] = float(level_data.get("bonus_armor", 0))
 	la["bonus_hp_regen"] = float(level_data.get("bonus_hp_regen", 0))
@@ -2587,7 +2587,7 @@ func _activate_npc_living_armor(la: Dictionary, level_data: Dictionary) -> void:
 	la["duration_pending_start"] = true
 
 
-func _tick_npc_living_armor(la: Dictionary, current_hp: float, effective_max_hp: float) -> float:
+func _tick_npc_woven_flesh(la: Dictionary, current_hp: float, effective_max_hp: float) -> float:
 	if not la["active"]:
 		return current_hp
 	if la["duration_pending_start"]:
@@ -2597,11 +2597,11 @@ func _tick_npc_living_armor(la: Dictionary, current_hp: float, effective_max_hp:
 	current_hp = minf(effective_max_hp, current_hp + float(la["bonus_hp_regen"]))
 	la["turns_remaining"] -= 1
 	if la["turns_remaining"] <= 0:
-		_end_npc_living_armor(la)
+		_end_npc_woven_flesh(la)
 	return current_hp
 
 
-func _end_npc_living_armor(la: Dictionary) -> void:
+func _end_npc_woven_flesh(la: Dictionary) -> void:
 	la["active"] = false
 	la["bonus_armor"] = 0.0
 	la["bonus_hp_regen"] = 0.0
@@ -2610,42 +2610,42 @@ func _end_npc_living_armor(la: Dictionary) -> void:
 
 
 # ------------------------------------------------------------------
-# Treant Protector's Leech Seed - mirrors _tick_npc_mark_of_stillness_effects()'/
-# _tick_npc_winters_grip_effects()'s own DoT tick, just against Leech
-# Seed's own dedicated per-enemy fields, PLUS - unlike every other DoT
+# The Rootmother's Sanguine Bloom - mirrors _tick_npc_mark_of_stillness_effects()'/
+# _tick_npc_winters_grip_effects()'s own DoT tick, just against Sanguine
+# Bloom's own dedicated per-enemy fields, PLUS - unlike every other DoT
 # in this file - healing the CASTER (this hero) back for the same
 # amount each tick, mirroring battle.gd's own _tick_enemy_turn_start_
-# effects()'s "leech_seed" case (which heals whichever hero cast it, not
-# the target). Takes/returns current_hp the same way _tick_npc_the_test_of_time()/_tick_npc_living_armor() do, since it can change it.
+# effects()'s "sanguine_bloom" case (which heals whichever hero cast it, not
+# the target). Takes/returns current_hp the same way _tick_npc_the_test_of_time()/_tick_npc_woven_flesh() do, since it can change it.
 # ------------------------------------------------------------------
 
-func _tick_npc_leech_seed_effects(enemies: Array, current_hp: float, effective_max_hp: float) -> float:
+func _tick_npc_sanguine_bloom_effects(enemies: Array, current_hp: float, effective_max_hp: float) -> float:
 	for enemy in enemies:
-		if enemy.get("leech_seed_dot_turns_left", 0) > 0:
-			enemy["leech_seed_dot_turns_left"] -= 1
-			var dot_damage: float = float(enemy.get("leech_seed_dot_damage", 0))
+		if enemy.get("sanguine_bloom_dot_turns_left", 0) > 0:
+			enemy["sanguine_bloom_dot_turns_left"] -= 1
+			var dot_damage: float = float(enemy.get("sanguine_bloom_dot_damage", 0))
 			if dot_damage > 0.0 and enemy.get("current_hp", 0) > 0:
 				_apply_damage_to_enemy(enemy, dot_damage)
-			var heal_amount: float = float(enemy.get("leech_seed_heal_per_turn", 0))
+			var heal_amount: float = float(enemy.get("sanguine_bloom_heal_per_turn", 0))
 			if heal_amount > 0.0:
 				current_hp = minf(effective_max_hp, current_hp + heal_amount)
 	return current_hp
 
 
 # ------------------------------------------------------------------
-# Treant Protector's ultimate, Overgrowth - mirrors _tick_npc_return_to_the_void_
+# The Rootmother's ultimate, Mother's Grasp - mirrors _tick_npc_return_to_the_void_
 # effects()'s own DoT tick (minus its execute check), just against
-# Overgrowth's own dedicated per-enemy fields. The root itself needs no
+# Mother's Grasp's own dedicated per-enemy fields. The root itself needs no
 # separate tick here - it shares root_turns_left, the same generic
 # per-enemy field Thornbind's own root already decrements in _tick_npc_
 # thornbind_effects().
 # ------------------------------------------------------------------
 
-func _tick_npc_overgrowth_effects(enemies: Array) -> void:
+func _tick_npc_mothers_grasp_effects(enemies: Array) -> void:
 	for enemy in enemies:
-		if enemy.get("overgrowth_dot_turns_left", 0) > 0:
-			enemy["overgrowth_dot_turns_left"] -= 1
-			var dot_damage: float = float(enemy.get("overgrowth_dot_damage", 0))
+		if enemy.get("mothers_grasp_dot_turns_left", 0) > 0:
+			enemy["mothers_grasp_dot_turns_left"] -= 1
+			var dot_damage: float = float(enemy.get("mothers_grasp_dot_damage", 0))
 			if dot_damage > 0.0 and enemy.get("current_hp", 0) > 0:
 				_apply_damage_to_enemy(enemy, dot_damage)
 
@@ -2803,7 +2803,7 @@ func _apply_npc_reactive_armor_stack(state: Dictionary, hero_id: String, hero_st
 ## other, same as battle.gd's own _tick_reactive_armor_stacks() - then
 ## heals current_hp for this level's own bonus_hp_regen_per_stack times
 ## however many stacks are STILL up after that. Takes/returns current_hp
-## the same way _tick_npc_the_test_of_time()/_tick_npc_living_armor() do.
+## the same way _tick_npc_the_test_of_time()/_tick_npc_woven_flesh() do.
 func _tick_npc_reactive_armor(state: Dictionary, hero_id: String, hero_static: Dictionary, current_hp: float, effective_max_hp: float) -> float:
 	var stack_turns: Array = state["stack_turns"]
 	for i in range(stack_turns.size()):
@@ -3313,7 +3313,7 @@ func _npc_effective_max_hp(max_hp: float, state: Dictionary) -> float:
 ## Base armor plus Leeching Hunger's borrowed armor plus Wildbond's
 ## flat bonus while each is active - mirrors battle.gd's _hero_armor().
 func _npc_effective_armor(base_armor: float, state: Dictionary) -> float:
-	return base_armor + state["leeching_hunger"]["bonus"].get("armor", 0.0) + state["wildbond"]["bonus_armor"] + state["living_armor"]["bonus_armor"]
+	return base_armor + state["leeching_hunger"]["bonus"].get("armor", 0.0) + state["wildbond"]["bonus_armor"] + state["woven_flesh"]["bonus_armor"]
 
 
 ## Rolls damage from `damage_range`, adding Leeching Hunger's ongoing

@@ -34,20 +34,58 @@ var _phase := 0.0
 var _amplitude := 0.0
 var _hit_done := false
 var _glow: Node2D
+# Looks and shape: the defaults are Erynd's spirit vine; a style passed to
+# play() overrides any of them (see CREEP_STYLE).
+var _wood_dark: Color = WOOD_DARK
+var _wood: Color = WOOD
+var _moss: Color = MOSS
+var _bark_light: Color = BARK_LIGHT
+var _spirit: Color = SPIRIT
+var _leaf_colors: Array = LEAF_COLORS
+var _lift := 0.0
+var _thickness := 1.0
+
+## The Verdant Scar creeps' vine: olive bark with a blood-red glow and
+## leaves, a thicker stalk. Pass it (plus a "lift") as `style` to play().
+const CREEP_STYLE := {
+	"wood_dark": Color(0.1, 0.12, 0.04),
+	"wood": Color(0.3, 0.38, 0.12),
+	"moss": Color(0.5, 0.58, 0.16),
+	"bark_light": Color(0.85, 0.78, 0.45),
+	"spirit": Color(1.0, 0.32, 0.22),
+	"leaf_colors": [Color(0.7, 0.12, 0.16), Color(0.5, 0.1, 0.14), Color(0.38, 0.5, 0.14)],
+	"origin_burst": false,
+	"thickness": 2.0,
+}
 
 
-## Plays one lash from `from` to `to` (global positions) under `host`.
-## `on_hit` fires the moment the tip reaches the target.
-static func play(host: Node, from: Vector2, to: Vector2, on_hit: Callable = Callable()) -> void:
+## Plays one lash from `from` to `to` (global positions) under `host` and
+## returns it (so a caller can reorder it among `host`'s children).
+## `on_hit` fires the moment the tip reaches the target. `style` may set
+## any of: wood_dark, wood, moss, bark_light, spirit (colors), leaf_colors
+## (an array of colors), lift (px the vine arcs upward on its way),
+## thickness (a multiplier), origin_burst (false skips the sparks at the
+## start).
+static func play(host: Node, from: Vector2, to: Vector2, on_hit: Callable = Callable(), style: Dictionary = {}) -> VineLashFX:
 	var fx := VineLashFX.new()
 	fx._from = from
 	fx._to = to
 	fx._on_hit = on_hit
 	fx._phase = randf() * TAU
 	fx._amplitude = clampf(from.distance_to(to) * 0.12, 10.0, 34.0) * (1.0 if randf() < 0.5 else -1.0)
+	fx._wood_dark = style.get("wood_dark", WOOD_DARK)
+	fx._wood = style.get("wood", WOOD)
+	fx._moss = style.get("moss", MOSS)
+	fx._bark_light = style.get("bark_light", BARK_LIGHT)
+	fx._spirit = style.get("spirit", SPIRIT)
+	fx._leaf_colors = style.get("leaf_colors", LEAF_COLORS)
+	fx._lift = float(style.get("lift", 0.0))
+	fx._thickness = float(style.get("thickness", 1.0))
 	host.add_child(fx)
 	fx.global_position = Vector2.ZERO
-	fx._burst(from, 10, 0.6)
+	if style.get("origin_burst", true):
+		fx._burst(from, 10, 0.6)
+	return fx
 
 
 func _ready() -> void:
@@ -100,7 +138,9 @@ func _point(t: float) -> Vector2:
 	wave += sin(t * TAU * 3.7 + _phase * 2.3 - _age * 9.0) * _amplitude * 0.22
 	# A slight upward bow so it reads as thrown, not drawn with a ruler.
 	var bow := -absf(dir.x) * 0.06 * 4.0 * t * (1.0 - t)
-	return _from + dir * t + normal * wave * sin(t * PI) + Vector2(0.0, bow)
+	# An optional arc up and over (a vine thrown from behind something).
+	var arc := -_lift * 4.0 * t * (1.0 - t)
+	return _from + dir * t + normal * wave * sin(t * PI) + Vector2(0.0, bow + arc)
 
 
 func _points() -> PackedVector2Array:
@@ -122,12 +162,12 @@ func _draw_glow() -> void:
 		# pulses riding along a faint, steady aura.
 		var stream := pow(0.5 + 0.5 * sin(k * 22.0 - _age * 45.0), 4.0)
 		var w := lerpf(12.0, 5.0, k)
-		_glow.draw_line(pts[i], pts[i + 1], Color(SPIRIT, (0.08 + 0.22 * stream) * e.y), w, true)
-		_glow.draw_line(pts[i], pts[i + 1], Color(SPIRIT, 0.3 * stream * e.y), w * 0.35, true)
+		_glow.draw_line(pts[i], pts[i + 1], Color(_spirit, (0.08 + 0.22 * stream) * e.y), w, true)
+		_glow.draw_line(pts[i], pts[i + 1], Color(_spirit, 0.3 * stream * e.y), w * 0.35, true)
 	# A brief bloom where it strikes.
 	if _hit_done and _age < GROW_TIME + HOLD_TIME:
 		var flash := 1.0 - clampf((_age - GROW_TIME) / HOLD_TIME, 0.0, 1.0)
-		_glow.draw_circle(pts[pts.size() - 1], 6.0 + 10.0 * flash, Color(SPIRIT, 0.3 * flash * e.y))
+		_glow.draw_circle(pts[pts.size() - 1], 6.0 + 10.0 * flash, Color(_spirit, 0.3 * flash * e.y))
 
 
 func _draw_body() -> void:
@@ -144,21 +184,21 @@ func _draw_body() -> void:
 		var offset := 0.0 if strand == 0 else PI
 		for i in pts.size() - 1:
 			var k := float(i) / SEGMENTS
-			var w := lerpf(9.0, 1.2, pow(k, 0.8))
+			var w := lerpf(9.0, 1.2, pow(k, 0.8)) * _thickness
 			var n := (pts[i + 1] - pts[i]).orthogonal().normalized()
 			var twist := sin(k * 26.0 + offset - _age * 6.0)
 			var shift := n * twist * w * 0.35
 			var near := 0.5 + 0.5 * cos(k * 26.0 + offset - _age * 6.0)
 			var sw := w * 0.62
-			body.draw_line(pts[i] + shift, pts[i + 1] + shift, Color(WOOD_DARK, a), sw + 1.5, true)
+			body.draw_line(pts[i] + shift, pts[i + 1] + shift, Color(_wood_dark, a), sw + 1.5, true)
 			# Moss clings in patches, not stripes.
 			var moss := smoothstep(0.55, 0.9, sin(k * 9.0 + offset * 1.7 + _phase) * 0.5 + 0.5) * 0.6
-			var col := WOOD.lerp(MOSS, moss).lerp(WOOD_DARK, 0.45 * (1.0 - near))
+			var col := _wood.lerp(_moss, moss).lerp(_wood_dark, 0.45 * (1.0 - near))
 			body.draw_line(pts[i] + shift, pts[i + 1] + shift, Color(col, a), sw, true)
 			# Pale bark catching the light on the strand in front.
 			if near > 0.6:
 				var hl := n * sw * 0.2
-				body.draw_line(pts[i] + shift - hl, pts[i + 1] + shift - hl, Color(BARK_LIGHT, 0.45 * a * (near - 0.6) / 0.4), maxf(sw * 0.25, 1.0), true)
+				body.draw_line(pts[i] + shift - hl, pts[i + 1] + shift - hl, Color(_bark_light, 0.45 * a * (near - 0.6) / 0.4), maxf(sw * 0.25, 1.0), true)
 
 	# Thorns every few segments, alternating sides, hooked back toward the hand.
 	for i in range(3, pts.size() - 2, 3):
@@ -166,10 +206,10 @@ func _draw_body() -> void:
 		var dir := (pts[i + 1] - pts[i]).normalized()
 		var side := 1.0 if i % 6 < 3 else -1.0
 		var n := dir.orthogonal() * side
-		var w := lerpf(9.0, 1.2, pow(k, 0.8))
+		var w := lerpf(9.0, 1.2, pow(k, 0.8)) * _thickness
 		var base := pts[i] + n * w * 0.4
 		var tip := base + n * (3.0 + w * 0.6) - dir * 3.0
-		body.draw_colored_polygon(PackedVector2Array([base - dir * 2.0, tip, base + dir * 2.0]), Color(WOOD_DARK.lightened(0.15), a))
+		body.draw_colored_polygon(PackedVector2Array([base - dir * 2.0, tip, base + dir * 2.0]), Color(_wood_dark.lightened(0.15), a))
 
 	# Leaves unfurl once the vine has grown past them.
 	for j in LEAVES.size():
@@ -184,7 +224,7 @@ func _draw_body() -> void:
 		var center := at + n * size * 0.9
 		var along := (n * 0.8 + dir * 0.6).normalized()
 		var across := along.orthogonal()
-		var col: Color = LEAF_COLORS[j % LEAF_COLORS.size()]
+		var col: Color = _leaf_colors[j % _leaf_colors.size()]
 		body.draw_colored_polygon(PackedVector2Array([
 			center - along * size, center - along * size * 0.2 + across * size * 0.45,
 			center + along * size, center - along * size * 0.2 - across * size * 0.45,
@@ -209,7 +249,7 @@ func _burst(at: Vector2, amount: int, strength: float) -> void:
 		p.initial_velocity_max = 140.0 * strength
 		p.scale_amount_min = 1.5 if pass_i == 0 else 2.0
 		p.scale_amount_max = 3.0 if pass_i == 0 else 4.0
-		p.color = SPIRIT if pass_i == 0 else LEAF_COLORS[1]
+		p.color = _spirit if pass_i == 0 else _leaf_colors[1]
 		if pass_i == 0:
 			var mat := CanvasItemMaterial.new()
 			mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bmp17ifp7xtod"
-path="res://.godot/imported/the_verdant_scar_area.png-5309077130434f865655df84b3aba6dc.ctex"
+uid="uid://currjk77cd2pa"
+path="res://.godot/imported/the_verdant_scar_the_rootmother.jpg-1cdd7ebc3be3f4b8db4320c989aca246.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/battle_areas/the_verdant_scar_area.png"
-dest_files=["res://.godot/imported/the_verdant_scar_area.png-5309077130434f865655df84b3aba6dc.ctex"]
+source_file="res://assets/zones/the_verdant_scar_the_rootmother.jpg"
+dest_files=["res://.godot/imported/the_verdant_scar_the_rootmother.jpg-1cdd7ebc3be3f4b8db4320c989aca246.ctex"]
 
 [params]
 

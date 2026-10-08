@@ -1268,10 +1268,10 @@ var zones: Dictionary = {
 		"music": "the_verdant_scar",
 		"heroes": [
 			{
-				"id": "treant_protector",
-				"name": "Treant Protector",
-				"image": "res://assets/heroes/Treant_Protector.png",
-				"background": "res://assets/zones/the_verdant_scar_treant_protector.png",
+				"id": "the_rootmother",
+				"name": "The Rootmother",
+				"image": "res://assets/heroes/The_Rootmother.png",
+				"background": "res://assets/zones/the_verdant_scar_the_rootmother.jpg",
 				"range_type": "Melee",
 				"main_stat": "Strength",
 				"stats": {
@@ -1287,10 +1287,10 @@ var zones: Dictionary = {
 				},
 				"skills": [
 					{
-						"id": "nature's_guise",
-						"name": "Nature's Guise",
+						"id": "rootveil",
+						"name": "Rootveil",
 						"type": "standard",
-						"description": "Turns the hero invisible - enemies can't target or chase him while it holds, and he moves 2 columns per move instead of 1. Ends early the moment he attacks or casts another skill; attacking from stealth also roots the target in place (it can still do everything else).",
+						"description": "The Rootmother sinks into the living root network beneath her, becoming nearly indistinguishable from the growth around her. While concealed, enemies cannot target or chase her, and she moves 2 columns per move instead of 1. The veil breaks the moment she attacks or casts another skill. An attack from concealment lashes the target with roots, rooting it in place while leaving it free to attack and cast skills.",
 						"levels": [
 							{"duration": 3, "root_turns": 1, "mana_cost": 60, "cooldown": 5},
 							{"duration": 3, "root_turns": 1, "mana_cost": 75, "cooldown": 5},
@@ -1299,10 +1299,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "leech_seed",
-						"name": "Leech Seed",
+						"id": "sanguine_bloom",
+						"name": "Sanguine Bloom",
 						"type": "standard",
-						"description": "Plants a seed in an enemy within range, dealing damage over time for the duration - the hero heals for his own amount every one of those same turns.",
+						"description": "The Rootmother plants a parasitic bloom within an enemy. The unnatural growth feeds on the victim's life force for several turns, dealing damage over time while transferring a portion of that stolen vitality back to the Rootmother.",
 						"levels": [
 							{"dot_damage": 25, "heal_per_turn": 15, "duration": 3, "range": 2, "mana_cost": 70, "cooldown": 5},
 							{"dot_damage": 40, "heal_per_turn": 25, "duration": 3, "range": 2, "mana_cost": 90, "cooldown": 5},
@@ -1311,10 +1311,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "living_armor",
-						"name": "Living Armor",
+						"id": "woven_flesh",
+						"name": "Woven Flesh",
 						"type": "standard",
-						"description": "Cast on himself, granting bonus armor and bonus HP regeneration every turn for the duration.",
+						"description": "The Rootmother draws living roots beneath her skin, weaving bark, flesh and plant matter into a regenerative shell. The growth hardens her body against attacks and continuously repairs her wounds for the duration.",
 						"levels": [
 							{"bonus_armor": 3, "bonus_hp_regen": 2, "duration": 4, "mana_cost": 60, "cooldown": 5},
 							{"bonus_armor": 5, "bonus_hp_regen": 3, "duration": 5, "mana_cost": 80, "cooldown": 5},
@@ -1323,10 +1323,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "overgrowth",
-						"name": "Overgrowth",
+						"id": "mother's_grasp",
+						"name": "Mother's Grasp",
 						"type": "ultimate",
-						"description": "Ultimate: roots every enemy within radius of the hero in place - they can't move, but can still attack and cast skills - and deals damage over time to each of them for the same duration.",
+						"description": "Ultimate: The Rootmother awakens the roots beneath her and sends them violently through the ground. Every enemy within range is seized and bound in place, unable to move while remaining free to attack and cast skills. The roots continue to tear into their victims for the duration.",
 						"levels": [
 							{"dot_damage": 65, "root_duration": 2, "radius": 1, "mana_cost": 180, "cooldown": 9},
 							{"dot_damage": 100, "root_duration": 3, "radius": 2, "mana_cost": 240, "cooldown": 10},
@@ -1450,6 +1450,7 @@ var zones: Dictionary = {
 				"name": "Verdant Scar range creep",
 				"image": "res://assets/enemies/the_verdant_scar_range.png",
 				"type": "range",
+				"projectile": "rear_vine",
 				"main_stat": "agility",
 				"main_stat_value": 10,
 				"hp": 100,
@@ -1462,8 +1463,8 @@ var zones: Dictionary = {
 			}
 		],
 		"unlocked": true,
-		"background": "res://assets/zones/the_verdant_scar_treant_protector.png",
-		"battle_background": "res://assets/battle_areas/the_verdant_scar_area.png"
+		"background": "res://assets/zones/the_verdant_scar_the_rootmother.jpg",
+		"battle_background": "res://assets/battle_areas/the_verdant_scar_area.jpg"
 	},
 
 	"the_sundered_peaks": {
@@ -2061,6 +2062,7 @@ var zones: Dictionary = {
 				"name": "Scorchlands range creep",
 				"image": "res://assets/enemies/the_verdant_scar_range.png",
 				"type": "range",
+				"projectile": "rear_vine",
 				"main_stat": "agility",
 				"main_stat_value": 10,
 				"hp": 100,
@@ -2074,7 +2076,7 @@ var zones: Dictionary = {
 		],
 		"unlocked": true,
 		"background": "res://assets/zones/the_verdant_scar_snapfire.png",
-		"battle_background": "res://assets/battle_areas/the_verdant_scar_area.png"
+		"battle_background": "res://assets/battle_areas/the_verdant_scar_area.jpg"
 	},
 
 	"the_bronze_dominion": {

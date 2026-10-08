@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://do64ldy6iak7s"
-path="res://.godot/imported/Treant_Protector.png-bed81257026b9f60f83dffc32d13f73c.ctex"
+path="res://.godot/imported/The_Rootmother.png-316172b17745c57955348c6fef6146e6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/heroes/Treant_Protector.png"
-dest_files=["res://.godot/imported/Treant_Protector.png-bed81257026b9f60f83dffc32d13f73c.ctex"]
+source_file="res://assets/heroes/The_Rootmother.png"
+dest_files=["res://.godot/imported/The_Rootmother.png-316172b17745c57955348c6fef6146e6.ctex"]
 
 [params]
 

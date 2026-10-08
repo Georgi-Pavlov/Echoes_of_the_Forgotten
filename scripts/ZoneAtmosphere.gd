@@ -8,12 +8,13 @@ extends Control
 # exist for backgrounds that have them (currently Veyrik's Iron Abyss,
 # Erynd's Elderwild, Morvael's Kingdom of Morvain, Kaelen Varr's
 # Ironbound Isles, Nhal's and The Primordial Hunger's Frostspire and
-# Frost Daughter's Everfrost, and the shared background of zones with
-# no heroes yet - UnknownZoneAtmosphere.gd) and are
-# torn down again when switching to any other hero. Morvain's, the
-# Ironbound Isles' and Frostspire's effects live in their own scripts
-# (MorvainAtmosphere.gd, IronboundAtmosphere.gd, FrostspireAtmosphere.gd),
-# run as a child of this node.
+# Frost Daughter's Everfrost, The Rootmother's Verdant Scar, and the
+# shared background of zones with no heroes yet - UnknownZoneAtmosphere.gd)
+# and are torn down again when switching to any other hero. Morvain's, the
+# Ironbound Isles', Frostspire's and the Verdant Scar's effects live in
+# their own scripts (MorvainAtmosphere.gd, IronboundAtmosphere.gd,
+# FrostspireAtmosphere.gd, RootmotherAtmosphere.gd), run as a child of
+# this node.
 #
 # Iron Abyss:
 #   - Veyrik's eye: a cold glow that breathes, flaring every few seconds
@@ -128,6 +129,9 @@ const FROSTSPIRE_FX := preload("res://scripts/FrostspireAtmosphere.gd")
 const EVERFROST_BG := "res://assets/zones/the_everfrost_frost_daughter.jpg"
 const EVERFROST_FX := preload("res://scripts/EverfrostAtmosphere.gd")
 const EVERFROST_SKARN_BG := "res://assets/zones/the_everfrost_skarn.jpg"
+const ROOTMOTHER_BG := "res://assets/zones/the_verdant_scar_the_rootmother.jpg"
+# The Rootmother's Verdant Scar runs in its own child too - see RootmotherAtmosphere.gd.
+const ROOTMOTHER_FX := preload("res://scripts/RootmotherAtmosphere.gd")
 const UNKNOWN_BG := "res://assets/zones/empty_zone.jpg"
 const UNKNOWN_FX := preload("res://scripts/UnknownZoneAtmosphere.gd")
 
@@ -248,7 +252,7 @@ func _ready() -> void:
 ## Called by zone.gd after it has set the background for the shown hero.
 func show_for_background(path: String) -> void:
 	_clear()
-	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG, EVERFROST_BG, EVERFROST_SKARN_BG, UNKNOWN_BG]:
+	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG, EVERFROST_BG, EVERFROST_SKARN_BG, ROOTMOTHER_BG, UNKNOWN_BG]:
 		return
 	# Guards against a hero switch landing during the await below.
 	_build_id += 1
@@ -273,6 +277,8 @@ func show_for_background(path: String) -> void:
 		_build_unknown()
 	elif path == EVERFROST_SKARN_BG:
 		_build_everfrost("skarn")
+	elif path == ROOTMOTHER_BG:
+		_build_rootmother()
 	else:
 		_build_elderwild()
 
@@ -1002,6 +1008,15 @@ func _build_everfrost(hero: String) -> void:
 	add_child(fx)
 	fx.build(self, _background, hero)
 	_zone = "everfrost"
+
+
+# --- The Verdant Scar -----------------------------------------------
+
+func _build_rootmother() -> void:
+	var fx: Control = ROOTMOTHER_FX.new()
+	add_child(fx)
+	fx.build(self, _background)
+	_zone = "rootmother"
 
 
 # --- Zones with no heroes yet ---------------------------------------

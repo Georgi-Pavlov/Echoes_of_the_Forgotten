@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bgccjocdijsgc"
-path="res://.godot/imported/the_verdant_scar_treant_protector.png-f3e8b71c24c3a8ea1d7d41ab2a39b16e.ctex"
+uid="uid://cfdax8xoshcq2"
+path="res://.godot/imported/the_verdant_scar_area.jpg-51230583833cbdc6f2b58272a77a7881.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/zones/the_verdant_scar_treant_protector.png"
-dest_files=["res://.godot/imported/the_verdant_scar_treant_protector.png-f3e8b71c24c3a8ea1d7d41ab2a39b16e.ctex"]
+source_file="res://assets/battle_areas/the_verdant_scar_area.jpg"
+dest_files=["res://.godot/imported/the_verdant_scar_area.jpg-51230583833cbdc6f2b58272a77a7881.ctex"]
 
 [params]
 

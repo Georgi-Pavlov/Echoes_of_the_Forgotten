@@ -41,7 +41,7 @@ class_name EnemySkillAI
 #
 # Eleven heroes have real AI logic today: Veyrik, Erynd, Morvael,
 # Kaelen Varr, Nhal, The Primordial Hunger, Frost Daughter, Skarn,
-# Treant Protector, Timbersaw, and Snapfire - see resolve_hero_
+# The Rootmother, Timbersaw, and Snapfire - see resolve_hero_
 # archetype() for how a hero_static maps to one of them,
 # and each one's own _*_modifier() function below for its personality.
 # Nhal's Return to the Void in particular models an "execute"
@@ -73,18 +73,18 @@ class_name EnemySkillAI
 # Calls's own redirect_candidate_count). Glacier Breaker's own damage is
 # Skarn's actual (rolled) Attack damage times a multiplier, not a flat
 # number - see its own "glacier_breaker" case in _estimate_skill_damage().
-# Treant Protector's Nature's Guise is "defensive" category, exactly
+# The Rootmother's Rootveil is "defensive" category, exactly
 # like Veyrik's own Depthsveil (functionally the same invisibility) -
 # in the simulation it relies ENTIRELY on that shared category term, no
 # hero-specific modifier on top at all, same as Depthsveil's own
 # _veyrik_modifier() case (there isn't one); only in a real hero fight,
-# with real positions, does _tp_natures_guise_modifier() add its own
+# with real positions, does _tp_rootveil_modifier() add its own
 # stealth-engage/root-setup value on top (see that function's own
-# "target_distance" gate). Overgrowth is a second self-cast AoE
+# "target_distance" gate). Mother's Grasp is a second self-cast AoE
 # ultimate, same "centered on the caster" shape as Frost Daughter's own
-# The Frost Tempest - see _tp_overgrowth_modifier().
+# The Frost Tempest - see _tp_mothers_grasp_modifier().
 # Timbersaw's Whirling Death is ALSO self-cast/self-centered (like
-# The Frost Tempest/Overgrowth), but Timber Chain and Chakram are both
+# The Frost Tempest/Mother's Grasp), but Timber Chain and Chakram are both
 # TARGET-centered - see _timbersaw_chakram_modifier()'s own docstring
 # for why Chakram in particular is scored differently from a self-
 # centered AoE despite both ending up reading the same `living_target_
@@ -104,7 +104,7 @@ class_name EnemySkillAI
 # qualitative bonus for "a hero was hit" (context's own "target_is_hero"
 # field), never a real stat-based number.
 # Snapfire's Scatterblast is DIRECTIONAL rather than self-centered like
-# Whirling Death/The Frost Tempest/Overgrowth (see battle.gd's own
+# Whirling Death/The Frost Tempest/Mother's Grasp (see battle.gd's own
 # _enemy_skill_in_range()'s "scatterblast" case for how that's actually
 # enforced) - by the time this file ever scores it as a candidate, the
 # player is already confirmed to be ahead of the rival in whichever
@@ -249,10 +249,10 @@ const SKILL_INFO := {
 	"charge": {"category": "offensive", "base_score": 50.0},
 	"bestial_rage": {"category": "utility", "base_score": 35.0},
 	"glacier_breaker": {"category": "offensive", "base_score": 65.0},
-	"nature's_guise": {"category": "defensive", "base_score": 40.0},
-	"leech_seed": {"category": "offensive", "base_score": 45.0},
-	"living_armor": {"category": "defensive", "base_score": 35.0},
-	"overgrowth": {"category": "offensive", "base_score": 65.0},
+	"rootveil": {"category": "defensive", "base_score": 40.0},
+	"sanguine_bloom": {"category": "offensive", "base_score": 45.0},
+	"woven_flesh": {"category": "defensive", "base_score": 35.0},
+	"mother's_grasp": {"category": "offensive", "base_score": 65.0},
 	"whirling_death": {"category": "offensive", "base_score": 45.0},
 	"timber_chain": {"category": "offensive", "base_score": 50.0},
 	"chakram": {"category": "offensive", "base_score": 70.0},
@@ -309,7 +309,7 @@ const HERO_TIE_BREAK := {
 	"the_primordial_hunger": ["the_hunger_calls", "maddening_roar", "the_test_of_time", "frostbound_fangs"],
 	"frost_daughter": ["the_frost_tempest", "winters_grip", "rimecleaver"],
 	"skarn": ["glacier_breaker", "charge", "frostbound_rupture", "bestial_rage"],
-	"treant_protector": ["overgrowth", "leech_seed", "nature's_guise", "living_armor"],
+	"the_rootmother": ["mother's_grasp", "sanguine_bloom", "rootveil", "woven_flesh"],
 	"timbersaw": ["chakram", "timber_chain", "whirling_death"],
 	"snapfire": ["mortimer_kisses", "firesnap_cookie", "scatterblast", "lil_shredder"],
 	"naga_siren": ["song_of_the_siren", "mirror_image", "ensnare"],
@@ -351,8 +351,8 @@ static func resolve_hero_archetype(hero_static: Dictionary) -> String:
 		return "frost_daughter"
 	if "glacier_breaker" in skill_ids:
 		return "skarn"
-	if "overgrowth" in skill_ids:
-		return "treant_protector"
+	if "mother's_grasp" in skill_ids:
+		return "the_rootmother"
 	if "chakram" in skill_ids:
 		return "timbersaw"
 	if "mortimer_kisses" in skill_ids:
@@ -410,9 +410,9 @@ static func evaluate_skill(skill_id: String, level_data: Dictionary, context: Di
 ## Glacier Breaker in particular is an expensive ultimate that a cheap
 ## plain Attack can already make redundant against a low-HP target (see
 ## _skarn_basic_attack_modifier()/_skarn_glacier_breaker_modifier()'s own
-## early-out). Treant Protector opts in for the same reason as Charge/
-## Overgrowth's own early-outs (see _tp_leech_seed_modifier()/_tp_
-## overgrowth_modifier()) - a free kill beats spending mana/cooldown for
+## early-out). The Rootmother opts in for the same reason as Charge/
+## Mother's Grasp's own early-outs (see _tp_sanguine_bloom_modifier()/_tp_
+## mothers_grasp_modifier()) - a free kill beats spending mana/cooldown for
 ## the same result. Timbersaw opts in too - Chakram in particular is a
 ## very expensive ultimate (200-350 mana) that a cheap plain Attack can
 ## already make redundant (see the design doc's own "one enemy at 20 HP
@@ -438,7 +438,7 @@ static func evaluate_skill(skill_id: String, level_data: Dictionary, context: Di
 ## own right, not just the fallback for "nothing else qualified" (see
 ## _luna_basic_attack_modifier()'s own docstring).
 static func basic_attack_participates(archetype: String) -> bool:
-	return archetype == "kaelen_varr" or archetype == "the_primordial_hunger" or archetype == "frost_daughter" or archetype == "skarn" or archetype == "treant_protector" or archetype == "timbersaw" or archetype == "snapfire" or archetype == "naga_siren" or archetype == "slardar" or archetype == "mirana" or archetype == "luna"
+	return archetype == "kaelen_varr" or archetype == "the_primordial_hunger" or archetype == "frost_daughter" or archetype == "skarn" or archetype == "the_rootmother" or archetype == "timbersaw" or archetype == "snapfire" or archetype == "naga_siren" or archetype == "slardar" or archetype == "mirana" or archetype == "luna"
 
 
 ## The score for a plain Attack, for a hero basic_attack_participates()
@@ -597,12 +597,12 @@ static func _estimate_skill_damage(skill_id: String, level_data: Dictionary, con
 			# stays the conservative no-collision baseline, same split
 			# Return to the Void's own execute bonus uses versus its base estimate.
 			return float(context.get("hero_damage", 0.0)) * float(level_data.get("damage_multiplier", 1.0))
-		"leech_seed":
+		"sanguine_bloom":
 			# A pure DoT/sustain cast, same as Mark of Stillness/The Hollow Cold/
 			# Winter's Grip above - its entire damage value is dot_damage x
 			# duration, never just the per-turn tick.
 			return float(level_data.get("dot_damage", 0.0)) * float(level_data.get("duration", 0.0))
-		"overgrowth":
+		"mother's_grasp":
 			# Also a pure damage-over-time cast (on herself... himself,
 			# hitting whoever's in range each tick) - dot_damage x
 			# root_duration, same reasoning as The Frost Tempest's own case.
@@ -682,8 +682,8 @@ static func _hero_specific_modifier(archetype: String, skill_id: String, level_d
 			return _frost_daughter_modifier(skill_id, level_data, context)
 		"skarn":
 			return _skarn_modifier(skill_id, level_data, context)
-		"treant_protector":
-			return _treant_modifier(skill_id, level_data, context)
+		"the_rootmother":
+			return _rootmother_modifier(skill_id, level_data, context)
 		"timbersaw":
 			return _timbersaw_modifier(skill_id, level_data, context)
 		"snapfire":
@@ -1770,42 +1770,41 @@ static func _skarn_basic_attack_modifier(context: Dictionary) -> float:
 	return score
 
 
-## Treant Protector: durable, melee, control/sustain, opportunistic.
-## Nature's Guise is "defensive" category (see SKILL_INFO) - in the
+## The Rootmother: durable, melee, control/sustain, opportunistic.
+## Rootveil is "defensive" category (see SKILL_INFO) - in the
 ## simulation that's its ENTIRE score, no case here at all (matching
-## Depthsveil's own precedent); in a real hero fight, _tp_natures_
-## guise_modifier() adds its own stealth-engage/root-setup value on top.
-## Leech Seed and Overgrowth are both "offensive" (fed by their own
+## Depthsveil's own precedent); in a real hero fight, _tp_rootveil_modifier() adds its own stealth-engage/root-setup value on top.
+## Sanguine Bloom and Mother's Grasp are both "offensive" (fed by their own
 ## dot_damage x duration _estimate_skill_damage() cases, for the shared
-## kill-potential/target-value terms); this layers Leech Seed's own
-## Treant-condition-scaled healing value, and Overgrowth's own multi-
+## kill-potential/target-value terms); this layers Sanguine Bloom's own
+## Rootmother-condition-scaled healing value, and Mother's Grasp's own multi-
 ## target root/DoT tiers (self-centered, same shape as Frost Daughter's
-## own The Frost Tempest), on top. Living Armor is "defensive" too (the
+## own The Frost Tempest), on top. Woven Flesh is "defensive" too (the
 ## shared HP-ratio tiers already cover most of the design doc's own
 ## "lower priority at high HP" instruction); this adds its own expected
 ## healing/armor value.
-static func _treant_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
+static func _rootmother_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
 	match skill_id:
-		"nature's_guise":
-			return _tp_natures_guise_modifier(level_data, context)
-		"leech_seed":
-			return _tp_leech_seed_modifier(level_data, context)
-		"living_armor":
-			return _tp_living_armor_modifier(level_data, context)
-		"overgrowth":
-			return _tp_overgrowth_modifier(level_data, context)
+		"rootveil":
+			return _tp_rootveil_modifier(level_data, context)
+		"sanguine_bloom":
+			return _tp_sanguine_bloom_modifier(level_data, context)
+		"woven_flesh":
+			return _tp_woven_flesh_modifier(level_data, context)
+		"mother's_grasp":
+			return _tp_mothers_grasp_modifier(level_data, context)
 		BASIC_ATTACK_ID:
 			return _tp_basic_attack_modifier(context)
 		_:
 			return 0.0
 
 
-## Nature's Guise: setup/engage/defensive positioning, never a damage
+## Rootveil: setup/engage/defensive positioning, never a damage
 ## skill in its own right - the root only ever comes from a SUCCESSFUL
 ## stealth Attack next turn, never guaranteed just from casting this
 ## (see the design doc's own "do not assume the root will always
 ## happen" instruction), so its whole value here is an EXPECTED one:
-## target_value + expected_root_value, gated by whether Treant has a
+## target_value + expected_root_value, gated by whether the Rootmother has a
 ## realistic shot at actually landing that Attack before the
 ## invisibility runs out. `target_distance` is absent in the simulation
 ## (no positions there - see EnemyHeroManager's own _build_npc_ai_
@@ -1813,7 +1812,7 @@ static func _treant_modifier(skill_id: String, level_data: Dictionary, context: 
 ## guessing, leaving the shared "defensive" category term (hero_hp_
 ## ratio tiers) as this skill's entire simulated value, exactly mirroring
 ## Depthsveil's own precedent (no hero-specific case for it at all).
-static func _tp_natures_guise_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _tp_rootveil_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var raw_distance: int = int(context.get("target_distance", -1))
 	if raw_distance < 0:
 		return 0.0
@@ -1821,7 +1820,7 @@ static func _tp_natures_guise_modifier(level_data: Dictionary, context: Dictiona
 	if raw_distance <= 0:
 		# Already standing right next to a valuable target - vanishing
 		# first only delays the Attack that matters, it doesn't set up
-		# anything Treant doesn't already have (see the design doc's own
+		# anything the Rootmother doesn't already have (see the design doc's own
 		# "already in a good melee position" waste case).
 		return -30.0
 
@@ -1852,7 +1851,7 @@ static func _tp_natures_guise_modifier(level_data: Dictionary, context: Dictiona
 	if float(context.get("hero_hp_ratio", 1.0)) < 0.4:
 		# Also doubles as an escape/reposition, on top of whatever engage
 		# value the stealth Attack itself has - the shared defensive
-		# HP-ratio tiers already cover the base "Treant is threatened"
+		# HP-ratio tiers already cover the base "Rootmother is threatened"
 		# case, this is specifically for the "and this also lets him
 		# reposition out of it" angle.
 		score += 15.0
@@ -1860,18 +1859,18 @@ static func _tp_natures_guise_modifier(level_data: Dictionary, context: Dictiona
 	return score
 
 
-## Leech Seed: offensive AND sustain. The generic offensive scoring
+## Sanguine Bloom: offensive AND sustain. The generic offensive scoring
 ## above already covers target value/kill potential (fed by dot_damage x
-## duration - see _estimate_skill_damage()'s own "leech_seed" case);
-## this adds the healing half, scaled by how close Treant already is to
+## duration - see _estimate_skill_damage()'s own "sanguine_bloom" case);
+## this adds the healing half, scaled by how close the Rootmother already is to
 ## needing it (0 extra value at full HP, per the design doc's own "do
-## not automatically use Leech Seed simply because Treant is damaged"
+## not automatically use Sanguine Bloom simply because the Rootmother is damaged"
 ## instruction - kill potential/target value alone can still justify it
 ## at full HP). Early-out mirrors Charge's/Glacier Breaker's own below: a
 ## target a plain Attack can already kill outright leaves nothing for a
 ## multi-turn DoT to finish first, so it's not worth the mana (see the
 ## design doc's own Basic Attack example).
-static func _tp_leech_seed_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _tp_sanguine_bloom_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
 	var target_hp: float = float(context.get("target_hp", 0.0))
 	if target_hp > 0.0 and hero_damage >= target_hp:
@@ -1895,14 +1894,14 @@ static func _tp_leech_seed_modifier(level_data: Dictionary, context: Dictionary)
 	return score
 
 
-## Living Armor: preventive, not automatic - the shared "defensive"
+## Woven Flesh: preventive, not automatic - the shared "defensive"
 ## category already provides the bulk of the design doc's own high/low
 ## priority tiers (hero_hp_ratio-based, including the explicit "healthy
 ## -> penalty" that stops it from being cast just because it's
 ## available); this adds its own expected-healing and armor-specific
-## value on top, plus a penalty when Treant isn't close enough to combat
+## value on top, plus a penalty when the Rootmother isn't close enough to combat
 ## for either to matter yet.
-static func _tp_living_armor_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _tp_woven_flesh_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var bonus_hp_regen: float = float(level_data.get("bonus_hp_regen", 0.0))
 	var duration: int = int(level_data.get("duration", 0))
 	var expected_healing: float = bonus_hp_regen * float(duration)
@@ -1928,11 +1927,11 @@ static func _tp_living_armor_modifier(level_data: Dictionary, context: Dictionar
 	return score
 
 
-## Overgrowth: Treant's primary AoE control + damage ultimate, SELF-
+## Mother's Grasp: the Rootmother's primary AoE control + damage ultimate, SELF-
 ## CENTERED like Frost Daughter's own The Frost Tempest - never a selected
 ## enemy's position (see _fd_frost_tempest_modifier()'s own docstring
 ## for why `target_distance` is reused here rather than re-derived: it's
-## battle.gd's already-computed distance from Treant's own pos_index to
+## battle.gd's already-computed distance from the Rootmother's own pos_index to
 ## the player). Out of radius in a real fight, this is a low-value cast,
 ## same reasoning as The Frost Tempest's own early-out. In range (or the
 ## simulation, where a missing value defaults to "in range" - every
@@ -1943,15 +1942,15 @@ static func _tp_living_armor_modifier(level_data: Dictionary, context: Dictionar
 ## value scaled by duration and target count - movement denial only,
 ## deliberately never scored as a stun (per the design doc's own
 ## explicit "rooting does NOT prevent attacks/skills/items" instruction
-## - Overgrowth's root shares the same generic root_turns_left field
+## - Mother's Grasp's root shares the same generic root_turns_left field
 ## Thornbind's own does, which every attack/skill/item check already
-## ignores). The early-out mirrors Leech Seed's/Charge's/Glacier
+## ignores). The early-out mirrors Sanguine Bloom's/Charge's/Glacier
 ## Breaker's own: a single target a plain Attack can already kill outright
 ## isn't worth an ultimate's mana/cooldown, but ONLY when just one enemy
 ## is actually affected - a multi-target opportunity is never penalized
 ## this way, per the design doc's own "if the ultimate can affect 3-4
 ## enemies... the multi-target value can justify its high mana cost".
-static func _tp_overgrowth_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _tp_mothers_grasp_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var radius: int = int(level_data.get("radius", 0))
 	var raw_distance: int = int(context.get("target_distance", -1))
 	var in_range: bool = raw_distance < 0 or raw_distance <= radius
@@ -1994,7 +1993,7 @@ static func _tp_overgrowth_modifier(level_data: Dictionary, context: Dictionary)
 
 	# The primary target's own kill is already scored generically (see
 	# _kill_potential_bonus(), fed by _estimate_skill_damage()'s own
-	# "overgrowth" case) - this only adds for kills BEYOND that one, same
+	# "mother's_grasp" case) - this only adds for kills BEYOND that one, same
 	# split Drowned Surge's/The Sunken One's/Return to the Void's/The Frost Tempest's own
 	# modifiers use.
 	if extra_kills >= 2:
@@ -2011,7 +2010,7 @@ static func _tp_overgrowth_modifier(level_data: Dictionary, context: Dictionary)
 	var hp_ratio: float = float(context.get("hero_hp_ratio", 1.0))
 	if hp_ratio < 0.30 and int(context.get("enemy_count", 1)) >= 2:
 		# Too vulnerable to bank on surviving long enough to exploit the
-		# control - Overgrowth has no invented immunity of its own to
+		# control - Mother's Grasp has no invented immunity of its own to
 		# lean on here, so a bad HP situation is a real cost.
 		score -= 20.0
 
@@ -2019,7 +2018,7 @@ static func _tp_overgrowth_modifier(level_data: Dictionary, context: Dictionary)
 
 
 ## A plain Attack is only worth scoring above its flat baseline for
-## Treant Protector when it can finish the target off outright (see
+## The Rootmother when it can finish the target off outright (see
 ## basic_attack_participates()'s own docstring for why he opts in at
 ## all) - every one of his real skills is a real mana/cooldown
 ## investment, so a free kill deserves a real shot at winning over
@@ -2148,7 +2147,7 @@ static func _timbersaw_whirling_death_modifier(level_data: Dictionary, context: 
 ## matters a lot - same AoE tiers Whirling Death's own modifier uses,
 ## reused rather than inventing a second curve) plus movement value.
 ## Deliberately has NO "a plain Attack could already kill this" early-out
-## the way Charge's/Leech Seed's/Chakram's own do - per the design
+## the way Charge's/Sanguine Bloom's/Chakram's own do - per the design
 ## doc's own explicit instruction, Timber Chain must be allowed to score
 ## highly purely for a meaningful escape, "even when its damage is low"
 ## and "do not require the target itself to be low HP". `grid_columns`
@@ -2212,9 +2211,9 @@ static func _timbersaw_timber_chain_modifier(level_data: Dictionary, context: Di
 ## Its own `range` field (a real targeting requirement, gated by
 ## EnemySkillRange before this is ever a candidate) already keeps this
 ## from firing at an unreachable target, so - unlike The Frost Tempest's/
-## Overgrowth's/Whirling Death's own self-centered "is the caster's own
+## Mother's Grasp's/Whirling Death's own self-centered "is the caster's own
 ## radius even reaching anything" gate - there's no separate range check
-## to repeat here. The early-out mirrors Leech Seed's/Charge's own: a
+## to repeat here. The early-out mirrors Sanguine Bloom's/Charge's own: a
 ## single affected target a plain Attack can already kill outright isn't
 ## worth an expensive ultimate's mana/cooldown, but ONLY when just one
 ## enemy is actually affected - per the design doc's own explicit "if 3
@@ -2704,7 +2703,7 @@ static func _naga_ensnare_modifier(level_data: Dictionary, context: Dictionary) 
 	# Only real in a hero fight (target_distance is absent in the
 	# simulation - no positions there, same "no columns" honesty every
 	# other position-dependent modifier in this file already follows -
-	# see _tp_natures_guise_modifier()'s own early-out for the same
+	# see _tp_rootveil_modifier()'s own early-out for the same
 	# pattern). A target not already adjacent has real room to try to
 	# create distance next turn; one within this level's own range that
 	# wouldn't otherwise be guaranteed to stay there is exactly what the
@@ -2732,10 +2731,10 @@ static func _naga_ensnare_modifier(level_data: Dictionary, context: Dictionary) 
 ## active illusions can land completely safely while every enemy in
 ## radius is stunned and unable to retaliate. Self-centered, same "reuse
 ## target_distance as its own self-cast range check" idiom Frost
-## Daughter's own The Frost Tempest/Treant Protector's own Overgrowth already
-## use (see _tp_overgrowth_modifier()'s own docstring) - out of range in
+## Daughter's own The Frost Tempest/The Rootmother's own Mother's Grasp already
+## use (see _tp_mothers_grasp_modifier()'s own docstring) - out of range in
 ## a real fight scores low rather than being excluded outright, same
-## early-out shape Overgrowth's own uses.
+## early-out shape Mother's Grasp's own uses.
 static func _naga_song_of_the_siren_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var radius: int = int(level_data.get("radius", 0))
 	var raw_distance: int = int(context.get("target_distance", -1))
@@ -2759,7 +2758,7 @@ static func _naga_song_of_the_siren_modifier(level_data: Dictionary, context: Di
 	# project (same gap Whirling Death's own primary-attribute reduction
 	# has - see this file's own header comment) - the closest honest
 	# proxy is a target already low enough to be worth finishing off, the
-	# same low-HP signal Overgrowth's own modifier already uses.
+	# same low-HP signal Mother's Grasp's own modifier already uses.
 	var low_hp_count: int = 0
 	for i in range(hit_count):
 		var hp: float = float(living_hps[i])
@@ -2990,7 +2989,7 @@ static func _slardar_expected_attacks_on_target(duration: int, context: Dictiona
 
 	# No positions at all in the simulation (target_distance is absent) -
 	# every attack already reaches its target with no travel cost, same
-	# "no columns" simplification _tp_natures_guise_modifier()'s own
+	# "no columns" simplification _tp_rootveil_modifier()'s own
 	# early-out already follows - so Slardar is always treated as already
 	# in melee range there.
 	var already_in_range: bool = raw_distance < 0 or raw_distance <= 0
@@ -3076,7 +3075,7 @@ static func _slardar_guardian_sprint_modifier(level_data: Dictionary, context: D
 		# Can't realistically reach the target even with the bonus
 		# movement folded in - a setup with nothing left to set up, same
 		# "cannot realistically reach a useful target" waste case
-		# _tp_natures_guise_modifier()'s own copy already covers.
+		# _tp_rootveil_modifier()'s own copy already covers.
 		score -= 15.0
 
 	# --- Defensive value: an escape, not an engage - only under real
@@ -3126,8 +3125,8 @@ static func _slardar_slithereen_crush_modifier(level_data: Dictionary, context: 
 	# Control value scaled by BOTH duration and how many targets are
 	# actually stunned at once - reading the level's own real stun_turns
 	# rather than assuming a fixed 1-turn stun, per the design doc's own
-	# explicit instruction. A real stun (unlike Overgrowth's pure root),
-	# so this leans harder per turn than Overgrowth's own root-duration
+	# explicit instruction. A real stun (unlike Mother's Grasp's pure root),
+	# so this leans harder per turn than Mother's Grasp's own root-duration
 	# term does.
 	score += float(stun_turns) * float(hit_count) * 8.0
 
@@ -3139,7 +3138,7 @@ static func _slardar_slithereen_crush_modifier(level_data: Dictionary, context: 
 	# The primary target's own kill is already scored generically (see
 	# _kill_potential_bonus(), fed by _estimate_skill_damage()'s own
 	# "slithereen_crush" case) - this only adds for kills BEYOND that
-	# one, same split Drowned Surge's/Overgrowth's/Song of the Siren's own
+	# one, same split Drowned Surge's/Mother's Grasp's/Song of the Siren's own
 	# modifiers use.
 	if extra_kills >= 2:
 		score += 40.0 * float(extra_kills - 1)
@@ -3461,7 +3460,7 @@ static func _mirana_sacred_arrow_expected_damage(level_data: Dictionary, context
 ## explicit instruction. `target_distance` is absent in the simulation
 ## (no positions there at all) - this returns a flat 0 in that case
 ## rather than guessing, same as every other position-dependent modifier
-## in this file (see _tp_natures_guise_modifier()'s own early-out).
+## in this file (see _tp_rootveil_modifier()'s own early-out).
 ##
 ## Leap always jumps in whichever direction Mirana is CURRENTLY facing
 ## (see battle.gd's own _activate_leap()/_cast_enemy_leap()), so unlike a

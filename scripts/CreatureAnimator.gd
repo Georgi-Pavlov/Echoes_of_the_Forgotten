@@ -188,6 +188,34 @@ const PROFILES := {
 		"glow_color": Color(0.5, 0.75, 1.0),
 		"edge_color": Color(0.55, 0.8, 1.0),
 	},
+	# The Verdant Scar - a rotting garden that never stopped growing. The
+	# Rootmother is a slow, heavy presence: deep breaths, her hair, moss and
+	# roots stirring on a faint breeze, a green-gold glow when she casts.
+	"the_rootmother": {
+		"breath_amount": 0.015, "breath_speed": 1.2,
+		"sway_amount": 0.012, "sway_speed": 0.5,
+		"ripple_amount": 0.0,
+		"glow_color": Color(0.55, 1.0, 0.5),
+		"edge_color": Color(0.6, 1.0, 0.45),
+	},
+	# The toad-like brute: heaving breaths, its claws and thorned limbs
+	# barely stirring, the gold of its eyes flaring when it strikes.
+	"verdant_scar_melee": {
+		"breath_amount": 0.022, "breath_speed": 1.8,
+		"sway_amount": 0.009, "sway_speed": 0.8,
+		"ripple_amount": 0.0,
+		"glow_color": Color(0.95, 0.8, 0.25),
+		"edge_color": Color(0.85, 0.9, 0.3),
+	},
+	# The flower-mass: its tendrils writhe slowly (a faint ripple) while the
+	# whole bloom sways, glowing blood-red when it attacks.
+	"verdant_scar_range": {
+		"breath_amount": 0.018, "breath_speed": 1.4,
+		"sway_amount": 0.014, "sway_speed": 0.7,
+		"ripple_amount": 0.0025, "ripple_freq": 6.0, "ripple_speed": 1.2,
+		"glow_color": Color(1.0, 0.45, 0.2),
+		"edge_color": Color(1.0, 0.4, 0.2),
+	},
 }
 
 const HIT_FLASH_COLOR := Color(1.0, 0.35, 0.3)
