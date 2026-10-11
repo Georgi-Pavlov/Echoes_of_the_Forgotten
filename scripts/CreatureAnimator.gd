@@ -198,6 +198,46 @@ const PROFILES := {
 		"glow_color": Color(0.55, 1.0, 0.5),
 		"edge_color": Color(0.6, 1.0, 0.45),
 	},
+	# Cinder: braced under his heavy flamethrower rig - steady, measured
+	# breaths through the gas mask, barely any sway, a faint heat shimmer
+	# coming off him, and a fiery orange glow when he casts.
+	"cinder": {
+		"breath_amount": 0.012, "breath_speed": 1.5,
+		"sway_amount": 0.005, "sway_speed": 0.6,
+		"ripple_amount": 0.0018, "ripple_freq": 9.0, "ripple_speed": 2.2,
+		"glow_color": Color(1.0, 0.55, 0.15),
+		"edge_color": Color(1.0, 0.45, 0.1),
+	},
+	# Raze: a restless, cocky stance - quick breaths, a loose sway as she
+	# shifts her weight under the shotgun, a faint heat shimmer off her, and
+	# a fiery orange glow when she casts.
+	"raze": {
+		"breath_amount": 0.016, "breath_speed": 1.7,
+		"sway_amount": 0.01, "sway_speed": 0.9,
+		"ripple_amount": 0.0012, "ripple_freq": 8.0, "ripple_speed": 2.0,
+		"glow_color": Color(1.0, 0.55, 0.15),
+		"edge_color": Color(1.0, 0.45, 0.1),
+	},
+	# The Scorchlands' wyvern rider: it flies, so it heaves and sways more
+	# than anything standing - slow beats of the wings read as stretches of
+	# the whole body with a faint flutter - and glows ember-orange when it
+	# strikes.
+	"scorchlands_melee": {
+		"breath_amount": 0.026, "breath_speed": 2.4,
+		"sway_amount": 0.016, "sway_speed": 1.1,
+		"ripple_amount": 0.0028, "ripple_freq": 5.0, "ripple_speed": 3.0,
+		"glow_color": Color(1.0, 0.55, 0.15),
+		"edge_color": Color(1.0, 0.45, 0.1),
+	},
+	# The Scorchlands' rifleman: planted in his firing stance - steady
+	# breaths, hardly any movement, his red rags stirring faintly.
+	"scorchlands_range": {
+		"breath_amount": 0.013, "breath_speed": 1.4,
+		"sway_amount": 0.006, "sway_speed": 0.7,
+		"ripple_amount": 0.0015, "ripple_freq": 6.0, "ripple_speed": 1.6,
+		"glow_color": Color(1.0, 0.5, 0.15),
+		"edge_color": Color(1.0, 0.4, 0.1),
+	},
 	# The toad-like brute: heaving breaths, its claws and thorned limbs
 	# barely stirring, the gold of its eyes flaring when it strikes.
 	"verdant_scar_melee": {
@@ -232,6 +272,7 @@ var _profile: Dictionary = {}
 var _action_tween: Tween
 var _move_tween: Tween
 var _move_from_x: float = 0.0
+var _move_height: float = MOVE_HOP_HEIGHT
 
 
 ## Attaches an animator to `node` using PROFILES[profile_id] and returns
@@ -308,6 +349,8 @@ func _new_action_tween() -> Tween:
 ## `lunge` adds a forward dash - off for creeps, whose battle.gd
 ## attack already shifts the node itself (_play_enemy_attack_lunge()).
 func play_attack(direction: float, lunge: bool = true) -> void:
+	if profile_id == "elderwild_companion":
+		AudioManager.play_event("bear_attack")
 	var t := _new_action_tween()
 	var dash := Vector2(direction * (LUNGE_DISTANCE if lunge else 6.0), 0.0)
 	# Wind-up: lean back and crouch.
@@ -327,6 +370,7 @@ func play_attack(direction: float, lunge: bool = true) -> void:
 ## Flinch: red-white flash, a knockback away from `from_direction`
 ## (the side the hit came from; 0 = unknown, just shudder) and a squash.
 func play_hit(from_direction: float = 0.0) -> void:
+	AudioManager.play_event("hit")
 	var t := _new_action_tween()
 	_mat.set_shader_parameter("flash_color", HIT_FLASH_COLOR)
 	var knock := Vector2(-from_direction * 12.0, 0.0)
@@ -401,9 +445,11 @@ func play_charge(from_delta_x: float, duration: float) -> void:
 ## art in from where it was (`from_delta_x` = old x - new x, in pixels)
 ## along a small hop arc, then lands with a squash.
 func play_move(from_delta_x: float) -> void:
+	AudioManager.play_event("steps", 0.0, 0.1)
 	if _move_tween != null and _move_tween.is_valid():
 		_move_tween.kill()
 	_move_from_x = from_delta_x
+	_move_height = MOVE_HOP_HEIGHT
 	_set_move_progress(0.0)
 	_move_tween = create_tween()
 	_move_tween.tween_method(_set_move_progress, 0.0, 1.0, MOVE_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -416,15 +462,48 @@ func play_move(from_delta_x: float) -> void:
 		t.tween_property(_mat, _param("squash"), Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
+## A rocket-assisted leap (Raze's Blast Hopper): kicked off the ground by
+## a blast, she stretches, soars `height` px up over the move and comes
+## down `duration` seconds later with a hard landing squash. Replaces any
+## play_move() already running for the same move.
+func play_blast_hop(from_delta_x: float, height: float, duration: float) -> void:
+	if _move_tween != null and _move_tween.is_valid():
+		_move_tween.kill()
+	_move_from_x = from_delta_x
+	_move_height = height
+	_set_move_progress(0.0)
+	_move_tween = create_tween()
+	_move_tween.tween_method(_set_move_progress, 0.0, 1.0, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+	var t := _new_action_tween()
+	t.tween_property(_mat, _param("squash"), Vector2(0.88, 1.16), 0.08)
+	t.tween_property(_mat, _param("squash"), Vector2(0.97, 1.04), duration * 0.5)
+	t.tween_property(_mat, _param("squash"), Vector2(1.14, 0.84), duration * 0.5 - 0.08)
+	t.tween_property(_mat, _param("squash"), Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
 func _set_move_progress(p: float) -> void:
 	var arc := 4.0 * p * (1.0 - p)
-	_mat.set_shader_parameter("move_offset", Vector2(_move_from_x * (1.0 - p), -MOVE_HOP_HEIGHT * arc))
+	_mat.set_shader_parameter("move_offset", Vector2(_move_from_x * (1.0 - p), -_move_height * arc))
 
 
 ## Flash, then burn away from the top down. With `free_node` the target
 ## is freed at the end; the hero's own portrait passes false and just
 ## stays dissolved behind the defeat popup.
 func play_death(free_node: bool = true) -> void:
+	# The attack that did this is heard first; the death animation and its
+	# sound then play together, once that sound has finished.
+	var wait: float = AudioManager.attack_wait()
+	if wait > 0.02 and is_inside_tree():
+		get_tree().create_timer(wait).timeout.connect(func() -> void:
+			if is_instance_valid(self) and is_instance_valid(_target):
+				_play_death_now(free_node))
+		return
+	_play_death_now(free_node)
+
+
+func _play_death_now(free_node: bool) -> void:
+	AudioManager.play_event("death")
 	var t := _new_action_tween()
 	_mat.set_shader_parameter("flash_color", Color(1.0, 1.0, 1.0))
 	_mat.set_shader_parameter("flash_amount", 0.8)

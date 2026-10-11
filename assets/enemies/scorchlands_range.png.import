@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cplvd2j8p0u01"
-path="res://.godot/imported/the_verdant_scar_timbersaw.png-05f218db9bd638fcd15e373c9ed7c3bd.ctex"
+uid="uid://bkb62anmqt0pg"
+path="res://.godot/imported/scorchlands_range.png-4ea408c3b11d133e86a13a9f982d278f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/zones/the_verdant_scar_timbersaw.png"
-dest_files=["res://.godot/imported/the_verdant_scar_timbersaw.png-05f218db9bd638fcd15e373c9ed7c3bd.ctex"]
+source_file="res://assets/enemies/scorchlands_range.png"
+dest_files=["res://.godot/imported/scorchlands_range.png-4ea408c3b11d133e86a13a9f982d278f.ctex"]
 
 [params]
 

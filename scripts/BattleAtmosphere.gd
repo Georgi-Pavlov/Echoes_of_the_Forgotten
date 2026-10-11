@@ -5,8 +5,8 @@ extends Control
 # Background and under the hero/creeps (battle.gd places it). Never
 # takes input, never touches game state. battle.gd calls setup() with
 # the zone id; effects only exist for zones that have them (currently
-# the Elderwild, the Kingdom of Morvain, Frostspire, The Everfrost and the
-# Verdant Scar arena) and nothing is drawn anywhere else.
+# the Elderwild, the Kingdom of Morvain, Frostspire, The Everfrost, the
+# Verdant Scar and Scorchlands arenas) and nothing is drawn anywhere else.
 #
 # Elderwild:
 #   - autumn leaves blown across the forest on a gusting wind, in two
@@ -32,6 +32,9 @@ const EVERFROST_FX := preload("res://scripts/EverfrostBattleAtmosphere.gd")
 # arena image rather than a zone id, since more than one zone fights there.
 const VERDANT_SCAR_AREA := "res://assets/battle_areas/the_verdant_scar_area.jpg"
 const VERDANT_SCAR_FX := preload("res://scripts/VerdantScarBattleAtmosphere.gd")
+# The Scorchlands arena - see ScorchlandsBattleAtmosphere.gd.
+const SCORCHLANDS_AREA := "res://assets/battle_areas/scorchlands_area.jpg"
+const SCORCHLANDS_FX := preload("res://scripts/ScorchlandsBattleAtmosphere.gd")
 
 # Leaves live above the battle UI panel painted into the art.
 const ELD_LEAF_FLOOR := 0.64          # image UV y where they've faded out
@@ -85,6 +88,14 @@ func setup(zone_id: String) -> void:
 		var verdant: Control = VERDANT_SCAR_FX.new()
 		add_child(verdant)
 		verdant.build(self, _background)
+		return
+	if _background.texture.resource_path == SCORCHLANDS_AREA:
+		_zone = zone_id
+		# Its positions come from the Background's laid-out size.
+		await get_tree().process_frame
+		var scorch: Control = SCORCHLANDS_FX.new()
+		add_child(scorch)
+		scorch.build(self, _background)
 		return
 	if zone_id == "kingdom_of_morvain":
 		# Morvain's effects live in their own script, as a child.

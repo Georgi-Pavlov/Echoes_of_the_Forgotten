@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cligjcmdvvn1h"
-path="res://.godot/imported/Timbersaw.png-6bc4bb3517579ddec92208d96eec598d.ctex"
+uid="uid://cj7nm24gdnw8i"
+path="res://.godot/imported/Raze.png-695d146f88f2d5ff0deecf22a1bb642a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/heroes/Timbersaw.png"
-dest_files=["res://.godot/imported/Timbersaw.png-6bc4bb3517579ddec92208d96eec598d.ctex"]
+source_file="res://assets/heroes/Raze.png"
+dest_files=["res://.godot/imported/Raze.png-695d146f88f2d5ff0deecf22a1bb642a.ctex"]
 
 [params]
 

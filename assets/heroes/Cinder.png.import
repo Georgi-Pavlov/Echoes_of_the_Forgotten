@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cj7nm24gdnw8i"
-path="res://.godot/imported/Snapfire.png-eed9a22dd8239e541b7a6d8aad53b123.ctex"
+uid="uid://cligjcmdvvn1h"
+path="res://.godot/imported/Cinder.png-9aba9aa4cd5c8231b32156ba0a278e8a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/heroes/Snapfire.png"
-dest_files=["res://.godot/imported/Snapfire.png-eed9a22dd8239e541b7a6d8aad53b123.ctex"]
+source_file="res://assets/heroes/Cinder.png"
+dest_files=["res://.godot/imported/Cinder.png-9aba9aa4cd5c8231b32156ba0a278e8a.ctex"]
 
 [params]
 

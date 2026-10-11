@@ -5,6 +5,7 @@ extends Control
 @onready var confirm_cancel_button: Button = $ConfirmNewGamePopup/ConfirmMargin/ConfirmVBox/ConfirmButtons/ConfirmCancelButton
 
 func _ready() -> void:
+	AudioManager.play_menu_music()
 	$WelcomeLabel.text = "Welcome, " + PlayerManager.current_player
 	$ButtonsContainer/NewGameButton.pressed.connect(_on_new_game_pressed)
 	$ButtonsContainer/ContinueButton.pressed.connect(_on_continue_pressed)
@@ -36,6 +37,7 @@ func _on_new_game_pressed() -> void:
 	# carries on into the real game (the map) when it's over.
 	if PlayerManager.is_tutorial_pending():
 		PlayerManager.clear_tutorial_pending()
+		AudioManager.stop_music_fade()
 		TutorialManager.start_tutorial("res://scenes/Map.tscn")
 		return
 
@@ -58,6 +60,7 @@ func _on_confirm_new_game_cancel() -> void:
 	confirm_popup.visible = false
 
 func _start_new_game() -> void:
+	AudioManager.stop_music_fade()
 	PlayerManager.clear_recruited_hero()
 	get_tree().change_scene_to_file("res://scenes/Map.tscn")
 
@@ -66,6 +69,7 @@ func _on_continue_pressed() -> void:
 	# file already (PlayerManager persists everything as it happens),
 	# so continuing just means going back to the map - Zone.tscn's
 	# existing hero-lock check picks the rest up automatically.
+	AudioManager.stop_music_fade()
 	get_tree().change_scene_to_file("res://scenes/Map.tscn")
 
 func _on_log_out_pressed() -> void:

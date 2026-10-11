@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://tslfusbqowvm"
-path="res://.godot/imported/the_verdant_scar_snapfire.png-95bf2bb67b8769cdd1edae56577a74ba.ctex"
+uid="uid://cykw0euygnkat"
+path="res://.godot/imported/the_verdant_scar_cinder.jpg-06908c73be133037724622c6542a38e5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/zones/the_verdant_scar_snapfire.png"
-dest_files=["res://.godot/imported/the_verdant_scar_snapfire.png-95bf2bb67b8769cdd1edae56577a74ba.ctex"]
+source_file="res://assets/zones/the_verdant_scar_cinder.jpg"
+dest_files=["res://.godot/imported/the_verdant_scar_cinder.jpg-06908c73be133037724622c6542a38e5.ctex"]
 
 [params]
 

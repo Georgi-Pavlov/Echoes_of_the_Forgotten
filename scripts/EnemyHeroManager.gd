@@ -266,7 +266,7 @@ const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 
 # Every ACTIVE skill across Veyrik, Erynd, Morvael, Kaelen Varr, Nhal,
 # The Primordial Hunger, Frost Daughter, Skarn, The Rootmother,
-# Timbersaw, and Snapfire, the only eleven heroes with any simulated
+# Cinder, and Raze, the only eleven heroes with any simulated
 # skill logic today - anything else a hero knows just never gets cast
 # here. This is the full candidate pool
 # _pick_ready_skill() checks for cooldown/worth-casting/mana before
@@ -276,7 +276,7 @@ const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 # too close to call outright).
 # Blood of the Wild (Erynd's passive), Mark of the Mist and The Mist
 # Remembers (both Morvael's), Pull of the Abyss (Kaelen Varr's), Frostborn (Frost
-# Daughter's), and Reactive Armor (Timbersaw's) aren't in this list - none
+# Daughter's), and Kindled Resolve (Cinder's) aren't in this list - none
 # of them are ever "cast" or scored: Blood of the Wild and The Mist Remembers turn
 # themselves on/off automatically off the hero's own HP%, same as the
 # player's own copies - see _update_npc_blood_of_the_wild_state()/_maybe_
@@ -289,10 +289,10 @@ const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 # a simulated Frost Daughter simply doesn't regenerate mana beyond
 # whatever NEW_SIM_MANA_RESTORE_PCT already grants at the start of a
 # fresh attempt - same "no benefit invented that doesn't already exist"
-# rule this whole file follows elsewhere - and Reactive Armor stacks
+# rule this whole file follows elsewhere - and Kindled Resolve stacks
 # itself automatically off incoming retaliation damage, mirroring
 # battle.gd's own apply_damage()/_deal_fixed_damage_to_enemy() hook -
-# see this file's own _apply_npc_reactive_armor_stack(), called from
+# see this file's own _apply_npc_kindled_resolve_stack(), called from
 # _run_stage_fight()'s own retaliation loop.
 # Undertow (Kaelen Varr's own other skill) isn't here for a
 # different reason: it's purely a positioning tool (mark now, teleport
@@ -337,23 +337,23 @@ const NEW_SIM_MANA_RESTORE_PCT: float = 0.40
 # redirects every OTHER living enemy's own retaliation onto its frozen
 # target instead of the hero (see _cast_skill()'s own "maddening_roar"/
 # "the_hunger_calls" cases and _run_stage_fight()'s own retaliation loop).
-# Timbersaw's own Whirling Death (self-centered) and Timber Chain (a
+# Cinder's own Sweep (self-centered) and Chainfire (a
 # targeted "hits everything between caster and target" line) both use
 # the exact same "no columns, hit everyone" fallback The Sunken One's own sim
 # copy already established - there's no meaningful difference between
 # "centered on the caster" and "a line toward a target" once there are
-# no columns to tell them apart on. Chakram, his ultimate, is a second
+# no columns to tell them apart on. Cinderbomb, his ultimate, is a second
 # self-tracked persistent-AoE state (mirroring Frost Daughter's own
 # The Frost Tempest sim copy) that also just hits every living enemy each
-# tick it's active, for the same reason. Snapfire's own Scatterblast
+# tick it's active, for the same reason. Raze's own Double Trouble
 # (directional in a real fight - see battle.gd's own _enemy_skill_in_
-# range()'s "scatterblast" case) and Firesnap Cookie (a self-directed
+# range()'s "double_trouble" case) and Blast Hopper (a self-directed
 # hop with an AoE landing) both fall back to that same "no columns, hit
-# everyone" simplification here, for the same reasoning as Whirling
-# Death's/Timber Chain's own. Mortimer Kisses, her ultimate, is a
+# everyone" simplification here, for the same reasoning as Sweep's/
+# Chainfire's own. Kiss the Wastes, her ultimate, is a
 # channel - like The Primordial Hunger's own The Test of Time, it consumes the
 # WHOLE turn for as long as it's active (see this file's own
-# "mortimer_kisses" branch in _run_stage_fight()'s own action-decision
+# "kiss_the_wastes" branch in _run_stage_fight()'s own action-decision
 # chain), just firing an automatic shot each of those turns instead of
 # doing nothing.
 const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
@@ -365,8 +365,8 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 	"rimecleaver", "winters_grip", "the_frost_tempest",
 	"frostbound_rupture", "charge", "bestial_rage", "glacier_breaker",
 	"rootveil", "sanguine_bloom", "woven_flesh", "mother's_grasp",
-	"whirling_death", "timber_chain", "chakram",
-	"scatterblast", "firesnap_cookie", "lil_shredder", "mortimer_kisses",
+	"sweep", "chainfire", "cinderbomb",
+	"double_trouble", "blast_hopper", "three_cheers", "kiss_the_wastes",
 	"mirror_image", "ensnare", "song_of_the_siren",
 	"guardian_sprint", "slithereen_crush", "corrosive_haze",
 	"starstorm", "sacred_arrow", "moonlight_shadow",
@@ -390,9 +390,9 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # "is_hero_action" gate - every call site of _apply_damage_to_enemy() IS
 # already the hero's own action, so no extra gate is needed here), sharing
 # armor_reduction_turns_left as its own turns-left counter the same way
-# Lil' Shredder's own shred does. Bash of the Deep, her passive, is never
+# Three Cheers's own shred does. Bash of the Deep, her passive, is never
 # in this list at all - see KNOWN_ACTIVE_SKILL_IDS's own comment above for
-# Reactive Armor's identical reasoning; its progression only ever reaches
+# Kindled Resolve's identical reasoning; its progression only ever reaches
 # Guardian Sprint/Slithereen Crush/Corrosive Haze/a plain Attack through
 # _build_npc_ai_context()'s own "bash_*" fields, and its own bonus damage
 # only ever lands through the hero's own basic-attack branch in
@@ -443,9 +443,9 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # Mother's Grasp above - it falls back to stunning and shredding the armor of
 # every living enemy at once, reusing the same armor_reduction/armor_
 # reduction_turns_left fields (and their own already-existing _tick_npc_
-# armor_reduction_effects() tick) Lil' Shredder's own sim copy already
+# armor_reduction_effects() tick) Three Cheers's own sim copy already
 # established. Rip Tide, her passive, is never in this list at all - see
-# KNOWN_ACTIVE_SKILL_IDS's own comment above for Reactive Armor's
+# KNOWN_ACTIVE_SKILL_IDS's own comment above for Kindled Resolve's
 # identical reasoning; its bonuses only ever reach Mirror Image/Song of
 # the Siren/a plain Attack through _build_npc_ai_context()'s own
 # "rip_tide_*" fields.
@@ -944,10 +944,10 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		_tick_npc_winters_grip_effects(enemies)
 		_tick_npc_frost_tempest(state["the_frost_tempest"], enemies)
 		_tick_npc_mothers_grasp_effects(enemies)
-		_tick_npc_chakram(state["chakram"], enemies)
+		_tick_npc_cinderbomb(state["cinderbomb"], enemies)
 		_tick_npc_mirror_image(state["mirror_image"])
 		_tick_npc_armor_reduction_effects(enemies)
-		_tick_npc_mortimer_burn_effects(enemies)
+		_tick_npc_kiss_burn_effects(enemies)
 		var kills: Dictionary = _collect_npc_kills(enemies, counted_dead)
 		xp_gained += kills["xp"]
 		gold_gained += kills["gold"]
@@ -961,13 +961,13 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		# current_hp/effective_max_hp the same way The Test of Time's/Living
 		# Armor's own ticks just above do.
 		current_hp = _tick_npc_sanguine_bloom_effects(enemies, current_hp, effective_max_hp)
-		# Timbersaw's Reactive Armor: healing (per stack) is its own tick
+		# Cinder's Kindled Resolve: healing (per stack) is its own tick
 		# here, same "current_hp in, current_hp out" shape as The Test of
 		# Time's/Woven Flesh's own ticks just above; the armor half
-		# is read live from _npc_reactive_armor_bonus_armor() wherever
+		# is read live from _npc_kindled_resolve_bonus_armor() wherever
 		# effective_armor is computed instead (see this function's own
 		# retaliation-loop call site below).
-		current_hp = _tick_npc_reactive_armor(state["reactive_armor"], hero_id, hero_static, current_hp, effective_max_hp)
+		current_hp = _tick_npc_kindled_resolve(state["kindled_resolve"], hero_id, hero_static, current_hp, effective_max_hp)
 		_update_npc_blood_of_the_wild_state(hero_id, hero_static, state["blood_of_the_wild"], current_hp, effective_max_hp)
 
 		var living: Array = _living_enemies(enemies)
@@ -982,18 +982,18 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		# --- Hero's turn: potion, skill, or basic attack - in that
 		# priority, one action per turn, same as the player. ---
 		var acted_with: String = ""
-		if state["mortimer_kisses"]["active"]:
-			# Snapfire's ultimate channel: consumes this ENTIRE turn on an
+		if state["kiss_the_wastes"]["active"]:
+			# Raze's ultimate channel: consumes this ENTIRE turn on an
 			# automatic shot instead of the normal potion/skill/attack
 			# decision below - no move, no attack, no other skill, no
 			# item, mirroring battle.gd's own _enemy_hero_turn()/
 			# _end_turn() lockout (both the rival's and the player's own
 			# copies).
-			_fire_npc_mortimer_kisses_shot(state["mortimer_kisses"]["level_data"], living)
-			state["mortimer_kisses"]["turns_remaining"] -= 1
-			if state["mortimer_kisses"]["turns_remaining"] <= 0:
-				state["mortimer_kisses"]["active"] = false
-				state["mortimer_kisses"]["level_data"] = {}
+			_fire_npc_kiss_the_wastes_shot(state["kiss_the_wastes"]["level_data"], living)
+			state["kiss_the_wastes"]["turns_remaining"] -= 1
+			if state["kiss_the_wastes"]["turns_remaining"] <= 0:
+				state["kiss_the_wastes"]["active"] = false
+				state["kiss_the_wastes"]["level_data"] = {}
 		elif state["the_test_of_time"]["active"]:
 			# Held in The Test of Time - can't move, attack, cast another skill, or
 			# drink a potion, matching battle.gd's own copy (both the
@@ -1204,12 +1204,12 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		# every enemy this pass needs to see the same answer regardless
 		# of iteration order. ---
 		if not state["depthsveil"]["active"] and not state["the_test_of_time"]["active"] and not state["rootveil"]["active"] and not state["moonlight_shadow"]["active"]:
-			# Timbersaw's Reactive Armor bonus is added on top of the base
+			# Cinder's Kindled Resolve bonus is added on top of the base
 			# armor here, at the single call site, rather than inside
 			# _npc_effective_armor() itself (which has no hero_id/hero_
 			# static to look its own level data up with) - see
-			# _npc_reactive_armor_bonus_armor()'s own docstring.
-			var effective_armor: float = _npc_effective_armor(base_armor, state) + _npc_reactive_armor_bonus_armor(hero_id, hero_static, state)
+			# _npc_kindled_resolve_bonus_armor()'s own docstring.
+			var effective_armor: float = _npc_effective_armor(base_armor, state) + _npc_kindled_resolve_bonus_armor(hero_id, hero_static, state)
 			var curse_target: Dictionary = state["the_hunger_calls"].get("target_ref", {})
 			var curse_active: bool = not curse_target.is_empty() and int(curse_target.get("stun_turns_left", 0)) > 0
 			var curse_multiplier: float = 1.0 + float(state["the_hunger_calls"].get("bonus_damage_pct", 0.0))
@@ -1229,14 +1229,14 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 				var reduced: float = _apply_armor_reduction(enemy_damage, effective_armor)
 				reduced *= (1.0 - float(state["blood_of_the_wild"].get("damage_reduction_pct", 0.0)))
 				current_hp = _apply_reduced_damage_to_npc(hero_id, hero_static, state, cooldowns, current_hp, effective_max_hp, reduced, living)
-				# Reactive Armor stacks off this hit landing - added only
+				# Kindled Resolve stacks off this hit landing - added only
 				# after `effective_armor` above already read the stack
 				# count for this whole retaliation pass, so the stack this
 				# hit just earned reduces a FUTURE turn's armor, not this
 				# one, mirroring battle.gd's own apply_damage(). A no-op
-				# for every hero but Timbersaw (see _apply_npc_reactive_
-				# armor_stack()'s own "not learned" check).
-				_apply_npc_reactive_armor_stack(state["reactive_armor"], hero_id, hero_static)
+				# for every hero but Cinder (see _apply_npc_kindled_resolve_
+				# stack()'s own "not learned" check).
+				_apply_npc_kindled_resolve_stack(state["kindled_resolve"], hero_id, hero_static)
 				if current_hp <= 0:
 					break
 
@@ -1282,9 +1282,9 @@ func _new_npc_combat_state() -> Dictionary:
 		"bestial_rage": {"active": false, "bonus_damage": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"rootveil": {"active": false, "root_turns": 0, "turns_remaining": 0, "duration_pending_start": false},
 		"woven_flesh": {"active": false, "bonus_armor": 0.0, "bonus_hp_regen": 0.0, "turns_remaining": 0, "duration_pending_start": false},
-		"chakram": {"active": false, "damage_per_turn": 0.0, "turns_remaining": 0, "duration_pending_start": false},
-		"reactive_armor": {"stack_turns": []},
-		"mortimer_kisses": {"active": false, "turns_remaining": 0, "level_data": {}},
+		"cinderbomb": {"active": false, "damage_per_turn": 0.0, "turns_remaining": 0, "duration_pending_start": false},
+		"kindled_resolve": {"stack_turns": []},
+		"kiss_the_wastes": {"active": false, "turns_remaining": 0, "level_data": {}},
 		"mirror_image": {"active": false, "illusion_count": 0, "damage_pct": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"bash_of_the_deep_attack_count": 0,
 		"moonlight_shadow": {"active": false, "bonus_damage_pct": 0.0, "turns_remaining": 0, "duration_pending_start": false},
@@ -1502,13 +1502,13 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 				enemy["root_turns_left"] = mothers_grasp_root_duration
 				enemy["mothers_grasp_dot_damage"] = mothers_grasp_dot_damage
 				enemy["mothers_grasp_dot_turns_left"] = mothers_grasp_root_duration
-		"whirling_death":
+		"sweep":
 			# Self-centered AoE, same "no columns, hit everyone" fallback
 			# as Mother's Grasp's own case just above.
-			var whirling_damage: float = float(level_data.get("damage", 0))
+			var sweep_damage: float = float(level_data.get("damage", 0))
 			for enemy in living:
-				_apply_damage_to_enemy(enemy, whirling_damage)
-		"timber_chain":
+				_apply_damage_to_enemy(enemy, sweep_damage)
+		"chainfire":
 			# A targeted "hits everything between caster and target" line,
 			# same "no columns, hit everyone" fallback The Sunken One's own sim
 			# copy already uses (see KNOWN_ACTIVE_SKILL_IDS's own comment
@@ -1518,21 +1518,21 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 			var chain_damage: float = float(level_data.get("damage", 0))
 			for enemy in living:
 				_apply_damage_to_enemy(enemy, chain_damage)
-		"chakram":
+		"cinderbomb":
 			# Initial AoE: same "no columns, hit everyone" fallback as
-			# Whirling Death's own case above.
-			var chakram_cast_damage: float = float(level_data.get("cast_damage", 0))
+			# Sweep's own case above.
+			var cinderbomb_cast_damage: float = float(level_data.get("cast_damage", 0))
 			for enemy in living:
-				_apply_damage_to_enemy(enemy, chakram_cast_damage)
-			_activate_npc_chakram(state["chakram"], level_data)
-		"scatterblast":
+				_apply_damage_to_enemy(enemy, cinderbomb_cast_damage)
+			_activate_npc_cinderbomb(state["cinderbomb"], level_data)
+		"double_trouble":
 			# Directional in a real fight, but no columns to be
 			# directional ABOUT here - same "no columns, hit everyone"
-			# fallback Whirling Death's own case above already uses.
-			var scatter_damage: float = float(level_data.get("damage", 0))
+			# fallback Sweep's own case above already uses.
+			var trouble_damage: float = float(level_data.get("damage", 0))
 			for enemy in living:
-				_apply_damage_to_enemy(enemy, scatter_damage)
-		"firesnap_cookie":
+				_apply_damage_to_enemy(enemy, trouble_damage)
+		"blast_hopper":
 			# A self-directed hop with an AoE landing - no columns to hop
 			# ACROSS here, so it falls back to hitting (and stunning)
 			# every living enemy at once, same "no columns, hit everyone"
@@ -1543,33 +1543,33 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 				_apply_damage_to_enemy(enemy, cookie_damage)
 				if enemy.get("current_hp", 0) > 0:
 					enemy["stun_turns_left"] = cookie_stun_turns
-		"lil_shredder":
+		"three_cheers":
 			# Single-target burst, same "whichever enemy the hero would
 			# attack anyway" primary as Mark of Stillness's/Drowned Surge's own. Each
 			# shot ALSO stacks armor_reduction onto the SAME target - see
 			# this file's own "armor_reduction" docstring on
 			# _apply_damage_to_enemy() - so a later shot in the same
 			# volley already lands harder, mirroring battle.gd's own
-			# _resolve_lil_shredder_cast().
-			var shredder_target: Dictionary = _lowest_hp_enemy(living)
-			var shredder_shots: int = int(level_data.get("shots", 3))
-			var shredder_damage_pct: float = float(level_data.get("damage_pct", 0))
-			var shredder_armor_reduction_per_shot: float = float(level_data.get("armor_reduction_per_shot", 0))
-			for i in range(shredder_shots):
-				if shredder_target.get("current_hp", 0) <= 0:
+			# _resolve_three_cheers_cast().
+			var cheers_target: Dictionary = _lowest_hp_enemy(living)
+			var cheers_shots: int = int(level_data.get("shots", 3))
+			var cheers_damage_pct: float = float(level_data.get("damage_pct", 0))
+			var cheers_armor_reduction_per_shot: float = float(level_data.get("armor_reduction_per_shot", 0))
+			for i in range(cheers_shots):
+				if cheers_target.get("current_hp", 0) <= 0:
 					break
-				var shot_damage: float = _npc_roll_damage(damage_range, state) * shredder_damage_pct
-				_apply_damage_to_enemy(shredder_target, shot_damage)
-				if shredder_target.get("current_hp", 0) <= 0:
+				var shot_damage: float = _npc_roll_damage(damage_range, state) * cheers_damage_pct
+				_apply_damage_to_enemy(cheers_target, shot_damage)
+				if cheers_target.get("current_hp", 0) <= 0:
 					break
-				shredder_target["armor_reduction"] = float(shredder_target.get("armor_reduction", 0.0)) + shredder_armor_reduction_per_shot
-			if shredder_target.get("current_hp", 0) > 0:
-				shredder_target["armor_reduction_turns_left"] = int(level_data.get("duration", 0))
-		"mortimer_kisses":
-			state["mortimer_kisses"]["level_data"] = level_data
-			state["mortimer_kisses"]["active"] = true
-			state["mortimer_kisses"]["turns_remaining"] = int(level_data.get("hits", 1)) - 1
-			_fire_npc_mortimer_kisses_shot(level_data, living)
+				cheers_target["armor_reduction"] = float(cheers_target.get("armor_reduction", 0.0)) + cheers_armor_reduction_per_shot
+			if cheers_target.get("current_hp", 0) > 0:
+				cheers_target["armor_reduction_turns_left"] = int(level_data.get("duration", 0))
+		"kiss_the_wastes":
+			state["kiss_the_wastes"]["level_data"] = level_data
+			state["kiss_the_wastes"]["active"] = true
+			state["kiss_the_wastes"]["turns_remaining"] = int(level_data.get("hits", 1)) - 1
+			_fire_npc_kiss_the_wastes_shot(level_data, living)
 		"mirror_image":
 			_activate_npc_mirror_image(state["mirror_image"], level_data, _get_npc_rip_tide_level_data(hero_id, hero_static))
 		"ensnare":
@@ -1585,7 +1585,7 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 			# stunned and armor-shredded at once, reusing the same
 			# armor_reduction/armor_reduction_turns_left fields (and their
 			# own already-existing _tick_npc_armor_reduction_effects() tick)
-			# Lil' Shredder's own case above already established.
+			# Three Cheers's own case above already established.
 			var song_stun_turns: int = int(level_data.get("stun_turns", 0))
 			var song_armor_reduction: float = float(level_data.get("armor_reduction", 0))
 			for enemy in living:
@@ -1614,7 +1614,7 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 		"corrosive_haze":
 			# Marks whichever enemy the hero would attack anyway - the
 			# armor half reuses armor_reduction/armor_reduction_turns_left
-			# (Lil' Shredder's own shared fields), the amplification half
+			# (Three Cheers's own shared fields), the amplification half
 			# is a new corrosive_haze_bonus_pct field read by
 			# _apply_damage_to_enemy() (see this file's own header comment
 			# on why no extra "is this the hero's own action" gate is
@@ -1703,13 +1703,13 @@ func _npc_skill_worth_casting(skill_id: String, state: Dictionary) -> bool:
 			return not state["rootveil"]["active"]
 		"woven_flesh":
 			return not state["woven_flesh"]["active"]
-		"mortimer_kisses":
+		"kiss_the_wastes":
 			# Purely defensive/documentation consistency, mirroring The Test of
-			# Time's own case above - the turn-loop's own "mortimer_
-			# kisses" branch in _run_stage_fight() already returns before
+			# Time's own case above - the turn-loop's own "kiss_the_wastes"
+			# branch in _run_stage_fight() already returns before
 			# this could ever be QUERIED while the channel is active in
 			# practice.
-			return not state["mortimer_kisses"]["active"]
+			return not state["kiss_the_wastes"]["active"]
 		_:
 			return true
 
@@ -1907,8 +1907,8 @@ func _build_npc_ai_context(hero_id: String, hero_static: Dictionary, current_hp:
 		"has_harmful_debuff": false,
 		"redirect_candidate_count": maxi(living.size() - 1, 0),
 		"avg_enemy_damage": avg_enemy_damage,
-		"reactive_armor_stacks": state["reactive_armor"]["stack_turns"].size(),
-		"reactive_armor_max_stacks": int(_get_npc_reactive_armor_level_data(hero_id, hero_static).get("max_stacks", 0)),
+		"kindled_resolve_stacks": state["kindled_resolve"]["stack_turns"].size(),
+		"kindled_resolve_max_stacks": int(_get_npc_kindled_resolve_level_data(hero_id, hero_static).get("max_stacks", 0)),
 		"target_is_hero": false,
 		"target_armor": (float(target.get("static", {}).get("armor", 0.0)) - float(target.get("armor_reduction", 0.0))) if not target.is_empty() else 0.0,
 		"illusions_active": state["mirror_image"]["active"],
@@ -2651,8 +2651,8 @@ func _tick_npc_mothers_grasp_effects(enemies: Array) -> void:
 
 
 # ------------------------------------------------------------------
-# Timbersaw's ultimate, Chakram - mirrors battle.gd's own _chakram
-# field/_resolve_chakram_cast()/_tick_chakram()/_despawn_chakram(),
+# Cinder's ultimate, Cinderbomb - mirrors battle.gd's own _cinderbomb
+# field/_resolve_cinderbomb_cast()/_tick_cinderbomb()/_despawn_cinderbomb(),
 # simplified the same way Frost Daughter's own The Frost Tempest sim copy
 # is: no fixed position to plant at here (no columns at all - see
 # KNOWN_ACTIVE_SKILL_IDS's own comment above), so every tick that counts
@@ -2660,14 +2660,14 @@ func _tick_npc_mothers_grasp_effects(enemies: Array) -> void:
 # whichever ones would really be within radius of wherever it landed.
 # ------------------------------------------------------------------
 
-func _activate_npc_chakram(ck: Dictionary, level_data: Dictionary) -> void:
+func _activate_npc_cinderbomb(ck: Dictionary, level_data: Dictionary) -> void:
 	ck["active"] = true
 	ck["damage_per_turn"] = float(level_data.get("damage_per_turn", 0))
 	ck["turns_remaining"] = int(level_data.get("duration", 0))
 	ck["duration_pending_start"] = true
 
 
-func _tick_npc_chakram(ck: Dictionary, enemies: Array) -> void:
+func _tick_npc_cinderbomb(ck: Dictionary, enemies: Array) -> void:
 	if not ck["active"]:
 		return
 	if ck["duration_pending_start"]:
@@ -2682,10 +2682,10 @@ func _tick_npc_chakram(ck: Dictionary, enemies: Array) -> void:
 
 	ck["turns_remaining"] -= 1
 	if ck["turns_remaining"] <= 0:
-		_end_npc_chakram(ck)
+		_end_npc_cinderbomb(ck)
 
 
-func _end_npc_chakram(ck: Dictionary) -> void:
+func _end_npc_cinderbomb(ck: Dictionary) -> void:
 	ck["active"] = false
 	ck["damage_per_turn"] = 0.0
 	ck["turns_remaining"] = 0
@@ -2693,33 +2693,34 @@ func _end_npc_chakram(ck: Dictionary) -> void:
 
 
 # ------------------------------------------------------------------
-# Timbersaw's Reactive Armor (passive) - mirrors battle.gd's own
-# _reactive_armor_stack_turns/_get_reactive_armor_level_data()/_apply_
-# reactive_armor_stack()/_tick_reactive_armor_stacks()/_apply_reactive_
-# armor_regen(). `_npc_reactive_armor_bonus_armor()` is read at the
+# Cinder's Kindled Resolve (passive) - mirrors battle.gd's own
+# _kindled_resolve_stack_turns/_get_kindled_resolve_level_data()/
+# _apply_kindled_resolve_stack()/_tick_kindled_resolve_stacks()/
+# _apply_kindled_resolve_regen(). `_npc_kindled_resolve_bonus_armor()` is
+# read at the
 # single _npc_effective_armor() call site in _run_stage_fight()'s own
 # retaliation loop instead of folded into that shared helper itself,
 # since (unlike _npc_effective_armor(base_armor, state)) it needs
 # hero_id/hero_static to look its own skill level up with - the same
-# reasoning _npc_reactive_armor_bonus_armor()'s own single caller
+# reasoning _npc_kindled_resolve_bonus_armor()'s own single caller
 # already follows.
 # ------------------------------------------------------------------
 
-func _get_npc_reactive_armor_level_data(hero_id: String, hero_static: Dictionary) -> Dictionary:
-	var level: int = PlayerManager.get_npc_skill_level(hero_id, "reactive_armor")
+func _get_npc_kindled_resolve_level_data(hero_id: String, hero_static: Dictionary) -> Dictionary:
+	var level: int = PlayerManager.get_npc_skill_level(hero_id, "kindled_resolve")
 	if level <= 0:
 		return {}
-	var skill: Dictionary = _find_skill(hero_static, "reactive_armor")
+	var skill: Dictionary = _find_skill(hero_static, "kindled_resolve")
 	if skill.is_empty():
 		return {}
 	return GameManager.get_skill_level_data(skill, level)
 
 
-func _npc_reactive_armor_bonus_armor(hero_id: String, hero_static: Dictionary, state: Dictionary) -> float:
-	var stack_turns: Array = state["reactive_armor"]["stack_turns"]
+func _npc_kindled_resolve_bonus_armor(hero_id: String, hero_static: Dictionary, state: Dictionary) -> float:
+	var stack_turns: Array = state["kindled_resolve"]["stack_turns"]
 	if stack_turns.is_empty():
 		return 0.0
-	var level_data: Dictionary = _get_npc_reactive_armor_level_data(hero_id, hero_static)
+	var level_data: Dictionary = _get_npc_kindled_resolve_level_data(hero_id, hero_static)
 	if level_data.is_empty():
 		return 0.0
 	return stack_turns.size() * float(level_data.get("bonus_armor_per_stack", 0.0))
@@ -2786,8 +2787,8 @@ func _end_npc_mirror_image(mi: Dictionary) -> void:
 ## full duration; if that would exceed max_stacks, the oldest stack
 ## (soonest to expire) is dropped first so the count never exceeds the
 ## cap. A no-op while the skill isn't learned.
-func _apply_npc_reactive_armor_stack(state: Dictionary, hero_id: String, hero_static: Dictionary) -> void:
-	var level_data: Dictionary = _get_npc_reactive_armor_level_data(hero_id, hero_static)
+func _apply_npc_kindled_resolve_stack(state: Dictionary, hero_id: String, hero_static: Dictionary) -> void:
+	var level_data: Dictionary = _get_npc_kindled_resolve_level_data(hero_id, hero_static)
 	if level_data.is_empty():
 		return
 
@@ -2800,11 +2801,11 @@ func _apply_npc_reactive_armor_stack(state: Dictionary, hero_id: String, hero_st
 
 ## Ticks every active stack's own remaining-turns counter down by one,
 ## once per turn, dropping any that reach zero - independently of each
-## other, same as battle.gd's own _tick_reactive_armor_stacks() - then
+## other, same as battle.gd's own _tick_kindled_resolve_stacks() - then
 ## heals current_hp for this level's own bonus_hp_regen_per_stack times
 ## however many stacks are STILL up after that. Takes/returns current_hp
 ## the same way _tick_npc_the_test_of_time()/_tick_npc_woven_flesh() do.
-func _tick_npc_reactive_armor(state: Dictionary, hero_id: String, hero_static: Dictionary, current_hp: float, effective_max_hp: float) -> float:
+func _tick_npc_kindled_resolve(state: Dictionary, hero_id: String, hero_static: Dictionary, current_hp: float, effective_max_hp: float) -> float:
 	var stack_turns: Array = state["stack_turns"]
 	for i in range(stack_turns.size()):
 		stack_turns[i] -= 1
@@ -2813,7 +2814,7 @@ func _tick_npc_reactive_armor(state: Dictionary, hero_id: String, hero_static: D
 	if state["stack_turns"].is_empty():
 		return current_hp
 
-	var level_data: Dictionary = _get_npc_reactive_armor_level_data(hero_id, hero_static)
+	var level_data: Dictionary = _get_npc_kindled_resolve_level_data(hero_id, hero_static)
 	if level_data.is_empty():
 		return current_hp
 
@@ -2822,9 +2823,9 @@ func _tick_npc_reactive_armor(state: Dictionary, hero_id: String, hero_static: D
 
 
 # ------------------------------------------------------------------
-# Snapfire's Lil' Shredder - mirrors _tick_npc_winters_grip_effects()'s own
+# Raze's Three Cheers - mirrors _tick_npc_winters_grip_effects()'s own
 # DoT tick shape, just against the armor_reduction/armor_reduction_
-# turns_left fields this file's own "lil_shredder" case in _cast_skill()
+# turns_left fields this file's own "three_cheers" case in _cast_skill()
 # writes (see _apply_damage_to_enemy()'s own docstring for where the
 # reduction itself is actually read). No damage of its own to deal here
 # - just a plain countdown, zeroing the reduction once it runs out.
@@ -2840,13 +2841,13 @@ func _tick_npc_armor_reduction_effects(enemies: Array) -> void:
 
 
 # ------------------------------------------------------------------
-# Snapfire's ultimate, Mortimer Kisses - mirrors battle.gd's own
-# _fire_mortimer_kisses_shot()/_fire_enemy_mortimer_kisses_shot(). The
+# Raze's ultimate, Kiss the Wastes - mirrors battle.gd's own
+# _fire_kiss_the_wastes_shot()/_fire_enemy_kiss_the_wastes_shot(). The
 # channel's own turn-by-turn lockout lives in _run_stage_fight()'s own
-# action-decision chain (its own "mortimer_kisses" branch) rather than a
+# action-decision chain (its own "kiss_the_wastes" branch) rather than a
 # dedicated tick function here, mirroring The Test of Time's own "pass"
 # branch there - this only fires a single shot, called from both the
-# INITIAL cast (this file's own "mortimer_kisses" case in _cast_skill())
+# INITIAL cast (this file's own "kiss_the_wastes" case in _cast_skill())
 # and every automatic follow-up.
 # ------------------------------------------------------------------
 
@@ -2862,7 +2863,7 @@ func _tick_npc_armor_reduction_effects(enemies: Array) -> void:
 ## hitting every OTHER living enemy for splash_damage instead - the same
 ## "no columns, hit everyone ELSE" fallback Drowned Surge's own level-4 splash
 ## and Maddening Roar's own splash already use.
-func _fire_npc_mortimer_kisses_shot(level_data: Dictionary, living: Array) -> void:
+func _fire_npc_kiss_the_wastes_shot(level_data: Dictionary, living: Array) -> void:
 	if living.is_empty():
 		return
 
@@ -2871,8 +2872,8 @@ func _fire_npc_mortimer_kisses_shot(level_data: Dictionary, living: Array) -> vo
 	if target.get("current_hp", 0) > 0:
 		var burn_per_turn: float = float(level_data.get("burn_per_turn", 0))
 		if burn_per_turn > 0.0:
-			target["mortimer_burn_dot_damage"] = burn_per_turn
-			target["mortimer_burn_dot_turns_left"] = int(level_data.get("burn_duration", 0))
+			target["kiss_burn_dot_damage"] = burn_per_turn
+			target["kiss_burn_dot_turns_left"] = int(level_data.get("burn_duration", 0))
 
 	var splash_damage: float = float(level_data.get("splash_damage", 0))
 	if splash_damage > 0.0:
@@ -2882,15 +2883,15 @@ func _fire_npc_mortimer_kisses_shot(level_data: Dictionary, living: Array) -> vo
 			_apply_damage_to_enemy(enemy, splash_damage)
 
 
-## Ticks Mortimer Kisses' burn DoT down by one turn for every enemy
+## Ticks Kiss the Wastes' burn DoT down by one turn for every enemy
 ## currently carrying it, dealing that turn's damage - same shape as
 ## every other single-field DoT tick in this file (see _tick_npc_
 ## winters_grip_effects()'s own).
-func _tick_npc_mortimer_burn_effects(enemies: Array) -> void:
+func _tick_npc_kiss_burn_effects(enemies: Array) -> void:
 	for enemy in enemies:
-		if enemy.get("mortimer_burn_dot_turns_left", 0) > 0:
-			enemy["mortimer_burn_dot_turns_left"] -= 1
-			var dot_damage: float = float(enemy.get("mortimer_burn_dot_damage", 0))
+		if enemy.get("kiss_burn_dot_turns_left", 0) > 0:
+			enemy["kiss_burn_dot_turns_left"] -= 1
+			var dot_damage: float = float(enemy.get("kiss_burn_dot_damage", 0))
 			if dot_damage > 0.0 and enemy.get("current_hp", 0) > 0:
 				_apply_damage_to_enemy(enemy, dot_damage)
 
@@ -3404,8 +3405,8 @@ func _apply_damage_to_enemy(enemy: Dictionary, amount: float) -> float:
 	if vulnerability_pct > 0.0:
 		amount *= (1.0 + vulnerability_pct)
 
-	# Snapfire's own Lil' Shredder shreds a runtime "armor_reduction" off
-	# whichever enemy it hits (see this file's own "lil_shredder" case in
+	# Raze's own Three Cheers shreds a runtime "armor_reduction" off
+	# whichever enemy it hits (see this file's own "three_cheers" case in
 	# _cast_skill()) - a per-instance value, never touching the static
 	# template, mirroring battle.gd's own _deal_fixed_damage_to_enemy().
 	# 0.0 (a no-op) for every enemy nothing has ever shredded.

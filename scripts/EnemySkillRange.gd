@@ -71,33 +71,33 @@ class_name EnemySkillRange
 #     per-level `range` field (a constant 2 per the design doc), same
 #     "distance <= radius" comparison as Mark of Stillness's/Frostbound Rupture'/
 #     Charge's own.
-#   - Whirling Death (Timbersaw's): an AoE centered on the caster, same
+#   - Sweep (Cinder's): an AoE centered on the caster, same
 #     shape as Abyssal Spasm's own - in range whenever the player is within
 #     the skill's own `radius` field. It has no `range` field of its
 #     own, so the generic fallback chain battle.gd's own
 #     _enemy_skill_in_range() already uses (range, then radius, then
 #     distance) correctly falls through to `radius` here, exactly like
 #     Abyssal Spasm's own case.
-#   - Timber Chain/Chakram (both Timbersaw's): targeted casts with their
+#   - Chainfire/Cinderbomb (both Cinder's): targeted casts with their
 #     own per-level `range` field, same "distance <= radius" comparison
-#     as Mark of Stillness's/Sanguine Bloom's own. Chakram ALSO has its own `radius`
+#     as Mark of Stillness's/Sanguine Bloom's own. Cinderbomb ALSO has its own `radius`
 #     field (the AoE size once it's already landed - see EnemySkillAI's
-#     own _timbersaw_chakram_modifier()), but that's never what gates
+#     own _cinder_cinderbomb_modifier()), but that's never what gates
 #     whether the cast itself is reachable - the generic fallback chain
 #     always prefers `range` first when a skill has both, same
 #     "targeting range, not AoE radius" distinction Drowned Surge's own
 #     level-4 splash radius already needs.
-#   - Lil' Shredder/Mortimer Kisses (both Snapfire's): targeted casts
+#   - Three Cheers/Kiss the Wastes (both Raze's): targeted casts
 #     with no range/radius/distance field of their own - both are
-#     described as "within normal attack range" (Snapfire's own is
+#     described as "within normal attack range" (Raze's own is
 #     always "range" type, so that's a real reach, not melee), so both
 #     use the rival's own basic-attack range instead, same fallback
 #     Thornbind/Whisper of the Veil/Glacier Breaker already use.
-#   - Scatterblast (Snapfire's): DIRECTIONAL, not a plain "distance <=
+#   - Double Trouble (Raze's): DIRECTIONAL, not a plain "distance <=
 #     radius" check the way every other AoE skill above is - it only
 #     reaches the player when they're AHEAD of the rival in whichever
 #     direction it's currently facing (mirroring the player's own
-#     _cast_scatterblast()'s own "ahead" math), never behind or on the
+#     _cast_double_trouble()'s own "ahead" math), never behind or on the
 #     wrong side of a shared column. battle.gd's own _enemy_skill_in_
 #     range() special-cases this before ever reaching is_in_range()
 #     below - it's still listed in RANGE_CHECKED_SKILL_IDS purely so
@@ -121,14 +121,14 @@ class_name EnemySkillRange
 #     `range` field, same "distance <= radius" comparison as Sacred
 #     Arrow's own just above.
 # Naga Siren's Song of the Siren is deliberately NOT range-checked here
-# either, despite being a self-centered AoE like Abyssal Spasm/Whirling
-# Death above - unlike those two, it's scored (not gated) against range,
+# either, despite being a self-centered AoE like Abyssal Spasm/Sweep
+# above - unlike those two, it's scored (not gated) against range,
 # the same "out of range scores low rather than being excluded outright"
 # shape Mother's Grasp's/The Frost Tempest's own self-cast ultimates already use
 # (see EnemySkillAI's own _naga_song_of_the_siren_modifier(), which reads
 # `target_distance` itself). Mirror Image is a self-buff with no target
 # of its own to reach at cast time at all, same as Bestial Rage/Rootveil/Woven Flesh above. Rip Tide is passive and never even reaches
-# this file, same as Reactive Armor/Frostborn.
+# this file, same as Kindled Resolve/Frostborn.
 # Slardar's Slithereen Crush follows Song of the Siren's own precedent
 # exactly - a self-centered AoE stun scored (not gated) against range via
 # EnemySkillAI's own _slardar_slithereen_crush_modifier() (fed by
@@ -143,7 +143,7 @@ class_name EnemySkillRange
 # own _mirana_starstorm_modifier() (fed by `living_target_hps`, already
 # empty out of range), so it's never in RANGE_CHECKED_SKILL_IDS either.
 # Leap is a self-directed hop with no target requirement at all to even
-# attempt it, same as Firesnap Cookie above - it "sails clean over any
+# attempt it, same as Blast Hopper above - it "sails clean over any
 # enemy in the way" regardless of range (see battle.gd's own
 # _activate_leap()). Moonlight Shadow is a self-buff with no target of
 # its own to reach at cast time, same as Mirror Image/Guardian Sprint
@@ -166,19 +166,19 @@ class_name EnemySkillRange
 # list; Bestial Rage/Rootveil/Woven Flesh are simpler still - no
 # target of their own to reach at cast time at all (Rootveil's own
 # "attack from stealth" follow-up reuses the player's normal Attack
-# range/targeting, not a skill-cast range check here). Timbersaw's own
-# Reactive Armor is passive and never even reaches this file - see
+# range/targeting, not a skill-cast range check here). Cinder's own
+# Kindled Resolve is passive and never even reaches this file - see
 # battle.gd's ENEMY_KNOWN_SKILL_IDS/EnemyHeroManager's own
-# KNOWN_ACTIVE_SKILL_IDS, neither of which lists it. Snapfire's own
-# Firesnap Cookie is simpler still - a self-directed hop with no target
+# KNOWN_ACTIVE_SKILL_IDS, neither of which lists it. Raze's own
+# Blast Hopper is simpler still - a self-directed hop with no target
 # requirement at all to even attempt it (mirroring the player's own
-# _activate_firesnap_cookie(), which "never fails for lack of a target"
+# _activate_blast_hopper(), which "never fails for lack of a target"
 # the way Barbed Lunge/Abyssal Spasm/Thornbind can) - whether it actually LANDS
 # somewhere useful is purely a scoring question (see EnemySkillAI's own
-# _snapfire_firesnap_cookie_modifier()), never a candidacy gate here.
+# _raze_blast_hopper_modifier()), never a candidacy gate here.
 # ============================================================
 
-const RANGE_CHECKED_SKILL_IDS: Array[String] = ["abyssal_spasm", "thornbind", "whisper_of_the_veil", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "frostbound_rupture", "charge", "glacier_breaker", "sanguine_bloom", "whirling_death", "timber_chain", "chakram", "lil_shredder", "mortimer_kisses", "scatterblast", "ensnare", "corrosive_haze", "sacred_arrow", "lucent_beam"]
+const RANGE_CHECKED_SKILL_IDS: Array[String] = ["abyssal_spasm", "thornbind", "whisper_of_the_veil", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "frostbound_rupture", "charge", "glacier_breaker", "sanguine_bloom", "sweep", "chainfire", "cinderbomb", "three_cheers", "kiss_the_wastes", "double_trouble", "ensnare", "corrosive_haze", "sacred_arrow", "lucent_beam"]
 
 
 ## True if `skill_id` needs a range check at all before being cast -
@@ -199,12 +199,12 @@ static func requires_range_check(skill_id: String) -> bool:
 ## requires_range_check().
 static func is_in_range(skill_id: String, distance: int, radius: int, attack_range: int) -> bool:
 	match skill_id:
-		"abyssal_spasm", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "frostbound_rupture", "charge", "sanguine_bloom", "whirling_death", "timber_chain", "chakram", "ensnare", "corrosive_haze", "sacred_arrow", "lucent_beam":
+		"abyssal_spasm", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "frostbound_rupture", "charge", "sanguine_bloom", "sweep", "chainfire", "cinderbomb", "ensnare", "corrosive_haze", "sacred_arrow", "lucent_beam":
 			return distance <= radius
-		"thornbind", "whisper_of_the_veil", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "glacier_breaker", "lil_shredder", "mortimer_kisses":
+		"thornbind", "whisper_of_the_veil", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "glacier_breaker", "three_cheers", "kiss_the_wastes":
 			return distance <= attack_range
 		_:
-			# scatterblast never reaches this generic chain - battle.gd's
+			# double_trouble never reaches this generic chain - battle.gd's
 			# own _enemy_skill_in_range() special-cases its directional
 			# check before ever calling in here (see this file's own
 			# header comment).

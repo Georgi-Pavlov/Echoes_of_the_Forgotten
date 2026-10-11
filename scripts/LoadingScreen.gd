@@ -34,6 +34,7 @@ const WAKING_EYES := [
 
 var _eyes: Array[Dictionary] = []
 var _bar_spark: TextureRect
+var _music_started := false
 
 
 func _ready() -> void:
@@ -50,6 +51,11 @@ func _ready() -> void:
 
 func _on_progress_updated(value: float) -> void:
 	progress_bar.value = value
+	# The menu music comes in at 40% and plays on from here
+	# through every menu screen.
+	if not _music_started and value >= 40.0:
+		_music_started = true
+		AudioManager.play_menu_music()
 	status_label.text = "Loading... %d%%" % int(value)
 	for eye in _eyes:
 		if not eye.awake and value >= eye.at:

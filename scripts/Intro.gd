@@ -198,6 +198,8 @@ var _subtitle_index := -1
 
 
 func _ready() -> void:
+	# The menu music ends with the intro, however it was reached.
+	AudioManager.stop_music_fade()
 	_front = $ImageHolder/ImageA
 	_back = $ImageHolder/ImageB
 	for rect in [_front, _back]:

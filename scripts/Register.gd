@@ -6,6 +6,7 @@ extends Control
 @onready var error_label: Label = $Panel/VBoxContainer/ErrorLabel
 
 func _ready() -> void:
+	AudioManager.play_menu_music()
 	$Panel/VBoxContainer/HBoxContainer/SubmitButton.pressed.connect(_on_submit_pressed)
 	$Panel/VBoxContainer/HBoxContainer/BackButton.pressed.connect(_on_back_pressed)
 
@@ -37,6 +38,8 @@ func _on_submit_pressed() -> void:
 	PlayerManager.current_player = username
 	# A brand-new player sees the story intro first; it moves on to
 	# PostLogin by itself when it ends or is skipped.
+	# The intro has its own narration - the menu music ends here.
+	AudioManager.stop_music_fade()
 	get_tree().change_scene_to_file("res://scenes/Intro.tscn")
 
 func _on_back_pressed() -> void:

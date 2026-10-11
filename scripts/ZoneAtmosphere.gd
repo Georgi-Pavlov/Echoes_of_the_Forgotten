@@ -130,8 +130,12 @@ const EVERFROST_BG := "res://assets/zones/the_everfrost_frost_daughter.jpg"
 const EVERFROST_FX := preload("res://scripts/EverfrostAtmosphere.gd")
 const EVERFROST_SKARN_BG := "res://assets/zones/the_everfrost_skarn.jpg"
 const ROOTMOTHER_BG := "res://assets/zones/the_verdant_scar_the_rootmother.jpg"
+const CINDER_BG := "res://assets/zones/the_verdant_scar_cinder.jpg"
 # The Rootmother's Verdant Scar runs in its own child too - see RootmotherAtmosphere.gd.
 const ROOTMOTHER_FX := preload("res://scripts/RootmotherAtmosphere.gd")
+const SCORCHLANDS_BG := "res://assets/zones/scorchlands_raze.jpg"
+# The Scorchlands run in their own child too - see ScorchlandsAtmosphere.gd.
+const SCORCHLANDS_FX := preload("res://scripts/ScorchlandsAtmosphere.gd")
 const UNKNOWN_BG := "res://assets/zones/empty_zone.jpg"
 const UNKNOWN_FX := preload("res://scripts/UnknownZoneAtmosphere.gd")
 
@@ -252,7 +256,7 @@ func _ready() -> void:
 ## Called by zone.gd after it has set the background for the shown hero.
 func show_for_background(path: String) -> void:
 	_clear()
-	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG, EVERFROST_BG, EVERFROST_SKARN_BG, ROOTMOTHER_BG, UNKNOWN_BG]:
+	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG, EVERFROST_BG, EVERFROST_SKARN_BG, ROOTMOTHER_BG, CINDER_BG, SCORCHLANDS_BG, UNKNOWN_BG]:
 		return
 	# Guards against a hero switch landing during the await below.
 	_build_id += 1
@@ -278,7 +282,11 @@ func show_for_background(path: String) -> void:
 	elif path == EVERFROST_SKARN_BG:
 		_build_everfrost("skarn")
 	elif path == ROOTMOTHER_BG:
-		_build_rootmother()
+		_build_rootmother("the_rootmother")
+	elif path == CINDER_BG:
+		_build_rootmother("cinder")
+	elif path == SCORCHLANDS_BG:
+		_build_scorchlands()
 	else:
 		_build_elderwild()
 
@@ -1012,11 +1020,21 @@ func _build_everfrost(hero: String) -> void:
 
 # --- The Verdant Scar -----------------------------------------------
 
-func _build_rootmother() -> void:
+## `hero`: "the_rootmother", or "cinder" - the same valley, his side instead.
+func _build_rootmother(hero: String) -> void:
 	var fx: Control = ROOTMOTHER_FX.new()
 	add_child(fx)
-	fx.build(self, _background)
+	fx.build(self, _background, hero)
 	_zone = "rootmother"
+
+
+# --- The Scorchlands ------------------------------------------------
+
+func _build_scorchlands() -> void:
+	var fx: Control = SCORCHLANDS_FX.new()
+	add_child(fx)
+	fx.build(self, _background)
+	_zone = "scorchlands"
 
 
 # --- Zones with no heroes yet ---------------------------------------

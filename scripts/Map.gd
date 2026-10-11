@@ -249,8 +249,11 @@ func _spawn_region_buttons() -> void:
 		_plate_rects[zone_id] = Rect2(btn.position, plate_size)
 		_gems[zone_id] = _add_status_marker(btn.position + Vector2(PLATE_GEM_X * screen_size.x, plate_size.y / 2.0), has_heroes, is_locked)
 
-	if _plate_rects.has(_home_zone_id):
-		_add_home_aura(_plate_rects[_home_zone_id])
+	# Until the home zone has been cleared the aura marks it (the only zone
+	# open); after that it is a reminder of where the player last went.
+	var aura_zone_id: String = _home_zone_id if not _home_zone_cleared else GameManager.selected_zone
+	if _plate_rects.has(aura_zone_id):
+		_add_home_aura(_plate_rects[aura_zone_id])
 	$MapFX.set_clear_rects(_plate_rects.values())
 
 
@@ -270,7 +273,8 @@ var _gems: Dictionary = {}
 var _locked_flash_tweens: Dictionary = {}
 
 
-## Ember aura pulsing around the player's own hero's home zone plate.
+## Ember aura pulsing around a zone plate: the player's home zone until it's
+## been cleared, then the last zone they visited.
 func _add_home_aura(rect: Rect2) -> void:
 	var style := StyleBoxFlat.new()
 	style.draw_center = false

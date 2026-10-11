@@ -772,7 +772,7 @@ func _npc_key(hero_id: String, field: String) -> String:
 	return "npc_" + hero_id + "_" + field
 
 
-## Generic read for any NPC field, e.g. get_npc_field("timbersaw", "gold").
+## Generic read for any NPC field, e.g. get_npc_field("cinder", "gold").
 ## Prefer the typed wrappers below where one exists - this is the
 ## fallback for anything that doesn't have one yet.
 func get_npc_field(hero_id: String, field: String, default_value: String = "0") -> String:

@@ -41,7 +41,7 @@ class_name EnemySkillAI
 #
 # Eleven heroes have real AI logic today: Veyrik, Erynd, Morvael,
 # Kaelen Varr, Nhal, The Primordial Hunger, Frost Daughter, Skarn,
-# The Rootmother, Timbersaw, and Snapfire - see resolve_hero_
+# The Rootmother, Cinder, and Raze - see resolve_hero_
 # archetype() for how a hero_static maps to one of them,
 # and each one's own _*_modifier() function below for its personality.
 # Nhal's Return to the Void in particular models an "execute"
@@ -83,51 +83,51 @@ class_name EnemySkillAI
 # "target_distance" gate). Mother's Grasp is a second self-cast AoE
 # ultimate, same "centered on the caster" shape as Frost Daughter's own
 # The Frost Tempest - see _tp_mothers_grasp_modifier().
-# Timbersaw's Whirling Death is ALSO self-cast/self-centered (like
-# The Frost Tempest/Mother's Grasp), but Timber Chain and Chakram are both
-# TARGET-centered - see _timbersaw_chakram_modifier()'s own docstring
-# for why Chakram in particular is scored differently from a self-
+# Cinder's Sweep is ALSO self-cast/self-centered (like
+# The Frost Tempest/Mother's Grasp), but Chainfire and Cinderbomb are both
+# TARGET-centered - see _cinder_cinderbomb_modifier()'s own docstring
+# for why Cinderbomb in particular is scored differently from a self-
 # centered AoE despite both ending up reading the same `living_target_
 # hps`/`target_distance` context fields in a hero fight (there's only
 # ever the one player to hit either way - see _build_enemy_ai_
-# context()'s own docstring). Reactive Armor is passive and, like Arcane
+# context()'s own docstring). Kindled Resolve is passive and, like Arcane
 # Aura, deliberately never appears in SKILL_INFO/HERO_TIE_BREAK/
 # _estimate_skill_damage - its own stacks still feed every one of
-# Timbersaw's active skills through the context's own "reactive_armor_
-# stacks"/"reactive_armor_max_stacks" fields (see _timbersaw_modifier()'s
-# own docstring), just never as a scored candidate of its own. Whirling
-# Death's own "pure damage"/primary-attribute-reduction flavor text
+# Cinder's active skills through the context's own "kindled_resolve_
+# stacks"/"kindled_resolve_max_stacks" fields (see _cinder_modifier()'s
+# own docstring), just never as a scored candidate of its own. Sweep's
+# own "pure damage"/primary-attribute-reduction flavor text
 # isn't backed by any real mechanic in this project (see battle.gd's own
-# _cast_enemy_whirling_death() docstring) - same "documented but not
+# _cast_enemy_sweep() docstring) - same "documented but not
 # implemented" gap Abyssal Spasm's own silence effect already has - so
-# _timbersaw_whirling_death_modifier() only ever adds a small flat
+# _cinder_sweep_modifier() only ever adds a small flat
 # qualitative bonus for "a hero was hit" (context's own "target_is_hero"
 # field), never a real stat-based number.
-# Snapfire's Scatterblast is DIRECTIONAL rather than self-centered like
-# Whirling Death/The Frost Tempest/Mother's Grasp (see battle.gd's own
-# _enemy_skill_in_range()'s "scatterblast" case for how that's actually
+# Raze's Double Trouble is DIRECTIONAL rather than self-centered like
+# Sweep/The Frost Tempest/Mother's Grasp (see battle.gd's own
+# _enemy_skill_in_range()'s "double_trouble" case for how that's actually
 # enforced) - by the time this file ever scores it as a candidate, the
 # player is already confirmed to be ahead of the rival in whichever
-# direction it's facing, so _snapfire_scatterblast_modifier() reads the
+# direction it's facing, so _raze_double_trouble_modifier() reads the
 # same `living_target_hps` every other AoE skill's own modifier does,
-# with no extra directional math of its own to repeat. Firesnap Cookie
+# with no extra directional math of its own to repeat. Blast Hopper
 # is self-directed (a hop, not a self-centered radius check the way
-# The Frost Tempest's own is) - _snapfire_firesnap_cookie_modifier()
+# The Frost Tempest's own is) - _raze_blast_hopper_modifier()
 # projects the landing column itself from the context's own
 # `caster_pos_index`/`caster_facing_left`/`grid_columns` fields (the
 # same ones Skarn's own Frostbound Rupture/Glacier Breaker modifiers already read)
-# rather than needing a new one. Mortimer Kisses' own splash always
+# rather than needing a new one. Kiss the Wastes' own splash always
 # collapses to 0 extra targets in a real hero fight (there's only ever
-# the one player to hit - see _cast_enemy_mortimer_kisses()'s own "no
+# the one player to hit - see _cast_enemy_kiss_the_wastes()'s own "no
 # cleave" simplification), so its real multi-target value only ever
 # shows up in the simulation, where "no columns, hit everyone else"
 # gives it real splash to work with (see EnemyHeroManager's own
-# "_fire_npc_mortimer_kisses_shot()"). Lil' Shredder's own armor
+# "_fire_npc_kiss_the_wastes_shot()"). Three Cheers's own armor
 # reduction is real (see battle.gd's own _hero_armor()/EnemyHeroManager's
 # own _apply_damage_to_enemy(), both of which now fold a runtime
 # "armor_reduction" in) - context's own "target_armor" field (the
-# target's CURRENT armor, reduction already applied) lets _snapfire_
-# lil_shredder_modifier() value shredding a heavily-armored target
+# target's CURRENT armor, reduction already applied) lets _raze_
+# three_cheers_modifier() value shredding a heavily-armored target
 # without inventing a parallel armor system of its own.
 #
 # Naga Siren is the twelfth hero with real AI logic. Mirror Image is
@@ -146,7 +146,7 @@ class_name EnemySkillAI
 # really means (every hit Naga/her illusions land completely safely
 # while the stun holds), shared between _estimate_skill_damage()'s own
 # case and _naga_song_of_the_siren_modifier() so the two numbers never
-# drift apart. Rip Tide is passive, same as Frostborn/Reactive Armor -
+# drift apart. Rip Tide is passive, same as Frostborn/Kindled Resolve -
 # never in SKILL_INFO/HERO_TIE_BREAK/_estimate_skill_damage, never a
 # scored candidate; its bonuses reach Mirror Image/Song/a plain Attack
 # purely through context fields (rip_tide_illusion_damage_bonus_pct/
@@ -163,7 +163,7 @@ class_name EnemySkillAI
 # _slardar_guardian_sprint_modifier()'s own docstring). Slithereen Crush
 # and Corrosive Haze are both "offensive", same shape as every other
 # self-cast/target-marking skill in this file. Bash of the Deep is
-# passive and, like Rip Tide/Reactive Armor/Frostborn, never appears in
+# passive and, like Rip Tide/Kindled Resolve/Frostborn, never appears in
 # SKILL_INFO/HERO_TIE_BREAK/_estimate_skill_damage - its progression
 # reaches every one of Slardar's other actions purely through context
 # fields ("bash_attacks_required"/"bash_current_progress"/"bash_bonus_
@@ -198,7 +198,7 @@ class_name EnemySkillAI
 # value at more than one - never a naive "beams x damage, guaranteed"
 # reading, and never a "one beam per enemy" assumption). Moon Glaives and
 # Lunar Blessing are both passive and, like Bash of the Deep/Rip Tide/
-# Reactive Armor/Frostborn, never appear in SKILL_INFO/HERO_TIE_BREAK/
+# Kindled Resolve/Frostborn, never appear in SKILL_INFO/HERO_TIE_BREAK/
 # _estimate_skill_damage - Lunar Blessing's own bonus is already folded
 # into "hero_damage" itself by _roll_enemy_hero_damage()/
 # _npc_roll_damage() (see each one's own docstring), and Moon Glaives'
@@ -253,13 +253,13 @@ const SKILL_INFO := {
 	"sanguine_bloom": {"category": "offensive", "base_score": 45.0},
 	"woven_flesh": {"category": "defensive", "base_score": 35.0},
 	"mother's_grasp": {"category": "offensive", "base_score": 65.0},
-	"whirling_death": {"category": "offensive", "base_score": 45.0},
-	"timber_chain": {"category": "offensive", "base_score": 50.0},
-	"chakram": {"category": "offensive", "base_score": 70.0},
-	"scatterblast": {"category": "offensive", "base_score": 45.0},
-	"firesnap_cookie": {"category": "offensive", "base_score": 50.0},
-	"lil_shredder": {"category": "offensive", "base_score": 45.0},
-	"mortimer_kisses": {"category": "offensive", "base_score": 70.0},
+	"sweep": {"category": "offensive", "base_score": 45.0},
+	"chainfire": {"category": "offensive", "base_score": 50.0},
+	"cinderbomb": {"category": "offensive", "base_score": 70.0},
+	"double_trouble": {"category": "offensive", "base_score": 45.0},
+	"blast_hopper": {"category": "offensive", "base_score": 50.0},
+	"three_cheers": {"category": "offensive", "base_score": 45.0},
+	"kiss_the_wastes": {"category": "offensive", "base_score": 70.0},
 	"mirror_image": {"category": "utility", "base_score": 50.0},
 	"ensnare": {"category": "offensive", "base_score": 45.0},
 	"song_of_the_siren": {"category": "offensive", "base_score": 75.0},
@@ -310,8 +310,8 @@ const HERO_TIE_BREAK := {
 	"frost_daughter": ["the_frost_tempest", "winters_grip", "rimecleaver"],
 	"skarn": ["glacier_breaker", "charge", "frostbound_rupture", "bestial_rage"],
 	"the_rootmother": ["mother's_grasp", "sanguine_bloom", "rootveil", "woven_flesh"],
-	"timbersaw": ["chakram", "timber_chain", "whirling_death"],
-	"snapfire": ["mortimer_kisses", "firesnap_cookie", "scatterblast", "lil_shredder"],
+	"cinder": ["cinderbomb", "chainfire", "sweep"],
+	"raze": ["kiss_the_wastes", "blast_hopper", "double_trouble", "three_cheers"],
 	"naga_siren": ["song_of_the_siren", "mirror_image", "ensnare"],
 	"slardar": ["corrosive_haze", "slithereen_crush", "guardian_sprint"],
 	"mirana": ["moonlight_shadow", "sacred_arrow", "starstorm", "leap"],
@@ -353,10 +353,10 @@ static func resolve_hero_archetype(hero_static: Dictionary) -> String:
 		return "skarn"
 	if "mother's_grasp" in skill_ids:
 		return "the_rootmother"
-	if "chakram" in skill_ids:
-		return "timbersaw"
-	if "mortimer_kisses" in skill_ids:
-		return "snapfire"
+	if "cinderbomb" in skill_ids:
+		return "cinder"
+	if "kiss_the_wastes" in skill_ids:
+		return "raze"
 	if "song_of_the_siren" in skill_ids:
 		return "naga_siren"
 	if "slithereen_crush" in skill_ids:
@@ -413,15 +413,15 @@ static func evaluate_skill(skill_id: String, level_data: Dictionary, context: Di
 ## early-out). The Rootmother opts in for the same reason as Charge/
 ## Mother's Grasp's own early-outs (see _tp_sanguine_bloom_modifier()/_tp_
 ## mothers_grasp_modifier()) - a free kill beats spending mana/cooldown for
-## the same result. Timbersaw opts in too - Chakram in particular is a
+## the same result. Cinder opts in too - Cinderbomb in particular is a
 ## very expensive ultimate (200-350 mana) that a cheap plain Attack can
 ## already make redundant (see the design doc's own "one enemy at 20 HP
 ## should almost never justify a 350-mana ultimate" instruction and
-## _timbersaw_chakram_modifier()'s own early-out). Snapfire opts in for
-## the exact same reason - Mortimer Kisses is her own 200-350 mana
-## ultimate, and Lil' Shredder specifically "competes directly with
+## _cinder_cinderbomb_modifier()'s own early-out). Raze opts in for
+## the exact same reason - Kiss the Wastes is her own 200-350 mana
+## ultimate, and Three Cheers specifically "competes directly with
 ## normal attacks" per the design doc's own instruction (see
-## _snapfire_lil_shredder_modifier()'s own early-out). Naga Siren opts in
+## _raze_three_cheers_modifier()'s own early-out). Naga Siren opts in
 ## too - the design doc's own explicit requirement that Basic Attack
 ## always remain a real candidate, able to win outright (see its own
 ## Scenario D: a low-HP target already in range, with Rip Tide's own
@@ -438,7 +438,7 @@ static func evaluate_skill(skill_id: String, level_data: Dictionary, context: Di
 ## own right, not just the fallback for "nothing else qualified" (see
 ## _luna_basic_attack_modifier()'s own docstring).
 static func basic_attack_participates(archetype: String) -> bool:
-	return archetype == "kaelen_varr" or archetype == "the_primordial_hunger" or archetype == "frost_daughter" or archetype == "skarn" or archetype == "the_rootmother" or archetype == "timbersaw" or archetype == "snapfire" or archetype == "naga_siren" or archetype == "slardar" or archetype == "mirana" or archetype == "luna"
+	return archetype == "kaelen_varr" or archetype == "the_primordial_hunger" or archetype == "frost_daughter" or archetype == "skarn" or archetype == "the_rootmother" or archetype == "cinder" or archetype == "raze" or archetype == "naga_siren" or archetype == "slardar" or archetype == "mirana" or archetype == "luna"
 
 
 ## The score for a plain Attack, for a hero basic_attack_participates()
@@ -607,21 +607,21 @@ static func _estimate_skill_damage(skill_id: String, level_data: Dictionary, con
 			# hitting whoever's in range each tick) - dot_damage x
 			# root_duration, same reasoning as The Frost Tempest's own case.
 			return float(level_data.get("dot_damage", 0.0)) * float(level_data.get("root_duration", 0.0))
-		"whirling_death", "timber_chain":
+		"sweep", "chainfire":
 			return float(level_data.get("damage", 0.0))
-		"chakram":
+		"cinderbomb":
 			# Only the initial cast_damage - the persistent damage_per_
 			# turn ticks are estimated separately (and much more
 			# conservatively - see the design doc's own "do not
 			# automatically assume every enemy stays inside the radius
-			# for the full duration" instruction), in _timbersaw_chakram_
+			# for the full duration" instruction), in _cinder_cinderbomb_
 			# modifier() rather than here.
 			return float(level_data.get("cast_damage", 0.0))
-		"scatterblast", "firesnap_cookie":
+		"double_trouble", "blast_hopper":
 			return float(level_data.get("damage", 0.0))
-		"lil_shredder":
+		"three_cheers":
 			# The FULL volley's own expected total, not just one shot -
-			# Lil' Shredder is inherently a multi-hit sequence at the same
+			# Three Cheers is inherently a multi-hit sequence at the same
 			# target, so "can this kill it" has to weigh all `shots` of
 			# them (a conservative estimate: the actual cast lands
 			# slightly harder than this once armor_reduction starts
@@ -629,13 +629,13 @@ static func _estimate_skill_damage(skill_id: String, level_data: Dictionary, con
 			# baseline, same "do not assume" caution the design doc's own
 			# armor-reduction-duration instruction calls for elsewhere).
 			return float(context.get("hero_damage", 0.0)) * float(level_data.get("damage_pct", 0.0)) * float(level_data.get("shots", 1))
-		"mortimer_kisses":
+		"kiss_the_wastes":
 			# Only the first shot's own main_damage - persistent/tracked
 			# follow-up shots are never guaranteed to land on the same
 			# target (see the design doc's own "do not assume all three
 			# shots automatically hit the same target" instruction), so
 			# those are estimated separately, more conservatively, in
-			# _snapfire_mortimer_kisses_modifier() instead.
+			# _raze_kiss_the_wastes_modifier() instead.
 			return float(level_data.get("main_damage", 0.0))
 		"ensnare":
 			return float(level_data.get("damage", 0.0))
@@ -684,10 +684,10 @@ static func _hero_specific_modifier(archetype: String, skill_id: String, level_d
 			return _skarn_modifier(skill_id, level_data, context)
 		"the_rootmother":
 			return _rootmother_modifier(skill_id, level_data, context)
-		"timbersaw":
-			return _timbersaw_modifier(skill_id, level_data, context)
-		"snapfire":
-			return _snapfire_modifier(skill_id, level_data, context)
+		"cinder":
+			return _cinder_modifier(skill_id, level_data, context)
+		"raze":
+			return _raze_modifier(skill_id, level_data, context)
 		"naga_siren":
 			return _naga_siren_modifier(skill_id, level_data, context)
 		"slardar":
@@ -2039,49 +2039,50 @@ static func _tp_basic_attack_modifier(context: Dictionary) -> float:
 	return score
 
 
-## Timbersaw: aggressive, durable, melee, AoE-focused. Whirling Death and
-## Timber Chain are both "offensive" category (generic kill-potential/
+## Cinder: aggressive, durable, melee, AoE-focused. Sweep and
+## Chainfire are both "offensive" category (generic kill-potential/
 ## target-value terms, fed by their own flat-damage _estimate_skill_
-## damage() cases); Chakram is "offensive" too (fed by its own
+## damage() cases); Cinderbomb is "offensive" too (fed by its own
 ## cast_damage-only case - its persistent damage_per_turn ticks are
 ## deliberately kept OUT of that generic estimate, since they're never a
 ## guaranteed hit the way a cast's own initial damage is - see this
-## function's own _timbersaw_chakram_modifier()). Reactive Armor's
-## current stacks (context's own "reactive_armor_stacks"/"reactive_
-## armor_max_stacks" fields - see battle.gd's/EnemyHeroManager's own
+## function's own _cinder_cinderbomb_modifier()). Kindled Resolve's
+## current stacks (context's own
+## "kindled_resolve_stacks"/"kindled_resolve_max_stacks" fields - see
+## battle.gd's/EnemyHeroManager's own
 ## _build_enemy_ai_context()/_build_npc_ai_context() docstrings) feed
-## into how comfortable Timbersaw is staying in the fight, per the design
+## into how comfortable Cinder is staying in the fight, per the design
 ## doc's own "modify the survival calculation, not override it"
-## instruction - see _timbersaw_sustain_factor()'s own docstring for how
+## instruction - see _cinder_sustain_factor()'s own docstring for how
 ## that's actually worked out.
-static func _timbersaw_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
+static func _cinder_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
 	match skill_id:
-		"whirling_death":
-			return _timbersaw_whirling_death_modifier(level_data, context)
-		"timber_chain":
-			return _timbersaw_timber_chain_modifier(level_data, context)
-		"chakram":
-			return _timbersaw_chakram_modifier(level_data, context)
+		"sweep":
+			return _cinder_sweep_modifier(level_data, context)
+		"chainfire":
+			return _cinder_chainfire_modifier(level_data, context)
+		"cinderbomb":
+			return _cinder_cinderbomb_modifier(level_data, context)
 		BASIC_ATTACK_ID:
-			return _timbersaw_basic_attack_modifier(context)
+			return _cinder_basic_attack_modifier(context)
 		_:
 			return 0.0
 
 
-## How much Reactive Armor is currently cushioning Timbersaw, as a 0..1
+## How much Kindled Resolve is currently cushioning Cinder, as a 0..1
 ## fraction of its own cap (0 with the skill unlearned or no stacks up) -
 ## shared by every one of his own modifiers below that needs to lean
 ## into (or shy away from) staying in a fight, rather than each
 ## reimplementing the same ratio.
-static func _timbersaw_sustain_factor(context: Dictionary) -> float:
-	var max_stacks: int = int(context.get("reactive_armor_max_stacks", 0))
+static func _cinder_sustain_factor(context: Dictionary) -> float:
+	var max_stacks: int = int(context.get("kindled_resolve_max_stacks", 0))
 	if max_stacks <= 0:
 		return 0.0
-	return clampf(float(context.get("reactive_armor_stacks", 0)) / float(max_stacks), 0.0, 1.0)
+	return clampf(float(context.get("kindled_resolve_stacks", 0)) / float(max_stacks), 0.0, 1.0)
 
 
-## Whirling Death: self-centered, never a targeted cast - the AI has to
-## evaluate however many enemies are ALREADY within radius of Timbersaw's
+## Sweep: self-centered, never a targeted cast - the AI has to
+## evaluate however many enemies are ALREADY within radius of Cinder's
 ## own current position, never an arbitrary chosen location (see
 ## _fd_frost_tempest_modifier()'s own docstring for the same "reuse
 ## target_distance as the self-centered range check" reasoning this
@@ -2093,12 +2094,12 @@ static func _timbersaw_sustain_factor(context: Dictionary) -> float:
 ## use arbitrary bonuses if the shared evaluator already has an AoE
 ## scoring helper" instruction) plus this skill's own extra-kill/hero-hit
 ## terms. `sustain_factor` makes a crowded fight a little MORE appealing
-## rather than less once Timbersaw has real Reactive Armor stacks banked
+## rather than less once Cinder has real Kindled Resolve stacks banked
 ## up, per the design doc's own "he can reasonably receive a lower
 ## penalty for remaining in close combat" instruction - never enough on
 ## its own to matter without real AoE value already present (it only
 ## ever applies alongside an actual hit_count>=2 bonus above).
-static func _timbersaw_whirling_death_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _cinder_sweep_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var radius: int = int(level_data.get("radius", 0))
 	var raw_distance: int = int(context.get("target_distance", -1))
 	var in_range: bool = raw_distance < 0 or raw_distance <= radius
@@ -2128,27 +2129,27 @@ static func _timbersaw_whirling_death_modifier(level_data: Dictionary, context: 
 		score += 35.0 * float(extra_kills)
 
 	if bool(context.get("target_is_hero", false)):
-		# Whirling Death's own primary-attribute reduction - purely
+		# Sweep's own primary-attribute reduction - purely
 		# qualitative (see this file's own header comment on why: no
 		# real stat-reduction mechanic exists anywhere in this project
 		# to calculate a real number from).
 		score += 10.0
 
-	if hit_count >= 2 and _timbersaw_sustain_factor(context) > 0.5:
+	if hit_count >= 2 and _cinder_sustain_factor(context) > 0.5:
 		score += 10.0
 
 	return score
 
 
-## Timber Chain: BOTH an offensive skill and a positioning/escape tool -
+## Chainfire: BOTH an offensive skill and a positioning/escape tool -
 ## the generic offensive scoring above already covers the marked
 ## target's own value/kill potential; this adds the path-damage value
 ## (every enemy the chain crosses takes the same hit, so more of them
-## matters a lot - same AoE tiers Whirling Death's own modifier uses,
+## matters a lot - same AoE tiers Sweep's own modifier uses,
 ## reused rather than inventing a second curve) plus movement value.
 ## Deliberately has NO "a plain Attack could already kill this" early-out
-## the way Charge's/Sanguine Bloom's/Chakram's own do - per the design
-## doc's own explicit instruction, Timber Chain must be allowed to score
+## the way Charge's/Sanguine Bloom's/Cinderbomb's own do - per the design
+## doc's own explicit instruction, Chainfire must be allowed to score
 ## highly purely for a meaningful escape, "even when its damage is low"
 ## and "do not require the target itself to be low HP". `grid_columns`
 ## gates whether real escape/engage math is even possible (never present
@@ -2156,7 +2157,7 @@ static func _timbersaw_whirling_death_modifier(level_data: Dictionary, context: 
 ## context() docstring - where every attack already reaches its target
 ## with no travel cost at all, so there's nothing here for movement value
 ## to compute).
-static func _timbersaw_timber_chain_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _cinder_chainfire_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var living_hps: Array = context.get("living_target_hps", [])
 	var path_targets: int = living_hps.size()
 
@@ -2181,15 +2182,15 @@ static func _timbersaw_timber_chain_modifier(level_data: Dictionary, context: Di
 	var grid_columns: int = int(context.get("grid_columns", 0))
 	if grid_columns > 0:
 		var hp_ratio: float = float(context.get("hero_hp_ratio", 1.0))
-		# More banked Reactive Armor stacks means Timbersaw is already
+		# More banked Kindled Resolve stacks means Cinder is already
 		# more cushioned, so the threshold for reading this as a real
 		# emergency is a little more forgiving - modifies the threshold,
 		# never removes the emergency case outright (see the design
 		# doc's own "modify the survival calculation, not override it"
 		# instruction).
-		var escape_threshold: float = 0.35 - (_timbersaw_sustain_factor(context) * 0.12)
+		var escape_threshold: float = 0.35 - (_cinder_sustain_factor(context) * 0.12)
 		if hp_ratio < escape_threshold:
-			# The pull itself moves Timbersaw off wherever he's currently
+			# The pull itself moves Cinder off wherever he's currently
 			# under threat, regardless of the target's own HP - see this
 			# function's own docstring for why there's no low-HP
 			# requirement gating this.
@@ -2206,12 +2207,12 @@ static func _timbersaw_timber_chain_modifier(level_data: Dictionary, context: Di
 	return score
 
 
-## Chakram: TARGET-centered, unlike Whirling Death - never evaluated as
+## Cinderbomb: TARGET-centered, unlike Sweep - never evaluated as
 ## if it were a self-centered AoE (see this file's own header comment).
 ## Its own `range` field (a real targeting requirement, gated by
 ## EnemySkillRange before this is ever a candidate) already keeps this
 ## from firing at an unreachable target, so - unlike The Frost Tempest's/
-## Mother's Grasp's/Whirling Death's own self-centered "is the caster's own
+## Mother's Grasp's/Sweep's own self-centered "is the caster's own
 ## radius even reaching anything" gate - there's no separate range check
 ## to repeat here. The early-out mirrors Sanguine Bloom's/Charge's own: a
 ## single affected target a plain Attack can already kill outright isn't
@@ -2220,15 +2221,15 @@ static func _timbersaw_timber_chain_modifier(level_data: Dictionary, context: Di
 ## enemies are affected... the multi-target value can justify its high
 ## mana cost" instruction, a real multi-target opportunity is never
 ## penalized this way. Initial AoE reuses the same multi-target tiers
-## Whirling Death's/Return to the Void's own modifiers already use; persistent
+## Sweep's/Return to the Void's own modifiers already use; persistent
 ## damage is deliberately discounted rather than assumed at full uptime
 ## (see the design doc's own "do not automatically assume every enemy
 ## stays inside the radius for the full duration" instruction) - a
-## target already standing right next to Timbersaw (target_distance <=
+## target already standing right next to Cinder (target_distance <=
 ## 0, the closest proxy this context offers for "already engaged, likely
 ## to still be here next turn") gets a much higher expected-uptime
 ## estimate than one that isn't.
-static func _timbersaw_chakram_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _cinder_cinderbomb_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
 	var target_hp: float = float(context.get("target_hp", 0.0))
 	var living_hps: Array = context.get("living_target_hps", [])
@@ -2284,13 +2285,13 @@ static func _timbersaw_chakram_modifier(level_data: Dictionary, context: Diction
 
 
 ## A plain Attack is only worth scoring above its flat baseline for
-## Timbersaw when it can finish the target off outright (see
+## Cinder when it can finish the target off outright (see
 ## basic_attack_participates()'s own docstring for why he opts in at
-## all) - Chakram in particular is a very expensive ultimate, so a free
+## all) - Cinderbomb in particular is a very expensive ultimate, so a free
 ## kill deserves a real shot at winning over spending it (see the design
 ## doc's own Basic Attack example). Same small mana-scarcity nudge as
 ## every other hero's own copy here.
-static func _timbersaw_basic_attack_modifier(context: Dictionary) -> float:
+static func _cinder_basic_attack_modifier(context: Dictionary) -> float:
 	var score: float = 0.0
 
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
@@ -2305,8 +2306,8 @@ static func _timbersaw_basic_attack_modifier(context: Dictionary) -> float:
 	return score
 
 
-## Snapfire: aggressive, ranged, AoE-focused, kill-oriented,
-## opportunistic. Scatterblast/Firesnap Cookie/Lil' Shredder/Mortimer
+## Raze: aggressive, ranged, AoE-focused, kill-oriented,
+## opportunistic. Double Trouble/Blast Hopper/Three Cheers/Kiss the Wastes
 ## Kisses are all "offensive" category (each fed by its own _estimate_
 ## skill_damage() case, for the shared kill-potential/target-value
 ## terms); this layers each skill's own AoE/positioning/armor/
@@ -2315,32 +2316,32 @@ static func _timbersaw_basic_attack_modifier(context: Dictionary) -> float:
 ## hps/target_distance/caster_pos_index/target_pos_index/grid_columns/
 ## caster_facing_left, all already established by Skarn's/Frost
 ## Daughter's own modifiers) plus two new ones scoped to this file's own
-## header comment: "target_is_hero" (Timbersaw's own, reused as-is) and
-## "target_armor" (new, for Lil' Shredder specifically).
-static func _snapfire_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
+## header comment: "target_is_hero" (Cinder's own, reused as-is) and
+## "target_armor" (new, for Three Cheers specifically).
+static func _raze_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
 	match skill_id:
-		"scatterblast":
-			return _snapfire_scatterblast_modifier(level_data, context)
-		"firesnap_cookie":
-			return _snapfire_firesnap_cookie_modifier(level_data, context)
-		"lil_shredder":
-			return _snapfire_lil_shredder_modifier(level_data, context)
-		"mortimer_kisses":
-			return _snapfire_mortimer_kisses_modifier(level_data, context)
+		"double_trouble":
+			return _raze_double_trouble_modifier(level_data, context)
+		"blast_hopper":
+			return _raze_blast_hopper_modifier(level_data, context)
+		"three_cheers":
+			return _raze_three_cheers_modifier(level_data, context)
+		"kiss_the_wastes":
+			return _raze_kiss_the_wastes_modifier(level_data, context)
 		BASIC_ATTACK_ID:
-			return _snapfire_basic_attack_modifier(context)
+			return _raze_basic_attack_modifier(context)
 		_:
 			return 0.0
 
 
-## Scatterblast: the generic offensive scoring above already covers the
+## Double Trouble: the generic offensive scoring above already covers the
 ## primary target's own value/kill potential (fed by the flat-damage
 ## _estimate_skill_damage() case); this adds the shared AoE multi-target
 ## tiers on top - by the time this runs, the directional "is anything
 ## actually ahead of the blast" check has already happened (see battle.gd's
-## own _enemy_skill_in_range()'s "scatterblast" case), so `living_target_
+## own _enemy_skill_in_range()'s "double_trouble" case), so `living_target_
 ## hps` here is already exactly "whoever the blast actually reaches," per
-## the design doc's own "do NOT give Scatterblast a high score merely
+## the design doc's own "do NOT give Double Trouble a high score merely
 ## because enemies exist within its maximum range - the actual affected
 ## positions must be evaluated" instruction - never a fresh directional
 ## re-check of its own. A real hero fight only ever has the player as a
@@ -2348,7 +2349,7 @@ static func _snapfire_modifier(skill_id: String, level_data: Dictionary, context
 ## bonus), same rival-side simplification every other AoE skill in this
 ## file already has; the multi-target tiers only ever do real work in the
 ## simulation.
-static func _snapfire_scatterblast_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _raze_double_trouble_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var living_hps: Array = context.get("living_target_hps", [])
 	var hit_count: int = living_hps.size()
 
@@ -2376,8 +2377,8 @@ static func _snapfire_scatterblast_modifier(level_data: Dictionary, context: Dic
 	return score
 
 
-## Firesnap Cookie: a self-directed hop with an AoE landing, so - unlike
-## Whirling Death's own self-CENTERED radius (checked against Snapfire's
+## Blast Hopper: a self-directed hop with an AoE landing, so - unlike
+## Sweep's own self-CENTERED radius (checked against Raze's
 ## CURRENT position) - the AI has to project where the hop actually ends
 ## up before it can tell whether anyone's within `radius` of it at all.
 ## `grid_columns` gates whether that projection is even possible (never
@@ -2389,7 +2390,7 @@ static func _snapfire_scatterblast_modifier(level_data: Dictionary, context: Dic
 ## position that actually affects an enemy" instruction, a landing that
 ## reaches nobody scores WORSE than not casting it at all, not just
 ## "no bonus".
-static func _snapfire_firesnap_cookie_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _raze_blast_hopper_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var grid_columns: int = int(context.get("grid_columns", 0))
 	var radius: int = int(level_data.get("radius", 0))
 	var hit_count: int
@@ -2421,7 +2422,7 @@ static func _snapfire_firesnap_cookie_modifier(level_data: Dictionary, context: 
 		score += 35.0
 
 	if float(context.get("hero_hp_ratio", 1.0)) < 0.4:
-		# A high-threat situation for Snapfire herself makes locking an
+		# A high-threat situation for Raze herself makes locking an
 		# enemy down here worth more, same "how much does removing an
 		# action matter right now" signal every other stun-carrying
 		# skill in this file already uses.
@@ -2435,19 +2436,19 @@ static func _snapfire_firesnap_cookie_modifier(level_data: Dictionary, context: 
 	return score
 
 
-## Lil' Shredder: single-target burst that "competes directly with
+## Three Cheers: single-target burst that "competes directly with
 ## normal attacks" per the design doc's own instruction, hence the
 ## early-out below - a target a plain Attack can already kill outright
 ## leaves nothing for a slower 3-shot volley to finish first. Armor
 ## reduction is valued BOTH as immediate offensive value (this volley's
-## own later shots land harder) and as setup value for whatever Snapfire
+## own later shots land harder) and as setup value for whatever Raze
 ## does next while it's still up - `target_armor` (the target's own
 ## CURRENT armor, already reflecting any earlier reduction - see this
 ## file's own header comment) is what makes "high-armor target" a real
 ## number instead of a guess, and `duration` (read straight from this
 ## level's own data, never assumed to last forever) scales how much of
 ## that setup value is actually likely to still be there when it matters.
-static func _snapfire_lil_shredder_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _raze_three_cheers_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
 	var target_hp: float = float(context.get("target_hp", 0.0))
 	if target_hp <= 0.0:
@@ -2480,20 +2481,20 @@ static func _snapfire_lil_shredder_modifier(level_data: Dictionary, context: Dic
 	if armor_reduction_per_shot > 0.0 and duration > 0 and target_armor > 0.0:
 		# Worth more the larger a slice of the target's OWN armor it
 		# actually shreds - both this volley's own later shots and
-		# whatever Snapfire lands before it expires.
+		# whatever Raze lands before it expires.
 		var reduction_pct: float = clampf((armor_reduction_per_shot * float(shots)) / maxf(target_armor, 1.0), 0.0, 1.0)
 		score += 15.0 * reduction_pct
 
 	return score
 
 
-## Mortimer Kisses: a target-centered AoE + persistent burn ultimate,
-## same shape as Timbersaw's own Chakram - see _timbersaw_chakram_
+## Kiss the Wastes: a target-centered AoE + persistent burn ultimate,
+## same shape as Cinder's own Cinderbomb - see _cinder_cinderbomb_
 ## modifier()'s own docstring for why a real hero fight's splash always
 ## collapses to 0 (there's only ever the one player to hit), while the
 ## simulation's own "no columns, hit everyone else" fallback gives it
 ## real multi-target value (see EnemyHeroManager's own _fire_npc_
-## mortimer_kisses_shot()). The early-out mirrors Lil' Shredder's/every
+## kiss_the_wastes_shot()). The early-out mirrors Three Cheers's/every
 ## other expensive-skill's own: a target a plain Attack can already kill
 ## outright isn't worth a 200-350 mana ultimate. Opportunity cost (3 full
 ## turns of no movement/attack/other skill/items) is expressed as
@@ -2501,7 +2502,7 @@ static func _snapfire_lil_shredder_modifier(level_data: Dictionary, context: Dic
 ## deliberately NOT a separate "would another action have been better"
 ## penalty, since that's exactly what the surrounding score COMPARISON
 ## against every other candidate already does on its own.
-static func _snapfire_mortimer_kisses_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _raze_kiss_the_wastes_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
 	var target_hp: float = float(context.get("target_hp", 0.0))
 	if target_hp > 0.0 and hero_damage >= target_hp:
@@ -2511,7 +2512,7 @@ static func _snapfire_mortimer_kisses_modifier(level_data: Dictionary, context: 
 	# candidate (there's always exactly one possible target in a hero
 	# fight, and the simulation never offers this as a candidate with an
 	# empty `living` either - see EnemyHeroManager's own "living.is_
-	# empty()" guard in _fire_npc_mortimer_kisses_shot()).
+	# empty()" guard in _fire_npc_kiss_the_wastes_shot()).
 	var score: float = 25.0
 
 	var main_damage: float = float(level_data.get("main_damage", 0.0))
@@ -2552,13 +2553,13 @@ static func _snapfire_mortimer_kisses_modifier(level_data: Dictionary, context: 
 
 
 ## A plain Attack is only worth scoring above its flat baseline for
-## Snapfire when it can finish the target off outright (see
+## Raze when it can finish the target off outright (see
 ## basic_attack_participates()'s own docstring for why she opts in at
-## all) - Mortimer Kisses in particular is a very expensive ultimate, so
+## all) - Kiss the Wastes in particular is a very expensive ultimate, so
 ## a free kill deserves a real shot at winning over spending it (see the
 ## design doc's own Basic Attack example). Same small mana-scarcity
 ## nudge as every other hero's own copy here.
-static func _snapfire_basic_attack_modifier(context: Dictionary) -> float:
+static func _raze_basic_attack_modifier(context: Dictionary) -> float:
 	var score: float = 0.0
 
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
@@ -2755,7 +2756,7 @@ static func _naga_song_of_the_siren_modifier(level_data: Dictionary, context: Di
 		score += 25.0
 
 	# "High-threat enemy" has no real stat to read anywhere in this
-	# project (same gap Whirling Death's own primary-attribute reduction
+	# project (same gap Sweep's own primary-attribute reduction
 	# has - see this file's own header comment) - the closest honest
 	# proxy is a target already low enough to be worth finishing off, the
 	# same low-HP signal Mother's Grasp's own modifier already uses.
@@ -2786,8 +2787,8 @@ static func _naga_song_of_the_siren_modifier(level_data: Dictionary, context: Di
 	# --- Armor reduction: worth more the larger a slice of the target's
 	# own CURRENT armor it actually shreds AND the more physical damage
 	# is already happening during the window to benefit from it - same
-	# "reduction_pct off the target's own current armor" idiom Snapfire's
-	# own Lil' Shredder modifier uses (see _snapfire_lil_shredder_
+	# "reduction_pct off the target's own current armor" idiom Raze's
+	# own Three Cheers modifier uses (see _raze_three_cheers_
 	# modifier()), scaled by this window's own real damage total instead
 	# of a flat number, per the design doc's own explicit "its value
 	# depends on how much physical damage Naga can actually deal, not a
@@ -2978,7 +2979,7 @@ static func _slardar_bash_knockback_value(context: Dictionary) -> float:
 ## expected_damage()), so the two numbers never drift apart. `duration`
 ## is capped at 4 turns' worth of attacks even when the debuff itself
 ## lasts longer - the same "do not automatically assume every enemy
-## stays in range for the full duration" caution Timbersaw's own Chakram
+## stays in range for the full duration" caution Cinder's own Cinderbomb
 ## modifier already follows, rather than letting a 6-turn Haze imply six
 ## guaranteed hits.
 static func _slardar_expected_attacks_on_target(duration: int, context: Dictionary) -> float:
@@ -3112,11 +3113,11 @@ static func _slardar_slithereen_crush_modifier(level_data: Dictionary, context: 
 		score += 20.0
 
 	# "High-threat enemy" has no real per-creep stat exposed to this
-	# shared context today (same gap Whirling Death's own primary-
+	# shared context today (same gap Sweep's own primary-
 	# attribute reduction has - see this file's own header comment); the
 	# one real, always-available signal is `target_is_hero` - a hero-
 	# fight boss's own opponent (the player) is definitionally a bigger
-	# threat than a regular creep, same qualitative read Timbersaw's own
+	# threat than a regular creep, same qualitative read Cinder's own
 	# modifier already uses that field for.
 	if bool(context.get("target_is_hero", false)):
 		score += 20.0 * float(hit_count)
@@ -3343,7 +3344,7 @@ static func _mirana_starstorm_modifier(level_data: Dictionary, context: Dictiona
 
 	# "High-threat enemy" has no real per-creep stat exposed to this
 	# shared context today (same gap this file's own header comment
-	# already documents for Whirling Death/Slithereen Crush) - the one
+	# already documents for Sweep/Slithereen Crush) - the one
 	# real, always-available signal is `target_is_hero`, same qualitative
 	# read _slardar_slithereen_crush_modifier() already uses it for.
 	if bool(context.get("target_is_hero", false)):

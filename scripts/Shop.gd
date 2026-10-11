@@ -53,6 +53,7 @@ func _ready() -> void:
 	message_label.modulate.a = 0.0
 
 	details_buy_button.pressed.connect(_on_buy_pressed)
+	details_buy_button.set_meta(AudioManager.NO_CLICK_META, true)
 	prev_page_button.pressed.connect(_on_prev_page_pressed)
 	next_page_button.pressed.connect(_on_next_page_pressed)
 	sell_button.pressed.connect(_on_sell_button_pressed)
@@ -376,6 +377,7 @@ func _on_buy_pressed() -> void:
 
 	PlayerManager.add_gold(-cost)
 	PlayerManager.add_item(item_id, 1)
+	AudioManager.play_event("shop_transaction")
 	if _stock.has(item_id):
 		_stock[item_id] -= 1
 
@@ -471,6 +473,7 @@ func _build_sell_row(item_id: String, item_data: Dictionary, count: int) -> Cont
 	sell_button.custom_minimum_size = Vector2(150, 36)
 	sell_button.theme_type_variation = &"BloodButton"
 	sell_button.pressed.connect(_on_sell_item_pressed.bind(item_id))
+	sell_button.set_meta(AudioManager.NO_CLICK_META, true)
 
 	hbox.add_child(icon_rect)
 	hbox.add_child(name_label)
@@ -494,6 +497,7 @@ func _on_sell_item_pressed(item_id: String) -> void:
 
 	var sell_price: int = _sell_price_for(item_id)
 	PlayerManager.add_gold(sell_price)
+	AudioManager.play_event("shop_transaction")
 
 	_refresh_gold_label()
 	_refresh_sell_popup()

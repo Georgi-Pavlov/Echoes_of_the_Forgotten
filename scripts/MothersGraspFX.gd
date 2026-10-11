@@ -89,6 +89,10 @@ static func set_on(node: Variant, active: bool, origin: Vector2 = Vector2.ZERO, 
 		if host != null:
 			ridge(host, origin, feet)
 	node.add_child(fx)
+	# The roots tear up out of the ground when the ridge reaches the unit.
+	var erupt_in: float = maxf(fx._delay, 0.01)
+	node.get_tree().create_timer(erupt_in).timeout.connect(func() -> void:
+		AudioManager.play_event("vine_tentacle"))
 
 
 ## The roots clench on `node` as they tear into it.

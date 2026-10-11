@@ -2,8 +2,8 @@ class_name StoryBanner
 extends CanvasLayer
 
 ## A moment of story laid over the screen, in the Intro's caption style -
-## nothing to click, it reads itself in, stays just long enough to be
-## read and fades away, then emits `finished`:
+## it reads itself in, stays just long enough to be
+## read and fades away (or a click skips it), then emits `finished`:
 ##
 ##   1. The screen dims and a dark band settles across its middle, a few
 ##      motes of gold drifting up through it.
@@ -35,6 +35,9 @@ var _title: Label
 var _rule: Control
 var _rule_t := 0.0
 var _body: Label
+var _tween: Tween
+var _age := 0.0
+var _skipped := false
 
 
 ## Shows `title` over `body` on top of everything in `host`'s scene.
@@ -135,6 +138,7 @@ func _run() -> void:
 	var hold: float = HOLD_BASE_TIME + (_title_text.length() + _body_text.length()) * HOLD_PER_CHAR
 
 	var tw := create_tween()
+	_tween = tw
 	tw.tween_property(_root, "modulate:a", 1.0, DIM_TIME)
 	tw.tween_property(_title, "modulate:a", 1.0, TITLE_FADE_TIME)
 	tw.parallel().tween_method(_set_rule_t, 0.0, 1.0, RULE_TIME).set_delay(TITLE_FADE_TIME * 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -184,3 +188,23 @@ func _draw_rule() -> void:
 		_rule.draw_line(mid - Vector2(half * a, 0), mid - Vector2(half * b, 0), color, 1.5, true)
 	var d := 4.5 * _rule_t
 	_rule.draw_colored_polygon(PackedVector2Array([mid + Vector2(0, -d), mid + Vector2(d, 0), mid + Vector2(0, d), mid + Vector2(-d, 0)]), GOLD)
+
+
+func _process(delta: float) -> void:
+	_age += delta
+
+
+## A click or tap anywhere skips the rest of the banner (after a brief
+## grace, so the click that dealt the killing blow can't skip it unseen).
+func _input(event: InputEvent) -> void:
+	if _skipped or _age < 0.4:
+		return
+	var pressed: bool = (event is InputEventMouseButton and event.pressed) or (event is InputEventScreenTouch and event.pressed)
+	if not pressed:
+		return
+	get_viewport().set_input_as_handled()
+	_skipped = true
+	if _tween != null and _tween.is_valid():
+		_tween.kill()
+	finished.emit()
+	queue_free()

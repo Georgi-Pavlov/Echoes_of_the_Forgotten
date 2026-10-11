@@ -39,6 +39,7 @@ var _strand_speeds: Array[float] = []
 ## `on_hit` fires the moment its tip reaches the target.
 static func play(host: Node, from: Vector2, to: Vector2, on_hit: Callable = Callable()) -> void:
 	var fx := MistTendrilFX.new()
+	AudioManager.play_event("vine_tentacle")
 	fx._from = from
 	fx._to = to
 	fx._on_hit = on_hit

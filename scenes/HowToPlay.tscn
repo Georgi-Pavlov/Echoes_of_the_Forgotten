@@ -77,7 +77,7 @@ grow_horizontal = 0
 grow_vertical = 0
 text = "Back"
 
-[node name="TutorialButton" type="Button" parent="."]
+[node name="TutorialButton" type="Button" parent="." unique_id=436112201]
 layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0

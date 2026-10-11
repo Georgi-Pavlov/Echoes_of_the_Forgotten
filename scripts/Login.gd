@@ -5,6 +5,7 @@ extends Control
 @onready var error_label: Label = $Panel/VBoxContainer/ErrorLabel
 
 func _ready() -> void:
+	AudioManager.play_menu_music()
 	$Panel/VBoxContainer/HBoxContainer/SubmitButton.pressed.connect(_on_submit_pressed)
 	$Panel/VBoxContainer/HBoxContainer/BackButton.pressed.connect(_on_back_pressed)
 

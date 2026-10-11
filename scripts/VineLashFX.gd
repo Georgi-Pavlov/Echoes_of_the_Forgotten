@@ -68,6 +68,7 @@ const CREEP_STYLE := {
 ## start).
 static func play(host: Node, from: Vector2, to: Vector2, on_hit: Callable = Callable(), style: Dictionary = {}) -> VineLashFX:
 	var fx := VineLashFX.new()
+	AudioManager.play_event("vine_tentacle")
 	fx._from = from
 	fx._to = to
 	fx._on_hit = on_hit

@@ -1341,17 +1341,20 @@ var zones: Dictionary = {
 				},
 			},
 			{
-				"id": "timbersaw",
-				"name": "Timbersaw",
-				"image": "res://assets/heroes/Timbersaw.png",
-				"background": "res://assets/zones/the_verdant_scar_timbersaw.png",
-				"range_type": "Melee",
+				"id": "cinder",
+				"name": "Cinder",
+				"image": "res://assets/heroes/Cinder.png",
+				"background": "res://assets/zones/the_verdant_scar_cinder.jpg",
+				"range_type": "Range",
 				"main_stat": "Strength",
+				"attack_range": 1,
+				"attack_effect": "flamethrower",
+				"attack_origin": Vector2(0.94, 0.45),
 				"stats": {
 					"strength": 27,
 					"agility": 16,
 					"intelligence": 24,
-					"range": 150,
+					"range": 250,
 					"hp": 714,
 					"mana": 351,
 					"armor": 2.67,
@@ -1360,10 +1363,10 @@ var zones: Dictionary = {
 				},
 				"skills": [
 					{
-						"id": "whirling_death",
-						"name": "Whirling Death",
+						"id": "sweep",
+						"name": "Sweep",
 						"type": "standard",
-						"description": "Deals damage around the hero, reducing enemy primary attributes if a hero is hit.",
+						"description": "Cinder swings his flamethrower in a wide arc, unleashing a torrent of fire around himself. Every enemy caught within the flames suffers damage as the burning fuel scorches flesh.",
 						"levels": [
 							{"damage": 100, "radius": 1, "mana_cost": 70, "cooldown": 4},
 							{"damage": 150, "radius": 1, "mana_cost": 90, "cooldown": 4},
@@ -1372,10 +1375,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "timber_chain",
-						"name": "Timber Chain",
+						"id": "chainfire",
+						"name": "Chainfire",
 						"type": "standard",
-						"description": "Marks an enemy within range and chains toward it, dealing damage to every enemy caught in the path and to the marked enemy itself.",
+						"description": "Cinder fires a hooked chain that anchors above the marked enemy. He swings toward the target, dragging his flamethrower beneath him and leaving a trail of fire along his path.",
 						"levels": [
 							{"damage": 70, "range": 3, "mana_cost": 60, "cooldown": 4},
 							{"damage": 95, "range": 3, "mana_cost": 80, "cooldown": 4},
@@ -1384,10 +1387,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "reactive_armor",
-						"name": "Reactive Armor",
+						"id": "kindled_resolve",
+						"name": "Kindled Resolve",
 						"type": "passive",
-						"description": "Passive: every hit taken adds a stack of bonus armor and health regeneration, up to a max, each stack fading after its own duration.",
+						"description": "Passive: each time Cinder is struck, sparks erupt from his battered armor and ragged clothing, feeding the flames that cling to his body. Every hit increases his armor and health regeneration for a limited duration, as the growing heat hardens his defenses and fuels his determination to survive.",
 						"levels": [
 							{"bonus_armor_per_stack": 0.8, "bonus_hp_regen_per_stack": 3, "max_stacks": 5, "duration": 4},
 							{"bonus_armor_per_stack": 1.1, "bonus_hp_regen_per_stack": 4, "max_stacks": 6, "duration": 4},
@@ -1396,10 +1399,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "chakram",
-						"name": "Chakram",
+						"id": "cinderbomb",
+						"name": "Cinderbomb",
 						"type": "ultimate",
-						"description": "Ultimate: marks a target within range, striking it and every enemy around it, then leaves the chakram planted there, dealing damage to everything in range of it each turn for the duration.",
+						"description": "Ultimate: Cinder hurls an improvised incendiary barrel toward the target location. On impact, the barrel bursts apart, spreading burning fuel across the surrounding ground. The resulting blaze damages enemies caught in the blast and continues to burn at the impact site.",
 						"levels": [
 							{"cast_damage": 150, "damage_per_turn": 80, "duration": 2, "radius": 1, "range": 5, "mana_cost": 200, "cooldown": 10},
 							{"cast_damage": 225, "damage_per_turn": 120, "duration": 3, "radius": 1, "range": 6, "mana_cost": 275, "cooldown": 11},
@@ -1953,10 +1956,12 @@ var zones: Dictionary = {
 		"music": "scorchlands",
 		"heroes": [
 			{
-				"id": "snapfire",
-				"name": "Snapfire",
-				"image": "res://assets/heroes/Snapfire.png",
-				"background": "res://assets/zones/the_verdant_scar_snapfire.png",
+				"id": "raze",
+				"name": "Raze",
+				"image": "res://assets/heroes/Raze.png",
+				"background": "res://assets/zones/scorchlands_raze.jpg",
+				"attack_effect": "shotgun_blast",
+				"attack_origin": Vector2(0.965, 0.13),
 				"range_type": "Range",
 				"main_stat": "Strength",
 				"stats": {
@@ -1972,10 +1977,10 @@ var zones: Dictionary = {
 				},
 				"skills": [
 					{
-						"id": "scatterblast",
-						"name": "Scatterblast",
+						"id": "double_trouble",
+						"name": "Double Trouble",
 						"type": "standard",
-						"description": "Fires a shotgun blast in the direction she's facing, dealing damage to every enemy within range.",
+						"description": "Raze unleashes both barrels of her battered shotgun in the direction she's facing, blasting every enemy caught within range. She calls it a warning shot. Nobody believes her.",
 						"levels": [
 							{"damage": 70, "range": 2, "mana_cost": 80, "cooldown": 6},
 							{"damage": 100, "range": 2, "mana_cost": 105, "cooldown": 6},
@@ -1984,10 +1989,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "firesnap_cookie",
-						"name": "Firesnap Cookie",
+						"id": "blast_hopper",
+						"name": "Blast Hopper",
 						"type": "standard",
-						"description": "Feeds a cookie to Mortimer (her pet) to cause a hop in the direction she's facing, damaging and stunning enemies around where he lands.",
+						"description": "Raze detonates an explosive beneath her feet, launching herself toward the direction she's facing. While in the air she fires both barrels of her shotgun down at her enemies, damaging and blinding them with a deafening blast. Blinded enemies are stunned and unable to act for the duration.",
 						"levels": [
 							{"jump_distance": 2, "damage": 60, "radius": 1, "stun_turns": 1, "mana_cost": 70, "cooldown": 5},
 							{"jump_distance": 2, "damage": 90, "radius": 1, "stun_turns": 1, "mana_cost": 90, "cooldown": 5},
@@ -1996,10 +2001,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "lil_shredder",
-						"name": "Lil' Shredder",
+						"id": "three_cheers",
+						"name": "Three Cheers",
 						"type": "standard",
-						"description": "Marks a target within normal attack range and fires 3 shots at it, each dealing a percentage of her own attack damage and shredding armor - the shredded armor returns after a duration.",
+						"description": "Raze marks an enemy and unleashes three rapid shots from her modified firearm. Each hit deals a portion of her attack damage and tears away at the target's armor, leaving it increasingly exposed. The armor damage fades after a short duration.",
 						"levels": [
 							{"shots": 3, "damage_pct": 0.45, "armor_reduction_per_shot": 1, "duration": 1, "mana_cost": 80, "cooldown": 5},
 							{"shots": 3, "damage_pct": 0.55, "armor_reduction_per_shot": 2, "duration": 1, "mana_cost": 105, "cooldown": 5},
@@ -2008,10 +2013,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "mortimer_kisses",
-						"name": "Mortimer Kisses",
+						"id": "kiss_the_wastes",
+						"name": "Kiss the Wastes",
 						"type": "ultimate",
-						"description": "Ultimate: marks a target within normal attack range, then channels for 3 turns - unable to move, act, or use items - firing one shot a turn that tracks the target (or its last known column, if it dies), dealing damage and burn to whoever it hits plus splash to the columns around it.",
+						"description": "Ultimate: Raze blows her target a kiss before unleashing a barrage of three incendiary shots. She becomes completely committed to the attack, unable to move, act, or use items while firing one shot per turn. Each shot tracks the target, or its last known position if it dies, dealing heavy damage and setting its victim ablaze. The impact also scatters burning fragments across adjacent columns, catching nearby enemies in the inferno.",
 						"levels": [
 							{"hits": 3, "main_damage": 180, "splash_damage": 90, "burn_per_turn": 35, "burn_duration": 5, "mana_cost": 200, "cooldown": 10},
 							{"hits": 3, "main_damage": 260, "splash_damage": 130, "burn_per_turn": 50, "burn_duration": 5, "mana_cost": 270, "cooldown": 11},
@@ -2030,7 +2035,7 @@ var zones: Dictionary = {
 			{
 				"id": "scorchlands_melee",
 				"name": "Scorchlands melee creep",
-				"image": "res://assets/enemies/the_verdant_scar_melee.png",
+				"image": "res://assets/enemies/scorchlands_melee.png",
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
@@ -2045,7 +2050,7 @@ var zones: Dictionary = {
 			{
 				"id": "scorchlands_melee_2",
 				"name": "Scorchlands melee creep",
-				"image": "res://assets/enemies/the_verdant_scar_melee.png",
+				"image": "res://assets/enemies/scorchlands_melee.png",
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
@@ -2060,9 +2065,9 @@ var zones: Dictionary = {
 			{
 				"id": "scorchlands_range",
 				"name": "Scorchlands range creep",
-				"image": "res://assets/enemies/the_verdant_scar_range.png",
+				"image": "res://assets/enemies/scorchlands_range.png",
 				"type": "range",
-				"projectile": "rear_vine",
+				"projectile": "rifle_bullet",
 				"main_stat": "agility",
 				"main_stat_value": 10,
 				"hp": 100,
@@ -2075,8 +2080,8 @@ var zones: Dictionary = {
 			}
 		],
 		"unlocked": true,
-		"background": "res://assets/zones/the_verdant_scar_snapfire.png",
-		"battle_background": "res://assets/battle_areas/the_verdant_scar_area.jpg"
+		"background": "res://assets/zones/scorchlands_raze.jpg",
+		"battle_background": "res://assets/battle_areas/scorchlands_area.jpg"
 	},
 
 	"the_bronze_dominion": {
@@ -2493,6 +2498,9 @@ func build_hero_fight_enemy_def(hero_static: Dictionary) -> Dictionary:
 		"name": hero_static.get("name", "Rival Hero"),
 		"image": hero_static.get("image", ""),
 		"battle_scale": hero_static.get("battle_scale", 1.0),
+		# A ranged rival's reach in columns, if its hero data sets one (else
+		# the standard ranged reach - see battle.gd's _enemy_attack_range()).
+		"attack_range": hero_static.get("attack_range", -1),
 		"type": "range" if is_ranged else "melee",
 		"hp": hp,
 		"damage": flat_damage,

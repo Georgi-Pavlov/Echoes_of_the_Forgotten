@@ -1,6 +1,7 @@
 extends Control
 
 func _ready() -> void:
+	AudioManager.play_menu_music()
 	$ButtonsContainer/NewPlayerButton.pressed.connect(_on_new_player_pressed)
 	$ButtonsContainer/LogInButton.pressed.connect(_on_log_in_pressed)
 	$ButtonsContainer/HighScoresButton.pressed.connect(_on_high_scores_pressed)

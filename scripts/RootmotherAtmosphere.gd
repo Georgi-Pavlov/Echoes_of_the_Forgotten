@@ -13,6 +13,10 @@ extends Control
 #     own rhythm
 #   - pink petals drift down off her flowers
 #
+# Cinder's background (the_verdant_scar_cinder.jpg) is the same valley
+# with Cinder in her place: it gets the valley's effects below, and his
+# own fire, smoke and firelight instead of hers - see CinderHeroFX.gd.
+#
 # The valley (right half):
 #   - the green light at the heart of the central tower breathes and
 #     flares, its rays fanning down over the ruins in step with it
@@ -26,6 +30,7 @@ extends Control
 const RIPPLE_SHADER := preload("res://shaders/underwater_ripple.gdshader")
 const SHAFTS_SHADER := preload("res://shaders/light_shafts.gdshader")
 const FOG_SHADER := preload("res://shaders/fog_drift.gdshader")
+const CINDER_FX := preload("res://scripts/CinderHeroFX.gd")
 
 # The painted stats frame (UV x0, y0, x1, y1) - kept still.
 const FRAME_CALM_RECT := Vector4(0.01, 0.62, 0.466, 0.972)
@@ -124,8 +129,11 @@ var _petal_fade_y := Vector2.ZERO
 
 ## `atm` is the owning ZoneAtmosphere - its image mapping helpers are
 ## reused so positions line up exactly with its own effects.
-func build(atm: Control, background: TextureRect) -> void:
+## `hero`: whose background this is - "the_rootmother", or "cinder" for the
+## valley alone plus Cinder's own side (CinderHeroFX).
+func build(atm: Control, background: TextureRect, hero: String = "the_rootmother") -> void:
 	_atm = atm
+	var is_cinder := hero == "cinder"
 	_background = background
 	_rng.randomize()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -135,17 +143,18 @@ func build(atm: Control, background: TextureRect) -> void:
 	_tex_size = _background.texture.get_size()
 
 	# Breathing, straight on the background texture (the ripple itself is
-	# switched off - strength 0 - so only the swell is left).
-	var mat := ShaderMaterial.new()
-	mat.shader = RIPPLE_SHADER
-	mat.set_shader_parameter("strength", 0.0)
-	mat.set_shader_parameter("calm_rect", FRAME_CALM_RECT)
-	mat.set_shader_parameter("aspect", _tex_size.x / _tex_size.y)
-	mat.set_shader_parameter("breathe_center", BREATHE_CENTER_UV)
-	mat.set_shader_parameter("breathe_radius", BREATHE_RADIUS)
-	mat.set_shader_parameter("breathe_amount", BREATHE_AMOUNT)
-	mat.set_shader_parameter("breathe_period", BREATHE_PERIOD)
-	_background.material = mat
+	# switched off - strength 0 - so only the swell is left). Hers only.
+	if not is_cinder:
+		var mat := ShaderMaterial.new()
+		mat.shader = RIPPLE_SHADER
+		mat.set_shader_parameter("strength", 0.0)
+		mat.set_shader_parameter("calm_rect", FRAME_CALM_RECT)
+		mat.set_shader_parameter("aspect", _tex_size.x / _tex_size.y)
+		mat.set_shader_parameter("breathe_center", BREATHE_CENTER_UV)
+		mat.set_shader_parameter("breathe_radius", BREATHE_RADIUS)
+		mat.set_shader_parameter("breathe_amount", BREATHE_AMOUNT)
+		mat.set_shader_parameter("breathe_period", BREATHE_PERIOD)
+		_background.material = mat
 
 	_glow_tex = _atm._radial(128,
 		PackedFloat32Array([0.0, 0.12, 0.35, 1.0]),
@@ -209,6 +218,14 @@ func build(atm: Control, background: TextureRect) -> void:
 		})
 	_water_layer = _new_layer(true)
 	_water_layer.draw.connect(_draw_water)
+
+	# Cinder: his own side, then nothing of hers.
+	if is_cinder:
+		var fx: Control = CINDER_FX.new()
+		add_child(fx)
+		fx.build(_atm, _background)
+		set_process(true)
+		return
 
 	# Her eyes, over the mist so they burn through it.
 	_eyes.clear()
@@ -296,10 +313,13 @@ func _add_fog(rect_uv: Rect2, params: Dictionary) -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
-	_update_eyes(delta)
 	_update_tower(delta)
-	_update_petals(delta)
 	_water_layer.queue_redraw()
+	# Hers only (not built for Cinder's background).
+	if _fly_layer == null:
+		return
+	_update_eyes(delta)
+	_update_petals(delta)
 	_fly_layer.queue_redraw()
 	_petal_layer.queue_redraw()
 

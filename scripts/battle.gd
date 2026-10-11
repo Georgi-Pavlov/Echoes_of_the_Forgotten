@@ -83,13 +83,15 @@ const ANIMATED_CREATURE_PROFILES := {
 	"the_everfrost_melee_2": "everfrost_melee",
 	"the_everfrost_range": "everfrost_range",
 	"the_rootmother": "the_rootmother",
-	# Scorchlands fights in the same arena with the same creep art.
+	"cinder": "cinder",
+	"raze": "raze",
+	# Scorchlands has its own creep art (the Verdant Scar ones above are separate).
 	"the_verdant_scar_melee": "verdant_scar_melee",
 	"the_verdant_scar_melee_2": "verdant_scar_melee",
 	"the_verdant_scar_range": "verdant_scar_range",
-	"scorchlands_melee": "verdant_scar_melee",
-	"scorchlands_melee_2": "verdant_scar_melee",
-	"scorchlands_range": "verdant_scar_range",
+	"scorchlands_melee": "scorchlands_melee",
+	"scorchlands_melee_2": "scorchlands_melee",
+	"scorchlands_range": "scorchlands_range",
 	# A rival Erynd's own bear; the player's is attached in
 	# _elderwild_companion() (it isn't spawned through _spawn_enemy()).
 	"enemy_elderwild_companion": "elderwild_companion",
@@ -265,18 +267,6 @@ const BEAR_DEATH_HP_PENALTY_PCT := 0.2
 # First Cold (see _cast_enemy_touch_of_the_first_cold()) - the player
 # can't act yet.
 var _rival_fx_in_flight: bool = false
-
-# Timbersaw's planted Chakram (see _spawn_chakram_marker()): drawn as a
-# spinning circular saw blade rather than loaded from an image - its
-# blade/teeth, hub, bolt-hole and spark colors, tooth count, and how
-# long one full spin takes.
-const CHAKRAM_BLADE_COLOR := Color(0.78, 0.82, 0.86, 1.0)
-const CHAKRAM_EDGE_COLOR := Color(0.95, 0.97, 1.0, 1.0)
-const CHAKRAM_HUB_COLOR := Color(0.35, 0.38, 0.42, 1.0)
-const CHAKRAM_HOLE_COLOR := Color(0.12, 0.13, 0.15, 1.0)
-const CHAKRAM_SPARK_COLOR := Color(1.0, 0.75, 0.3, 1.0)
-const CHAKRAM_TEETH := 18
-const CHAKRAM_SPIN_SECONDS := 0.45
 
 # Naga Siren's Mirror Image (see _spawn_illusion_node()) fades every
 # illusion's copy of the hero's own portrait to this alpha, so the real
@@ -533,7 +523,7 @@ var _guardian_sprint_charge_damage_pct: float = 0.0
 var _guardian_sprint_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
-# Timbersaw's Reactive Armor: a passive - no cast, no cooldown/mana
+# Cinder's Kindled Resolve: a passive - no cast, no cooldown/mana
 # spend of its own. Every hit the hero takes (see apply_damage())
 # earns one stack, each with its OWN independent turns-remaining
 # counter (unlike every other duration-based buff above, which only
@@ -543,10 +533,10 @@ var _guardian_sprint_duration_pending_start: bool = false
 # replaced. Folds bonus_armor_per_stack * stack count into _hero_armor()
 # (same slot Woven Flesh's/Wildbond's own bonus armor use) and
 # heals bonus_hp_regen_per_stack * stack count every hero turn
-# (_apply_reactive_armor_regen(), same timing/stacking relationship as
+# (_apply_kindled_resolve_regen(), same timing/stacking relationship as
 # Frostborn's/the baseline passive regen).
 # ------------------------------------------------------------------
-var _reactive_armor_stack_turns: Array[int] = []
+var _kindled_resolve_stack_turns: Array[int] = []
 
 # ------------------------------------------------------------------
 # The Primordial Hunger's Frostbound Fangs: while active, the hero's plain Attacks
@@ -588,7 +578,7 @@ var _the_test_of_time_turns_remaining: int = 0
 var _the_test_of_time_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
-# Snapfire's ultimate, Mortimer Kisses: a targeted channel, not a
+# Raze's ultimate, Kiss the Wastes: a targeted channel, not a
 # self-cast buff like The Test of Time above, but locked out the same way -
 # move, attack, skill, and item are all disabled for its whole
 # duration (same 7 check sites The Test of Time already touches: _populate_
@@ -598,19 +588,19 @@ var _the_test_of_time_duration_pending_start: bool = false
 # skip - it AUTO-FIRES one shot instead, from _end_turn()'s own tail
 # (see the block right before it reopens the action buttons), for
 # level_data.hits total shots counting the cast turn's own immediate
-# one (_resolve_mortimer_kisses_cast() fires that first one directly;
-# _mortimer_kisses_turns_left only tracks the REMAINING auto-fired
-# ones). _mortimer_marked_enemy is a live Dictionary reference into
+# one (_resolve_kiss_the_wastes_cast() fires that first one directly;
+# _kiss_the_wastes_turns_left only tracks the REMAINING auto-fired
+# ones). _kiss_marked_enemy is a live Dictionary reference into
 # _enemies - reading its own "pos_index" tracks it turn to turn while
 # it's alive, and keeps returning wherever it died once it isn't (see
-# _fire_mortimer_kisses_shot()'s own comment - _kill_enemy() only ever
+# _fire_kiss_the_wastes_shot()'s own comment - _kill_enemy() only ever
 # removes a dead enemy from the _enemies array, it never mutates the
 # Dictionary's own fields).
 # ------------------------------------------------------------------
-var _mortimer_kisses_active: bool = false
-var _mortimer_kisses_turns_left: int = 0
-var _mortimer_marked_enemy: Dictionary = {}
-var _mortimer_kisses_level_data: Dictionary = {}
+var _kiss_the_wastes_active: bool = false
+var _kiss_the_wastes_turns_left: int = 0
+var _kiss_marked_enemy: Dictionary = {}
+var _kiss_the_wastes_level_data: Dictionary = {}
 
 # ------------------------------------------------------------------
 # Naga Siren's Mirror Image: a self-cast that spawns this level's own
@@ -623,7 +613,7 @@ var _mortimer_kisses_level_data: Dictionary = {}
 # land on the hero, from any source) rolls `hit_chance_pct` to redirect
 # the ENTIRE hit onto a random living illusion instead - a full
 # redirect, not a split, and completely bypassing the hero's own
-# defensive mechanics (Reactive Armor stacks, The Mist Remembers, Veil of the
+# defensive mechanics (Kindled Resolve stacks, The Mist Remembers, Veil of the
 # Forgotten) since nothing actually touched him this time. Every hero turn
 # that isn't the casting one, every surviving illusion also strikes the
 # SAME randomly-picked living enemy within the hero's own attack range
@@ -632,7 +622,7 @@ var _mortimer_kisses_level_data: Dictionary = {}
 # "casting turn doesn't count" pattern as every other duration-based
 # buff. Ends (despawning every surviving illusion) once the duration
 # runs out; recasting mid-duration replaces the set outright, same as
-# Woven Flesh/Chakram's own "recast overwrites" reasoning.
+# Woven Flesh/Cinderbomb's own "recast overwrites" reasoning.
 # ------------------------------------------------------------------
 var _illusions: Array = []
 var _illusion_damage_pct: float = 0.0
@@ -696,7 +686,7 @@ var _eclipse_beams_remaining: int = 0
 var _eclipse_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
-# Timbersaw's ultimate, Chakram: a targeted cast that deals this
+# Cinder's ultimate, Cinderbomb: a targeted cast that deals this
 # level's own cast_damage to the target and every enemy within radius
 # columns of the target's position AT CAST TIME, then plants a marker
 # there - fixed at that snapshot, unlike The Frost Tempest's own
@@ -704,11 +694,11 @@ var _eclipse_duration_pending_start: bool = false
 # position every tick - dealing damage_per_turn to every enemy within
 # radius columns of that FIXED spot at the start of every turn for the
 # duration (same "casting turn doesn't count" pattern as every other
-# duration-based buff). Empty dictionary means no chakram is currently
-# planted; see _resolve_chakram_cast()/_tick_chakram()/
-# _despawn_chakram().
+# duration-based buff). Empty dictionary means no cinderbomb is currently
+# planted; see _resolve_cinderbomb_cast()/_tick_cinderbomb()/
+# _despawn_cinderbomb().
 # ------------------------------------------------------------------
-var _chakram: Dictionary = {}
+var _cinderbomb: Dictionary = {}
 
 # ------------------------------------------------------------------
 # Skarn's Frostbound Rupture: on cast, deals a straight instant hit to the
@@ -780,15 +770,15 @@ var _bear: Dictionary = {}
 # _choose_enemy_skill_on_bear() for how the AI picks between the two,
 # and each skill's own _cast_enemy_*_on_bear() for what it does to the
 # bear. Skills left out are either about the player's own position
-# (Undertow, The Sunken One/Timber Chain's line, Chakram's/Frostbound
-# Rupture' placement, Mortimer Kisses' channel, Rimecleaver's area) or
+# (Undertow, The Sunken One/Chainfire's line, Cinderbomb's/Frostbound
+# Rupture' placement, Kiss the Wastes' channel, Rimecleaver's area) or
 # not targeted at all; those still reach the bear through their own
 # AoE collateral, same as before.
 const ENEMY_BEAR_TARGETABLE_SKILLS: Array[String] = [
 	"thornbind", "whisper_of_the_veil", "drowned_surge", "corrosive_haze", "sacred_arrow",
 	"lucent_beam", "ensnare", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold",
 	"return_to_the_void", "maddening_roar", "the_hunger_calls", "winters_grip", "charge",
-	"glacier_breaker", "sanguine_bloom", "lil_shredder",
+	"glacier_breaker", "sanguine_bloom", "three_cheers",
 ]
 
 # Set by _cast_enemy_skill() for the duration of one cast: true when
@@ -1194,46 +1184,46 @@ var _enemy_woven_flesh_bonus_hp_regen: float = 0.0
 var _enemy_woven_flesh_turns_remaining: int = 0
 var _enemy_woven_flesh_duration_pending_start: bool = false
 
-# Timbersaw's Reactive Armor, on the rival - mirrors the player's own
-# _reactive_armor_stack_turns/_apply_reactive_armor_stack()/_tick_
-# reactive_armor_stacks()/_apply_reactive_armor_regen(): each entry is
+# Cinder's Kindled Resolve, on the rival - mirrors the player's own
+# _kindled_resolve_stack_turns/_apply_kindled_resolve_stack()/_tick_
+# kindled_resolve_stacks()/_apply_kindled_resolve_regen(): each entry is
 # one stack's own remaining-turns counter, ticking down independently
 # (unlike every other duration-based buff in this file, which only ever
 # tracks one shared timer). Stacked from _deal_fixed_damage_to_enemy()
 # every time a hit actually lands on the boss, folded into _enemy_hero_
-# bonus_armor() for the armor half and healed via _apply_enemy_reactive_
-# armor_regen() for the regen half - see _apply_enemy_reactive_armor_
-# stack().
-var _enemy_reactive_armor_stack_turns: Array[int] = []
+# bonus_armor() for the armor half and healed via
+# _apply_enemy_kindled_resolve_regen() for the regen half - see
+# _apply_enemy_kindled_resolve_stack().
+var _enemy_kindled_resolve_stack_turns: Array[int] = []
 
-# Timbersaw's ultimate, Chakram, on the rival - mirrors the player's own
-# _chakram field/_resolve_chakram_cast()/_tick_chakram()/_despawn_
-# chakram(): a targeted cast that deals this level's own cast_damage to
+# Cinder's ultimate, Cinderbomb, on the rival - mirrors the player's own
+# _cinderbomb field/_resolve_cinderbomb_cast()/_tick_cinderbomb()/_despawn_
+# cinderbomb(): a targeted cast that deals this level's own cast_damage to
 # the player (the only possible initial-AoE target in a hero fight - see
-# _cast_enemy_chakram()'s own "no cleave" simplification every other
-# rival AoE already uses), then plants the chakram at the player's
+# _cast_enemy_cinderbomb()'s own "no cleave" simplification every other
+# rival AoE already uses), then plants the cinderbomb at the player's
 # CURRENT position at that moment (never re-checked against where the
 # player moves to afterward), dealing damage_per_turn to the player
 # every tick they're still within radius columns of that fixed spot, for
-# the duration. Empty dictionary means no chakram is currently planted;
-# see _cast_enemy_chakram()/_tick_enemy_chakram()/_despawn_enemy_
-# chakram().
-var _enemy_chakram: Dictionary = {}
+# the duration. Empty dictionary means no cinderbomb is currently planted;
+# see _cast_enemy_cinderbomb()/_tick_enemy_cinderbomb()/_despawn_enemy_
+# cinderbomb().
+var _enemy_cinderbomb: Dictionary = {}
 
-# Snapfire's ultimate, Mortimer Kisses, on the rival - mirrors the
-# player's own _mortimer_kisses_active/_mortimer_kisses_turns_left/
-# _mortimer_kisses_level_data field shape (see that block's own comment
+# Raze's ultimate, Kiss the Wastes, on the rival - mirrors the
+# player's own _kiss_the_wastes_active/_kiss_the_wastes_turns_left/
+# _kiss_the_wastes_level_data field shape (see that block's own comment
 # for the full lock-site list): channels for `hits` turns, unable to
 # move/attack/cast another skill/use items for the duration - see
 # _enemy_hero_turn()'s own top-of-function lockout. Unlike the player's
-# own _mortimer_marked_enemy, there's no separate "marked enemy"
+# own _kiss_marked_enemy, there's no separate "marked enemy"
 # reference to hold here - the only possible target in a hero fight is
 # the player himself, tracked live via _hero_pos_index, which (unlike a
 # creep) never needs a "last known column" fallback since the battle
 # would already be over if he'd died.
-var _enemy_mortimer_kisses_active: bool = false
-var _enemy_mortimer_kisses_turns_left: int = 0
-var _enemy_mortimer_kisses_level_data: Dictionary = {}
+var _enemy_kiss_the_wastes_active: bool = false
+var _enemy_kiss_the_wastes_turns_left: int = 0
+var _enemy_kiss_the_wastes_level_data: Dictionary = {}
 
 # Naga Siren's Mirror Image, cast by the rival - mirrors the player's own
 # _illusions/_illusion_damage_pct/_illusion_hit_chance_pct/_illusions_
@@ -1389,9 +1379,9 @@ var _player_sanguine_bloom_dot_turns_left: int = 0
 var _player_mothers_grasp_dot_damage: float = 0.0
 var _player_mothers_grasp_dot_turns_left: int = 0
 
-# Snapfire's Lil' Shredder, cast by the rival on the player - mirrors
+# Raze's Three Cheers, cast by the rival on the player - mirrors
 # the player-side per-enemy armor_reduction/armor_reduction_turns_left
-# fields (see _resolve_lil_shredder_cast()), just held as battle-local
+# fields (see _resolve_three_cheers_cast()), just held as battle-local
 # vars since there's only one player to track them on. Folded into
 # _hero_armor() as a straight subtraction, same "runtime field, never
 # touching the static template" reasoning the enemy-side version uses.
@@ -1412,13 +1402,13 @@ var _player_armor_reduction_turns_left: int = 0
 # a second one of its own.
 var _player_corrosive_haze_bonus_pct: float = 0.0
 
-# Snapfire's ultimate, Mortimer Kisses, cast by the rival on the player -
-# mirrors the player-side per-enemy mortimer_burn_dot_damage/mortimer_
-# burn_dot_turns_left fields (see _fire_mortimer_kisses_shot()), just
+# Raze's ultimate, Kiss the Wastes, cast by the rival on the player -
+# mirrors the player-side per-enemy kiss_burn_dot_damage/kiss_
+# burn_dot_turns_left fields (see _fire_kiss_the_wastes_shot()), just
 # held as battle-local vars since there's only one player to track them
 # on.
-var _player_mortimer_burn_dot_damage: float = 0.0
-var _player_mortimer_burn_dot_turns_left: int = 0
+var _player_kiss_burn_dot_damage: float = 0.0
+var _player_kiss_burn_dot_turns_left: int = 0
 
 # ------------------------------------------------------------------
 # Ranged-hero target selection: when true, the enemies in
@@ -1475,29 +1465,29 @@ var _pending_undertow_level_data: Dictionary = {}
 var _pending_undertow_target: Dictionary = {}
 var _pending_undertow_stage_generation: int = -1
 
-# Timbersaw's Timber Chain, held the same way as every other targeted
-# skill's own pending level data above, from the moment _start_timber_
-# chain_targeting() opens targeting until a target is actually clicked
-# (_resolve_timber_chain_cast()).
-var _pending_timber_chain_level_data: Dictionary = {}
+# Cinder's Chainfire, held the same way as every other targeted
+# skill's own pending level data above, from the moment
+# _start_chainfire_targeting() opens targeting until a target is
+# actually clicked (_resolve_chainfire_cast()).
+var _pending_chainfire_level_data: Dictionary = {}
 
-# Timbersaw's Chakram, held the same way as every other targeted
-# skill's own pending level data above, from the moment _start_chakram_
+# Cinder's Cinderbomb, held the same way as every other targeted
+# skill's own pending level data above, from the moment _start_cinderbomb_
 # targeting() opens targeting until a target is actually clicked
-# (_resolve_chakram_cast()).
-var _pending_chakram_level_data: Dictionary = {}
+# (_resolve_cinderbomb_cast()).
+var _pending_cinderbomb_level_data: Dictionary = {}
 
-# Snapfire's Lil' Shredder, held the same way as every other targeted
+# Raze's Three Cheers, held the same way as every other targeted
 # skill's own pending level data above, from the moment _start_lil_
-# shredder_targeting() opens targeting until a target is actually
-# clicked (_resolve_lil_shredder_cast()).
-var _pending_lil_shredder_level_data: Dictionary = {}
+# cheers_targeting() opens targeting until a target is actually
+# clicked (_resolve_three_cheers_cast()).
+var _pending_three_cheers_level_data: Dictionary = {}
 
-# Snapfire's Mortimer Kisses, held the same way as every other targeted
+# Raze's Kiss the Wastes, held the same way as every other targeted
 # skill's own pending level data above, from the moment _start_
-# mortimer_kisses_targeting() opens targeting until a target is
-# actually clicked (_resolve_mortimer_kisses_cast()).
-var _pending_mortimer_kisses_level_data: Dictionary = {}
+# kiss_the_wastes_targeting() opens targeting until a target is
+# actually clicked (_resolve_kiss_the_wastes_cast()).
+var _pending_kiss_the_wastes_level_data: Dictionary = {}
 
 # Naga Siren's Ensnare, held the same way as every other targeted
 # skill's own pending level data above, from the moment _start_ensnare_
@@ -1598,6 +1588,21 @@ var _pending_sanguine_bloom_level_data: Dictionary = {}
 const RANGE_ENEMY_ATTACK_RANGE := 3
 const RANGE_ENEMY_FLEE_DISTANCE := 1
 
+
+## A ranged enemy's attack reach in columns: its own "attack_range" if it
+## has one (a rival hero whose data sets it - e.g. Cinder, 1), otherwise
+## RANGE_ENEMY_ATTACK_RANGE.
+func _enemy_attack_range(enemy: Dictionary) -> int:
+	var own: int = int(enemy.get("static", {}).get("attack_range", -1))
+	return own if own > 0 else RANGE_ENEMY_ATTACK_RANGE
+
+
+## Whether a ranged enemy backs away from the hero standing `hero_distance`
+## columns off - never one whose reach is no longer than the distance it
+## would back away from, or it would never get to attack at all.
+func _enemy_flees_at(enemy: Dictionary, hero_distance: int) -> bool:
+	return hero_distance <= RANGE_ENEMY_FLEE_DISTANCE and _enemy_attack_range(enemy) > RANGE_ENEMY_FLEE_DISTANCE
+
 # Every ACTIVE skill a rival hero might cast during a hero fight - the
 # full candidate pool _pick_enemy_ready_skill() checks for cooldown/
 # worth-casting/mana/range before handing survivors to EnemySkillAI to
@@ -1623,8 +1628,8 @@ const ENEMY_KNOWN_SKILL_IDS: Array[String] = [
 	"rimecleaver", "winters_grip", "the_frost_tempest",
 	"frostbound_rupture", "charge", "bestial_rage", "glacier_breaker",
 	"rootveil", "sanguine_bloom", "woven_flesh", "mother's_grasp",
-	"whirling_death", "timber_chain", "chakram",
-	"scatterblast", "firesnap_cookie", "lil_shredder", "mortimer_kisses",
+	"sweep", "chainfire", "cinderbomb",
+	"double_trouble", "blast_hopper", "three_cheers", "kiss_the_wastes",
 	"mirror_image", "ensnare", "song_of_the_siren",
 	"guardian_sprint", "slithereen_crush", "corrosive_haze",
 	"starstorm", "sacred_arrow", "leap", "moonlight_shadow",
@@ -1705,9 +1710,13 @@ func _process(_delta: float) -> void:
 
 func _ready() -> void:
 	flee_button.pressed.connect(_on_flee_pressed)
+	$SettingsButton.pressed.connect(func(): $SettingsPopup.open())
 	defeat_ok_button.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/PostLogin.tscn"))
 	move_left_button.pressed.connect(_on_move_left_pressed)
 	move_right_button.pressed.connect(_on_move_right_pressed)
+	# Moving has its own sound (the steps), so no generic button click.
+	move_left_button.set_meta(AudioManager.NO_CLICK_META, true)
+	move_right_button.set_meta(AudioManager.NO_CLICK_META, true)
 	attack_button.pressed.connect(_on_attack_pressed)
 	hero_image.gui_input.connect(_on_hero_image_gui_input)
 	level_up_ok_button.pressed.connect(_on_level_up_continue_pressed)
@@ -1863,11 +1872,11 @@ func _hero_max_hp() -> float:
 ## bonus picked up from items (mirrors how damage bonus is combined
 ## in _roll_hero_damage), plus any armor currently borrowed via
 ## Leeching Hunger, plus Wildbond's flat bonus, Woven Flesh's own
-## flat bonus, and Reactive Armor's own per-stack bonus, each while
+## flat bonus, and Kindled Resolve's own per-stack bonus, each while
 ## active.
 func _hero_armor() -> float:
 	var stats: Dictionary = _recruited.get("stats", {})
-	return float(stats.get("armor", 0)) + _leeching_hunger_bonus.get("armor", 0.0) + _wildbond_bonus_armor + _woven_flesh_bonus_armor + _reactive_armor_bonus_armor() - _player_leeching_hunger_penalty.get("armor", 0.0) - _player_armor_reduction
+	return float(stats.get("armor", 0)) + _leeching_hunger_bonus.get("armor", 0.0) + _wildbond_bonus_armor + _woven_flesh_bonus_armor + _kindled_resolve_bonus_armor() - _player_leeching_hunger_penalty.get("armor", 0.0) - _player_armor_reduction
 
 
 ## Blood of the Wild's current level data ({} if not learned yet) - looked
@@ -2254,6 +2263,7 @@ func _enemy_status_effect_text(enemy: Dictionary) -> String:
 ## debuff landing or an old one ticking off) rather than trying to
 ## track exactly which of those actually happened at each call site.
 func _refresh_enemy_overhead_labels() -> void:
+	_refresh_kindled_embers()
 	var groups: Dictionary = {}
 	for enemy in _enemies:
 		var col: int = enemy["pos_index"]
@@ -2409,7 +2419,7 @@ func _populate_item_grid() -> void:
 				# hero) - a stunned hero loses the turn entirely, same as
 				# a stunned enemy loses its own (see _enemy_turn()'s stun
 				# check), so there's nothing left for him to spend it on.
-				btn.disabled = _battle_over or _has_acted_this_turn or _rival_fx_in_flight or _the_test_of_time_active or _player_stun_turns_left > 0 or _mortimer_kisses_active
+				btn.disabled = _battle_over or _has_acted_this_turn or _rival_fx_in_flight or _the_test_of_time_active or _player_stun_turns_left > 0 or _kiss_the_wastes_active
 				btn.pressed.connect(_on_item_pressed.bind(item_id))
 				# Lets _apply_tutorial_gate() find this button again by
 				# item id without needing its own tracking dict, the way
@@ -2437,7 +2447,7 @@ func _refresh_gold_label() -> void:
 
 
 func _on_item_pressed(item_id: String) -> void:
-	if _battle_over or _has_acted_this_turn or _rival_fx_in_flight or _the_test_of_time_active or _player_stun_turns_left > 0 or _mortimer_kisses_active:
+	if _battle_over or _has_acted_this_turn or _rival_fx_in_flight or _the_test_of_time_active or _player_stun_turns_left > 0 or _kiss_the_wastes_active:
 		return
 	if not PlayerManager.use_item(item_id):
 		return
@@ -2530,6 +2540,7 @@ func _refresh_bars() -> void:
 	_refresh_corrosive_haze()
 	_refresh_mark_of_stillness_frost()
 	_refresh_void_marks()
+	_refresh_kindled_embers()
 	_refresh_hunger_calls_fx()
 
 	# Called this pervasively (after nearly every action/tick in the
@@ -2736,8 +2747,8 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 	if _the_test_of_time_active:
 		return
 
-	if _mortimer_kisses_active:
-		_show_message_over_hero("Focused on Mortimer Kisses!")
+	if _kiss_the_wastes_active:
+		_show_message_over_hero("Focused on Kiss the Wastes!")
 		return
 
 	if _player_silence_turns_left > 0:
@@ -2777,31 +2788,31 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 			if not _cast_abyssal_spasm(level_data):
 				# No enemies in range - same as above, no-op.
 				return
-		"whirling_death":
-			if not _cast_whirling_death(level_data):
+		"sweep":
+			if not _cast_sweep(level_data):
 				# No enemies in range - same as above, no-op.
 				return
-		"scatterblast":
-			if not _cast_scatterblast(level_data):
+		"double_trouble":
+			if not _cast_double_trouble(level_data):
 				# No enemies in range - same as above, no-op.
 				return
-		"firesnap_cookie":
-			_activate_firesnap_cookie(level_data)
-		"lil_shredder":
-			if not _start_lil_shredder_targeting(level_data):
+		"blast_hopper":
+			_activate_blast_hopper(level_data)
+		"three_cheers":
+			if not _start_three_cheers_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_lil_shredder_cast), not here.
+			# click resolves (_resolve_three_cheers_cast), not here.
 			return
-		"mortimer_kisses":
-			if not _start_mortimer_kisses_targeting(level_data):
+		"kiss_the_wastes":
+			if not _start_kiss_the_wastes_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_mortimer_kisses_cast), not here.
+			# click resolves (_resolve_kiss_the_wastes_cast), not here.
 			return
 		"mirror_image":
 			_activate_mirror_image(level_data)
@@ -2857,21 +2868,21 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 			if not _cast_song_of_the_siren(level_data):
 				# No enemies in range - same as above, no-op.
 				return
-		"timber_chain":
-			if not _start_timber_chain_targeting(level_data):
+		"chainfire":
+			if not _start_chainfire_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_timber_chain_cast), not here.
+			# click resolves (_resolve_chainfire_cast), not here.
 			return
-		"chakram":
-			if not _start_chakram_targeting(level_data):
+		"cinderbomb":
+			if not _start_cinderbomb_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_chakram_cast), not here.
+			# click resolves (_resolve_cinderbomb_cast), not here.
 			return
 		"whisper_of_the_veil":
 			# Pressing the button again while its own targeting is still
@@ -3181,13 +3192,13 @@ func _cast_abyssal_spasm(level_data: Dictionary) -> bool:
 	return true
 
 
-## Timbersaw's Whirling Death: deals `level_data.damage` (a flat amount,
+## Cinder's Sweep: deals `level_data.damage` (a flat amount,
 ## not a roll off the hero's own attack) to every enemy within
-## `level_data.radius` columns of Timbersaw. Same shape as
+## `level_data.radius` columns of Cinder. Same shape as
 ## _cast_abyssal_spasm() above, just with a flat damage value instead of a
 ## multiplier on a rolled hit. Returns false (no mana/turn/cooldown
 ## spent) if nothing is in range.
-func _cast_whirling_death(level_data: Dictionary) -> bool:
+func _cast_sweep(level_data: Dictionary) -> bool:
 	var radius: int = int(level_data.get("radius", 0))
 	var targets: Array = []
 	for enemy in _enemies:
@@ -3200,24 +3211,36 @@ func _cast_whirling_death(level_data: Dictionary) -> bool:
 		_show_message_over_hero("No enemies in range")
 		return false
 
-	var whirling_damage: float = float(level_data.get("damage", 0))
+	var sweep_damage: float = float(level_data.get("damage", 0))
+	_play_sweep_flames(_hero_pos_index, radius)
 	for enemy in targets:
-		_deal_fixed_damage_to_enemy(enemy, whirling_damage)
+		_deal_fixed_damage_to_enemy(enemy, sweep_damage)
 		# The standard splash hit-flash (see _apply_splash_damage()).
 		if is_instance_valid(enemy.get("node")):
 			_flash_bounce_hit(enemy["node"])
 	# Self-centered on the hero, same as the check above - a rival's own
 	# illusion (Naga Siren's Mirror Image) can be in range independently
 	# of whether the boss itself currently is.
-	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, radius, whirling_damage, true)
+	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, radius, sweep_damage, true)
 
 	return true
+
+
+## Purely cosmetic: Sweep's wall of tall flames (SweepFlamesFX), erupting
+## out of the ground around the caster's column `pos_index` - from its
+## feet outward - to `radius` columns either side, on the ground line.
+func _play_sweep_flames(pos_index: int, radius: int) -> void:
+	if not is_instance_valid(_fx_layer):
+		return
+	var center := Vector2(_index_to_x(pos_index) + _grid_unit() * 0.5, _the_sunken_one_ground_y())
+	var half_width: float = _grid_unit() * (float(radius) + 0.5)
+	SweepFlamesFX.play(_fx_layer, center, half_width, get_viewport_rect().size.y / 4.0)
 
 
 ## Slardar's Slithereen Crush: deals `level_data.damage` and stuns
 ## (target["stun_turns_left"], same shared field Barbed Lunge's/Drowned Surge's own
 ## stun use) every enemy within `level_data.radius` columns of Slardar -
-## same shape as _cast_whirling_death() above, just with a stun folded
+## same shape as _cast_sweep() above, just with a stun folded
 ## in and only ever stunning a hit that actually left the target alive.
 ## Returns false (no mana/turn/cooldown spent) if nothing is in range.
 func _cast_slithereen_crush(level_data: Dictionary) -> bool:
@@ -3263,7 +3286,7 @@ func _cast_slithereen_crush(level_data: Dictionary) -> bool:
 ## Mirana's Starstorm: deals `level_data.damage` (a flat amount, not a
 ## roll off the hero's own attack) to every enemy within
 ## `level_data.radius` columns of Mirana - same shape as
-## _cast_whirling_death()/_cast_slithereen_crush() above, just with no
+## _cast_sweep()/_cast_slithereen_crush() above, just with no
 ## stun/CC folded in. Returns false (no mana/turn/cooldown spent) if
 ## nothing is in range.
 func _cast_starstorm(level_data: Dictionary) -> bool:
@@ -3304,17 +3327,17 @@ func _cast_starstorm(level_data: Dictionary) -> bool:
 
 
 ## Naga Siren's ultimate, Song of the Siren: stuns (target["stun_turns_
-## left"], same shared field Barbed Lunge's/Drowned Surge's/Firesnap Cookie's own
+## left"], same shared field Barbed Lunge's/Drowned Surge's/Blast Hopper's own
 ## stun use) and shreds the armor (target["armor_reduction"]/
 ## "armor_reduction_turns_left", the same per-instance runtime fields
-## Lil' Shredder's own shred uses - stacking additively with any
+## Three Cheers's own shred uses - stacking additively with any
 ## already on a target, but refreshing (not adding to) the turns left,
 ## same "reapplying overwrites the timer" convention every other
 ## refreshable debuff in this file uses) of every enemy within this
 ## level's own radius of the hero's CURRENT position, both for this
 ## level's own stun_turns. Purely offensive - no damage of its own, and
 ## nothing about the hero himself changes (he and his illusions can
-## still move/attack normally the whole time, unlike Mortimer Kisses'
+## still move/attack normally the whole time, unlike Kiss the Wastes'
 ## own channel). Returns false (no mana/turn/cooldown spent) if nothing
 ## is in range.
 func _cast_song_of_the_siren(level_data: Dictionary) -> bool:
@@ -3346,15 +3369,15 @@ func _cast_song_of_the_siren(level_data: Dictionary) -> bool:
 	return true
 
 
-## Snapfire's Scatterblast: fires straight in whatever direction she's
+## Raze's Double Trouble: fires straight in whatever direction she's
 ## currently facing (hero_image.flip_h, kept up to date by _hero_move()/
 ## every other repositioning skill that sets it), dealing
 ## level_data.damage to every enemy within level_data.range columns
-## AHEAD of her in that direction only - unlike Whirling Death's/Dark
+## AHEAD of her in that direction only - unlike Sweep's/Dark
 ## Pact's own radius checks above, which look every direction at once,
 ## an enemy behind her (or sharing her own column) is never hit. Returns
 ## false (no mana/turn/cooldown spent) if nothing is in range.
-func _cast_scatterblast(level_data: Dictionary) -> bool:
+func _cast_double_trouble(level_data: Dictionary) -> bool:
 	var range_columns: int = int(level_data.get("range", 0))
 	var direction: int = -1 if hero_image.flip_h else 1
 
@@ -3362,7 +3385,7 @@ func _cast_scatterblast(level_data: Dictionary) -> bool:
 	for enemy in _enemies:
 		if _is_target_hidden(enemy):
 			continue
-		# 0 = sharing Snapfire's own column (point-blank - still in front
+		# 0 = sharing Raze's own column (point-blank - still in front
 		# of the blast regardless of which way she's facing), up through
 		# range_columns strictly ahead in her facing direction.
 		var ahead: int = (enemy["pos_index"] - _hero_pos_index) * direction
@@ -3373,63 +3396,91 @@ func _cast_scatterblast(level_data: Dictionary) -> bool:
 		_show_message_over_hero("No enemies in range")
 		return false
 
-	var scatter_damage: float = float(level_data.get("damage", 0))
+	var trouble_damage: float = float(level_data.get("damage", 0))
 	for enemy in targets:
-		_deal_fixed_damage_to_enemy(enemy, scatter_damage)
+		_deal_fixed_damage_to_enemy(enemy, trouble_damage)
 	# Same directional cone as the check above - a rival's own illusion
 	# (Naga Siren's Mirror Image) ahead of the hero can be caught in it
 	# independently of whether the boss itself currently is.
-	_deal_directional_aoe_damage_to_enemy_illusions(_hero_pos_index, direction, range_columns, scatter_damage)
+	_deal_directional_aoe_damage_to_enemy_illusions(_hero_pos_index, direction, range_columns, trouble_damage)
 
-	_play_scatterblast_effect(hero_image, direction, range_columns)
+	_play_double_trouble_effect(hero_image, direction, range_columns)
 
 	return true
 
 
-## Purely cosmetic: a one-shot cone of particles bursting from
-## `origin_node`'s own position out toward `direction` (+1 right, -1
-## left), sized to travel roughly `range_columns` columns before
-## fading - visualizes Scatterblast's blast, from whichever side cast
-## it (the player's own hero_image, or a rival's own node). The damage
-## above has already fully resolved by the time this plays; it never
-## gates on this. First particle-based effect in this file - every
-## other one-shot visual (The Sunken One's flight, Elderwild Companion's summon) is
-## a plain TextureRect tween instead, since there's no shotgun-pellet
-## art asset to tween in the same way.
-func _play_scatterblast_effect(origin_node: Control, direction: int, range_columns: int) -> void:
+## Where the muzzle of Raze's shotgun sits on her art (fraction of the
+## node's size, facing right - mirrored when she faces left).
+const DOUBLE_TROUBLE_MUZZLE := Vector2(0.965, 0.13)
+
+## Where her mouth sits on her art (same convention) - the blown kiss of
+## Kiss the Wastes starts here.
+const RAZE_MOUTH := Vector2(0.44, 0.16)
+
+
+## Purely cosmetic: both barrels go off at `origin_node`'s muzzle - a
+## flash, a cone of fire and smoke, and pellets fanning out toward
+## `direction` (+1 right, -1 left) for roughly `range_columns` columns
+## (see DoubleTroubleFX) - visualizes Double Trouble's blast, from
+## whichever side cast it (the player's own hero_image, or a rival's own
+## node). The damage above has already fully resolved by the time this
+## plays; it never gates on this.
+func _play_double_trouble_effect(origin_node: Control, direction: int, range_columns: int) -> void:
 	if not is_instance_valid(origin_node):
 		return
 
-	var lifetime: float = 0.35
-	var travel_distance: float = _grid_unit() * maxf(1.0, float(range_columns))
-
-	var particles := CPUParticles2D.new()
-	particles.position = origin_node.position + origin_node.size / 2.0
-	particles.emitting = false
-	particles.one_shot = true
-	particles.amount = 40
-	particles.lifetime = lifetime
-	particles.explosiveness = 1.0
-	particles.direction = Vector2(direction, 0)
-	particles.spread = 18.0
-	particles.gravity = Vector2.ZERO
-	particles.initial_velocity_min = travel_distance / lifetime * 0.7
-	particles.initial_velocity_max = travel_distance / lifetime * 1.1
-	particles.scale_amount_min = 4.0
-	particles.scale_amount_max = 8.0
-	particles.color = Color(1.0, 0.65, 0.15, 1.0)
-	add_child(particles)
-	# Same reasoning as _elderwild_companion()'s own move_child() call -
-	# render at the hero/enemy layer, not on top of every UI panel.
-	move_child(particles, enemies_layer.get_index() + 1)
-	particles.emitting = true
-
-	get_tree().create_timer(lifetime + 0.2).timeout.connect(particles.queue_free)
+	var muzzle := DOUBLE_TROUBLE_MUZZLE
+	if direction < 0:
+		muzzle.x = 1.0 - muzzle.x
+	var from: Vector2 = origin_node.global_position + origin_node.size * muzzle
+	DoubleTroubleFX.play(_fx_layer, from, direction, _grid_unit() * maxf(1.0, float(range_columns)))
+	_shake_screen()
 
 
-## Snapfire's Firesnap Cookie: hops level_data.jump_distance columns in
+## How long Blast Hopper's leap lasts - the animator's own arc, the
+## launch charge at the start, the shots at the peak (half way) and the
+## landing all key off this.
+const BLAST_HOP_DURATION := 0.7
+
+
+## Purely cosmetic: Blast Hopper's leap, from either side. A charge goes
+## off under `node`'s feet where it stood (`old_x`, its x before the move
+## - the node itself has already been moved to the landing column) and
+## throws it high into the air toward `direction`; at the peak both
+## barrels fire down at the landing spot (the blast covering
+## `radius_columns`), and it comes down in a puff of dust. The damage and
+## stun have already fully resolved - none of this gates them.
+func _play_blast_hop_effect(node: TextureRect, old_x: float, direction: int, radius_columns: int) -> void:
+	if not is_instance_valid(node):
+		return
+	var height: float = get_viewport_rect().size.y * 0.2
+	var shift: float = old_x - node.position.x   # how far back the leap starts
+	var feet_new: Vector2 = node.global_position + Vector2(node.size.x * 0.5, node.size.y - 4.0)
+	var feet_old: Vector2 = feet_new + Vector2(shift, 0.0)
+	var muzzle_frac := DOUBLE_TROUBLE_MUZZLE
+	if node.flip_h:
+		muzzle_frac.x = 1.0 - muzzle_frac.x
+	var peak_muzzle: Vector2 = node.global_position + Vector2(shift * 0.5, -height) + node.size * muzzle_frac
+	var radius_px: float = _grid_unit() * (float(radius_columns) + 0.5)
+
+	var animator := CreatureAnimator.of(node)
+	if animator != null:
+		animator.play_blast_hop(shift, height, BLAST_HOP_DURATION)
+
+	BlastHopperFX.launch(_fx_layer, feet_old, direction)
+	get_tree().create_timer(BLAST_HOP_DURATION * 0.5).timeout.connect(func() -> void:
+		if _battle_over or not is_instance_valid(node):
+			return
+		BlastHopperFX.slam(_fx_layer, peak_muzzle, feet_new, radius_px, _shake_screen))
+	get_tree().create_timer(BLAST_HOP_DURATION).timeout.connect(func() -> void:
+		if _battle_over or not is_instance_valid(node):
+			return
+		BlastHopperFX.land(_fx_layer, feet_new))
+
+
+## Raze's Blast Hopper: hops level_data.jump_distance columns in
 ## whatever direction she's currently facing (hero_image.flip_h, same
-## convention Scatterblast reads), same move-distance rules
+## convention Double Trouble reads), same move-distance rules
 ## (board edge/Frostbound Rupture wall, ranged-vs-melee straight-through-or-
 ## stop-on-enemy) as a normal move (see _hero_move()) - then, on
 ## landing, deals level_data.damage and stuns for level_data.stun_turns
@@ -3439,15 +3490,17 @@ func _play_scatterblast_effect(origin_node: Control, direction: int, range_colum
 ## Only stuns a hit enemy that's still alive - a dead one has already
 ## been removed from _enemies by _deal_fixed_damage_to_enemy's kill
 ## check.
-func _activate_firesnap_cookie(level_data: Dictionary) -> void:
+func _activate_blast_hopper(level_data: Dictionary) -> void:
 	var jump_distance: int = int(level_data.get("jump_distance", 0))
 	var direction: int = -1 if hero_image.flip_h else 1
+	var old_x: float = hero_image.position.x
 
 	if _is_ranged_hero():
 		_hero_pos_index = _ranged_move_target(_hero_pos_index, direction, jump_distance)
 	else:
 		_hero_pos_index = _melee_move_target(_hero_pos_index, direction, jump_distance)
 	_update_hero_position()
+	_play_blast_hop_effect(hero_image, old_x, direction, int(level_data.get("radius", 0)))
 
 	var radius: int = int(level_data.get("radius", 0))
 	var damage: float = float(level_data.get("damage", 0))
@@ -3467,7 +3520,7 @@ func _activate_firesnap_cookie(level_data: Dictionary) -> void:
 
 ## Mirana's Leap: hops level_data.jump_distance columns in whatever
 ## direction she's currently facing (hero_image.flip_h, same convention
-## Scatterblast/Firesnap Cookie already read) - unlike Firesnap Cookie's
+## Double Trouble/Blast Hopper already read) - unlike Blast Hopper's
 ## own hop, this ALWAYS sails clean over any enemy in the way regardless
 ## of range_type (the unobstructed "walk straight through" rule
 ## _ranged_move_target() already uses for a ranged hero, applied here
@@ -3516,7 +3569,7 @@ func _resolve_ensnare_cast(target: Dictionary, level_data: Dictionary) -> void:
 
 ## Resolves a Corrosive Haze cast on `target`: reduces its armor by
 ## this level's own `armor_reduction` (target["armor_reduction"], the
-## same per-instance runtime field Lil' Shredder's own shred and Song
+## same per-instance runtime field Three Cheers's own shred and Song
 ## of the Siren use - stacking additively with any already on it) and
 ## marks it with `bonus_damage_pct` (target["corrosive_haze_bonus_pct"],
 ## read by _deal_fixed_damage_to_enemy() to boost every hit it takes
@@ -3525,7 +3578,7 @@ func _resolve_ensnare_cast(target: Dictionary, level_data: Dictionary) -> void:
 ## vulnerability). Both share `duration`'s own turns-left counter
 ## (target["armor_reduction_turns_left"]) - see
 ## _tick_enemy_turn_start_effects()'s own comment on why that's fine to
-## share with Lil' Shredder's shred. Deals no damage of its own - a
+## share with Three Cheers's shred. Deals no damage of its own - a
 ## pure debuff.
 func _resolve_corrosive_haze_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
@@ -3895,13 +3948,13 @@ func _pad_the_sunken_one_landings(landings: Array[Vector2], span: Vector2i) -> v
 		i += 1
 
 
-## Resolves a Timber Chain cast on `target`: chains a line from
-## Timbersaw's own column to `target`'s, so every enemy currently
+## Resolves a Chainfire cast on `target`: chains a line from
+## Cinder's own column to `target`'s, so every enemy currently
 ## standing anywhere between the two (inclusive of both ends) takes
 ## `level_data.damage` - `target` itself takes the same amount, it's
 ## not a separate/bonus hit. The whole path is snapshotted into
 ## `hit_targets` before any damage is dealt, so a kill partway through
-## can't skip anyone after it. Timbersaw then pulls himself onto
+## can't skip anyone after it. Cinder then pulls himself onto
 ## `target`'s own pos_index (read after the damage above, but a dead
 ## enemy keeps its last "pos_index" around, so this still lands in the
 ## right spot even if the chain itself killed `target`) - UNLESS a
@@ -3909,7 +3962,7 @@ func _pad_the_sunken_one_landings(landings: Array[Vector2], span: Vector2i) -> v
 ## the pull itself stops one column short of it (the chain's damage
 ## above still reaches the full line regardless - only the hero's own
 ## physical landing spot is blocked).
-func _resolve_timber_chain_cast(target: Dictionary, level_data: Dictionary) -> void:
+func _resolve_chainfire_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	var damage: float = float(level_data.get("damage", 0))
@@ -3923,19 +3976,10 @@ func _resolve_timber_chain_cast(target: Dictionary, level_data: Dictionary) -> v
 		var pos: int = enemy["pos_index"]
 		if pos >= start_col and pos <= end_col:
 			hit_targets.append(enemy)
-	for enemy in hit_targets:
-		_deal_fixed_damage_to_enemy(enemy, damage)
-		# The standard splash hit-flash (see _apply_splash_damage()).
-		if is_instance_valid(enemy.get("node")):
-			_flash_bounce_hit(enemy["node"])
-	# Same line as above (captured before the pull below can move the
-	# hero off start_col) - a rival's own illusion (Naga Siren's Mirror
-	# Image) standing anywhere along it can still be caught in it.
-	_deal_line_aoe_damage_to_enemy_illusions(start_col, end_col, damage, true)
 
 	# The chain's own damage still reaches every enemy across the full
-	# line above (a magical effect, not the hero physically walking it)
-	# but a rival's Frostbound Rupture wall in that same path stops the hero's
+	# line (a magical effect, not the hero physically walking it) but a
+	# rival's Frostbound Rupture wall in that same path stops the hero's
 	# own pull short of target's column - same "can't step into one"
 	# rule every other hero movement enforces, just walked one column
 	# at a time here instead of using _melee_move_target()/_ranged_
@@ -3949,36 +3993,74 @@ func _resolve_timber_chain_cast(target: Dictionary, level_data: Dictionary) -> v
 			break
 		landing_pos = next_pos
 
-	_hero_pos_index = landing_pos
-	_update_hero_position()
-
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["timber_chain"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("timber_chain", _skill_cooldowns["timber_chain"])
+	_skill_cooldowns["chainfire"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("chainfire", _skill_cooldowns["chainfire"])
 	_refresh_skill_cooldown_labels()
+	# Nothing else happens this turn while he swings across.
+	_has_acted_this_turn = true
+	_update_action_buttons()
 
-	if _battle_over or _stage_generation != generation_before:
+	# Facing the way he swings (art faces right natively).
+	if chain_direction != 0:
+		hero_image.flip_h = chain_direction < 0
+	var on_landed := func() -> void:
+		_hero_pos_index = landing_pos
+		_update_hero_position()
+		if _battle_over or _stage_generation != generation_before:
+			return
+		for enemy in hit_targets:
+			if not _enemies.any(func(e: Dictionary) -> bool: return is_same(e, enemy)):
+				continue
+			_deal_fixed_damage_to_enemy(enemy, damage)
+			# The standard splash hit-flash (see _apply_splash_damage()).
+			if is_instance_valid(enemy.get("node")):
+				_flash_bounce_hit(enemy["node"])
+		# Same line as above (captured before the pull moved the hero off
+		# start_col) - a rival's own illusion (Naga Siren's Mirror Image)
+		# standing anywhere along it can still be caught in it.
+		_deal_line_aoe_damage_to_enemy_illusions(start_col, end_col, damage, true)
+		if _battle_over or _stage_generation != generation_before:
+			return
+		_mark_turn_used()
+	var landing := Vector2(_index_to_x(landing_pos), _creature_top_y(hero_image.size.y))
+	_play_chainfire(hero_image, _hero_static, target.get("node"), landing, on_landed)
+
+
+## Purely cosmetic (plus the swing itself): Chainfire (ChainfireFX). The
+## chain flies from `unit`'s flamethrower (its hero data's "attack_origin",
+## mirrored for its facing) to a hook point above `target_node`'s head, and
+## `unit` swings across to `landing` (its position in its parent's space)
+## laying a fire trail as it goes. `on_landed` fires as it touches down -
+## or right away if a sprite is already gone, so the turn never stalls.
+func _play_chainfire(unit: Variant, hero_static: Dictionary, target_node: Variant, landing: Vector2, on_landed: Callable) -> void:
+	if not (unit is Control) or not (target_node is Control) or not is_instance_valid(unit) \
+			or not is_instance_valid(target_node) or not is_instance_valid(_fx_layer):
+		on_landed.call()
 		return
-
-	_mark_turn_used()
+	var hand: Vector2 = hero_static.get("attack_origin", Vector2(0.85, 0.45))
+	if unit.flip_h:
+		hand.x = 1.0 - hand.x
+	var target_top: Vector2 = target_node.global_position + target_node.size * Vector2(0.5, 0.08)
+	ChainfireFX.play(_fx_layer, unit, landing, target_top, hand, on_landed)
 
 
 # ------------------------------------------------------------------
-# Timbersaw's ultimate, Chakram (see the field comment above _chakram
+# Cinder's ultimate, Cinderbomb (see the field comment above _cinderbomb
 # for the overall shape).
 # ------------------------------------------------------------------
 
-## Resolves a Chakram cast on `target`: deals this level's own
+## Resolves a Cinderbomb cast on `target`: deals this level's own
 ## cast_damage to `target` and every other enemy within radius columns
-## of `target`'s position at this moment, then plants the chakram
+## of `target`'s position at this moment, then plants the cinderbomb
 ## there - snapshotting that position now, so it stays fixed even if
-## `target` (or anything else) moves later. Any chakram already planted
+## `target` (or anything else) moves later. Any cinderbomb already planted
 ## from a previous cast is torn down first, same "recast replaces
 ## outright" reasoning as _elderwild_companion()'s own _despawn_bear()
 ## call, since the ultimate's long cooldown makes an overlapping recast
 ## a rare, deliberate choice rather than something worth stacking.
-func _resolve_chakram_cast(target: Dictionary, level_data: Dictionary) -> void:
+func _resolve_cinderbomb_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	var pos_index: int = target["pos_index"]
@@ -3991,174 +4073,109 @@ func _resolve_chakram_cast(target: Dictionary, level_data: Dictionary) -> void:
 			continue
 		if _distance(enemy["pos_index"], pos_index) <= radius:
 			hit_targets.append(enemy)
-	for enemy in hit_targets:
-		_deal_fixed_damage_to_enemy(enemy, cast_damage)
-		# The standard splash hit-flash (see _apply_splash_damage()).
-		if is_instance_valid(enemy.get("node")):
-			_flash_bounce_hit(enemy["node"])
-	# Planted at the target's own position at this moment - a rival's
-	# own illusion (Naga Siren's Mirror Image) there (or nearby) takes
-	# the same initial burst.
-	_deal_aoe_damage_to_enemy_illusions(pos_index, radius, cast_damage, true)
-
-	_despawn_chakram()
-	_chakram = {
-		"pos_index": pos_index,
-		"radius": radius,
-		"damage_per_turn": float(level_data.get("damage_per_turn", 0)),
-		"turns_remaining": int(level_data.get("duration", 0)),
-		"duration_pending_start": true,
-		"node": _spawn_chakram_marker(pos_index),
-	}
-	_show_message_over_hero("Chakram!")
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["chakram"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("chakram", _skill_cooldowns["chakram"])
+	_skill_cooldowns["cinderbomb"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("cinderbomb", _skill_cooldowns["cinderbomb"])
 	_refresh_skill_cooldown_labels()
+	_show_message_over_hero("Cinderbomb!")
+	# Nothing else happens this turn while the barrel is in the air.
+	_has_acted_this_turn = true
+	_update_action_buttons()
 
-	if _battle_over or _stage_generation != generation_before:
+	# Everything lands when the barrel bursts: the blast, then the burning
+	# ground planted at the target's position at cast time.
+	var on_explode := func() -> void:
+		if _battle_over or _stage_generation != generation_before:
+			return
+		for enemy in hit_targets:
+			if not _enemies.any(func(e: Dictionary) -> bool: return is_same(e, enemy)):
+				continue
+			_deal_fixed_damage_to_enemy(enemy, cast_damage)
+			# The standard splash hit-flash (see _apply_splash_damage()).
+			if is_instance_valid(enemy.get("node")):
+				_flash_bounce_hit(enemy["node"])
+		# Planted at the target's own position at cast time - a rival's
+		# own illusion (Naga Siren's Mirror Image) there (or nearby) takes
+		# the same initial burst.
+		_deal_aoe_damage_to_enemy_illusions(pos_index, radius, cast_damage, true)
+		_shake_screen()
+
+		_despawn_cinderbomb()
+		_cinderbomb = {
+			"pos_index": pos_index,
+			"radius": radius,
+			"damage_per_turn": float(level_data.get("damage_per_turn", 0)),
+			"turns_remaining": int(level_data.get("duration", 0)),
+			"duration_pending_start": true,
+			"node": _spawn_cinderbomb_marker(pos_index, radius),
+		}
+		if _battle_over or _stage_generation != generation_before:
+			return
+		_mark_turn_used()
+	_throw_cinderbomb(hero_image, _hero_static, target.get("node"), pos_index, radius, on_explode)
+
+
+## Purely cosmetic: Cinderbomb's burning barrel (CinderbombFX), hurled from
+## `caster`'s flamethrower (its hero data's "attack_origin", mirrored for
+## its facing) onto `target_node`, bursting across `radius` columns of
+## column `pos_index`. `on_explode` fires as it bursts - or right away if a
+## sprite is already gone, so the turn never stalls.
+func _throw_cinderbomb(caster: Variant, hero_static: Dictionary, target_node: Variant, pos_index: int, radius: int, on_explode: Callable) -> void:
+	if not (caster is Control) or not is_instance_valid(caster) or not is_instance_valid(_fx_layer):
+		on_explode.call()
 		return
+	var origin: Vector2 = hero_static.get("attack_origin", Vector2(0.85, 0.45))
+	if caster.flip_h:
+		origin.x = 1.0 - origin.x
+	var from: Vector2 = caster.global_position + caster.size * origin
+	var to := Vector2(_index_to_x(pos_index) + _grid_unit() * 0.5, _the_sunken_one_ground_y() - get_viewport_rect().size.y / 10.0)
+	if target_node is Control and is_instance_valid(target_node):
+		to.x = target_node.global_position.x + target_node.size.x * 0.5
+	CinderbombFX.throw(_fx_layer, from, to, _grid_unit() * (float(radius) + 0.5), on_explode)
 
-	_mark_turn_used()
 
-
-## Purely cosmetic: plants the chakram's marker at `pos_index` - a
-## circular saw blade drawn from plain shapes (see _build_saw_blade()),
-## half the usual creature height across since it's a planted marker
-## rather than a combatant, centered on its column. Spins nonstop and
-## throws a steady stream of sparks off its bottom edge where it grinds
-## the ground; pops in with a quick overshoot when planted. Returns the
-## created node for _resolve_chakram_cast()/_cast_enemy_chakram() to
-## store as their chakram's "node" - freed via _dismiss_chakram_marker().
-func _spawn_chakram_marker(pos_index: int) -> Node2D:
-	var full_creature_height: float = get_viewport_rect().size.y / 4.0
-	var radius: float = full_creature_height / 4.0
-
-	var marker := Node2D.new()
-	marker.position = Vector2(_index_to_x(pos_index) + _grid_unit() / 2.0, _creature_y() + full_creature_height / 2.0)
-	add_child(marker)
+## Purely cosmetic: the burning ground Cinderbomb leaves (CinderbombFX.
+## burn_ground()) - low flames across `radius` columns either side of
+## column `pos_index`, on the ground line, in front of the fighters'
+## feet. Returns the node for the cinderbomb's "node" - ended via
+## _dismiss_cinderbomb_marker().
+func _spawn_cinderbomb_marker(pos_index: int, radius: int) -> Node2D:
+	var center := Vector2(_index_to_x(pos_index) + _grid_unit() * 0.5, _the_sunken_one_ground_y())
+	var ground: Node2D = CinderbombFX.burn_ground(self, center, _grid_unit() * (float(radius) + 0.5), get_viewport_rect().size.y / 4.0)
 	# Same reasoning as _elderwild_companion()'s own move_child() call -
 	# render at the hero/enemy layer, not on top of every UI panel.
-	move_child(marker, enemies_layer.get_index() + 1)
-
-	var blade: Node2D = _build_saw_blade(radius)
-	marker.add_child(blade)
-
-	# Sparks grinding off the bottom edge, thrown back against the spin.
-	var sparks := CPUParticles2D.new()
-	sparks.position = Vector2(0.0, radius * 0.95)
-	sparks.amount = 24
-	sparks.lifetime = 0.4
-	sparks.direction = Vector2(-1, -0.4)
-	sparks.spread = 30.0
-	sparks.gravity = Vector2(0, 500)
-	sparks.initial_velocity_min = 90.0
-	sparks.initial_velocity_max = 170.0
-	sparks.scale_amount_min = 1.5
-	sparks.scale_amount_max = 3.0
-	sparks.color = CHAKRAM_SPARK_COLOR
-	marker.add_child(sparks)
-	sparks.emitting = true
-
-	# Pops in, then spins for as long as it exists (bound to the blade,
-	# so the loop dies with it).
-	marker.scale = Vector2(0.2, 0.2)
-	var pop: Tween = marker.create_tween()
-	pop.tween_property(marker, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	var spin: Tween = blade.create_tween().set_loops()
-	spin.tween_property(blade, "rotation", TAU, CHAKRAM_SPIN_SECONDS).from(0.0)
-
-	return marker
+	move_child(ground, enemies_layer.get_index() + 1)
+	return ground
 
 
-## Removes a planted chakram's marker (see _spawn_chakram_marker()) -
-## stops its sparks and shrinks it away rather than just vanishing.
-## Safe on a missing/already-freed node.
-func _dismiss_chakram_marker(marker: Variant) -> void:
-	if not is_instance_valid(marker) or not (marker is Node2D):
-		return
-	for child in marker.get_children():
-		if child is CPUParticles2D:
-			child.emitting = false
-	var shrink: Tween = marker.create_tween()
-	shrink.tween_property(marker, "scale", Vector2(0.1, 0.1), 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	shrink.parallel().tween_property(marker, "modulate:a", 0.0, 0.25)
-	shrink.tween_callback(marker.queue_free)
+## Removes a planted cinderbomb's burning ground (see
+## _spawn_cinderbomb_marker()) - the flames gutter out rather than just
+## vanishing. Safe on a missing/already-freed node.
+func _dismiss_cinderbomb_marker(marker: Variant) -> void:
+	CinderbombFX.end_ground(marker)
 
 
-## A circular saw blade of `radius` px (tooth tips), centered on its own
-## origin: CHAKRAM_TEETH hooked teeth around a steel disc with a bright
-## cutting edge, a darker hub, and a bolt hole in the middle. Drawn from
-## plain Polygon2D shapes, same "no art asset" approach as
-## _build_star()/_build_net().
-func _build_saw_blade(radius: float) -> Node2D:
-	var blade := Node2D.new()
-	var body_radius: float = radius * 0.82
-
-	# Teeth: each one rises steeply to its tip, then slopes back down -
-	# the classic hooked saw-tooth profile.
-	var teeth_points := PackedVector2Array()
-	for k in range(CHAKRAM_TEETH):
-		var base_angle: float = k * TAU / CHAKRAM_TEETH
-		var step: float = TAU / CHAKRAM_TEETH
-		teeth_points.append(Vector2.from_angle(base_angle) * body_radius)
-		teeth_points.append(Vector2.from_angle(base_angle + step * 0.15) * radius)
-		teeth_points.append(Vector2.from_angle(base_angle + step * 0.85) * body_radius * 1.02)
-	var edge := Polygon2D.new()
-	edge.polygon = teeth_points
-	edge.color = CHAKRAM_EDGE_COLOR
-	blade.add_child(edge)
-
-	var layers := [
-		[body_radius * 0.96, CHAKRAM_BLADE_COLOR],
-		[body_radius * 0.45, CHAKRAM_HUB_COLOR],
-		[body_radius * 0.14, CHAKRAM_HOLE_COLOR],
-	]
-	for layer in layers:
-		var disc := Polygon2D.new()
-		var points := PackedVector2Array()
-		for k in range(32):
-			points.append(Vector2.from_angle(k * TAU / 32.0) * float(layer[0]))
-		disc.polygon = points
-		disc.color = layer[1]
-		blade.add_child(disc)
-
-	# A few slots cut into the disc, so the spin actually reads.
-	for k in range(4):
-		var slot := Line2D.new()
-		slot.width = maxf(2.0, radius * 0.08)
-		slot.default_color = CHAKRAM_HUB_COLOR
-		slot.begin_cap_mode = Line2D.LINE_CAP_ROUND
-		slot.end_cap_mode = Line2D.LINE_CAP_ROUND
-		var angle: float = k * TAU / 4.0
-		slot.add_point(Vector2.from_angle(angle) * body_radius * 0.55)
-		slot.add_point(Vector2.from_angle(angle + 0.35) * body_radius * 0.8)
-		blade.add_child(slot)
-
-	return blade
-
-
-## Ticks the planted Chakram's duration down once per End Turn, same
+## Ticks the planted Cinderbomb's duration down once per End Turn, same
 ## timing (and same "the casting turn doesn't count" skip) as every
 ## other duration-based buff - dealing this level's own damage_per_turn
 ## to every living, targetable enemy within radius columns of the
 ## FIXED position it was planted at (not re-checked against any
-## enemy's current position - see the field comment above _chakram) on
+## enemy's current position - see the field comment above _cinderbomb) on
 ## every tick that actually counts against the duration. A no-op while
-## no chakram is planted.
-func _tick_chakram() -> void:
-	if _chakram.is_empty():
+## no cinderbomb is planted.
+func _tick_cinderbomb() -> void:
+	if _cinderbomb.is_empty():
 		return
 
-	if _chakram.get("duration_pending_start", false):
-		_chakram["duration_pending_start"] = false
+	if _cinderbomb.get("duration_pending_start", false):
+		_cinderbomb["duration_pending_start"] = false
 		return
 
-	var pos_index: int = int(_chakram["pos_index"])
-	var radius: int = int(_chakram["radius"])
-	var damage_per_turn: float = float(_chakram["damage_per_turn"])
+	var pos_index: int = int(_cinderbomb["pos_index"])
+	var radius: int = int(_cinderbomb["radius"])
+	var damage_per_turn: float = float(_cinderbomb["damage_per_turn"])
 	for enemy in _enemies.duplicate():
 		if _is_target_hidden(enemy):
 			continue
@@ -4174,22 +4191,22 @@ func _tick_chakram() -> void:
 	# currently is.
 	_deal_aoe_damage_to_enemy_illusions(pos_index, radius, damage_per_turn, true)
 
-	_chakram["turns_remaining"] = int(_chakram["turns_remaining"]) - 1
-	if int(_chakram["turns_remaining"]) <= 0:
-		_despawn_chakram()
+	_cinderbomb["turns_remaining"] = int(_cinderbomb["turns_remaining"]) - 1
+	if int(_cinderbomb["turns_remaining"]) <= 0:
+		_despawn_cinderbomb()
 
 
-## Removes whatever chakram is currently planted, if any - used both
+## Removes whatever cinderbomb is currently planted, if any - used both
 ## when a fresh cast replaces one still active (see
-## _resolve_chakram_cast()) and when its duration runs out
-## (_tick_chakram()). Scene teardown at battle end frees the node
+## _resolve_cinderbomb_cast()) and when its duration runs out
+## (_tick_cinderbomb()). Scene teardown at battle end frees the node
 ## implicitly either way, same reasoning as _despawn_bear()'s own
 ## comment.
-func _despawn_chakram() -> void:
-	if _chakram.is_empty():
+func _despawn_cinderbomb() -> void:
+	if _cinderbomb.is_empty():
 		return
-	_dismiss_chakram_marker(_chakram.get("node"))
-	_chakram = {}
+	_dismiss_cinderbomb_marker(_cinderbomb.get("node"))
+	_cinderbomb = {}
 
 
 ## Purely cosmetic: drops a thin beam of moonlight (LUCENT_BEAM_COLOR)
@@ -4297,7 +4314,7 @@ func _play_sacred_arrow_flight(caster_node: Control, target_node: TextureRect, d
 ## at least half a column, so a radius-0 cast still reads), one after
 ## another, with a handful of music notes drifting up and outward on the
 ## wave. The sleep itself is shown per unit by _set_siren_lullaby().
-## Same layering as _play_scatterblast_effect().
+## Same layering as _play_double_trouble_effect().
 func _play_siren_song_wave(caster_node: Variant, radius: int) -> void:
 	if not is_instance_valid(caster_node) or not (caster_node is Control):
 		return
@@ -4619,7 +4636,7 @@ func _set_corrosive_haze(node: Variant, active: bool) -> void:
 ## crush hits) gets the standard red splash hit-flash and a small
 ## splash of water at its feet right as the wave reaches it. Feet
 ## positions are captured up front, so a unit killed by the hit still
-## gets its splash. Same layering as _play_scatterblast_effect().
+## gets its splash. Same layering as _play_double_trouble_effect().
 func _play_slithereen_crush(caster_node: Variant, radius: int, hit_nodes: Array) -> void:
 	if not is_instance_valid(caster_node) or not (caster_node is Control):
 		return
@@ -4687,7 +4704,7 @@ func _play_slithereen_crush(caster_node: Variant, radius: int, hit_nodes: Array)
 ## One burst of Slithereen Crush's spray at `pos` - seawater droplets
 ## thrown up and falling back, plus a few tumbling rock chunks - scaled
 ## by `strength` (1.0 = along the shockwave's own edge). Same
-## CPUParticles2D one-shot-burst recipe as _spawn_lil_shredder_impact().
+## CPUParticles2D one-shot-burst recipe as _spawn_three_cheers_impact().
 func _play_crush_spray(pos: Vector2, strength: float) -> void:
 	var lifetime: float = 0.6
 	for layer in [[SLITHEREEN_CRUSH_SPRAY_COLOR, int(14 * strength), 2.5, 5.0], [SLITHEREEN_CRUSH_ROCK_COLOR, int(5 * strength), 4.0, 7.0]]:
@@ -4724,7 +4741,7 @@ func _play_crush_spray(pos: Vector2, strength: float) -> void:
 ## for ENSNARE_DRAPE_SECONDS before fading. The root/damage have already
 ## been applied; this never gates on it. Start/end points are captured
 ## up front, so a target killed by the hit still gets its net. Same
-## layering as _play_scatterblast_effect().
+## layering as _play_double_trouble_effect().
 func _play_net_throw(from_node: Variant, to_node: Variant) -> void:
 	if not (from_node is Control) or not (to_node is Control):
 		return
@@ -4828,7 +4845,7 @@ func _build_net(radius: float) -> Node2D:
 ## and shedding a sparkle trail, then bursts into gold sparks
 ## (_play_orb_impact()). Staggered so they rain in one after another.
 ## Landing spots are captured up front, so a unit killed by the hit
-## still gets its stars. Same layering as _play_scatterblast_effect().
+## still gets its stars. Same layering as _play_double_trouble_effect().
 func _play_starfall(nodes: Array) -> void:
 	var star_index: int = 0
 	for node in nodes:
@@ -5076,10 +5093,10 @@ func _resolve_touch_of_the_first_cold_cast(target: Dictionary, level_data: Dicti
 	)
 
 
-## Resolves a Lil' Shredder cast on `target`: fires this level's own
+## Resolves a Three Cheers cast on `target`: fires this level's own
 ## `shots` count of separately-rolled hits at it (each
 ## _roll_hero_damage() * damage_pct, same "own roll per shot" idiom
-## Whirling Death/Abyssal Spasm use for "one roll shared across many
+## Sweep/Abyssal Spasm use for "one roll shared across many
 ## targets" just inverted here into "many rolls at one target"), each
 ## shot ALSO stacking armor_reduction_per_shot onto `target`'s own
 ## armor_reduction - a per-instance runtime field folded into
@@ -5092,7 +5109,7 @@ func _resolve_touch_of_the_first_cold_cast(target: Dictionary, level_data: Dicti
 ## after the last shot connects - see _tick_enemy_turn_start_effects()'s
 ## own comment for why the casting round is never counted against it
 ## for free, with no separate "pending start" flag needed here.
-func _resolve_lil_shredder_cast(target: Dictionary, level_data: Dictionary) -> void:
+func _resolve_three_cheers_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	var shots: int = int(level_data.get("shots", 3))
@@ -5105,7 +5122,7 @@ func _resolve_lil_shredder_cast(target: Dictionary, level_data: Dictionary) -> v
 			break
 		var shot_damage: float = _roll_hero_damage() * damage_pct
 		_deal_fixed_damage_to_enemy(target, shot_damage)
-		_play_lil_shredder_shot_effect(target_pos_index, i * 0.15)
+		_play_three_cheers_shot_effect(target_pos_index, i * 0.11, hero_image)
 		if target.get("current_hp", 0) <= 0:
 			break
 		target["armor_reduction"] = float(target.get("armor_reduction", 0.0)) + armor_reduction_per_shot
@@ -5115,8 +5132,8 @@ func _resolve_lil_shredder_cast(target: Dictionary, level_data: Dictionary) -> v
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["lil_shredder"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("lil_shredder", _skill_cooldowns["lil_shredder"])
+	_skill_cooldowns["three_cheers"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("three_cheers", _skill_cooldowns["three_cheers"])
 	_refresh_skill_cooldown_labels()
 
 	if _battle_over or _stage_generation != generation_before:
@@ -5127,18 +5144,37 @@ func _resolve_lil_shredder_cast(target: Dictionary, level_data: Dictionary) -> v
 
 ## Purely cosmetic: schedules one small impact-spark burst at
 ## `target_pos_index` after `delay` seconds - called once per shot from
-## _resolve_lil_shredder_cast() with a slight stagger (0, 0.15, 0.3s) so
+## _resolve_three_cheers_cast() with a slight stagger (0, 0.15, 0.3s) so
 ## the 3 shots read as a rapid volley instead of one simultaneous flash.
 ## The damage above has already fully resolved by the time each of
 ## these plays; none of this ever gates it. Guards _battle_over at fire
 ## time since the delay can outlive the battle (a scene change from the
 ## last shot's own kill, say) - same reasoning every other delayed
 ## cleanup in this file already follows.
-func _play_lil_shredder_shot_effect(target_pos_index: int, delay: float) -> void:
-	get_tree().create_timer(maxf(delay, 0.01)).timeout.connect(_spawn_lil_shredder_impact.bind(target_pos_index))
+func _play_three_cheers_shot_effect(target_pos_index: int, delay: float, caster: TextureRect = null) -> void:
+	get_tree().create_timer(maxf(delay, 0.01)).timeout.connect(_spawn_three_cheers_shot.bind(target_pos_index, caster))
 
 
-func _spawn_lil_shredder_impact(target_pos_index: int) -> void:
+## One shot of the volley: from `caster`'s muzzle (if it has one) a single
+## big slug rips to the target's column (see ThreeCheersFX), with the
+## spark burst of _spawn_three_cheers_impact() as it lands. Falls back to
+## just the sparks with no caster.
+func _spawn_three_cheers_shot(target_pos_index: int, caster: TextureRect) -> void:
+	if _battle_over:
+		return
+	if caster != null and is_instance_valid(caster):
+		var muzzle := DOUBLE_TROUBLE_MUZZLE
+		if caster.flip_h:
+			muzzle.x = 1.0 - muzzle.x
+		var from: Vector2 = caster.global_position + caster.size * muzzle
+		var to := Vector2(_index_to_x(target_pos_index) + _grid_unit() / 2.0, _creature_y() + get_viewport_rect().size.y / 8.0)
+		ThreeCheersFX.play(_fx_layer, from, to)
+		get_tree().create_timer(ThreeCheersFX.FLIGHT_TIME).timeout.connect(_spawn_three_cheers_impact.bind(target_pos_index))
+		return
+	_spawn_three_cheers_impact(target_pos_index)
+
+
+func _spawn_three_cheers_impact(target_pos_index: int) -> void:
 	if _battle_over:
 		return
 
@@ -5169,16 +5205,16 @@ func _spawn_lil_shredder_impact(target_pos_index: int) -> void:
 
 
 # ------------------------------------------------------------------
-# Snapfire's ultimate, Mortimer Kisses (see the field comment above
-# _mortimer_kisses_active for the overall channel shape).
+# Raze's ultimate, Kiss the Wastes (see the field comment above
+# _kiss_the_wastes_active for the overall channel shape).
 # ------------------------------------------------------------------
 
-## Snapfire's Mortimer Kisses target picking: same "normal attack
+## Raze's Kiss the Wastes target picking: same "normal attack
 ## range" gate (_hero_attack_column_range()) every other attack-range
 ## targeted skill uses - marking a target for the whole channel is the
 ## only click involved; the following shots never need another one.
 ## Returns false (and shows a message) if nothing is in range.
-func _start_mortimer_kisses_targeting(level_data: Dictionary) -> bool:
+func _start_kiss_the_wastes_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = _hero_attack_column_range()
@@ -5193,35 +5229,37 @@ func _start_mortimer_kisses_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "mortimer_kisses"
-	_pending_mortimer_kisses_level_data = level_data
+	_targeting_purpose = "kiss_the_wastes"
+	_pending_kiss_the_wastes_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
 
-## Resolves a Mortimer Kisses cast on `target`: marks it, fires the
+## Resolves a Kiss the Wastes cast on `target`: marks it, fires the
 ## FIRST of this level's own `hits` shots immediately (right now, as
 ## part of this cast, same as any other instant skill), and arms
-## _mortimer_kisses_turns_left with however many are left (hits - 1) -
+## _kiss_the_wastes_turns_left with however many are left (hits - 1) -
 ## _end_turn()'s own tail auto-fires the rest, one per hero turn, with
 ## every other action locked out for as long as any remain (see
-## _mortimer_kisses_active's own field comment for the full list of
+## _kiss_the_wastes_active's own field comment for the full list of
 ## lock sites). Always "succeeds" once a target's been marked - there's
 ## nothing further for this cast itself to fail on.
-func _resolve_mortimer_kisses_cast(target: Dictionary, level_data: Dictionary) -> void:
+func _resolve_kiss_the_wastes_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
-	_mortimer_marked_enemy = target
-	_mortimer_kisses_level_data = level_data
-	_mortimer_kisses_active = true
-	_mortimer_kisses_turns_left = int(level_data.get("hits", 1)) - 1
+	_kiss_marked_enemy = target
+	_kiss_the_wastes_level_data = level_data
+	_kiss_the_wastes_active = true
+	_kiss_the_wastes_turns_left = int(level_data.get("hits", 1)) - 1
 
-	_fire_mortimer_kisses_shot()
+	# The kiss first, then the barrage - its first impact waits for it.
+	_play_kiss_blow(hero_image)
+	_fire_kiss_the_wastes_shot(KissHeartsFX.BLOW_TIME)
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["mortimer_kisses"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("mortimer_kisses", _skill_cooldowns["mortimer_kisses"])
+	_skill_cooldowns["kiss_the_wastes"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("kiss_the_wastes", _skill_cooldowns["kiss_the_wastes"])
 	_refresh_skill_cooldown_labels()
 
 	if _battle_over or _stage_generation != generation_before:
@@ -5230,8 +5268,23 @@ func _resolve_mortimer_kisses_cast(target: Dictionary, level_data: Dictionary) -
 	_mark_turn_used()
 
 
-## Fires one Mortimer Kisses shot: the impact column is always
-## `_mortimer_marked_enemy`'s own "pos_index" - while it's alive that
+## Purely cosmetic: the kiss that opens Kiss the Wastes - a burst of
+## glowing hearts blown from `caster`'s lips, drifting forward and up the way it faces (see
+## KissHeartsFX; callers wait KissHeartsFX.BLOW_TIME before the barrage's
+## first impact). Works from either side.
+func _play_kiss_blow(caster: Variant) -> void:
+	if caster == null or not is_instance_valid(caster) or not (caster is TextureRect):
+		return
+	var node: TextureRect = caster
+	var mouth := RAZE_MOUTH
+	if node.flip_h:
+		mouth.x = 1.0 - mouth.x
+	var from: Vector2 = node.global_position + node.size * mouth
+	KissHeartsFX.play(_fx_layer, from, -1 if node.flip_h else 1, node.size.y)
+
+
+## Fires one Kiss the Wastes shot: the impact column is always
+## `_kiss_marked_enemy`'s own "pos_index" - while it's alive that
 ## tracks it turn to turn (a live Dictionary reference into _enemies),
 ## and once it's dead _kill_enemy() never mutates that field further,
 ## so it keeps reading as wherever it died - "the last column that the
@@ -5242,9 +5295,9 @@ func _resolve_mortimer_kisses_cast(target: Dictionary, level_data: Dictionary) -
 ## splash_damage (no burn) to anything exactly 1 column either side of
 ## it. Always plays the lava-pool impact visual at that column, even if
 ## nothing was actually standing there to hit.
-func _fire_mortimer_kisses_shot() -> void:
-	var level_data: Dictionary = _mortimer_kisses_level_data
-	var impact_pos: int = int(_mortimer_marked_enemy.get("pos_index", _hero_pos_index))
+func _fire_kiss_the_wastes_shot(impact_delay: float = 0.0) -> void:
+	var level_data: Dictionary = _kiss_the_wastes_level_data
+	var impact_pos: int = int(_kiss_marked_enemy.get("pos_index", _hero_pos_index))
 
 	var main_damage: float = float(level_data.get("main_damage", 0))
 	var splash_damage: float = float(level_data.get("splash_damage", 0))
@@ -5255,8 +5308,8 @@ func _fire_mortimer_kisses_shot() -> void:
 	if not main_target.is_empty():
 		_deal_fixed_damage_to_enemy(main_target, main_damage)
 		if main_target.get("current_hp", 0) > 0 and burn_per_turn > 0.0:
-			main_target["mortimer_burn_dot_damage"] = burn_per_turn
-			main_target["mortimer_burn_dot_turns_left"] = burn_duration
+			main_target["kiss_burn_dot_damage"] = burn_per_turn
+			main_target["kiss_burn_dot_turns_left"] = burn_duration
 
 	for enemy in _enemies.duplicate():
 		if _is_target_hidden(enemy):
@@ -5283,59 +5336,47 @@ func _fire_mortimer_kisses_shot() -> void:
 				elif illusion_dist == 1:
 					_deal_damage_to_enemy_illusion(illusion, _apply_armor_reduction(splash_damage, boss_armor))
 
-	_play_mortimer_kisses_impact_effect(impact_pos)
+	_play_kiss_the_wastes_impact_effect(impact_pos, impact_delay, hero_image)
 
 
-## Ends the Mortimer Kisses channel - called once its last shot has
+## Ends the Kiss the Wastes channel - called once its last shot has
 ## fired (see _end_turn()'s own tail). Clears every bit of state the
 ## lock/auto-fire logic reads, so a stale reference to a long-dead
-## `_mortimer_marked_enemy` can never leak into some later, unrelated
+## `_kiss_marked_enemy` can never leak into some later, unrelated
 ## check.
-func _end_mortimer_kisses() -> void:
-	_mortimer_kisses_active = false
-	_mortimer_kisses_turns_left = 0
-	_mortimer_marked_enemy = {}
-	_mortimer_kisses_level_data = {}
-	_show_message_over_hero("Mortimer Kisses ends")
+func _end_kiss_the_wastes() -> void:
+	_kiss_the_wastes_active = false
+	_kiss_the_wastes_turns_left = 0
+	_kiss_marked_enemy = {}
+	_kiss_the_wastes_level_data = {}
+	_show_message_over_hero("Kiss the Wastes ends")
 
 
 ## Purely cosmetic: a brief burning/lava-pool flare at `pos_index` -
-## visualizes each of Mortimer Kisses' own shots landing. The damage
+## visualizes each of Kiss the Wastes' own shots landing. The damage
 ## above has already fully resolved by the time this plays; it never
 ## gates on this. Same CPUParticles2D one-shot-burst recipe as Lil'
-## Shredder's own impact spark, just wider, slower, and colored like
+## Three Cheers' own impact spark, just wider, slower, and colored like
 ## fire/lava rather than a gunshot's spark.
-func _play_mortimer_kisses_impact_effect(pos_index: int) -> void:
-	var lifetime: float = 0.7
+func _play_kiss_the_wastes_impact_effect(pos_index: int, delay: float = 0.0, caster: Variant = null) -> void:
+	if delay > 0.0:
+		get_tree().create_timer(delay).timeout.connect(func() -> void:
+			if not _battle_over:
+				_play_kiss_the_wastes_impact_effect(pos_index, 0.0, caster))
+		return
+
 	var column_width: float = _grid_unit()
-
-	var particles := CPUParticles2D.new()
-	particles.position = Vector2(_index_to_x(pos_index) + column_width / 2.0, _creature_y() + get_viewport_rect().size.y / 4.0)
-	particles.emitting = false
-	particles.one_shot = true
-	particles.amount = 70
-	particles.lifetime = lifetime
-	particles.explosiveness = 0.85
-	# Spread across the whole column's own width rather than bursting
-	# from a single point, so the pool visually covers the column it
-	# hit instead of just its center.
-	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	particles.emission_rect_extents = Vector2(column_width / 2.0, 16.0)
-	particles.direction = Vector2(0, -1)
-	particles.spread = 100.0
-	particles.gravity = Vector2.ZERO
-	particles.initial_velocity_min = 30.0
-	particles.initial_velocity_max = 90.0
-	particles.scale_amount_min = 10.0
-	particles.scale_amount_max = 20.0
-	particles.color = Color(1.0, 0.35, 0.05, 1.0)
-	add_child(particles)
-	# Same reasoning as _elderwild_companion()'s own move_child() call -
-	# render at the hero/enemy layer, not on top of every UI panel.
-	move_child(particles, enemies_layer.get_index() + 1)
-	particles.emitting = true
-
-	get_tree().create_timer(lifetime + 0.2).timeout.connect(particles.queue_free)
+	var ground := Vector2(_index_to_x(pos_index) + column_width / 2.0, _creature_y() + get_viewport_rect().size.y / 4.0 - 6.0)
+	# The shell leaves the caster's muzzle (or just drops in from above if
+	# there's nothing to fire from).
+	var muzzle: Vector2 = ground + Vector2(0.0, -300.0)
+	if caster != null and is_instance_valid(caster) and caster is TextureRect:
+		var node: TextureRect = caster
+		var frac := DOUBLE_TROUBLE_MUZZLE
+		if node.flip_h:
+			frac.x = 1.0 - frac.x
+		muzzle = node.global_position + node.size * frac
+	NapalmFX.play(_fx_layer, muzzle, ground, column_width)
 
 
 # ------------------------------------------------------------------
@@ -5351,8 +5392,8 @@ func _play_mortimer_kisses_impact_effect(pos_index: int) -> void:
 ## decoy can end up sharing the hero's own column instead of going out
 ## of bounds), and any beyond those first two doubling up randomly on
 ## one of those same two columns. "Front"/"behind" follows the hero's
-## own CURRENT facing (hero_image.flip_h, same convention Scatterblast/
-## Firesnap Cookie already read) rather than a fixed board direction.
+## own CURRENT facing (hero_image.flip_h, same convention Double Trouble/
+## Blast Hopper already read) rather than a fixed board direction.
 ## Rip Tide's own bonuses (extra_illusion, illusion_damage_bonus_pct,
 ## illusion_duration_bonus) are folded straight in here, read fresh off
 ## _get_rip_tide_level_data() at cast time - a no-op contribution while
@@ -5447,7 +5488,7 @@ func _tick_mirror_image() -> void:
 ## (_hero_attack_column_range(), same reach a plain Attack/most of his
 ## skills use) - each illusion rolling its own hero-damage instance
 ## (_roll_hero_damage()) scaled by _illusion_damage_pct, same "own roll
-## per hit" idiom Lil' Shredder's own shots use, mitigated by the
+## per hit" idiom Three Cheers's own shots use, mitigated by the
 ## target's own armor via _deal_fixed_damage_to_enemy(). Stops early if
 ## that focus-fire kills the target partway through - a no-op if
 ## nothing is in range this turn.
@@ -5549,12 +5590,12 @@ func _deal_aoe_damage_to_illusions(center_pos_index: int, radius: int, amount: f
 
 
 ## The line-shaped equivalent of _deal_aoe_damage_to_illusions() above -
-## for The Sunken One's/Timber Chain's own "every column between the caster
+## for The Sunken One's/Chainfire's own "every column between the caster
 ## and the target, inclusive of both ends" line, rather than a radius
 ## around one point. Same "amount is raw, each illusion mitigates it
 ## separately via the hero's own armor" contract.
 ## `flash_hits` gives each one hit the standard splash hit-flash
-## (_flash_bounce_hit()) - off by default, opted into by Timber Chain.
+## (_flash_bounce_hit()) - off by default, opted into by Chainfire.
 func _deal_line_aoe_damage_to_illusions(start_pos_index: int, end_pos_index: int, amount: float, flash_hits: bool = false) -> void:
 	if _illusions.is_empty() or amount <= 0.0:
 		return
@@ -5571,9 +5612,9 @@ func _deal_line_aoe_damage_to_illusions(start_pos_index: int, end_pos_index: int
 
 
 ## The directional-cone equivalent of the two AoE-shape helpers above -
-## for a rival Scatterblast's own "every column strictly ahead of the
+## for a rival Double Trouble's own "every column strictly ahead of the
 ## caster, in whichever direction it's facing, up to range_columns"
-## cone (same shape _cast_scatterblast()'s own "ahead" check uses for
+## cone (same shape _cast_double_trouble()'s own "ahead" check uses for
 ## the player's copy), rather than a radius or a line between two
 ## points. Same "amount is raw, each illusion mitigates it separately
 ## via the hero's own armor" contract.
@@ -6835,7 +6876,7 @@ func _refresh_frostbound_rupture_visuals() -> void:
 ## at its feet, which shatters a moment later. The walls themselves are
 ## _refresh_frostbound_rupture_visuals()'s. Start/end points are captured up
 ## front, so a target killed by the hit still gets its volley and spike.
-## Same layering as _play_scatterblast_effect().
+## Same layering as _play_double_trouble_effect().
 func _play_frostbound_rupture_hit(from_node: Variant, to_node: Variant) -> void:
 	if not (from_node is Control) or not (to_node is Control):
 		return
@@ -6900,7 +6941,7 @@ func _play_ice_spike(feet: Vector2, unit_width: float) -> void:
 ## of FROSTBOUND_RUPTURE_CRYSTALS_PER_BLOCK jagged crystals of varied height and
 ## lean, the tallest in the middle, each a translucent icy body with a
 ## lighter facet down one side and a darker outline. Same "no art asset"
-## approach as _build_saw_blade()/_build_star().
+## approach as _build_star().
 func _build_ice_block(width: float, height: float) -> Node2D:
 	var block := Node2D.new()
 	var count: int = FROSTBOUND_RUPTURE_CRYSTALS_PER_BLOCK
@@ -6971,9 +7012,9 @@ func _shatter_ice_block(block: Variant, height: float = -1.0, burst_scale: float
 ## outside it can't step into one, i.e. can't move past it. A true
 ## teleport (Undertow) still isn't checked against this - it
 ## doesn't travel through the columns in between at all, unlike a jump
-## (Barbed Lunge, Charge) or a pull (Timber Chain), which now ARE stopped
+## (Barbed Lunge, Charge) or a pull (Chainfire), which now ARE stopped
 ## by a wall in their path on both sides (see _cast_barbed_lunge()/
-## _resolve_charge_cast()/_resolve_timber_chain_cast() and their own
+## _resolve_charge_cast()/_resolve_chainfire_cast() and their own
 ## _is_column_enemy_frostbound_rupture_blocked() checks for the player's own
 ## copies, _cast_enemy_barbed_lunge()/_cast_enemy_charge() for the rival's).
 func _is_column_frostbound_rupture_blocked(col: int) -> bool:
@@ -7005,7 +7046,7 @@ func _resolve_charge_cast(target: Dictionary, level_data: Dictionary) -> void:
 	# The charge physically carries the hero across every column in
 	# between (unlike Undertow's true teleport), so a rival's
 	# Frostbound Rupture wall in its path stops it one column short of
-	# target_pos_index, same rule Barbed Lunge's own leap and Timber Chain's
+	# target_pos_index, same rule Barbed Lunge's own leap and Chainfire's
 	# own pull now follow.
 	var charge_direction: int = _step_toward(start_pos_index, target_pos_index)
 	var landing_pos_index: int = start_pos_index
@@ -7383,33 +7424,33 @@ func _end_woven_flesh() -> void:
 
 
 # ------------------------------------------------------------------
-# Timbersaw's Reactive Armor (passive - see the field comment above
-# _reactive_armor_stack_turns for the overall shape).
+# Cinder's Kindled Resolve (passive - see the field comment above
+# _kindled_resolve_stack_turns for the overall shape).
 # ------------------------------------------------------------------
 
-## Reactive Armor's level data for whatever level the player has it at
+## Kindled Resolve's level data for whatever level the player has it at
 ## right now - {} if it isn't learned at all (level 0) or the current
-## hero isn't Timbersaw, the same "empty means locked" convention every
+## hero isn't Cinder, the same "empty means locked" convention every
 ## other auto-triggered skill's own _get_*_level_data() helper uses.
-func _get_reactive_armor_level_data() -> Dictionary:
-	var level: int = PlayerManager.get_skill_level("reactive_armor")
+func _get_kindled_resolve_level_data() -> Dictionary:
+	var level: int = PlayerManager.get_skill_level("kindled_resolve")
 	if level <= 0:
 		return {}
 	for skill in _hero_static.get("skills", []):
-		if skill.get("id", "") == "reactive_armor":
+		if skill.get("id", "") == "kindled_resolve":
 			return GameManager.get_skill_level_data(skill, level)
 	return {}
 
 
-## Reactive Armor's current total armor bonus - this level's own
+## Kindled Resolve's current total armor bonus - this level's own
 ## bonus_armor_per_stack times however many stacks are currently up.
 ## Folded into _hero_armor(). A no-op (0.0) while the skill isn't
 ## learned or no stacks are up.
-func _reactive_armor_bonus_armor() -> float:
-	var level_data: Dictionary = _get_reactive_armor_level_data()
+func _kindled_resolve_bonus_armor() -> float:
+	var level_data: Dictionary = _get_kindled_resolve_level_data()
 	if level_data.is_empty():
 		return 0.0
-	return _reactive_armor_stack_turns.size() * float(level_data.get("bonus_armor_per_stack", 0.0))
+	return _kindled_resolve_stack_turns.size() * float(level_data.get("bonus_armor_per_stack", 0.0))
 
 
 ## Called from apply_damage() every time a hit actually lands on the
@@ -7418,15 +7459,29 @@ func _reactive_armor_bonus_armor() -> float:
 ## full duration; if that would exceed max_stacks, the oldest stack
 ## (soonest to expire) is dropped first so the count never exceeds the
 ## cap. A no-op while the skill isn't learned.
-func _apply_reactive_armor_stack() -> void:
-	var level_data: Dictionary = _get_reactive_armor_level_data()
+func _apply_kindled_resolve_stack() -> void:
+	var level_data: Dictionary = _get_kindled_resolve_level_data()
 	if level_data.is_empty():
 		return
 
 	var max_stacks: int = int(level_data.get("max_stacks", 0))
-	if _reactive_armor_stack_turns.size() >= max_stacks:
-		_reactive_armor_stack_turns.pop_front()
-	_reactive_armor_stack_turns.append(int(level_data.get("duration", 0)))
+	if _kindled_resolve_stack_turns.size() >= max_stacks:
+		_kindled_resolve_stack_turns.pop_front()
+	_kindled_resolve_stack_turns.append(int(level_data.get("duration", 0)))
+
+
+## Keeps Kindled Resolve's embers (KindledEmbersFX) in step with the
+## current stacks - the player's Cinder and a rival Cinder - growing with
+## every new one and dying away as each runs out. Called from
+## _refresh_bars()/_refresh_enemy_overhead_labels(), so it just follows
+## current state.
+func _refresh_kindled_embers() -> void:
+	KindledEmbersFX.sync(hero_image, _kindled_resolve_stack_turns.size(),
+			int(_get_kindled_resolve_level_data().get("max_stacks", 1)))
+	var boss: Dictionary = _get_hero_fight_boss()
+	if not boss.is_empty():
+		KindledEmbersFX.sync(boss.get("node"), _enemy_kindled_resolve_stack_turns.size(),
+				int(_get_enemy_kindled_resolve_level_data().get("max_stacks", 1)))
 
 
 ## Ticks every active stack's own remaining-turns counter down by one,
@@ -7435,10 +7490,10 @@ func _apply_reactive_armor_stack() -> void:
 ## which only ever tracks one shared timer. A no-op while no stacks are
 ## up (including while the skill isn't learned, since then none can
 ## ever have been added).
-func _tick_reactive_armor_stacks() -> void:
-	for i in range(_reactive_armor_stack_turns.size()):
-		_reactive_armor_stack_turns[i] -= 1
-	_reactive_armor_stack_turns = _reactive_armor_stack_turns.filter(func(turns_left): return turns_left > 0)
+func _tick_kindled_resolve_stacks() -> void:
+	for i in range(_kindled_resolve_stack_turns.size()):
+		_kindled_resolve_stack_turns[i] -= 1
+	_kindled_resolve_stack_turns = _kindled_resolve_stack_turns.filter(func(turns_left): return turns_left > 0)
 
 
 ## Heals this level's own bonus_hp_regen_per_stack times however many
@@ -7446,12 +7501,12 @@ func _tick_reactive_armor_stacks() -> void:
 ## timing/stacking relationship (on top of, not instead of) as Arcane
 ## Aura's and the baseline passive regen. A no-op while the skill isn't
 ## learned or no stacks are up.
-func _apply_reactive_armor_regen() -> void:
-	var level_data: Dictionary = _get_reactive_armor_level_data()
-	if level_data.is_empty() or _reactive_armor_stack_turns.is_empty():
+func _apply_kindled_resolve_regen() -> void:
+	var level_data: Dictionary = _get_kindled_resolve_level_data()
+	if level_data.is_empty() or _kindled_resolve_stack_turns.is_empty():
 		return
 
-	heal(_reactive_armor_stack_turns.size() * float(level_data.get("bonus_hp_regen_per_stack", 0.0)))
+	heal(_kindled_resolve_stack_turns.size() * float(level_data.get("bonus_hp_regen_per_stack", 0.0)))
 
 
 # ------------------------------------------------------------------
@@ -7581,13 +7636,13 @@ func _apply_root(target: Dictionary, level_data: Dictionary) -> void:
 ## actually consumed, the same "check with the CURRENT value, use it,
 ## decrement after" pattern stun_turns_left already uses in _enemy_turn().
 func _tick_enemy_turn_start_effects(enemy: Dictionary) -> void:
-	# Lil' Shredder's armor shred and Slardar's Corrosive Haze both
+	# Three Cheers's armor shred and Slardar's Corrosive Haze both
 	# write "armor_reduction" (Corrosive Haze also "corrosive_haze_
 	# bonus_pct", see _deal_fixed_damage_to_enemy()'s own read of it) -
 	# cast during the PLAYER's turn, but only ever ticked here (the
 	# start of THIS enemy's own turn), so the round either was cast in
 	# is never counted against duration for free, no separate "pending
-	# start" flag needed (see _resolve_lil_shredder_cast()'s own
+	# start" flag needed (see _resolve_three_cheers_cast()'s own
 	# comment). Both share the one counter/expiry, same "reapplying
 	# overwrites the timer" convention every other refreshable debuff in
 	# this file already uses - a rare edge case if both ever land on the
@@ -7598,16 +7653,16 @@ func _tick_enemy_turn_start_effects(enemy: Dictionary) -> void:
 			enemy["armor_reduction"] = 0.0
 			enemy["corrosive_haze_bonus_pct"] = 0.0
 
-	# Mortimer Kisses' burn: re-armed (both damage and turns_left) by
+	# Kiss the Wastes' burn: re-armed (both damage and turns_left) by
 	# every main-hit shot that lands on this enemy (see
-	# _fire_mortimer_kisses_shot()), never by its splash - so "the DoT
+	# _fire_kiss_the_wastes_shot()), never by its splash - so "the DoT
 	# duration starts from the first hit" falls out for free here too,
 	# same reasoning the armor shred block above already spells out.
-	if enemy.get("mortimer_burn_dot_turns_left", 0) > 0:
-		enemy["mortimer_burn_dot_turns_left"] -= 1
-		var mortimer_burn_dot: float = float(enemy.get("mortimer_burn_dot_damage", 0))
-		if mortimer_burn_dot > 0.0:
-			_deal_fixed_damage_to_enemy(enemy, mortimer_burn_dot, false, false)
+	if enemy.get("kiss_burn_dot_turns_left", 0) > 0:
+		enemy["kiss_burn_dot_turns_left"] -= 1
+		var kiss_burn_dot: float = float(enemy.get("kiss_burn_dot_damage", 0))
+		if kiss_burn_dot > 0.0:
+			_deal_fixed_damage_to_enemy(enemy, kiss_burn_dot, false, false)
 			if _battle_over or enemy.get("current_hp", 0) <= 0:
 				return
 
@@ -7722,11 +7777,11 @@ func _tick_enemy_turn_start_effects(enemy: Dictionary) -> void:
 ## CASTER - the rival - not the player, so this heals the boss directly
 ## via _get_hero_fight_boss() each tick instead of calling heal()), and
 ## Mother's Grasp's own DoT (its root shares _player_root_turns_left above,
-## the same field Thornbind's own root already ticks down), Snapfire's
-## Lil' Shredder armor reduction (a plain countdown, zeroing the
+## the same field Thornbind's own root already ticks down), Raze's
+## Three Cheers armor reduction (a plain countdown, zeroing the
 ## reduction itself once it runs out - no damage of its own to deal,
-## just folded into _hero_armor() for as long as it's up), and Mortimer
-## Kisses' own burn DoT. Called once, right where the player's own new
+## just folded into _hero_armor() for as long as it's up), and Kiss the Wastes
+## own burn DoT. Called once, right where the player's own new
 ## turn opens in _end_turn() - before he gets to act. Unlike the
 ## enemy-side version, nothing here needs to bail out mid-function on a
 ## kill: apply_damage() never frees nodes or changes scenes the way
@@ -7815,10 +7870,10 @@ func _tick_player_turn_start_effects() -> void:
 			_player_armor_reduction = 0.0
 			_player_corrosive_haze_bonus_pct = 0.0
 
-	if _player_mortimer_burn_dot_turns_left > 0:
-		_player_mortimer_burn_dot_turns_left -= 1
-		if _player_mortimer_burn_dot_damage > 0.0:
-			apply_damage(_player_mortimer_burn_dot_damage)
+	if _player_kiss_burn_dot_turns_left > 0:
+		_player_kiss_burn_dot_turns_left -= 1
+		if _player_kiss_burn_dot_damage > 0.0:
+			apply_damage(_player_kiss_burn_dot_damage)
 
 
 ## Whether `enemy` is currently rooted by Thornbind and therefore can't
@@ -7900,7 +7955,7 @@ func _apply_leeching_hunger_steal(target: Dictionary) -> void:
 ## lifesteal (LIFESTEAL_MOTE_COLOR, via _play_lifesteal_effect()), each from both the player's side
 ## and the rival's - the stat/HP has already moved by the time this
 ## plays; it never gates on this. Individual tweened ColorRects rather than
-## CPUParticles2D (see _play_scatterblast_effect()) since every mote has
+## CPUParticles2D (see _play_double_trouble_effect()) since every mote has
 ## to land on a specific moving-free target point, not just spray out.
 func _play_drain_effect(from_node: Variant, to_node: Variant, mote_color: Color) -> void:
 	if not (from_node is Control) or not (to_node is Control):
@@ -7934,7 +7989,7 @@ func _play_drain_effect(from_node: Variant, to_node: Variant, mote_color: Color)
 		var control_point: Vector2 = (mote_start + end) / 2.0 + normal * arc_height * randf_range(-1.0, 1.0)
 		mote.position = mote_start - mote.pivot_offset
 		add_child(mote)
-		# Same layering as _play_scatterblast_effect() - at the hero/enemy
+		# Same layering as _play_double_trouble_effect() - at the hero/enemy
 		# layer, not on top of every UI panel.
 		move_child(mote, enemies_layer.get_index() + 1)
 
@@ -8130,8 +8185,8 @@ func _activate_the_test_of_time(level_data: Dictionary) -> void:
 ## of whose battle it runs in - plus every debuff a rival hero fight
 ## boss could have inflicted (root, silence, Thornbind's/Mark of the
 ## Mist's/Mark of Stillness's/The Hollow Cold's/Return to the Void's/Winter's Grip's/Sanguine
-## Bloom's/Mother's Grasp's/Mortimer Kisses' burn damage-over-time, Ice
-## Blast's execute threshold, Barbed Lunge's/Drowned Surge's stun, Lil' Shredder's
+## Bloom's/Mother's Grasp's/Kiss the Wastes' burn damage-over-time, Ice
+## Blast's execute threshold, Barbed Lunge's/Drowned Surge's stun, Three Cheers's
 ## own armor reduction, and a hostile Leeching Hunger's stat penalty) -
 ## the same field list _reset_enemy_hero_state() clears fresh for each
 ## new hero fight.
@@ -8183,8 +8238,8 @@ func _dispel_all_hero_effects() -> void:
 	_player_armor_reduction = 0.0
 	_player_armor_reduction_turns_left = 0
 	_player_corrosive_haze_bonus_pct = 0.0
-	_player_mortimer_burn_dot_damage = 0.0
-	_player_mortimer_burn_dot_turns_left = 0
+	_player_kiss_burn_dot_damage = 0.0
+	_player_kiss_burn_dot_turns_left = 0
 
 	_refresh_bars()
 
@@ -8636,6 +8691,7 @@ func _elderwild_companion(level_data: Dictionary) -> void:
 		"hp_label": hp_label,
 	}
 	CreatureAnimator.attach(tex_rect, "elderwild_companion")
+	AudioManager.play_event("bear_summon")
 	_refresh_bear_hp_label()
 
 
@@ -8692,7 +8748,7 @@ func _deal_damage_to_bear(amount: float) -> void:
 		return
 
 	# A rival's Corrosive Haze on the bear boosts every hit it takes,
-	# and its/Lil' Shredder's armor shred lowers its armor - same two
+	# and its/Three Cheers's armor shred lowers its armor - same two
 	# effects the player's own apply_damage() applies to him.
 	amount *= (1.0 + float(_bear.get("corrosive_haze_bonus_pct", 0.0)))
 	var bear_armor: float = float(_bear.get("armor", 0)) - float(_bear.get("armor_reduction", 0.0))
@@ -8727,11 +8783,11 @@ func _deal_aoe_damage_to_bear(center_pos_index: int, radius: int, amount: float,
 
 
 ## The line-shaped equivalent of _deal_aoe_damage_to_bear() above - for
-## The Sunken One's/Timber Chain's own "every column between the caster and
+## The Sunken One's/Chainfire's own "every column between the caster and
 ## the target, inclusive of both ends" line. Same "amount is raw, the
 ## bear mitigates it with its own armor" contract.
 ## `flash_hits` gives each one hit the standard splash hit-flash
-## (_flash_bounce_hit()) - off by default, opted into by Timber Chain.
+## (_flash_bounce_hit()) - off by default, opted into by Chainfire.
 func _deal_line_aoe_damage_to_bear(start_pos_index: int, end_pos_index: int, amount: float, flash_hits: bool = false) -> void:
 	if not _is_bear_alive() or amount <= 0.0:
 		return
@@ -8745,7 +8801,7 @@ func _deal_line_aoe_damage_to_bear(start_pos_index: int, end_pos_index: int, amo
 
 
 ## The directional-cone equivalent of the two AoE-shape helpers above -
-## for a rival Scatterblast's own facing-based cone. Same "amount is
+## for a rival Double Trouble's own facing-based cone. Same "amount is
 ## raw, the bear mitigates it with its own armor" contract.
 func _deal_directional_aoe_damage_to_bear(origin_pos_index: int, direction: int, range_columns: int, amount: float) -> void:
 	if not _is_bear_alive() or amount <= 0.0:
@@ -8890,8 +8946,8 @@ func _refresh_skill_cooldown_labels() -> void:
 
 ## Ticks every tracked skill cooldown down by one turn, clamped at 0,
 ## and ticks Leeching Hunger's, Depthsveil's, Frostbound Fangs', The Test of
-## Time's, The Frost Tempest's, Frostbound Rupture', Bestial Rage's, Rootveil's, Woven Flesh's, Reactive Armor's (each stack independently),
-## Chakram's, Wildbond's, Beast of the Elderwild's, Veil of the Forgotten's, and The Mist
+## Time's, The Frost Tempest's, Frostbound Rupture', Bestial Rage's, Rootveil's, Woven Flesh's, Kindled Resolve's (each stack independently),
+## Cinderbomb's, Wildbond's, Beast of the Elderwild's, Veil of the Forgotten's, and The Mist
 ## Remembers's durations, plus Mark of the Mist's own (enemy- and player-side)
 ## un-activated-stack decay - not a DoT, so it
 ## stays here rather than moving to turn-start with the rest (see
@@ -8923,8 +8979,8 @@ func _tick_skill_cooldowns() -> void:
 	_tick_veil_of_the_forgotten()
 	_tick_the_mist_remembers()
 	_tick_mark_of_the_mist_effects()
-	_tick_reactive_armor_stacks()
-	_tick_chakram()
+	_tick_kindled_resolve_stacks()
+	_tick_cinderbomb()
 	_tick_mirror_image()
 	_tick_guardian_sprint()
 	_tick_enemy_passive_regen()
@@ -8947,9 +9003,9 @@ func _tick_skill_cooldowns() -> void:
 		_tick_enemy_bestial_rage()
 		_tick_enemy_rootveil()
 		_tick_enemy_woven_flesh()
-		_tick_enemy_reactive_armor_stacks()
-		_apply_enemy_reactive_armor_regen()
-		_tick_enemy_chakram()
+		_tick_enemy_kindled_resolve_stacks()
+		_apply_enemy_kindled_resolve_regen()
+		_tick_enemy_cinderbomb()
 		_tick_enemy_mirror_image()
 		_tick_enemy_guardian_sprint()
 		_tick_enemy_moonlight_shadow()
@@ -9234,7 +9290,7 @@ func _remove_veil_shell(node: Variant, shattered: bool, radius: int) -> void:
 ## The eruption when the veil breaks: a one-shot radial burst of mist
 ## rolling out fast enough to reach about `radius` columns before it
 ## fades (at least one column, even for a radius-0 shield). Same
-## CPUParticles2D one-shot-burst recipe as _spawn_lil_shredder_impact().
+## CPUParticles2D one-shot-burst recipe as _spawn_three_cheers_impact().
 func _play_veil_shatter(pos: Vector2, radius: int) -> void:
 	var lifetime: float = 0.7
 	var reach: float = _grid_unit() * maxf(1.0, float(radius))
@@ -9253,7 +9309,7 @@ func _play_veil_shatter(pos: Vector2, radius: int) -> void:
 	particles.scale_amount_min = 1.2
 	particles.scale_amount_max = 2.4
 	add_child(particles)
-	# Same reasoning as _play_scatterblast_effect()'s own move_child()
+	# Same reasoning as _play_double_trouble_effect()'s own move_child()
 	# call - render at the hero/enemy layer, not on top of every UI panel.
 	move_child(particles, enemies_layer.get_index() + 1)
 	particles.emitting = true
@@ -9606,7 +9662,7 @@ func apply_damage(amount: float) -> float:
 	# ANY source, has a chance to be redirected onto a random surviving
 	# illusion instead - a full redirect, not a split, and completely
 	# bypassing every one of the hero's own defensive mechanics below
-	# (Reactive Armor's stack, Blood of the Wild, The Mist Remembers, Veil of the
+	# (Kindled Resolve's stack, Blood of the Wild, The Mist Remembers, Veil of the
 	# Forgotten) since nothing actually touched him this time. Uses the
 	# hero's own armor for mitigation, same as if he'd taken it himself -
 	# an illusion is a copy of him, not a separate combatant with its
@@ -9622,10 +9678,10 @@ func apply_damage(amount: float) -> float:
 		hero_animator.play_hit()
 
 	var reduced: float = _apply_armor_reduction(amount, _hero_armor())
-	# Reactive Armor stacks off of this hit landing - added only after
+	# Kindled Resolve stacks off of this hit landing - added only after
 	# _hero_armor() above already read the stack count, so the stack
 	# this hit just earned reduces the NEXT hit, not this one.
-	_apply_reactive_armor_stack()
+	_apply_kindled_resolve_stack()
 	# Blood of the Wild's damage reduction stacks on top of armor mitigation
 	# rather than replacing it, and only applies while it's active.
 	reduced *= (1.0 - _blood_of_the_wild_damage_reduction_pct)
@@ -10081,8 +10137,8 @@ func _hero_move(direction: int) -> void:
 	if _the_test_of_time_active:
 		return
 
-	if _mortimer_kisses_active:
-		_show_message_over_hero("Focused on Mortimer Kisses!")
+	if _kiss_the_wastes_active:
+		_show_message_over_hero("Focused on Kiss the Wastes!")
 		return
 
 	if _is_column_enemy_frostbound_rupture_blocked(_hero_pos_index):
@@ -10154,8 +10210,8 @@ func _on_attack_pressed() -> void:
 	if _the_test_of_time_active:
 		return
 
-	if _mortimer_kisses_active:
-		_show_message_over_hero("Focused on Mortimer Kisses!")
+	if _kiss_the_wastes_active:
+		_show_message_over_hero("Focused on Kiss the Wastes!")
 		return
 
 	if _is_ranged_hero():
@@ -10428,11 +10484,11 @@ func _start_ensnare_targeting(level_data: Dictionary) -> bool:
 	return true
 
 
-## Timbersaw's Timber Chain target picking: same column-range/highlight
+## Cinder's Chainfire target picking: same column-range/highlight
 ## mechanism as every other targeted skill above, using this level's
 ## own `range` field (3-5 columns, growing with level).
 ## Returns false (and shows a message) if nothing is in range.
-func _start_timber_chain_targeting(level_data: Dictionary) -> bool:
+func _start_chainfire_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = int(level_data.get("range", 3))
@@ -10447,19 +10503,19 @@ func _start_timber_chain_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "timber_chain"
-	_pending_timber_chain_level_data = level_data
+	_targeting_purpose = "chainfire"
+	_pending_chainfire_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
 
-## Timbersaw's Chakram target picking: same column-range/highlight
+## Cinder's Cinderbomb target picking: same column-range/highlight
 ## mechanism as every other targeted skill above, using this level's
 ## own `range` field (5-7 columns, growing with level) - separate from
 ## the `radius` field used for the AoE once it's planted (see
-## _resolve_chakram_cast()/_tick_chakram()). Returns false (and shows a
+## _resolve_cinderbomb_cast()/_tick_cinderbomb()). Returns false (and shows a
 ## message) if nothing is in range.
-func _start_chakram_targeting(level_data: Dictionary) -> bool:
+func _start_cinderbomb_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = int(level_data.get("range", 5))
@@ -10474,8 +10530,8 @@ func _start_chakram_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "chakram"
-	_pending_chakram_level_data = level_data
+	_targeting_purpose = "cinderbomb"
+	_pending_cinderbomb_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
@@ -10668,13 +10724,13 @@ func _start_rimecleaver_targeting(level_data: Dictionary) -> bool:
 	return true
 
 
-## Snapfire's Lil' Shredder target picking: same "normal attack range"
+## Raze's Three Cheers target picking: same "normal attack range"
 ## gate (_hero_attack_column_range()) every other attack-range targeted
-## skill above uses - Lil' Shredder is a volley of shots at ONE marked
+## skill above uses - Three Cheers is a volley of shots at ONE marked
 ## target, not an extended-range skill of its own, so it shares the
 ## plain Attack's own reach rather than a level-specific `range` field.
 ## Returns false (and shows a message) if nothing is in range.
-func _start_lil_shredder_targeting(level_data: Dictionary) -> bool:
+func _start_three_cheers_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = _hero_attack_column_range()
@@ -10689,8 +10745,8 @@ func _start_lil_shredder_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "lil_shredder"
-	_pending_lil_shredder_level_data = level_data
+	_targeting_purpose = "three_cheers"
+	_pending_three_cheers_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
@@ -10989,10 +11045,10 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 	var sacred_arrow_level_data: Dictionary = _pending_sacred_arrow_level_data
 	var lucent_beam_level_data: Dictionary = _pending_lucent_beam_level_data
 	var ensnare_level_data: Dictionary = _pending_ensnare_level_data
-	var timber_chain_level_data: Dictionary = _pending_timber_chain_level_data
-	var chakram_level_data: Dictionary = _pending_chakram_level_data
-	var lil_shredder_level_data: Dictionary = _pending_lil_shredder_level_data
-	var mortimer_kisses_level_data: Dictionary = _pending_mortimer_kisses_level_data
+	var chainfire_level_data: Dictionary = _pending_chainfire_level_data
+	var cinderbomb_level_data: Dictionary = _pending_cinderbomb_level_data
+	var three_cheers_level_data: Dictionary = _pending_three_cheers_level_data
+	var kiss_the_wastes_level_data: Dictionary = _pending_kiss_the_wastes_level_data
 	var mark_of_stillness_level_data: Dictionary = _pending_mark_of_stillness_level_data
 	var the_hollow_cold_level_data: Dictionary = _pending_the_hollow_cold_level_data
 	var touch_of_the_first_cold_level_data: Dictionary = _pending_touch_of_the_first_cold_level_data
@@ -11023,14 +11079,14 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 		_resolve_lucent_beam_cast(enemy, lucent_beam_level_data)
 	elif purpose == "ensnare":
 		_resolve_ensnare_cast(enemy, ensnare_level_data)
-	elif purpose == "timber_chain":
-		_resolve_timber_chain_cast(enemy, timber_chain_level_data)
-	elif purpose == "chakram":
-		_resolve_chakram_cast(enemy, chakram_level_data)
-	elif purpose == "lil_shredder":
-		_resolve_lil_shredder_cast(enemy, lil_shredder_level_data)
-	elif purpose == "mortimer_kisses":
-		_resolve_mortimer_kisses_cast(enemy, mortimer_kisses_level_data)
+	elif purpose == "chainfire":
+		_resolve_chainfire_cast(enemy, chainfire_level_data)
+	elif purpose == "cinderbomb":
+		_resolve_cinderbomb_cast(enemy, cinderbomb_level_data)
+	elif purpose == "three_cheers":
+		_resolve_three_cheers_cast(enemy, three_cheers_level_data)
+	elif purpose == "kiss_the_wastes":
+		_resolve_kiss_the_wastes_cast(enemy, kiss_the_wastes_level_data)
 	elif purpose == "mark_of_stillness":
 		_resolve_mark_of_stillness_cast(enemy, mark_of_stillness_level_data)
 	elif purpose == "the_hollow_cold":
@@ -11283,7 +11339,7 @@ func _deal_fixed_damage_to_enemy(target: Dictionary, amount: float, is_critical:
 	# otherwise land on the boss has a chance to be redirected onto a
 	# random surviving illusion instead, mirroring the player's own
 	# apply_damage() redirect (see that function's own comment) - a full
-	# redirect, not a split, bypassing Reactive Armor's stack/Savage
+	# redirect, not a split, bypassing Kindled Resolve's stack/Savage
 	# Roar/The Mist Remembers/Veil of the Forgotten since nothing actually touched
 	# the boss this time. Uses the boss's own armor for mitigation, same
 	# as if it had taken the hit itself.
@@ -11294,8 +11350,8 @@ func _deal_fixed_damage_to_enemy(target: Dictionary, amount: float, is_critical:
 		_last_enemy_illusion_redirect = illusion
 		return illusion_damage
 
-	# Snapfire's Lil' Shredder is the only thing that ever writes
-	# "armor_reduction" (see _resolve_lil_shredder_cast()/
+	# Raze's Three Cheers is the only thing that ever writes
+	# "armor_reduction" (see _resolve_three_cheers_cast()/
 	# _tick_enemy_turn_start_effects()'s own revert) - a per-INSTANCE
 	# runtime field on this one spawned enemy, never on target["static"]
 	# itself, since that dictionary can be shared across every enemy
@@ -11313,13 +11369,13 @@ func _deal_fixed_damage_to_enemy(target: Dictionary, amount: float, is_critical:
 		return mitigated
 
 	if is_boss:
-		# Timbersaw's Reactive Armor stacks off of this hit landing -
+		# Cinder's Kindled Resolve stacks off of this hit landing -
 		# added only after enemy_armor above already read the stack
 		# count, so the stack this hit just earned reduces the NEXT hit,
 		# not this one, mirroring the player's own apply_damage(). A
-		# no-op for every other hero (see _apply_enemy_reactive_armor_
+		# no-op for every other hero (see _apply_enemy_kindled_resolve_
 		# stack()'s own "not learned" check).
-		_apply_enemy_reactive_armor_stack()
+		_apply_enemy_kindled_resolve_stack()
 
 	if is_boss and _enemy_the_mist_remembers_active:
 		var max_hp: float = _enemy_hero_effective_max_hp(target)
@@ -11362,7 +11418,7 @@ func _deal_fixed_damage_to_enemy(target: Dictionary, amount: float, is_critical:
 func _enemy_hero_bonus_armor(target: Dictionary) -> float:
 	if not target["static"].get("is_hero_fight_boss", false):
 		return 0.0
-	return _enemy_leeching_hunger_bonus.get("armor", 0.0) + _enemy_wildbond_bonus_armor + _enemy_woven_flesh_bonus_armor + _enemy_reactive_armor_bonus_armor()
+	return _enemy_leeching_hunger_bonus.get("armor", 0.0) + _enemy_wildbond_bonus_armor + _enemy_woven_flesh_bonus_armor + _enemy_kindled_resolve_bonus_armor()
 
 
 ## The enemy to actually hit for whatever's on `pos_index` - the
@@ -11706,7 +11762,7 @@ func _finish_zone_victory() -> void:
 	PlayerManager.record_high_score()
 	# Let the killing blow's death dissolve finish before leaving.
 	if not get_tree().get_nodes_in_group(CreatureAnimator.DEATH_GHOST_GROUP).is_empty():
-		await get_tree().create_timer(CreatureAnimator.DEATH_DURATION + 0.15).timeout
+		await get_tree().create_timer(CreatureAnimator.DEATH_DURATION + 0.15 + AudioManager.attack_wait()).timeout
 	if first_home_clear:
 		await StoryBanner.play(self, "Your journey has only begun.",
 				"The world lies beyond your home. Seek the other Remembered and gather their Echoes.").finished
@@ -11924,12 +11980,12 @@ func _reset_enemy_hero_state(hero_static: Dictionary) -> void:
 	_enemy_woven_flesh_duration_pending_start = false
 	WovenFleshFX.set_on(_get_hero_fight_boss().get("node"), false)
 
-	_enemy_reactive_armor_stack_turns = []
-	_despawn_enemy_chakram()
+	_enemy_kindled_resolve_stack_turns = []
+	_despawn_enemy_cinderbomb()
 
-	_enemy_mortimer_kisses_active = false
-	_enemy_mortimer_kisses_turns_left = 0
-	_enemy_mortimer_kisses_level_data = {}
+	_enemy_kiss_the_wastes_active = false
+	_enemy_kiss_the_wastes_turns_left = 0
+	_enemy_kiss_the_wastes_level_data = {}
 
 	_end_enemy_mirror_image()
 
@@ -11970,8 +12026,8 @@ func _reset_enemy_hero_state(hero_static: Dictionary) -> void:
 	_player_armor_reduction = 0.0
 	_player_armor_reduction_turns_left = 0
 	_player_corrosive_haze_bonus_pct = 0.0
-	_player_mortimer_burn_dot_damage = 0.0
-	_player_mortimer_burn_dot_turns_left = 0
+	_player_kiss_burn_dot_damage = 0.0
+	_player_kiss_burn_dot_turns_left = 0
 
 	_end_enemy_guardian_sprint()
 	_enemy_bash_of_the_deep_attack_count = 0
@@ -12101,28 +12157,28 @@ func _end_turn() -> void:
 	# than instead of it.
 	_apply_passive_hero_regen()
 
-	# Reactive Armor's own regen, off of whatever stacks are currently
+	# Kindled Resolve's own regen, off of whatever stacks are currently
 	# active - same timing/stacking relationship as Frostborn's and
 	# the baseline regen above.
-	_apply_reactive_armor_regen()
+	_apply_kindled_resolve_regen()
 
-	# Mortimer Kisses' channel: the hero's new turn is opening right
+	# Kiss the Wastes' channel: the hero's new turn is opening right
 	# here, same point Undertow's own teleport claims for free
 	# above - except this doesn't just do something for free, it
 	# consumes the ENTIRE turn on an automatic shot, same as a stunned
 	# turn, or one held in The Test of Time, being skipped below, just
 	# with a shot fired instead of nothing happening. Never falls through to the normal
 	# "reopen the action buttons" code beneath it while a shot remains -
-	# only once _fire_mortimer_kisses_shot() has fired the LAST one
-	# (_end_mortimer_kisses() clears _mortimer_kisses_active) does
+	# only once _fire_kiss_the_wastes_shot() has fired the LAST one
+	# (_end_kiss_the_wastes() clears _kiss_the_wastes_active) does
 	# control reach the ordinary turn-opening logic below, exactly as if
 	# the channel had never been active this turn.
-	if _mortimer_kisses_active:
+	if _kiss_the_wastes_active:
 		var generation_before: int = _stage_generation
-		_fire_mortimer_kisses_shot()
-		_mortimer_kisses_turns_left -= 1
-		if _mortimer_kisses_turns_left <= 0:
-			_end_mortimer_kisses()
+		_fire_kiss_the_wastes_shot()
+		_kiss_the_wastes_turns_left -= 1
+		if _kiss_the_wastes_turns_left <= 0:
+			_end_kiss_the_wastes()
 
 		# A kill from that shot (or its splash) could have cleared the
 		# stage/won a hero fight and moved on to a fresh encounter -
@@ -12133,7 +12189,7 @@ func _end_turn() -> void:
 		if _battle_over or _stage_generation != generation_before:
 			return
 
-		if _mortimer_kisses_active:
+		if _kiss_the_wastes_active:
 			_has_acted_this_turn = true
 			_update_action_buttons()
 			get_tree().create_timer(0.9).timeout.connect(_end_turn)
@@ -12319,7 +12375,7 @@ func _enemy_turn() -> void:
 			# while rooted or ice-frozen) as it would use against the
 			# hero.
 			if enemy_type == "range":
-				if _distance(enemy["pos_index"], curse_target_pos) <= RANGE_ENEMY_ATTACK_RANGE:
+				if _distance(enemy["pos_index"], curse_target_pos) <= _enemy_attack_range(enemy):
 					_play_enemy_attack_lunge(enemy, curse_target_pos)
 					_fire_enemy_projectile(enemy, curse_target.get("node"))
 					# Another creep's own attack, not the hero's - Corrosive
@@ -12346,7 +12402,7 @@ func _enemy_turn() -> void:
 		if enemy_type == "range":
 			var hero_distance: int = _distance(enemy["pos_index"], _hero_pos_index)
 
-			if not hero_hidden and not rooted and hero_distance <= RANGE_ENEMY_FLEE_DISTANCE:
+			if not hero_hidden and not rooted and _enemy_flees_at(enemy, hero_distance):
 				# TOO CLOSE to the hero: move away. Attacking is next
 				# turn's business, even if the flee step happens to
 				# land back in range. Doesn't apply while he's
@@ -12360,7 +12416,7 @@ func _enemy_turn() -> void:
 				continue
 
 			var attacked: bool = false
-			if hero_distance <= RANGE_ENEMY_ATTACK_RANGE and not hero_hidden:
+			if hero_distance <= _enemy_attack_range(enemy) and not hero_hidden:
 				# SAFE RANGE on the hero, and he's a valid target -
 				# always the priority over the bear.
 				_play_enemy_attack_lunge(enemy, _hero_pos_index)
@@ -12368,7 +12424,7 @@ func _enemy_turn() -> void:
 				apply_damage(enemy_damage)
 				_deferred_hit_node = null
 				attacked = true
-			elif _is_bear_alive() and _distance(enemy["pos_index"], _bear["pos_index"]) <= RANGE_ENEMY_ATTACK_RANGE:
+			elif _is_bear_alive() and _distance(enemy["pos_index"], _bear["pos_index"]) <= _enemy_attack_range(enemy):
 				# Hero's out of range (or hidden), but the bear is
 				# close enough to shoot instead.
 				_play_enemy_attack_lunge(enemy, _bear["pos_index"])
@@ -12459,17 +12515,17 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 	if _enemy_the_test_of_time_active:
 		return
 
-	# Mortimer Kisses' channel: consumes this ENTIRE turn on an automatic
+	# Kiss the Wastes' channel: consumes this ENTIRE turn on an automatic
 	# shot instead of the normal potion/skill/attack/move decision below
 	# - no move, no attack, no other skill, no item, mirroring the
 	# player's own copy (_end_turn()'s own "the hero's new turn is
 	# opening right here" tail). Never falls through to anything else
 	# below while a shot remains.
-	if _enemy_mortimer_kisses_active:
-		_fire_enemy_mortimer_kisses_shot()
-		_enemy_mortimer_kisses_turns_left -= 1
-		if _enemy_mortimer_kisses_turns_left <= 0:
-			_end_enemy_mortimer_kisses()
+	if _enemy_kiss_the_wastes_active:
+		_fire_enemy_kiss_the_wastes_shot()
+		_enemy_kiss_the_wastes_turns_left -= 1
+		if _enemy_kiss_the_wastes_turns_left <= 0:
+			_end_enemy_kiss_the_wastes()
 		return
 
 	# If Undertow marked the player last turn, this is the
@@ -12536,13 +12592,13 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 			return
 
 	if enemy_type == "range":
-		if not hero_hidden and not rooted and hero_distance <= RANGE_ENEMY_FLEE_DISTANCE:
+		if not hero_hidden and not rooted and _enemy_flees_at(enemy, hero_distance):
 			var flee_pos: int = _get_flee_position(enemy)
 			if not _is_column_frostbound_rupture_blocked(flee_pos):
 				_move_enemy(enemy, flee_pos)
 			return
 
-		if hero_distance <= RANGE_ENEMY_ATTACK_RANGE and not hero_hidden:
+		if hero_distance <= _enemy_attack_range(enemy) and not hero_hidden:
 			_resolve_enemy_hero_attack(enemy)
 			return
 	else:  # "melee"
@@ -12827,12 +12883,12 @@ func _enemy_skill_worth_casting(skill_id: String) -> bool:
 			# damage/healing back to full, no extra total value over
 			# letting the existing one run its course.
 			return _enemy_skill_worth_on_target("sanguine_bloom", false) or (_is_bear_alive() and _enemy_skill_worth_on_target("sanguine_bloom", true))
-		"mortimer_kisses":
+		"kiss_the_wastes":
 			# Purely defensive/documentation consistency, mirroring The Test of
 			# Time's own case above - _enemy_hero_turn()'s own top-of-
 			# function lockout already returns before this could ever be
 			# QUERIED while the channel is active in practice.
-			return not _enemy_mortimer_kisses_active
+			return not _enemy_kiss_the_wastes_active
 		_:
 			return true
 
@@ -12847,7 +12903,7 @@ func _enemy_skill_worth_casting(skill_id: String) -> bool:
 ## combo-readiness question - the real candidate loop below always
 ## leaves it false, so nothing here changes for any existing hero.
 ## `enemy` is only ever read by _enemy_skill_in_range()'s own
-## Scatterblast special-case (its own facing/position, for the
+## Double Trouble special-case (its own facing/position, for the
 ## directional check) - every other skill's range check ignores it.
 func _is_enemy_skill_ready(skill_id: String, enemy_type: String, hero_distance: int, enemy: Dictionary, ignore_range: bool = false) -> bool:
 	if PlayerManager.get_npc_skill_level(_enemy_hero_id, skill_id) <= 0:
@@ -13025,22 +13081,22 @@ func _enemy_has_unaffordable_ready_skill(enemy_type: String, hero_distance: int,
 ##     there at all - see EnemyHeroManager's own _build_npc_ai_context()
 ##     docstring), where `grid_columns` defaults to 0 and both modifiers
 ##     fall back to their own no-columns proxy instead.
-##   - reactive_armor_stacks/reactive_armor_max_stacks: Timbersaw's own
-##     current Reactive Armor stack count/cap, for EnemySkillAI's own
-##     _timbersaw_modifier() to fold into its survival/aggression
+##   - kindled_resolve_stacks/kindled_resolve_max_stacks: Cinder's own
+##     current Kindled Resolve stack count/cap, for EnemySkillAI's own
+##     _cinder_modifier() to fold into its survival/aggression
 ##     calculations (see that function's own docstring) - 0/0 for every
 ##     other hero (a no-op there, same as every other hero-specific
 ##     field in this context).
 ##   - target_is_hero: always true here - the player is the only
 ##     possible target in a hero fight, and always a hero. Used by
-##     Timbersaw's own Whirling Death (see _timbersaw_whirling_death_
+##     Cinder's own Sweep (see _cinder_sweep_
 ##     modifier()) for its own qualitative "a hero was hit" value;
 ##     EnemyHeroManager's own _build_npc_ai_context() reports false
 ##     instead, since the simulation's own targets are always creeps.
 ##   - target_armor: the player's own current _hero_armor() (already
-##     folding in every buff/debuff currently on him, Lil' Shredder's own
-##     armor reduction included) - for Snapfire's own Lil' Shredder (see
-##     EnemySkillAI's own _snapfire_lil_shredder_modifier()), which
+##     folding in every buff/debuff currently on him, Three Cheers's own
+##     armor reduction included) - for Raze's own Three Cheers (see
+##     EnemySkillAI's own _raze_three_cheers_modifier()), which
 ##     values shredding a heavily-armored target more than a lightly-
 ##     armored one. EnemyHeroManager's own _build_npc_ai_context() reads
 ##     a creep target's own static armor instead, since the simulation
@@ -13136,7 +13192,7 @@ func _build_enemy_ai_context(enemy: Dictionary, enemy_type: String, hero_distanc
 	var pull_of_the_abyss_ready: bool = not pull_of_the_abyss_level_data.is_empty() \
 		and (_enemy_pull_of_the_abyss_attack_count + 1) >= int(pull_of_the_abyss_level_data.get("hits_to_activate", 1))
 
-	var base_attack_range: int = RANGE_ENEMY_ATTACK_RANGE if enemy_type == "range" else 0
+	var base_attack_range: int = _enemy_attack_range(enemy) if enemy_type == "range" else 0
 
 	# Luna's Moon Glaives: the ACTUAL bounce targets right now - every one
 	# of the player's own illusions, plus his own Elderwild Companion, within
@@ -13202,8 +13258,8 @@ func _build_enemy_ai_context(enemy: Dictionary, enemy_type: String, hero_distanc
 		"target_pos_index": _hero_pos_index,
 		"grid_columns": GRID_COLUMNS,
 		"caster_facing_left": bool(enemy["node"].flip_h),
-		"reactive_armor_stacks": _enemy_reactive_armor_stack_turns.size(),
-		"reactive_armor_max_stacks": int(_get_enemy_reactive_armor_level_data().get("max_stacks", 0)),
+		"kindled_resolve_stacks": _enemy_kindled_resolve_stack_turns.size(),
+		"kindled_resolve_max_stacks": int(_get_enemy_kindled_resolve_level_data().get("max_stacks", 0)),
 		"target_is_hero": true,
 		"target_armor": _hero_armor(),
 		"illusions_active": not _enemy_illusions.is_empty(),
@@ -13272,7 +13328,7 @@ func _enemy_has_harmful_debuff(enemy: Dictionary) -> bool:
 ## True if a rival hero of `enemy_type`, `hero_distance` columns from
 ## the player, can currently reach the player with `skill_id` - see
 ## EnemySkillRange for which skills need this check and why. `enemy` is
-## only ever read by the Scatterblast special-case below (its own
+## only ever read by the Double Trouble special-case below (its own
 ## position/facing, for the directional check) - every other skill's
 ## check below ignores it entirely, same as EnemySkillRange.is_in_range()
 ## itself.
@@ -13283,9 +13339,9 @@ func _enemy_skill_in_range(skill_id: String, enemy_type: String, hero_distance: 
 	var level: int = PlayerManager.get_npc_skill_level(_enemy_hero_id, skill_id)
 	var level_data: Dictionary = GameManager.get_skill_level_data(_find_enemy_skill(skill_id), level)
 
-	if skill_id == "scatterblast":
+	if skill_id == "double_trouble":
 		# Directional, not a plain "distance <= radius/attack_range"
-		# check - mirrors the player's own _cast_scatterblast()'s "ahead"
+		# check - mirrors the player's own _cast_double_trouble()'s "ahead"
 		# math exactly: only in range if the player is ahead of the
 		# rival in whichever direction it's CURRENTLY facing
 		# (enemy["node"].flip_h, kept up to date by _move_enemy()), never
@@ -13314,14 +13370,14 @@ func _enemy_skill_in_range(skill_id: String, enemy_type: String, hero_distance: 
 ## The generic half of _enemy_skill_in_range() - whether `skill_id`
 ## reaches a target `distance` columns away - split out so the same
 ## check can be asked about the player's Elderwild Companion too (see
-## _enemy_skill_target_options()). Scatterblast's directional check
+## _enemy_skill_target_options()). Double Trouble's directional check
 ## stays in _enemy_skill_in_range() itself; it's never bear-targetable.
 func _enemy_skill_reaches_distance(skill_id: String, enemy_type: String, distance: int) -> bool:
 	if not EnemySkillRange.requires_range_check(skill_id):
 		return true
 	var level_data: Dictionary = _get_enemy_skill_level_data(skill_id)
 	var radius: int = THE_HOLLOW_COLD_RANGE if skill_id == "the_hollow_cold" else int(level_data.get("range", level_data.get("radius", level_data.get("distance", 0))))
-	var attack_range: int = RANGE_ENEMY_ATTACK_RANGE if enemy_type == "range" else 0
+	var attack_range: int = _enemy_attack_range(_get_hero_fight_boss()) if enemy_type == "range" else 0
 	return EnemySkillRange.is_in_range(skill_id, distance, radius, attack_range)
 
 
@@ -13407,20 +13463,20 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 			_activate_enemy_woven_flesh(level_data)
 		"mother's_grasp":
 			_cast_enemy_mothers_grasp(enemy, level_data)
-		"whirling_death":
-			_cast_enemy_whirling_death(enemy, level_data)
-		"timber_chain":
-			_cast_enemy_timber_chain(enemy, level_data)
-		"chakram":
-			_cast_enemy_chakram(enemy, level_data)
-		"scatterblast":
-			_cast_enemy_scatterblast(enemy, level_data)
-		"firesnap_cookie":
-			_cast_enemy_firesnap_cookie(enemy, level_data)
-		"lil_shredder":
-			_cast_enemy_lil_shredder(enemy, level_data)
-		"mortimer_kisses":
-			_cast_enemy_mortimer_kisses(level_data)
+		"sweep":
+			_cast_enemy_sweep(enemy, level_data)
+		"chainfire":
+			_cast_enemy_chainfire(enemy, level_data)
+		"cinderbomb":
+			_cast_enemy_cinderbomb(enemy, level_data)
+		"double_trouble":
+			_cast_enemy_double_trouble(enemy, level_data)
+		"blast_hopper":
+			_cast_enemy_blast_hopper(enemy, level_data)
+		"three_cheers":
+			_cast_enemy_three_cheers(enemy, level_data)
+		"kiss_the_wastes":
+			_cast_enemy_kiss_the_wastes(level_data)
 		"mirror_image":
 			_cast_enemy_mirror_image(enemy, level_data)
 		"ensnare":
@@ -13645,7 +13701,7 @@ func _play_mothers_grasp_slam(node: Variant) -> void:
 
 ## A one-shot spray of dirt clods kicked up across `width` px of ground
 ## centered on `pos` (Thornbind's burst). Same CPUParticles2D one-shot-burst
-## recipe as _spawn_lil_shredder_impact().
+## recipe as _spawn_three_cheers_impact().
 func _play_ground_dirt(pos: Vector2, width: float) -> void:
 	var lifetime: float = 0.6
 	var particles := CPUParticles2D.new()
@@ -13751,7 +13807,7 @@ func _refresh_mark_of_stillness_frost() -> void:
 ## least half a column, so a radius-0 cast still reads), spinning as
 ## they go. The lingering frost on everyone caught is
 ## _refresh_mark_of_stillness_frost()'s. Same CPUParticles2D one-shot-burst
-## recipe as _spawn_lil_shredder_impact(), with tangential acceleration
+## recipe as _spawn_three_cheers_impact(), with tangential acceleration
 ## for the swirl.
 func _play_the_hollow_cold_swirl(center_node: Variant, radius: int) -> void:
 	if not is_instance_valid(center_node) or not (center_node is Control):
@@ -13786,7 +13842,7 @@ func _play_the_hollow_cold_swirl(center_node: Variant, radius: int) -> void:
 	particles.hue_variation_min = -0.04
 	particles.hue_variation_max = 0.04
 	add_child(particles)
-	# Same reasoning as _play_scatterblast_effect()'s own move_child()
+	# Same reasoning as _play_double_trouble_effect()'s own move_child()
 	# call - render at the hero/enemy layer, not on top of every UI panel.
 	move_child(particles, enemies_layer.get_index() + 1)
 	particles.emitting = true
@@ -14401,6 +14457,7 @@ func _summon_enemy_elderwild_companion(level_data: Dictionary) -> void:
 		"is_hero_fight": true,
 		"is_enemy_elderwild_companion": true,
 	})
+	AudioManager.play_event("bear_summon")
 
 
 func _despawn_enemy_elderwild_companion() -> void:
@@ -14659,7 +14716,7 @@ func _play_orb_projectile(from_node: Variant, to_node: Variant, color: Color, ri
 	ball.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ball.position = start - ball.size / 2.0
 	add_child(ball)
-	# Same layering as _play_scatterblast_effect() - at the hero/enemy
+	# Same layering as _play_double_trouble_effect() - at the hero/enemy
 	# layer, not on top of every UI panel.
 	move_child(ball, enemies_layer.get_index() + 1)
 
@@ -14706,7 +14763,7 @@ func _play_orb_projectile(from_node: Variant, to_node: Variant, color: Color, ri
 ## The orb projectile's impact (see _play_orb_projectile()): a one-shot
 ## ring of `color` sparks at `pos`, scaled by `size_scale` (1.0 =
 ## Whisper of the Veil's own size). Same CPUParticles2D one-shot-burst recipe as
-## _spawn_lil_shredder_impact().
+## _spawn_three_cheers_impact().
 func _play_orb_impact(pos: Vector2, color: Color, size_scale: float) -> void:
 	var lifetime: float = 0.45 * sqrt(size_scale)
 	var particles := CPUParticles2D.new()
@@ -14876,7 +14933,7 @@ func _play_drowned_surge_splash(node: Variant) -> void:
 
 	# The spray: a geyser-like burst straight up that rains back down.
 	# Same CPUParticles2D one-shot-burst recipe as
-	# _spawn_lil_shredder_impact().
+	# _spawn_three_cheers_impact().
 	var lifetime: float = 0.8
 	var spray := CPUParticles2D.new()
 	spray.position = feet
@@ -14898,7 +14955,7 @@ func _play_drowned_surge_splash(node: Variant) -> void:
 	spray.hue_variation_min = -0.03
 	spray.hue_variation_max = 0.03
 	add_child(spray)
-	# Same reasoning as _play_scatterblast_effect()'s own move_child()
+	# Same reasoning as _play_double_trouble_effect()'s own move_child()
 	# call - render at the hero/enemy layer, not on top of every UI panel.
 	move_child(spray, enemies_layer.get_index() + 1)
 	spray.emitting = true
@@ -16148,8 +16205,8 @@ func _cast_enemy_mothers_grasp(enemy: Dictionary, level_data: Dictionary) -> voi
 
 
 # ------------------------------------------------------------------
-# Timbersaw's Whirling Death, cast by the rival on himself - mirrors the
-# player's own _cast_whirling_death(): `level_data.damage` to the player
+# Cinder's Sweep, cast by the rival on himself - mirrors the
+# player's own _cast_sweep(): `level_data.damage` to the player
 # whenever they're within `radius` columns of the rival's CURRENT
 # position. There's only one possible target in a hero fight, so this
 # collapses to a single conditional hit rather than a loop over multiple
@@ -16157,19 +16214,20 @@ func _cast_enemy_mothers_grasp(enemy: Dictionary, level_data: Dictionary) -> voi
 # rival copy already uses (see _cast_enemy_frost_tempest()/_cast_enemy_
 # mothers_grasp()). "Pure damage" and the primary-attribute reduction are
 # both purely descriptive here - neither is mechanically implemented
-# anywhere in this project (the player's own _cast_whirling_death() also
+# anywhere in this project (the player's own _cast_sweep() also
 # just calls _deal_fixed_damage_to_enemy(), the same armor-mitigated
 # path every other skill uses, and no reduction amount exists anywhere
 # in its own level data), so this mirrors that exact behavior rather
-# than inventing either one - see EnemySkillAI's own _timbersaw_
-# whirling_death_modifier() for how the AI still accounts for the
+# than inventing either one - see EnemySkillAI's own _cinder_
+# sweep_modifier() for how the AI still accounts for the
 # qualitative "a hero was hit" value without a real stat system behind
 # it.
 # ------------------------------------------------------------------
 
-func _cast_enemy_whirling_death(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_sweep(enemy: Dictionary, level_data: Dictionary) -> void:
 	var radius: int = int(level_data.get("radius", 0))
 	var damage: float = float(level_data.get("damage", 0))
+	_play_sweep_flames(enemy["pos_index"], radius)
 	if _distance(enemy["pos_index"], _hero_pos_index) <= radius:
 		apply_damage(damage)
 		# The standard splash hit-flash (see _apply_splash_damage()).
@@ -16179,12 +16237,12 @@ func _cast_enemy_whirling_death(enemy: Dictionary, level_data: Dictionary) -> vo
 	# himself currently is.
 	_deal_aoe_damage_to_illusions(enemy["pos_index"], radius, damage, true)
 	_deal_aoe_damage_to_bear(enemy["pos_index"], radius, damage, true)
-	_show_message_over_hero("Whirling Death!")
+	_show_message_over_hero("Sweep!")
 
 
 # ------------------------------------------------------------------
-# Timbersaw's Timber Chain, cast by the rival on the player - mirrors
-# the player's own _resolve_timber_chain_cast(): `level_data.damage` to
+# Cinder's Chainfire, cast by the rival on the player - mirrors
+# the player's own _resolve_chainfire_cast(): `level_data.damage` to
 # the player (there's only one possible target/path occupant in a hero
 # fight - see this section's own header comment above), then pulls the
 # rival onto the player's own column, stopping one column short of a
@@ -16193,18 +16251,15 @@ func _cast_enemy_whirling_death(enemy: Dictionary, level_data: Dictionary) -> vo
 # blocked" split the player's own copy uses.
 # ------------------------------------------------------------------
 
-func _cast_enemy_timber_chain(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_chainfire(enemy: Dictionary, level_data: Dictionary) -> void:
 	var damage: float = float(level_data.get("damage", 0))
-	apply_damage(damage)
-	# The standard splash hit-flash (see _apply_splash_damage()).
-	_flash_bounce_hit(hero_image)
 	# The chain reaches the whole line from the rival's own column to
 	# the player's - an illusion standing anywhere along that path can
 	# still be caught in it, same as every enemy along the player's own
-	# Timber Chain's path. Read BEFORE the rival's own pull below moves
+	# Chainfire's path. Read BEFORE the rival's own pull below moves
 	# it off "enemy["pos_index"]".
-	_deal_line_aoe_damage_to_illusions(enemy["pos_index"], _hero_pos_index, damage, true)
-	_deal_line_aoe_damage_to_bear(enemy["pos_index"], _hero_pos_index, damage, true)
+	var from_col: int = enemy["pos_index"]
+	var to_col: int = _hero_pos_index
 
 	var chain_direction: int = _step_toward(enemy["pos_index"], _hero_pos_index)
 	var landing_pos: int = enemy["pos_index"]
@@ -16214,60 +16269,86 @@ func _cast_enemy_timber_chain(enemy: Dictionary, level_data: Dictionary) -> void
 			break
 		landing_pos = next_pos
 
-	_move_enemy(enemy, landing_pos)
-	_show_message_over_hero("Timber Chain!")
+	_show_message_over_hero("Chainfire!")
+	# The player can't act until the rival has landed - same as its The
+	# Sunken One.
+	_rival_fx_in_flight = true
+	_update_action_buttons()
+	var generation_before: int = _stage_generation
+	var node: Control = enemy["node"]
+	var on_landed := func() -> void:
+		_rival_fx_in_flight = false
+		if _battle_over or _stage_generation != generation_before:
+			_update_action_buttons()
+			return
+		_move_enemy(enemy, landing_pos)
+		apply_damage(damage)
+		# The standard splash hit-flash (see _apply_splash_damage()).
+		_flash_bounce_hit(hero_image)
+		_deal_line_aoe_damage_to_illusions(from_col, to_col, damage, true)
+		_deal_line_aoe_damage_to_bear(from_col, to_col, damage, true)
+		_refresh_bars()
+		if _recruited.get("current_hp", 0) <= 0:
+			_handle_defeat()
+			return
+		_update_action_buttons()
+	# Facing the way it swings (hero art faces right natively).
+	if chain_direction != 0 and is_instance_valid(node):
+		node.flip_h = chain_direction < 0
+	var landing := Vector2(_index_to_x(landing_pos), _creature_top_y(node.size.y)) if is_instance_valid(node) else Vector2.ZERO
+	_play_chainfire(node, _enemy_hero_static, hero_image, landing, on_landed)
 
 
 # ------------------------------------------------------------------
-# Timbersaw's Reactive Armor (passive) - mirrors the player's own
-# _reactive_armor_stack_turns/_get_reactive_armor_level_data()/_apply_
-# reactive_armor_stack()/_tick_reactive_armor_stacks()/_apply_reactive_
-# armor_regen().
+# Cinder's Kindled Resolve (passive) - mirrors the player's own
+# _kindled_resolve_stack_turns/_get_kindled_resolve_level_data()/
+# _apply_kindled_resolve_stack()/_tick_kindled_resolve_stacks()/
+# _apply_kindled_resolve_regen().
 # ------------------------------------------------------------------
 
-## Reactive Armor's level data for whatever level the rival has it at
+## Kindled Resolve's level data for whatever level the rival has it at
 ## right now - {} if it isn't learned at all (level 0), the same "empty
 ## means locked" convention every other auto-triggered skill's own
 ## _get_*_level_data() helper uses.
-func _get_enemy_reactive_armor_level_data() -> Dictionary:
-	var level: int = PlayerManager.get_npc_skill_level(_enemy_hero_id, "reactive_armor")
+func _get_enemy_kindled_resolve_level_data() -> Dictionary:
+	var level: int = PlayerManager.get_npc_skill_level(_enemy_hero_id, "kindled_resolve")
 	if level <= 0:
 		return {}
-	var skill: Dictionary = _find_enemy_skill("reactive_armor")
+	var skill: Dictionary = _find_enemy_skill("kindled_resolve")
 	if skill.is_empty():
 		return {}
 	return GameManager.get_skill_level_data(skill, level)
 
 
-func _enemy_reactive_armor_bonus_armor() -> float:
-	if _enemy_reactive_armor_stack_turns.is_empty():
+func _enemy_kindled_resolve_bonus_armor() -> float:
+	if _enemy_kindled_resolve_stack_turns.is_empty():
 		return 0.0
-	var level_data: Dictionary = _get_enemy_reactive_armor_level_data()
+	var level_data: Dictionary = _get_enemy_kindled_resolve_level_data()
 	if level_data.is_empty():
 		return 0.0
-	return _enemy_reactive_armor_stack_turns.size() * float(level_data.get("bonus_armor_per_stack", 0.0))
+	return _enemy_kindled_resolve_stack_turns.size() * float(level_data.get("bonus_armor_per_stack", 0.0))
 
 
-func _apply_enemy_reactive_armor_stack() -> void:
-	var level_data: Dictionary = _get_enemy_reactive_armor_level_data()
+func _apply_enemy_kindled_resolve_stack() -> void:
+	var level_data: Dictionary = _get_enemy_kindled_resolve_level_data()
 	if level_data.is_empty():
 		return
 
 	var max_stacks: int = int(level_data.get("max_stacks", 0))
-	if _enemy_reactive_armor_stack_turns.size() >= max_stacks:
-		_enemy_reactive_armor_stack_turns.pop_front()
-	_enemy_reactive_armor_stack_turns.append(int(level_data.get("duration", 0)))
+	if _enemy_kindled_resolve_stack_turns.size() >= max_stacks:
+		_enemy_kindled_resolve_stack_turns.pop_front()
+	_enemy_kindled_resolve_stack_turns.append(int(level_data.get("duration", 0)))
 
 
-func _tick_enemy_reactive_armor_stacks() -> void:
-	for i in range(_enemy_reactive_armor_stack_turns.size()):
-		_enemy_reactive_armor_stack_turns[i] -= 1
-	_enemy_reactive_armor_stack_turns = _enemy_reactive_armor_stack_turns.filter(func(turns_left): return turns_left > 0)
+func _tick_enemy_kindled_resolve_stacks() -> void:
+	for i in range(_enemy_kindled_resolve_stack_turns.size()):
+		_enemy_kindled_resolve_stack_turns[i] -= 1
+	_enemy_kindled_resolve_stack_turns = _enemy_kindled_resolve_stack_turns.filter(func(turns_left): return turns_left > 0)
 
 
-func _apply_enemy_reactive_armor_regen() -> void:
-	var level_data: Dictionary = _get_enemy_reactive_armor_level_data()
-	if level_data.is_empty() or _enemy_reactive_armor_stack_turns.is_empty():
+func _apply_enemy_kindled_resolve_regen() -> void:
+	var level_data: Dictionary = _get_enemy_kindled_resolve_level_data()
+	if level_data.is_empty() or _enemy_kindled_resolve_stack_turns.is_empty():
 		return
 
 	var boss: Dictionary = _get_hero_fight_boss()
@@ -16275,62 +16356,80 @@ func _apply_enemy_reactive_armor_regen() -> void:
 		return
 
 	var max_hp: float = _enemy_hero_effective_max_hp(boss)
-	var heal_amount: float = _enemy_reactive_armor_stack_turns.size() * float(level_data.get("bonus_hp_regen_per_stack", 0.0))
+	var heal_amount: float = _enemy_kindled_resolve_stack_turns.size() * float(level_data.get("bonus_hp_regen_per_stack", 0.0))
 	boss["current_hp"] = minf(max_hp, float(boss.get("current_hp", 0.0)) + heal_amount)
 
 
 # ------------------------------------------------------------------
-# Timbersaw's ultimate, Chakram, cast by the rival - mirrors the
-# player's own _chakram field/_resolve_chakram_cast()/_tick_chakram()/
-# _despawn_chakram(). There's only one possible initial-AoE target in a
+# Cinder's ultimate, Cinderbomb, cast by the rival - mirrors the
+# player's own _cinderbomb field/_resolve_cinderbomb_cast()/_tick_cinderbomb()/
+# _despawn_cinderbomb(). There's only one possible initial-AoE target in a
 # hero fight (the player), so this collapses the "every OTHER enemy
 # within radius" splash to a single hit, same simplification every other
 # rival AoE cast already uses.
 # ------------------------------------------------------------------
 
-func _cast_enemy_chakram(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_cinderbomb(enemy: Dictionary, level_data: Dictionary) -> void:
 	var pos_index: int = _hero_pos_index
 	var cast_damage: float = float(level_data.get("cast_damage", 0))
 	var radius: int = int(level_data.get("radius", 0))
-	apply_damage(cast_damage)
-	# The standard splash hit-flash (see _apply_splash_damage()).
-	_flash_bounce_hit(hero_image)
-	# Planted at the player's own position at cast time - an illusion
-	# there (or nearby) takes the same initial burst.
-	_deal_aoe_damage_to_illusions(pos_index, radius, cast_damage, true)
-	_deal_aoe_damage_to_bear(pos_index, radius, cast_damage, true)
+	_show_message_over_hero("Cinderbomb!")
+	# The player can't act until the barrel has burst - same as the
+	# rival's The Sunken One.
+	_rival_fx_in_flight = true
+	_update_action_buttons()
+	var generation_before: int = _stage_generation
+	var on_explode := func() -> void:
+		_rival_fx_in_flight = false
+		if _battle_over or _stage_generation != generation_before:
+			_update_action_buttons()
+			return
+		if _distance(_hero_pos_index, pos_index) <= radius:
+			apply_damage(cast_damage)
+			# The standard splash hit-flash (see _apply_splash_damage()).
+			_flash_bounce_hit(hero_image)
+		# Planted at the player's own position at cast time - an illusion
+		# there (or nearby) takes the same initial burst.
+		_deal_aoe_damage_to_illusions(pos_index, radius, cast_damage, true)
+		_deal_aoe_damage_to_bear(pos_index, radius, cast_damage, true)
+		_shake_screen()
 
-	_despawn_enemy_chakram()
-	_enemy_chakram = {
-		"pos_index": pos_index,
-		"radius": int(level_data.get("radius", 0)),
-		"damage_per_turn": float(level_data.get("damage_per_turn", 0)),
-		"turns_remaining": int(level_data.get("duration", 0)),
-		"duration_pending_start": true,
-		"node": _spawn_chakram_marker(pos_index),
-	}
-	_show_message_over_hero("Chakram!")
+		_despawn_enemy_cinderbomb()
+		_enemy_cinderbomb = {
+			"pos_index": pos_index,
+			"radius": radius,
+			"damage_per_turn": float(level_data.get("damage_per_turn", 0)),
+			"turns_remaining": int(level_data.get("duration", 0)),
+			"duration_pending_start": true,
+			"node": _spawn_cinderbomb_marker(pos_index, radius),
+		}
+		_refresh_bars()
+		if _recruited.get("current_hp", 0) <= 0:
+			_handle_defeat()
+			return
+		_update_action_buttons()
+	_throw_cinderbomb(enemy.get("node"), _enemy_hero_static, hero_image, pos_index, radius, on_explode)
 
 
-## Ticks the rival's planted Chakram's duration down once per End Turn,
+## Ticks the rival's planted Cinderbomb's duration down once per End Turn,
 ## same timing (and same "the casting turn doesn't count" skip) as every
 ## other duration-based buff - dealing this level's own damage_per_turn
 ## to the player whenever they're within radius columns of the FIXED
 ## position it was planted at (not re-checked against the player's
 ## current position - same as the player's own copy), on every tick that
-## actually counts against the duration. A no-op while no chakram is
+## actually counts against the duration. A no-op while no cinderbomb is
 ## planted.
-func _tick_enemy_chakram() -> void:
-	if _enemy_chakram.is_empty():
+func _tick_enemy_cinderbomb() -> void:
+	if _enemy_cinderbomb.is_empty():
 		return
 
-	if _enemy_chakram.get("duration_pending_start", false):
-		_enemy_chakram["duration_pending_start"] = false
+	if _enemy_cinderbomb.get("duration_pending_start", false):
+		_enemy_cinderbomb["duration_pending_start"] = false
 		return
 
-	var pos_index: int = int(_enemy_chakram["pos_index"])
-	var radius: int = int(_enemy_chakram["radius"])
-	var damage_per_turn: float = float(_enemy_chakram["damage_per_turn"])
+	var pos_index: int = int(_enemy_cinderbomb["pos_index"])
+	var radius: int = int(_enemy_cinderbomb["radius"])
+	var damage_per_turn: float = float(_enemy_cinderbomb["damage_per_turn"])
 	if _distance(_hero_pos_index, pos_index) <= radius:
 		apply_damage(damage_per_turn)
 		# The standard splash hit-flash (see _apply_splash_damage()).
@@ -16341,56 +16440,56 @@ func _tick_enemy_chakram() -> void:
 	_deal_aoe_damage_to_illusions(pos_index, radius, damage_per_turn, true)
 	_deal_aoe_damage_to_bear(pos_index, radius, damage_per_turn, true)
 
-	_enemy_chakram["turns_remaining"] = int(_enemy_chakram["turns_remaining"]) - 1
-	if int(_enemy_chakram["turns_remaining"]) <= 0:
-		_despawn_enemy_chakram()
+	_enemy_cinderbomb["turns_remaining"] = int(_enemy_cinderbomb["turns_remaining"]) - 1
+	if int(_enemy_cinderbomb["turns_remaining"]) <= 0:
+		_despawn_enemy_cinderbomb()
 
 
-## Removes whatever chakram the rival currently has planted, if any -
+## Removes whatever cinderbomb the rival currently has planted, if any -
 ## used both when a fresh cast replaces one still active and when its
 ## duration runs out, same reasoning as the player's own _despawn_
-## chakram(). Scene teardown at battle end frees the node implicitly
+## cinderbomb(). Scene teardown at battle end frees the node implicitly
 ## either way; also called from _reset_enemy_hero_state() so a marker
 ## from a PREVIOUS hero fight never lingers into a new one.
-func _despawn_enemy_chakram() -> void:
-	if _enemy_chakram.is_empty():
+func _despawn_enemy_cinderbomb() -> void:
+	if _enemy_cinderbomb.is_empty():
 		return
-	_dismiss_chakram_marker(_enemy_chakram.get("node"))
-	_enemy_chakram = {}
+	_dismiss_cinderbomb_marker(_enemy_cinderbomb.get("node"))
+	_enemy_cinderbomb = {}
 
 
 # ------------------------------------------------------------------
-# Snapfire's Scatterblast, cast by the rival - mirrors the player's own
-# _cast_scatterblast(): `level_data.damage` to the player, straight
+# Raze's Double Trouble, cast by the rival - mirrors the player's own
+# _cast_double_trouble(): `level_data.damage` to the player, straight
 # ahead of the rival in whichever direction it's currently facing. The
 # directional "is the player actually ahead" check already happened
 # before this was ever picked as a candidate (see _enemy_skill_in_
-# range()'s own "scatterblast" case), so by the time this runs it's
+# range()'s own "double_trouble" case), so by the time this runs it's
 # guaranteed to land - a plain hit, same as every other rival nuke.
 # ------------------------------------------------------------------
 
-func _cast_enemy_scatterblast(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_double_trouble(enemy: Dictionary, level_data: Dictionary) -> void:
 	var damage: float = float(level_data.get("damage", 0))
 	apply_damage(damage)
 	# Directional, not a radius - same "ahead of the caster, in whichever
 	# direction it's facing" cone _enemy_skill_in_range()'s own
-	# Scatterblast case already checks against the player.
+	# Double Trouble case already checks against the player.
 	var direction: int = -1 if bool(enemy["node"].flip_h) else 1
 	_deal_directional_aoe_damage_to_illusions(int(enemy["pos_index"]), direction, int(level_data.get("range", 0)), damage)
 	_deal_directional_aoe_damage_to_bear(int(enemy["pos_index"]), direction, int(level_data.get("range", 0)), damage)
 	# Same particle cone the player's own cast gets (see
-	# _play_scatterblast_effect()'s own comment), bursting from the
+	# _play_double_trouble_effect()'s own comment), bursting from the
 	# rival's own node instead of hero_image.
-	_play_scatterblast_effect(enemy["node"], direction, int(level_data.get("range", 0)))
-	_show_message_over_hero("Scatterblast!")
+	_play_double_trouble_effect(enemy["node"], direction, int(level_data.get("range", 0)))
+	_show_message_over_hero("Double Trouble!")
 
 
 # ------------------------------------------------------------------
-# Snapfire's Firesnap Cookie, cast by the rival - mirrors the player's
-# own _activate_firesnap_cookie(): hops `jump_distance` columns in
+# Raze's Blast Hopper, cast by the rival - mirrors the player's
+# own _activate_blast_hopper(): hops `jump_distance` columns in
 # whichever direction the rival is currently facing (walked one column
 # at a time here, stopping early at the board edge or a player-cast Frostbound
-# Rupture wall - Snapfire's own range_type is always "Range", so this
+# Rupture wall - Raze's own range_type is always "Range", so this
 # never needs the melee "stop on top of an enemy" rule the way a
 # point-blank hero's own copy would), then - on landing - deals damage
 # and stuns the player if they're within `radius` columns of wherever it
@@ -16398,7 +16497,7 @@ func _cast_enemy_scatterblast(enemy: Dictionary, level_data: Dictionary) -> void
 # copy - the hop itself always happens.
 # ------------------------------------------------------------------
 
-func _cast_enemy_firesnap_cookie(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_blast_hopper(enemy: Dictionary, level_data: Dictionary) -> void:
 	var jump_distance: int = int(level_data.get("jump_distance", 0))
 	var direction: int = -1 if bool(enemy["node"].flip_h) else 1
 
@@ -16411,7 +16510,9 @@ func _cast_enemy_firesnap_cookie(enemy: Dictionary, level_data: Dictionary) -> v
 			break
 		landing_pos = next_pos
 
+	var old_x: float = enemy["node"].position.x
 	_move_enemy(enemy, landing_pos)
+	_play_blast_hop_effect(enemy["node"], old_x, direction, int(level_data.get("radius", 0)))
 
 	var radius: int = int(level_data.get("radius", 0))
 	var damage: float = float(level_data.get("damage", 0))
@@ -16425,12 +16526,12 @@ func _cast_enemy_firesnap_cookie(enemy: Dictionary, level_data: Dictionary) -> v
 	_deal_aoe_damage_to_illusions(landing_pos, radius, damage)
 	_deal_aoe_damage_to_bear(landing_pos, radius, damage)
 
-	_show_message_over_hero("Firesnap Cookie!")
+	_show_message_over_hero("Blast Hopper!")
 
 
 # ------------------------------------------------------------------
-# Snapfire's Lil' Shredder, cast by the rival - mirrors the player's own
-# _resolve_lil_shredder_cast(): fires this level's own `shots` count of
+# Raze's Three Cheers, cast by the rival - mirrors the player's own
+# _resolve_three_cheers_cast(): fires this level's own `shots` count of
 # separately-rolled hits at the player (each _roll_enemy_hero_damage()
 # times damage_pct), each shot ALSO stacking armor_reduction_per_shot
 # onto _player_armor_reduction - a battle-local runtime value folded
@@ -16445,9 +16546,9 @@ func _cast_enemy_firesnap_cookie(enemy: Dictionary, level_data: Dictionary) -> v
 # duration-based effect.
 # ------------------------------------------------------------------
 
-func _cast_enemy_lil_shredder(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_three_cheers(enemy: Dictionary, level_data: Dictionary) -> void:
 	if _enemy_skill_on_bear:
-		_cast_enemy_lil_shredder_on_bear(enemy, level_data)
+		_cast_enemy_three_cheers_on_bear(enemy, level_data)
 		return
 	var shots: int = int(level_data.get("shots", 3))
 	var damage_pct: float = float(level_data.get("damage_pct", 0))
@@ -16459,10 +16560,10 @@ func _cast_enemy_lil_shredder(enemy: Dictionary, level_data: Dictionary) -> void
 		var shot_damage: float = _roll_enemy_hero_damage(enemy) * damage_pct
 		apply_damage(shot_damage)
 		# Same staggered impact-spark volley the player's own shots get
-		# (see _play_lil_shredder_shot_effect()'s own comment) - purely
+		# (see _play_three_cheers_shot_effect()'s own comment) - purely
 		# position-based, so it works the same regardless of which side
 		# is casting.
-		_play_lil_shredder_shot_effect(_hero_pos_index, i * 0.15)
+		_play_three_cheers_shot_effect(_hero_pos_index, i * 0.11, enemy["node"])
 		if _recruited.get("current_hp", 0) <= 0:
 			break
 		_player_armor_reduction += armor_reduction_per_shot
@@ -16470,7 +16571,7 @@ func _cast_enemy_lil_shredder(enemy: Dictionary, level_data: Dictionary) -> void
 	if _recruited.get("current_hp", 0) > 0:
 		_player_armor_reduction_turns_left = int(level_data.get("duration", 0))
 
-	_show_message_over_hero("Lil' Shredder!")
+	_show_message_over_hero("Three Cheers!")
 
 
 # ------------------------------------------------------------------
@@ -16481,7 +16582,7 @@ func _cast_enemy_lil_shredder(enemy: Dictionary, level_data: Dictionary) -> void
 # context()'s own "rip_tide_*" fields. Its AoE splash (aoe_damage_pct/
 # radius) never has an actual second target to reach in a real hero fight
 # (there's only ever the one player to hit - same "no cleave" collapse
-# Abyssal Spasm's/The Sunken One's/Whirling Death's own rival copies already have,
+# Abyssal Spasm's/The Sunken One's/Sweep's own rival copies already have,
 # see _cast_enemy_abyssal_spasm()'s own docstring), so unlike the player's
 # own _apply_rip_tide_cleave(), its splash off her plain Attack reaches
 # the player's own illusions and Elderwild Companion near him (see
@@ -16713,9 +16814,9 @@ func _kill_enemy_illusion(illusion: Dictionary) -> void:
 
 
 ## The boss's own effective armor for mitigating a hit onto one of its
-## illusions - base armor plus its own borrowed bonuses (Reactive
-## Armor's stack, Leeching Hunger, etc., via _enemy_hero_bonus_armor())
-## minus Lil' Shredder's own shred, same three terms
+## illusions - base armor plus its own borrowed bonuses (Kindled
+## Resolve's stack, Leeching Hunger, etc., via _enemy_hero_bonus_armor())
+## minus Three Cheers's own shred, same three terms
 ## _deal_fixed_damage_to_enemy()'s own redirect branch already reads.
 ## An illusion is a copy of the boss, not a separate combatant with its
 ## own defense stat, so it mitigates exactly as if the boss had taken
@@ -16752,12 +16853,12 @@ func _deal_aoe_damage_to_enemy_illusions(center_pos_index: int, radius: int, amo
 
 
 ## The line-shaped equivalent of _deal_aoe_damage_to_enemy_illusions()
-## above - for The Sunken One's/Timber Chain's own "every column between the
+## above - for The Sunken One's/Chainfire's own "every column between the
 ## caster and the target, inclusive of both ends" line. Same "amount is
 ## raw, each illusion mitigates it separately via the boss's own
 ## effective armor" contract.
 ## `flash_hits` gives each one hit the standard splash hit-flash
-## (_flash_bounce_hit()) - off by default, opted into by Timber Chain.
+## (_flash_bounce_hit()) - off by default, opted into by Chainfire.
 func _deal_line_aoe_damage_to_enemy_illusions(start_pos_index: int, end_pos_index: int, amount: float, flash_hits: bool = false) -> void:
 	if _enemy_illusions.is_empty() or amount <= 0.0:
 		return
@@ -16778,7 +16879,7 @@ func _deal_line_aoe_damage_to_enemy_illusions(start_pos_index: int, end_pos_inde
 
 
 ## The directional-cone equivalent of the two AoE-shape helpers above -
-## for the player's own Scatterblast facing-based cone. Same "amount is
+## for the player's own Double Trouble facing-based cone. Same "amount is
 ## raw, each illusion mitigates it separately via the boss's own
 ## effective armor" contract.
 func _deal_directional_aoe_damage_to_enemy_illusions(origin_pos_index: int, direction: int, range_columns: int, amount: float) -> void:
@@ -16822,10 +16923,10 @@ func _cast_enemy_ensnare(level_data: Dictionary) -> void:
 # ------------------------------------------------------------------
 # Naga Siren's ultimate, Song of the Siren, cast by the rival - mirrors
 # the player's own _cast_song_of_the_siren(): stuns (_player_stun_turns_
-# left, the same shared field Barbed Lunge's/Drowned Surge's/Firesnap Cookie's own
+# left, the same shared field Barbed Lunge's/Drowned Surge's/Blast Hopper's own
 # stun already use) and shreds the armor (_player_armor_reduction/
 # _player_armor_reduction_turns_left, the same per-instance runtime
-# fields Lil' Shredder's own shred uses - stacking additively with any
+# fields Three Cheers's own shred uses - stacking additively with any
 # already there, but refreshing, not adding to, the turns left) of the
 # player, if they're within this level's own radius of the rival's
 # CURRENT position - there's only one possible target in a hero fight, so
@@ -16891,7 +16992,7 @@ func _cast_enemy_guardian_sprint(level_data: Dictionary) -> void:
 ## from `start` in `direction`, stopping early at the board edge, a
 ## player-cast Frostbound Rupture wall, OR the player's own column - regardless
 ## of the rival's own type, same "stop on top of an enemy" rule every
-## other rival gap-closer (Firesnap Cookie's hop, Timber Chain's pull)
+## other rival gap-closer (Blast Hopper's hop, Chainfire's pull)
 ## already follows. Returns both the landing column and whether it
 ## actually stopped on the player, for the caller to deal Guardian
 ## Sprint's own charge_damage to.
@@ -16949,7 +17050,7 @@ func _end_enemy_guardian_sprint() -> void:
 # same as the check above - an illusion/the player's own Elderwild Companion can
 # be in range independently of whether the player himself currently is,
 # same "one-time hit for whatever's caught in the burst" reasoning
-# _cast_enemy_whirling_death()'s own copy already follows (illusions have
+# _cast_enemy_sweep()'s own copy already follows (illusions have
 # no stun of their own to carry, same as they have no root/DoT in
 # Mother's Grasp's own copy).
 # ------------------------------------------------------------------
@@ -17052,7 +17153,7 @@ func _apply_enemy_bash_of_the_deep_knockback(enemy: Dictionary, level_data: Dict
 # Slardar's ultimate, Corrosive Haze, cast by the rival on the player -
 # mirrors the player's own _resolve_corrosive_haze_cast(): reduces the
 # player's own armor by this level's own `armor_reduction`
-# (_player_armor_reduction, the same shared runtime field Lil' Shredder's
+# (_player_armor_reduction, the same shared runtime field Three Cheers's
 # own shred/Song of the Siren's own shred already use - stacking
 # additively with any already there) and marks him with `bonus_damage_
 # pct` (_player_corrosive_haze_bonus_pct, read by apply_damage() to boost
@@ -17092,7 +17193,7 @@ func _cast_enemy_corrosive_haze(level_data: Dictionary) -> void:
 # own column, same as the check above - an illusion/the player's own
 # Elderwild Companion can be in range independently of whether the player himself
 # currently is, same "one-time hit for whatever's caught in the burst"
-# reasoning _cast_enemy_whirling_death()'s own copy already follows.
+# reasoning _cast_enemy_sweep()'s own copy already follows.
 # ------------------------------------------------------------------
 
 func _cast_enemy_starstorm(enemy: Dictionary, level_data: Dictionary) -> void:
@@ -17422,9 +17523,9 @@ func _end_enemy_eclipse() -> void:
 
 
 # ------------------------------------------------------------------
-# Snapfire's ultimate, Mortimer Kisses, cast by the rival - mirrors the
-# player's own _resolve_mortimer_kisses_cast()/_fire_mortimer_kisses_
-# shot()/_end_mortimer_kisses(). There's only one possible target in a
+# Raze's ultimate, Kiss the Wastes, cast by the rival - mirrors the
+# player's own _resolve_kiss_the_wastes_cast()/_fire_kiss_the_wastes_
+# shot()/_end_kiss_the_wastes(). There's only one possible target in a
 # hero fight (the player), tracked live via _hero_pos_index rather than
 # a "marked enemy" reference the way the player's own copy needs for a
 # creep that could die and leave a corpse behind - the player never
@@ -17432,34 +17533,35 @@ func _end_enemy_eclipse() -> void:
 # ------------------------------------------------------------------
 
 ## Marks the player, fires the FIRST of this level's own `hits` shots
-## immediately, and arms _enemy_mortimer_kisses_turns_left with however
+## immediately, and arms _enemy_kiss_the_wastes_turns_left with however
 ## many are left (hits - 1) - _enemy_hero_turn()'s own top-of-function
 ## lockout auto-fires the rest, one per rival turn, with every other
 ## action locked out for as long as any remain.
-func _cast_enemy_mortimer_kisses(level_data: Dictionary) -> void:
-	_enemy_mortimer_kisses_level_data = level_data
-	_enemy_mortimer_kisses_active = true
-	_enemy_mortimer_kisses_turns_left = int(level_data.get("hits", 1)) - 1
+func _cast_enemy_kiss_the_wastes(level_data: Dictionary) -> void:
+	_enemy_kiss_the_wastes_level_data = level_data
+	_enemy_kiss_the_wastes_active = true
+	_enemy_kiss_the_wastes_turns_left = int(level_data.get("hits", 1)) - 1
 
-	_fire_enemy_mortimer_kisses_shot()
-	_show_message_over_hero("Mortimer Kisses!")
+	_play_kiss_blow(_get_hero_fight_boss().get("node"))
+	_fire_enemy_kiss_the_wastes_shot(KissHeartsFX.BLOW_TIME)
+	_show_message_over_hero("Kiss the Wastes!")
 
 
-## Fires one Mortimer Kisses shot at the player: this level's own
+## Fires one Kiss the Wastes shot at the player: this level's own
 ## main_damage plus a refreshed burn DoT. Splash ("every OTHER enemy
 ## exactly 1 column away from the impact column") has nothing else to
 ## reach in a hero fight - the player is the only possible target - same
 ## "no cleave" simplification every other rival AoE cast already uses.
-func _fire_enemy_mortimer_kisses_shot() -> void:
-	var level_data: Dictionary = _enemy_mortimer_kisses_level_data
+func _fire_enemy_kiss_the_wastes_shot(impact_delay: float = 0.0) -> void:
+	var level_data: Dictionary = _enemy_kiss_the_wastes_level_data
 	var main_damage: float = float(level_data.get("main_damage", 0))
 	var burn_per_turn: float = float(level_data.get("burn_per_turn", 0))
 	var burn_duration: int = int(level_data.get("burn_duration", 0))
 
 	apply_damage(main_damage)
 	if _recruited.get("current_hp", 0) > 0 and burn_per_turn > 0.0:
-		_player_mortimer_burn_dot_damage = burn_per_turn
-		_player_mortimer_burn_dot_turns_left = burn_duration
+		_player_kiss_burn_dot_damage = burn_per_turn
+		_player_kiss_burn_dot_turns_left = burn_duration
 
 	# The splash itself isn't simplified away like every other rival
 	# AoE's "no cleave" note above - illusions and the Elderwild Companion are
@@ -17469,7 +17571,7 @@ func _fire_enemy_mortimer_kisses_shot() -> void:
 	# so either can end up sharing it outright (the bear especially -
 	# it starts there) rather than merely being adjacent. Exactly on the
 	# impact column takes main_damage, one column either side takes
-	# splash_damage - same split _fire_mortimer_kisses_shot()'s own
+	# splash_damage - same split _fire_kiss_the_wastes_shot()'s own
 	# regular-enemy checks use for the player's copy, rather than the
 	# single flat radius _deal_aoe_damage_to_illusions()/_deal_aoe_
 	# damage_to_bear() would give (which can't tell the two apart).
@@ -17488,18 +17590,18 @@ func _fire_enemy_mortimer_kisses_shot() -> void:
 			_deal_damage_to_bear(splash_damage)
 
 	# Same burning-lava-pool flare the player's own shots land with
-	# (see _play_mortimer_kisses_impact_effect()'s own comment) -
+	# (see _play_kiss_the_wastes_impact_effect()'s own comment) -
 	# purely position-based, so it works the same regardless of which
 	# side is casting.
-	_play_mortimer_kisses_impact_effect(_hero_pos_index)
+	_play_kiss_the_wastes_impact_effect(_hero_pos_index, impact_delay, _get_hero_fight_boss().get("node"))
 
 
-## Ends the rival's Mortimer Kisses channel - called once its last shot
+## Ends the rival's Kiss the Wastes channel - called once its last shot
 ## has fired (see _enemy_hero_turn()'s own top-of-function lockout).
-func _end_enemy_mortimer_kisses() -> void:
-	_enemy_mortimer_kisses_active = false
-	_enemy_mortimer_kisses_turns_left = 0
-	_enemy_mortimer_kisses_level_data = {}
+func _end_enemy_kiss_the_wastes() -> void:
+	_enemy_kiss_the_wastes_active = false
+	_enemy_kiss_the_wastes_turns_left = 0
+	_enemy_kiss_the_wastes_level_data = {}
 
 
 ## Moves an enemy to `new_pos` (clamped on-board) and syncs its node's
@@ -17589,6 +17691,10 @@ const PROJECTILE_RELEASE_DELAY := 0.08
 ## vanishes (see _fire_enemy_rear_vine()).
 const REAR_VINE_STYLE := "rear_vine"
 
+## A creep whose "projectile" is this fires a rifle: a muzzle flash and one
+## fast round (see RifleShotFX and _fire_enemy_rifle_shot()).
+const RIFLE_BULLET_STYLE := "rifle_bullet"
+
 
 ## A ranged enemy's attack projectile - only for enemies whose
 ## GameManager definition names one ("projectile": a ProjectileFX style
@@ -17604,6 +17710,9 @@ func _fire_enemy_projectile(enemy: Dictionary, target_node: Control) -> void:
 	var style_id: String = enemy["static"].get("projectile", "")
 	var node: Control = enemy.get("node")
 	if style_id == "" or node == null or not is_instance_valid(target_node):
+		return
+	if style_id == RIFLE_BULLET_STYLE:
+		_fire_enemy_rifle_shot(enemy, target_node)
 		return
 	if style_id == REAR_VINE_STYLE:
 		_fire_enemy_rear_vine(enemy, target_node)
@@ -17621,6 +17730,31 @@ func _fire_enemy_projectile(enemy: Dictionary, target_node: Control) -> void:
 		if not is_instance_valid(_fx_layer):
 			return
 		ProjectileFX.fire(_fx_layer, style_id, from, to, func() -> void:
+			var animator := CreatureAnimator.of(target_node)
+			if animator != null:
+				animator.play_hit(signf(from.x - to.x))
+		)
+	)
+
+
+## The Scorchlands rifleman's attack: a muzzle flash at the end of the
+## rifle and one fast round to the target (see RifleShotFX). Same
+## deferred-hit contract as _fire_enemy_projectile().
+func _fire_enemy_rifle_shot(enemy: Dictionary, target_node: Control) -> void:
+	var node: Control = enemy.get("node")
+	var native_faces_right: bool = enemy["static"].get("is_hero_fight", false)
+	var facing_left: bool = node.flip_h if native_faces_right else not node.flip_h
+	var muzzle: Vector2 = RifleShotFX.MUZZLE_FACING_LEFT
+	if not facing_left:
+		muzzle.x = 1.0 - muzzle.x
+	var from: Vector2 = node.global_position + node.size * muzzle
+	var to: Vector2 = target_node.global_position + target_node.size * Vector2(0.5, 0.45)
+
+	_deferred_hit_node = target_node
+	get_tree().create_timer(PROJECTILE_RELEASE_DELAY).timeout.connect(func() -> void:
+		if not is_instance_valid(_fx_layer):
+			return
+		RifleShotFX.play(_fx_layer, from, to, func() -> void:
 			var animator := CreatureAnimator.of(target_node)
 			if animator != null:
 				animator.play_hit(signf(from.x - to.x))
@@ -17689,6 +17823,12 @@ func _play_hero_attack_effect(hero_static: Dictionary, caster: TextureRect, targ
 		"vine_lash":
 			_deferred_hit_node = target_node
 			VineLashFX.play(_fx_layer, from, to, on_hit)
+		"shotgun_blast":
+			_deferred_hit_node = target_node
+			ShotgunBlastFX.play(_fx_layer, from, to, on_hit)
+		"flamethrower":
+			_deferred_hit_node = target_node
+			FlamethrowerFX.play(_fx_layer, from, to, on_hit)
 		"bite":
 			# Spectral jaws snapping shut on the target itself - `from` only
 			# says which side the bite comes from.
@@ -17747,7 +17887,7 @@ func _get_flee_position(enemy: Dictionary) -> int:
 ## nothing the player can actually do with them.
 func _update_action_buttons() -> void:
 	_maybe_auto_skip_player_turn()
-	var locked: bool = _battle_over or _has_acted_this_turn or _rival_fx_in_flight or _player_stun_turns_left > 0 or _the_test_of_time_active or _mortimer_kisses_active
+	var locked: bool = _battle_over or _has_acted_this_turn or _rival_fx_in_flight or _player_stun_turns_left > 0 or _the_test_of_time_active or _kiss_the_wastes_active
 	move_left_button.disabled = locked
 	move_right_button.disabled = locked
 	attack_button.disabled = locked
@@ -17854,7 +17994,7 @@ func _apply_tutorial_gate() -> void:
 	# not dependent on that function having just run. Flee is
 	# deliberately excluded, same as _update_action_buttons() - it's
 	# never turn-locked in a real playthrough either.
-	var locked: bool = _battle_over or _has_acted_this_turn or _rival_fx_in_flight or _player_stun_turns_left > 0 or _the_test_of_time_active or _mortimer_kisses_active
+	var locked: bool = _battle_over or _has_acted_this_turn or _rival_fx_in_flight or _player_stun_turns_left > 0 or _the_test_of_time_active or _kiss_the_wastes_active
 
 	move_left_button.disabled = locked or not TutorialManager.is_action_allowed("move_left")
 	move_right_button.disabled = locked or not TutorialManager.is_action_allowed("move_right")
@@ -18353,7 +18493,7 @@ func _estimate_enemy_skill_hit_on_bear(enemy: Dictionary, skill_id: String, leve
 			raw = _roll_enemy_hero_damage(enemy) + float(level_data.get("bonus_damage", 0))
 		"glacier_breaker":
 			raw = _roll_enemy_hero_damage(enemy) * float(level_data.get("damage_multiplier", 1.0))
-		"lil_shredder":
+		"three_cheers":
 			raw = _roll_enemy_hero_damage(enemy) * float(level_data.get("damage_pct", 0)) * int(level_data.get("shots", 3))
 	if raw <= 0.0:
 		return 0.0
@@ -18739,17 +18879,17 @@ func _cast_enemy_sanguine_bloom_on_bear(level_data: Dictionary) -> void:
 	_show_message_over_bear("Sanguine Bloom!")
 
 
-func _cast_enemy_lil_shredder_on_bear(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_three_cheers_on_bear(enemy: Dictionary, level_data: Dictionary) -> void:
 	var shots: int = int(level_data.get("shots", 3))
 	var damage_pct: float = float(level_data.get("damage_pct", 0))
 	var armor_reduction_per_shot: float = float(level_data.get("armor_reduction_per_shot", 0))
 	var bear_pos: int = _bear["pos_index"]
 
-	_show_message_over_bear("Lil' Shredder!")
+	_show_message_over_bear("Three Cheers!")
 	for i in range(shots):
 		if not _is_bear_alive():
 			break
-		_play_lil_shredder_shot_effect(bear_pos, i * 0.15)
+		_play_three_cheers_shot_effect(bear_pos, i * 0.11, enemy["node"])
 		_deal_damage_to_bear(_roll_enemy_hero_damage(enemy) * damage_pct)
 		if not _is_bear_alive():
 			break

@@ -29,6 +29,7 @@ If your HP reaches zero, your run ends - your best XP is saved as a high score b
 
 
 func _ready() -> void:
+	AudioManager.play_menu_music()
 	$TextPanel/Margin/ScrollContainer/ExplanationLabel.text = EXPLANATION_TEXT
 	$BackButton.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/PostLogin.tscn"))
 	$TutorialButton.pressed.connect(func(): TutorialManager.start_tutorial())

@@ -74,7 +74,9 @@ func start_tutorial(return_scene: String = "res://scenes/HowToPlay.tscn") -> voi
 		"Welcome to the tutorial!\n\nYou'll play through Kaelen Varr's home zone, The Ironbound Isles, step by "
 		+ "step - picking skills, using them in battle, and knowing when to flee and restock on "
 		+ "potions.\n\nFirst, recruit the Drowned Captain and pick his starting skill.",
-		func(): get_tree().change_scene_to_file("res://scenes/Zone.tscn")
+		func():
+			AudioManager.stop_music_fade()
+			get_tree().change_scene_to_file("res://scenes/Zone.tscn")
 	)
 
 
