@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bvwa7me5wfupj"
-path="res://.godot/imported/Naga Siren.png-a002887283b1bdd264247e4e7cdfc0d3.ctex"
+path="res://.godot/imported/The_Last_Empress.png-f0d8b479112bb1d4d4f49513e6d9ee48.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/heroes/Naga Siren.png"
-dest_files=["res://.godot/imported/Naga Siren.png-a002887283b1bdd264247e4e7cdfc0d3.ctex"]
+source_file="res://assets/heroes/The_Last_Empress.png"
+dest_files=["res://.godot/imported/The_Last_Empress.png-f0d8b479112bb1d4d4f49513e6d9ee48.ctex"]
 
 [params]
 

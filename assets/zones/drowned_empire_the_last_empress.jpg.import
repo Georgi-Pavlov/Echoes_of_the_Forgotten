@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c5i5586y7mcf0"
-path="res://.godot/imported/drowned_empire_naga.png-2b252c48aa12480be707618f277d3223.ctex"
+uid="uid://4uxf8eke2fnd"
+path="res://.godot/imported/drowned_empire_the_last_empress.jpg-766fbca50499dcde43484300cac0cc44.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/zones/drowned_empire_naga.png"
-dest_files=["res://.godot/imported/drowned_empire_naga.png-2b252c48aa12480be707618f277d3223.ctex"]
+source_file="res://assets/zones/drowned_empire_the_last_empress.jpg"
+dest_files=["res://.godot/imported/drowned_empire_the_last_empress.jpg-766fbca50499dcde43484300cac0cc44.ctex"]
 
 [params]
 

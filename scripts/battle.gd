@@ -268,7 +268,7 @@ const BEAR_DEATH_HP_PENALTY_PCT := 0.2
 # can't act yet.
 var _rival_fx_in_flight: bool = false
 
-# Naga Siren's Mirror Image (see _spawn_illusion_node()) fades every
+# The Last Empress's Mirror Image (see _spawn_illusion_node()) fades every
 # illusion's copy of the hero's own portrait to this alpha, so the real
 # hero still reads clearly among his own decoys.
 const HERO_ILLUSION_ALPHA := 0.45
@@ -325,7 +325,7 @@ const STARSTORM_GLOW_COLOR := Color(1.0, 0.8, 0.3, 0.35)
 const STARSTORM_DROP_HEIGHT := 360.0
 const STARSTORM_DROP_SIDEWAYS := 180.0
 
-# Naga Siren's Ensnare (see _play_net_throw()): the thrown net's rope
+# The Last Empress's Ensnare (see _play_net_throw()): the thrown net's rope
 # and rim/weight colors, its radius in px while flying, the spacing of
 # its mesh, and how long it stays draped over the target before fading.
 const ENSNARE_ROPE_COLOR := Color(0.82, 0.74, 0.52, 0.95)
@@ -336,7 +336,7 @@ const ENSNARE_DRAPE_SECONDS := 0.5
 # How wide the landed net is, as a fraction of the target sprite's width.
 const ENSNARE_DRAPE_WIDTH_RATIO := 0.5
 
-# Naga Siren's Song of the Siren (see _play_siren_song_wave()/
+# The Last Empress's Song of the Siren (see _play_siren_song_wave()/
 # _set_siren_lullaby()): the song's teal-blue (rings and notes), the
 # sleepers' blue tint, and the lullaby child node's name so its
 # presence can be looked up.
@@ -603,7 +603,7 @@ var _kiss_marked_enemy: Dictionary = {}
 var _kiss_the_wastes_level_data: Dictionary = {}
 
 # ------------------------------------------------------------------
-# Naga Siren's Mirror Image: a self-cast that spawns this level's own
+# The Last Empress's Mirror Image: a self-cast that spawns this level's own
 # `illusions` count (always 3) of decoys, one in the column immediately
 # in front of the hero, one immediately behind, and a third doubling up
 # randomly on whichever of those two columns (see _activate_mirror_
@@ -1225,7 +1225,7 @@ var _enemy_kiss_the_wastes_active: bool = false
 var _enemy_kiss_the_wastes_turns_left: int = 0
 var _enemy_kiss_the_wastes_level_data: Dictionary = {}
 
-# Naga Siren's Mirror Image, cast by the rival - mirrors the player's own
+# The Last Empress's Mirror Image, cast by the rival - mirrors the player's own
 # _illusions/_illusion_damage_pct/_illusion_hit_chance_pct/_illusions_
 # turns_remaining/_illusions_duration_pending_start fields exactly (see
 # that block's own comment above): each entry in _enemy_illusions is a
@@ -1489,7 +1489,7 @@ var _pending_three_cheers_level_data: Dictionary = {}
 # actually clicked (_resolve_kiss_the_wastes_cast()).
 var _pending_kiss_the_wastes_level_data: Dictionary = {}
 
-# Naga Siren's Ensnare, held the same way as every other targeted
+# The Last Empress's Ensnare, held the same way as every other targeted
 # skill's own pending level data above, from the moment _start_ensnare_
 # targeting() opens targeting until a target is actually clicked
 # (_resolve_ensnare_cast()).
@@ -3185,7 +3185,7 @@ func _cast_abyssal_spasm(level_data: Dictionary) -> bool:
 		if is_instance_valid(enemy.get("node")):
 			_flash_bounce_hit(enemy["node"])
 	# Self-centered on the hero, same as the check above - a rival's own
-	# illusion (Naga Siren's Mirror Image) can be in range independently
+	# illusion (The Last Empress's Mirror Image) can be in range independently
 	# of whether the boss itself currently is.
 	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, radius, pact_damage, true)
 
@@ -3219,7 +3219,7 @@ func _cast_sweep(level_data: Dictionary) -> bool:
 		if is_instance_valid(enemy.get("node")):
 			_flash_bounce_hit(enemy["node"])
 	# Self-centered on the hero, same as the check above - a rival's own
-	# illusion (Naga Siren's Mirror Image) can be in range independently
+	# illusion (The Last Empress's Mirror Image) can be in range independently
 	# of whether the boss itself currently is.
 	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, radius, sweep_damage, true)
 
@@ -3273,7 +3273,7 @@ func _cast_slithereen_crush(level_data: Dictionary) -> bool:
 		if enemy.get("current_hp", 0) > 0:
 			enemy["stun_turns_left"] = stun_turns
 	# Self-centered on the hero, same as the check above - a rival's own
-	# illusion (Naga Siren's Mirror Image) can be in range independently
+	# illusion (The Last Empress's Mirror Image) can be in range independently
 	# of whether the boss itself currently is. The rival's own Spirit
 	# Bear needs no equivalent call - it's a genuine _enemies entry
 	# (see _summon_enemy_elderwild_companion()), so the `targets` loop above
@@ -3316,7 +3316,7 @@ func _cast_starstorm(level_data: Dictionary) -> bool:
 	for enemy in targets:
 		_deal_fixed_damage_to_enemy(enemy, starstorm_damage)
 	# Self-centered on the hero, same as the check above - a rival's own
-	# illusion (Naga Siren's Mirror Image) can be in range independently
+	# illusion (The Last Empress's Mirror Image) can be in range independently
 	# of whether the boss itself currently is. The rival's own Spirit
 	# Bear needs no equivalent call - it's a genuine _enemies entry
 	# (see _summon_enemy_elderwild_companion()), so the `targets` loop above
@@ -3326,7 +3326,7 @@ func _cast_starstorm(level_data: Dictionary) -> bool:
 	return true
 
 
-## Naga Siren's ultimate, Song of the Siren: stuns (target["stun_turns_
+## The Last Empress's ultimate, Song of the Siren: stuns (target["stun_turns_
 ## left"], same shared field Barbed Lunge's/Drowned Surge's/Blast Hopper's own
 ## stun use) and shreds the armor (target["armor_reduction"]/
 ## "armor_reduction_turns_left", the same per-instance runtime fields
@@ -3400,7 +3400,7 @@ func _cast_double_trouble(level_data: Dictionary) -> bool:
 	for enemy in targets:
 		_deal_fixed_damage_to_enemy(enemy, trouble_damage)
 	# Same directional cone as the check above - a rival's own illusion
-	# (Naga Siren's Mirror Image) ahead of the hero can be caught in it
+	# (The Last Empress's Mirror Image) ahead of the hero can be caught in it
 	# independently of whether the boss itself currently is.
 	_deal_directional_aoe_damage_to_enemy_illusions(_hero_pos_index, direction, range_columns, trouble_damage)
 
@@ -3513,7 +3513,7 @@ func _activate_blast_hopper(level_data: Dictionary) -> void:
 			if enemy.get("current_hp", 0) > 0:
 				enemy["stun_turns_left"] = stun_turns
 	# Centered on the landing spot, same as the check above - a rival's
-	# own illusion (Naga Siren's Mirror Image) can be in range
+	# own illusion (The Last Empress's Mirror Image) can be in range
 	# independently of whether the boss itself currently is.
 	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, radius, damage)
 
@@ -3754,7 +3754,7 @@ func _resolve_drowned_surge_cast(target: Dictionary, level_data: Dictionary) -> 
 				_play_drowned_surge_splash(enemy.get("node"))
 				_deal_fixed_damage_to_enemy(enemy, damage)
 		# Centered on the target's own column, same as the splash above -
-		# a rival's own illusion (Naga Siren's Mirror Image) can be in
+		# a rival's own illusion (The Last Empress's Mirror Image) can be in
 		# range independently of whether the boss itself currently is.
 		_play_drowned_surge_splash_on_illusions(_enemy_illusions, target_pos, radius)
 		_deal_aoe_damage_to_enemy_illusions(target_pos, radius, damage)
@@ -3906,7 +3906,7 @@ func _cast_the_sunken_one(level_data: Dictionary) -> bool:
 		for enemy in hit_targets:
 			if _enemies.any(func(e: Dictionary) -> bool: return is_same(e, enemy)):
 				_deal_fixed_damage_to_enemy(enemy, damage)
-		# A rival's own illusion (Naga Siren's Mirror Image) in the line
+		# A rival's own illusion (The Last Empress's Mirror Image) in the line
 		# of fire is caught in it too.
 		_deal_line_aoe_damage_to_enemy_illusions(span.x, span.y, damage)
 		_shake_screen()
@@ -4018,7 +4018,7 @@ func _resolve_chainfire_cast(target: Dictionary, level_data: Dictionary) -> void
 			if is_instance_valid(enemy.get("node")):
 				_flash_bounce_hit(enemy["node"])
 		# Same line as above (captured before the pull moved the hero off
-		# start_col) - a rival's own illusion (Naga Siren's Mirror Image)
+		# start_col) - a rival's own illusion (The Last Empress's Mirror Image)
 		# standing anywhere along it can still be caught in it.
 		_deal_line_aoe_damage_to_enemy_illusions(start_col, end_col, damage, true)
 		if _battle_over or _stage_generation != generation_before:
@@ -4097,7 +4097,7 @@ func _resolve_cinderbomb_cast(target: Dictionary, level_data: Dictionary) -> voi
 			if is_instance_valid(enemy.get("node")):
 				_flash_bounce_hit(enemy["node"])
 		# Planted at the target's own position at cast time - a rival's
-		# own illusion (Naga Siren's Mirror Image) there (or nearby) takes
+		# own illusion (The Last Empress's Mirror Image) there (or nearby) takes
 		# the same initial burst.
 		_deal_aoe_damage_to_enemy_illusions(pos_index, radius, cast_damage, true)
 		_shake_screen()
@@ -5032,7 +5032,7 @@ func _resolve_the_hollow_cold_cast(target: Dictionary, level_data: Dictionary) -
 			enemy["the_hollow_cold_dot_turns_left"] = duration
 			if is_instance_valid(enemy.get("node")):
 				_flash_bounce_hit(enemy["node"], MARK_OF_STILLNESS_FLASH_COLOR)
-	# The rival's own illusions (Naga Siren's Mirror Image) in the same
+	# The rival's own illusions (The Last Empress's Mirror Image) in the same
 	# area get the same DoT - ticked by _tick_enemy_illusions_the_hollow_cold()
 	# at the start of the enemy turn. The rival's own Elderwild Companion needs
 	# nothing extra: it's a regular _enemies entry, already marked above.
@@ -5319,7 +5319,7 @@ func _fire_kiss_the_wastes_shot(impact_delay: float = 0.0) -> void:
 		if _distance(enemy["pos_index"], impact_pos) == 1:
 			_deal_fixed_damage_to_enemy(enemy, splash_damage)
 
-	# A rival's own illusion (Naga Siren's Mirror Image) exactly on the
+	# A rival's own illusion (The Last Empress's Mirror Image) exactly on the
 	# impact column takes main_damage, one column either side takes
 	# splash_damage - same split as the regular-enemy checks above,
 	# rather than the single flat radius _deal_aoe_damage_to_enemy_
@@ -5380,7 +5380,7 @@ func _play_kiss_the_wastes_impact_effect(pos_index: int, delay: float = 0.0, cas
 
 
 # ------------------------------------------------------------------
-# Naga Siren's Mirror Image (see the field comment above _illusions for
+# The Last Empress's Mirror Image (see the field comment above _illusions for
 # the overall shape).
 # ------------------------------------------------------------------
 
@@ -5689,7 +5689,7 @@ func _resolve_return_to_the_void_cast(target: Dictionary, level_data: Dictionary
 				enemy["return_to_the_void_execute_pct"] = execute_pct
 		_refresh_mark_of_stillness_frost()
 		# Centered on the target's own column, same as the check above - a
-		# rival's own illusion (Naga Siren's Mirror Image) can be in range
+		# rival's own illusion (The Last Empress's Mirror Image) can be in range
 		# independently of whether the boss itself currently is.
 		_deal_aoe_damage_to_enemy_illusions(target_pos, radius, damage)
 
@@ -5760,7 +5760,7 @@ func _resolve_maddening_roar_cast(target: Dictionary, level_data: Dictionary) ->
 			if still_here.call(enemy):
 				_deal_fixed_damage_to_enemy(enemy, shatter_damage)
 		# Centered on the target's own column, same as the check above - a
-		# rival's own illusion (Naga Siren's Mirror Image) can be in range
+		# rival's own illusion (The Last Empress's Mirror Image) can be in range
 		# independently of whether the boss itself currently is.
 		_deal_aoe_damage_to_enemy_illusions(target_pos, shatter_range, shatter_damage)
 		if _battle_over or _stage_generation != generation_before:
@@ -5915,7 +5915,7 @@ func _resolve_rimecleaver_cast(target: Dictionary, level_data: Dictionary) -> vo
 			if _distance(enemy["pos_index"], target_pos) <= radius:
 				splash_targets.append(enemy)
 		# Centered on the target's own column, same as the splash above -
-		# a rival's own illusion (Naga Siren's Mirror Image) can be in
+		# a rival's own illusion (The Last Empress's Mirror Image) can be in
 		# range independently of whether the boss itself currently is.
 		for illusion in _enemy_illusions:
 			if _distance(illusion["pos_index"], target_pos) <= radius:
@@ -6179,7 +6179,7 @@ func _find_hunters_bow_second_target(target: Dictionary) -> Dictionary:
 
 
 # ------------------------------------------------------------------
-# Naga Siren's Rip Tide - a passive, so unlike every cast skill above
+# The Last Empress's Rip Tide - a passive, so unlike every cast skill above
 # there's no button/cast/mana/cooldown for it. Two independent halves:
 # a Pull of the Abyss/Cleaver-style AoE splash off the hero's own plain
 # Attacks (_apply_rip_tide_cleave(), called from _apply_hero_attack()),
@@ -6540,7 +6540,7 @@ func _tick_frost_tempest() -> void:
 			if _battle_over:
 				return
 	# Self-centered on the hero's CURRENT position, same as the check
-	# above - a rival's own illusion (Naga Siren's Mirror Image) can be
+	# above - a rival's own illusion (The Last Empress's Mirror Image) can be
 	# in range independently of whether the boss itself currently is.
 	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, _frost_tempest_radius, _frost_tempest_damage_per_turn)
 
@@ -7539,7 +7539,7 @@ func _activate_mothers_grasp(level_data: Dictionary) -> void:
 			enemy["mothers_grasp_dot_damage"] = dot_damage
 			enemy["mothers_grasp_dot_turns_left"] = root_duration
 
-	# A rival's own illusion (Naga Siren's Mirror Image) has no root/DoT
+	# A rival's own illusion (The Last Empress's Mirror Image) has no root/DoT
 	# of its own to carry the way a regular enemy does above - just a
 	# one-time hit for whatever's caught in the burst, centered on the
 	# hero's own position, same as the check above.
@@ -9182,7 +9182,7 @@ func _end_veil_of_the_forgotten(exploded: bool) -> void:
 		if is_instance_valid(enemy.get("node")):
 			_flash_bounce_hit(enemy["node"])
 	# Self-centered on the hero, same as the check above - a rival's own
-	# illusion (Naga Siren's Mirror Image) can be in range independently
+	# illusion (The Last Empress's Mirror Image) can be in range independently
 	# of whether the boss itself currently is.
 	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, radius, aoe_damage, true)
 
@@ -10458,7 +10458,7 @@ func _start_lucent_beam_targeting(level_data: Dictionary) -> bool:
 	return true
 
 
-## Naga Siren's Ensnare target picking: same column-range/highlight
+## The Last Empress's Ensnare target picking: same column-range/highlight
 ## mechanism as every other targeted skill above, using this level's
 ## own `range` field (3-6 columns, growing with level) rather than the
 ## hero's normal attack range - Ensnare reaches further than a plain
@@ -11243,7 +11243,7 @@ func _apply_hero_attack(target: Dictionary) -> void:
 	# is the one that triggered the stack (see
 	# _maybe_consume_bash_of_the_deep_stack()). If the hit actually
 	# landed on one of the boss's own illusions instead of the boss
-	# itself (Naga Siren's Mirror Image redirect, see
+	# itself (The Last Empress's Mirror Image redirect, see
 	# _deal_fixed_damage_to_enemy()'s own comment), knock THAT back
 	# instead - "target" never took the hit at all this time, so
 	# shoving it would move something the attack never touched.
@@ -11335,7 +11335,7 @@ func _deal_fixed_damage_to_enemy(target: Dictionary, amount: float, is_critical:
 	# to be misread as this one's outcome.
 	_last_enemy_illusion_redirect = {}
 
-	# Naga Siren's Mirror Image, cast by the rival - every hit that would
+	# The Last Empress's Mirror Image, cast by the rival - every hit that would
 	# otherwise land on the boss has a chance to be redirected onto a
 	# random surviving illusion instead, mirroring the player's own
 	# apply_damage() redirect (see that function's own comment) - a full
@@ -13102,10 +13102,10 @@ func _enemy_has_unaffordable_ready_skill(enemy_type: String, hero_distance: int,
 ##     a creep target's own static armor instead, since the simulation
 ##     has no per-turn buff/debuff armor system of its own.
 ##   - illusions_active/illusion_count/illusion_turns_remaining/illusion_
-##     total_damage_per_turn: Naga Siren's own Mirror Image, live off
-##     _enemy_illusions - for EnemySkillAI's own _naga_mirror_image_
-##     modifier()/_naga_ensnare_modifier()/_naga_song_of_the_siren_
-##     modifier()/_naga_basic_attack_modifier(), all of which read this
+##     total_damage_per_turn: The Last Empress's own Mirror Image, live off
+##     _enemy_illusions - for EnemySkillAI's own _last_empress_mirror_image_
+##     modifier()/_last_empress_ensnare_modifier()/_last_empress_song_of_the_siren_
+##     modifier()/_last_empress_basic_attack_modifier(), all of which read this
 ##     turn's illusion state to score their own Mirror Image synergy (see
 ##     each one's own docstring). illusion_total_damage_per_turn is the
 ##     WHOLE squad's own expected hit next turn (_roll_enemy_hero_damage()
@@ -13113,7 +13113,7 @@ func _enemy_has_unaffordable_ready_skill(enemy_type: String, hero_distance: int,
 ##     figure, so callers never have to re-multiply by illusion_count
 ##     themselves.
 ##   - rip_tide_illusion_damage_bonus_pct/rip_tide_extra_illusion/rip_
-##     tide_illusion_duration_bonus/rip_tide_aoe_damage_pct: Naga Siren's
+##     tide_illusion_duration_bonus/rip_tide_aoe_damage_pct: The Last Empress's
 ##     own Rip Tide, read fresh off _get_enemy_rip_tide_level_data() -
 ##     Rip Tide is passive and never itself a scored candidate (see
 ##     EnemySkillAI's own header comment), so its bonuses only ever reach
@@ -16575,7 +16575,7 @@ func _cast_enemy_three_cheers(enemy: Dictionary, level_data: Dictionary) -> void
 
 
 # ------------------------------------------------------------------
-# Naga Siren's passive, Rip Tide, on the rival - mirrors the player's own
+# The Last Empress's passive, Rip Tide, on the rival - mirrors the player's own
 # _get_rip_tide_level_data(). Never a scored candidate of its own (see
 # EnemySkillAI's own header comment) - its bonuses only ever reach Mirror
 # Image/Song of the Siren/a plain Attack through _build_enemy_ai_
@@ -16660,7 +16660,7 @@ func _count_player_allies_near_hero(radius: int) -> int:
 
 
 # ------------------------------------------------------------------
-# Naga Siren's Mirror Image, cast by the rival - mirrors the player's own
+# The Last Empress's Mirror Image, cast by the rival - mirrors the player's own
 # _activate_mirror_image()/_spawn_illusion_node()/_tick_mirror_image()/
 # _fire_mirror_image_attack()/_end_mirror_image()/_deal_damage_to_
 # illusion()/_kill_illusion(). Unlike the player's own copy (which spawns
@@ -16898,7 +16898,7 @@ func _deal_directional_aoe_damage_to_enemy_illusions(origin_pos_index: int, dire
 
 
 # ------------------------------------------------------------------
-# Naga Siren's Ensnare, cast by the rival on the player - mirrors the
+# The Last Empress's Ensnare, cast by the rival on the player - mirrors the
 # player's own _resolve_ensnare_cast(): this level's own `damage`
 # (through normal armor mitigation, via apply_damage()) plus a root for
 # `root_turns` of the player's own turns (_player_root_turns_left, the
@@ -16921,7 +16921,7 @@ func _cast_enemy_ensnare(level_data: Dictionary) -> void:
 
 
 # ------------------------------------------------------------------
-# Naga Siren's ultimate, Song of the Siren, cast by the rival - mirrors
+# The Last Empress's ultimate, Song of the Siren, cast by the rival - mirrors
 # the player's own _cast_song_of_the_siren(): stuns (_player_stun_turns_
 # left, the same shared field Barbed Lunge's/Drowned Surge's/Blast Hopper's own
 # stun already use) and shreds the armor (_player_armor_reduction/

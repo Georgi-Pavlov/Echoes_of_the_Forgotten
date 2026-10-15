@@ -209,7 +209,7 @@ func _show_hero(index: int) -> void:
 	hero_main_stat.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 
 	# Background now comes from the hero first (so heroes sharing a zone,
-	# like Naga Siren and Slardar, can each show their own art), falling
+	# like The Last Empress and Slardar, can each show their own art), falling
 	# back to the zone's own background only if the hero has none set.
 	var background_path: String = _current_hero.get("background", "")
 	if background_path == "":

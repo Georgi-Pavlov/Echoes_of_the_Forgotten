@@ -1500,10 +1500,10 @@ var zones: Dictionary = {
 		"music": "drowned_empire",
 		"heroes": [
 			{
-				"id": "naga_siren",
-				"name": "Naga Siren",
-				"image": "res://assets/heroes/Naga Siren.png",
-				"background": "res://assets/zones/drowned_empire_naga.png",
+				"id": "the_last_empress",
+				"name": "The Last Empress",
+				"image": "res://assets/heroes/The_Last_Empress.png",
+				"background": "res://assets/zones/drowned_empire_the_last_empress.jpg",
 				"range_type": "Melee",
 				"main_stat": "Agility",
 				"stats": {
@@ -1558,7 +1558,7 @@ var zones: Dictionary = {
 						"id": "song_of_the_siren",
 						"name": "Song of the Siren",
 						"type": "ultimate",
-						"description": "Ultimate: stuns every enemy within radius of Naga and reduces their armor for the stun's duration - she and her illusions can still move and attack normally while it holds.",
+						"description": "Ultimate: stuns every enemy within radius of The Last Empress and reduces their armor for the stun's duration - she and her illusions can still move and attack normally while it holds.",
 						"levels": [
 							{"stun_turns": 3, "radius": 3, "armor_reduction": 5, "mana_cost": 200, "cooldown": 9},
 							{"stun_turns": 3, "radius": 3, "armor_reduction": 8, "mana_cost": 260, "cooldown": 10},
@@ -1694,7 +1694,7 @@ var zones: Dictionary = {
 			}
 		],
 		"unlocked": true,
-		"background": "res://assets/zones/drowned_empire_naga.png",
+		"background": "res://assets/zones/drowned_empire_the_last_empress.jpg",
 		"battle_background": "res://assets/battle_areas/drowned_empire_area.png"
 	},
 

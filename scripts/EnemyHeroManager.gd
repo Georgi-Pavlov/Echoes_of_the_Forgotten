@@ -428,7 +428,7 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # kill its target mid-loop and change who's left to pick from for the
 # NEXT beam that same turn).
 
-# Naga Siren, the twelfth hero with simulated skill logic. Mirror Image
+# The Last Empress, the twelfth hero with simulated skill logic. Mirror Image
 # has nothing to spawn actual decoy UNITS onto here (no positions/columns
 # to place them in - see this file's own header comment), so it's
 # simulated as a pure extra periodic damage source instead, same "no
@@ -1125,7 +1125,7 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 				result = "win"
 				break
 
-		# --- Naga Siren's Mirror Image (if active and past its own
+		# --- The Last Empress's Mirror Image (if active and past its own
 		# casting turn - see _tick_npc_mirror_image()'s own "duration_
 		# pending_start" skip) also acts automatically, same shape as the
 		# Elderwild Companion's own block just above: with no columns/positions
@@ -1813,11 +1813,11 @@ func _pick_ready_skill(hero_id: String, hero_static: Dictionary, cooldowns: Dict
 ##     columns to check a curse_range against), and their average damage
 ##     stat, for estimating the bonus damage the curse would generate.
 ##   - illusions_active/illusion_count/illusion_turns_remaining/illusion_
-##     total_damage_per_turn: Naga Siren's own Mirror Image, live off
+##     total_damage_per_turn: The Last Empress's own Mirror Image, live off
 ##     state["mirror_image"] - mirrors battle.gd's own identically-named
 ##     fields (see that file's own _build_enemy_ai_context() docstring).
 ##   - rip_tide_illusion_damage_bonus_pct/rip_tide_extra_illusion/rip_
-##     tide_illusion_duration_bonus/rip_tide_aoe_damage_pct: Naga Siren's
+##     tide_illusion_duration_bonus/rip_tide_aoe_damage_pct: The Last Empress's
 ##     own Rip Tide, read fresh off _get_npc_rip_tide_level_data() - same
 ##     reasoning as battle.gd's own identically-named fields.
 ##   - hero_move_distance/sprint_bonus_movement/sprint_charge_damage_pct/
@@ -2727,7 +2727,7 @@ func _npc_kindled_resolve_bonus_armor(hero_id: String, hero_static: Dictionary, 
 
 
 # ------------------------------------------------------------------
-# Naga Siren's passive, Rip Tide - mirrors battle.gd's own
+# The Last Empress's passive, Rip Tide - mirrors battle.gd's own
 # _get_enemy_rip_tide_level_data(). Never a scored candidate of its own
 # (see KNOWN_ACTIVE_SKILL_IDS's own comment above) - its bonuses only
 # ever reach Mirror Image/Song of the Siren/a plain Attack through
@@ -2745,7 +2745,7 @@ func _get_npc_rip_tide_level_data(hero_id: String, hero_static: Dictionary) -> D
 
 
 # ------------------------------------------------------------------
-# Naga Siren's Mirror Image - simulated as a pure extra periodic damage
+# The Last Empress's Mirror Image - simulated as a pure extra periodic damage
 # source rather than real decoy units (see KNOWN_ACTIVE_SKILL_IDS's own
 # comment above for why), mirroring the Elderwild Companion's own "no columns,
 # always hit the lowest-HP enemy" sim copy. `damage_pct`/`illusion_count`

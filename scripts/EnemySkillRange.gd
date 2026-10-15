@@ -108,7 +108,7 @@ class_name EnemySkillRange
 # RANGE_CHECKED_SKILL_IDS below) - it "targets any enemy on the field,"
 # with no range limit, mirroring the player's own _start_return_to_the_void_
 # targeting()'s complete lack of a distance filter.
-#   - Ensnare (Naga Siren's): a targeted cast with its own per-level
+#   - Ensnare (The Last Empress's): a targeted cast with its own per-level
 #     `range` field, same "distance <= radius" comparison as Mark of Stillness's/
 #     Sanguine Bloom's own.
 #   - Corrosive Haze (Slardar's ultimate): also a targeted cast with its
@@ -120,12 +120,12 @@ class_name EnemySkillRange
 #   - Lucent Beam (Luna's): also a targeted cast with its own per-level
 #     `range` field, same "distance <= radius" comparison as Sacred
 #     Arrow's own just above.
-# Naga Siren's Song of the Siren is deliberately NOT range-checked here
+# The Last Empress's Song of the Siren is deliberately NOT range-checked here
 # either, despite being a self-centered AoE like Abyssal Spasm/Sweep
 # above - unlike those two, it's scored (not gated) against range,
 # the same "out of range scores low rather than being excluded outright"
 # shape Mother's Grasp's/The Frost Tempest's own self-cast ultimates already use
-# (see EnemySkillAI's own _naga_song_of_the_siren_modifier(), which reads
+# (see EnemySkillAI's own _last_empress_song_of_the_siren_modifier(), which reads
 # `target_distance` itself). Mirror Image is a self-buff with no target
 # of its own to reach at cast time at all, same as Bestial Rage/Rootveil/Woven Flesh above. Rip Tide is passive and never even reaches
 # this file, same as Kindled Resolve/Frostborn.

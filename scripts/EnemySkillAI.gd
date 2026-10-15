@@ -130,29 +130,29 @@ class_name EnemySkillAI
 # three_cheers_modifier() value shredding a heavily-armored target
 # without inventing a parallel armor system of its own.
 #
-# Naga Siren is the twelfth hero with real AI logic. Mirror Image is
+# The Last Empress is the twelfth hero with real AI logic. Mirror Image is
 # "utility" category, same shape as Erynd's own Elderwild Companion - its
 # entire value (both the illusions' own expected total damage over their
 # FULL duration and the redirect chance that can soak a hit meant for
-# Naga herself) is hero-specific, computed entirely in
-# _naga_mirror_image_modifier() rather than any generic category term
+# The Last Empress herself) is hero-specific, computed entirely in
+# _last_empress_mirror_image_modifier() rather than any generic category term
 # (see that function's own docstring). Ensnare is "offensive" (a root,
 # not a stun - the target can still attack/cast while rooted, so unlike
 # Drowned Surge's/Barbed Lunge's own stuns it gets no generic "stun_turns" bonus of
 # its own, only the movement-denial/kill-setup value
-# _naga_ensnare_modifier() adds). Song of the Siren, Naga's ultimate, is
+# _last_empress_ensnare_modifier() adds). Song of the Siren, The Last Empress's ultimate, is
 # also "offensive" despite dealing no direct damage of its own - see
-# _naga_song_expected_damage()'s own docstring for what its "damage"
-# really means (every hit Naga/her illusions land completely safely
+# _last_empress_song_expected_damage()'s own docstring for what its "damage"
+# really means (every hit The Last Empress/her illusions land completely safely
 # while the stun holds), shared between _estimate_skill_damage()'s own
-# case and _naga_song_of_the_siren_modifier() so the two numbers never
+# case and _last_empress_song_of_the_siren_modifier() so the two numbers never
 # drift apart. Rip Tide is passive, same as Frostborn/Kindled Resolve -
 # never in SKILL_INFO/HERO_TIE_BREAK/_estimate_skill_damage, never a
 # scored candidate; its bonuses reach Mirror Image/Song/a plain Attack
 # purely through context fields (rip_tide_illusion_damage_bonus_pct/
 # rip_tide_extra_illusion/rip_tide_illusion_duration_bonus/rip_tide_aoe_
 # damage_pct) battle.gd's/EnemyHeroManager's own _build_*_ai_context()
-# compute fresh off Naga's current Rip Tide level, same "empty/0 means
+# compute fresh off The Last Empress's current Rip Tide level, same "empty/0 means
 # locked" convention every other auto-triggered skill's own level-data
 # getter uses.
 #
@@ -312,7 +312,7 @@ const HERO_TIE_BREAK := {
 	"the_rootmother": ["mother's_grasp", "sanguine_bloom", "rootveil", "woven_flesh"],
 	"cinder": ["cinderbomb", "chainfire", "sweep"],
 	"raze": ["kiss_the_wastes", "blast_hopper", "double_trouble", "three_cheers"],
-	"naga_siren": ["song_of_the_siren", "mirror_image", "ensnare"],
+	"the_last_empress": ["song_of_the_siren", "mirror_image", "ensnare"],
 	"slardar": ["corrosive_haze", "slithereen_crush", "guardian_sprint"],
 	"mirana": ["moonlight_shadow", "sacred_arrow", "starstorm", "leap"],
 	"luna": ["eclipse", "lucent_beam"],
@@ -358,7 +358,7 @@ static func resolve_hero_archetype(hero_static: Dictionary) -> String:
 	if "kiss_the_wastes" in skill_ids:
 		return "raze"
 	if "song_of_the_siren" in skill_ids:
-		return "naga_siren"
+		return "the_last_empress"
 	if "slithereen_crush" in skill_ids:
 		return "slardar"
 	if "sacred_arrow" in skill_ids:
@@ -421,7 +421,7 @@ static func evaluate_skill(skill_id: String, level_data: Dictionary, context: Di
 ## the exact same reason - Kiss the Wastes is her own 200-350 mana
 ## ultimate, and Three Cheers specifically "competes directly with
 ## normal attacks" per the design doc's own instruction (see
-## _raze_three_cheers_modifier()'s own early-out). Naga Siren opts in
+## _raze_three_cheers_modifier()'s own early-out). The Last Empress opts in
 ## too - the design doc's own explicit requirement that Basic Attack
 ## always remain a real candidate, able to win outright (see its own
 ## Scenario D: a low-HP target already in range, with Rip Tide's own
@@ -438,7 +438,7 @@ static func evaluate_skill(skill_id: String, level_data: Dictionary, context: Di
 ## own right, not just the fallback for "nothing else qualified" (see
 ## _luna_basic_attack_modifier()'s own docstring).
 static func basic_attack_participates(archetype: String) -> bool:
-	return archetype == "kaelen_varr" or archetype == "the_primordial_hunger" or archetype == "frost_daughter" or archetype == "skarn" or archetype == "the_rootmother" or archetype == "cinder" or archetype == "raze" or archetype == "naga_siren" or archetype == "slardar" or archetype == "mirana" or archetype == "luna"
+	return archetype == "kaelen_varr" or archetype == "the_primordial_hunger" or archetype == "frost_daughter" or archetype == "skarn" or archetype == "the_rootmother" or archetype == "cinder" or archetype == "raze" or archetype == "the_last_empress" or archetype == "slardar" or archetype == "mirana" or archetype == "luna"
 
 
 ## The score for a plain Attack, for a hero basic_attack_participates()
@@ -640,7 +640,7 @@ static func _estimate_skill_damage(skill_id: String, level_data: Dictionary, con
 		"ensnare":
 			return float(level_data.get("damage", 0.0))
 		"song_of_the_siren":
-			return _naga_song_expected_damage(level_data, context)
+			return _last_empress_song_expected_damage(level_data, context)
 		"slithereen_crush":
 			return float(level_data.get("damage", 0.0))
 		"corrosive_haze":
@@ -688,8 +688,8 @@ static func _hero_specific_modifier(archetype: String, skill_id: String, level_d
 			return _cinder_modifier(skill_id, level_data, context)
 		"raze":
 			return _raze_modifier(skill_id, level_data, context)
-		"naga_siren":
-			return _naga_siren_modifier(skill_id, level_data, context)
+		"the_last_empress":
+			return _the_last_empress_modifier(skill_id, level_data, context)
 		"slardar":
 			return _slardar_modifier(skill_id, level_data, context)
 		"mirana":
@@ -2574,7 +2574,7 @@ static func _raze_basic_attack_modifier(context: Dictionary) -> float:
 	return score
 
 
-## Naga Siren: tactical, control-oriented, illusion-focused. Every one of
+## The Last Empress: tactical, control-oriented, illusion-focused. Every one of
 ## her skills leans on the same handful of context fields battle.gd's/
 ## EnemyHeroManager's own _build_*_ai_context() compute fresh each turn -
 ## "illusions_active"/"illusion_count"/"illusion_turns_remaining"/
@@ -2585,23 +2585,23 @@ static func _raze_basic_attack_modifier(context: Dictionary) -> float:
 ## Tide's current level, folded into Mirror Image/Song/a plain Attack
 ## since the passive itself is never a scored candidate - see this
 ## file's own header comment).
-static func _naga_siren_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
+static func _the_last_empress_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
 	match skill_id:
 		"mirror_image":
-			return _naga_mirror_image_modifier(level_data, context)
+			return _last_empress_mirror_image_modifier(level_data, context)
 		"ensnare":
-			return _naga_ensnare_modifier(level_data, context)
+			return _last_empress_ensnare_modifier(level_data, context)
 		"song_of_the_siren":
-			return _naga_song_of_the_siren_modifier(level_data, context)
+			return _last_empress_song_of_the_siren_modifier(level_data, context)
 		BASIC_ATTACK_ID:
-			return _naga_basic_attack_modifier(context)
+			return _last_empress_basic_attack_modifier(context)
 		_:
 			return 0.0
 
 
 ## Mirror Image: NOT a one-shot damage spell - its value is the
 ## illusions' own expected total damage over their FULL duration
-## (offensive) plus the chance a hit meant for Naga herself lands on an
+## (offensive) plus the chance a hit meant for The Last Empress herself lands on an
 ## illusion instead (defensive). Neither half is generic enough for
 ## _evaluate_offensive()/_evaluate_defensive() to cover (this skill's own
 ## SKILL_INFO category is "utility", same "the hero-specific modifier IS
@@ -2609,7 +2609,7 @@ static func _naga_siren_modifier(skill_id: String, level_data: Dictionary, conte
 ## _erynd_modifier()), so both live here together, exactly per the
 ## design doc's own "a defensive Mirror Image can be the right call even
 ## with lower immediate damage" instruction.
-static func _naga_mirror_image_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _last_empress_mirror_image_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
 	var illusions_count: int = int(level_data.get("illusions", 0)) + int(context.get("rip_tide_extra_illusion", 0))
 	var damage_pct: float = float(level_data.get("damage_pct", 0.0)) + float(context.get("rip_tide_illusion_damage_bonus_pct", 0.0))
@@ -2623,11 +2623,11 @@ static func _naga_mirror_image_modifier(level_data: Dictionary, context: Diction
 
 	# --- Offensive value: the illusions' own expected total damage over
 	# the FULL duration, never just one turn's hit. There's no separate
-	# signal anywhere in this project for "a target Naga herself can
+	# signal anywhere in this project for "a target The Last Empress herself can
 	# reach" versus "a target the illusions can reach" - both draw from
 	# the exact same in-range enemy pool (see battle.gd's own
 	# _fire_mirror_image_attack()) - so the design doc's own "+20 if at
-	# least one enemy is attackable" and "+20 if Naga can attack the same
+	# least one enemy is attackable" and "+20 if The Last Empress can attack the same
 	# target as the illusions" collapse into this single hit_count>=1
 	# check rather than two independent ones.
 	if hit_count >= 1:
@@ -2645,7 +2645,7 @@ static func _naga_mirror_image_modifier(level_data: Dictionary, context: Diction
 	if target_hp > 0.0 and total_expected_damage >= target_hp:
 		score += 25.0
 
-	# --- Defensive value: enemies can hit an illusion instead of Naga
+	# --- Defensive value: enemies can hit an illusion instead of The Last Empress
 	# herself - never purely offensive (see this function's own
 	# docstring). Reuses the same HP-ratio/outnumbered signals
 	# _evaluate_defensive() uses elsewhere, just feeding this skill's own
@@ -2678,7 +2678,7 @@ static func _naga_mirror_image_modifier(level_data: Dictionary, context: Diction
 ## value is movement denial/kill setup: securing a kill the upfront hit
 ## alone wouldn't, keeping a target that would otherwise create distance
 ## within reach, and letting active illusions keep attacking it too.
-static func _naga_ensnare_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _last_empress_ensnare_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var score: float = 0.0
 
 	var target_hp: float = float(context.get("target_hp", 0.0))
@@ -2687,7 +2687,7 @@ static func _naga_ensnare_modifier(level_data: Dictionary, context: Dictionary) 
 		score += 20.0
 
 	# A kill the root itself doesn't land but SETS UP over the turns the
-	# target can't escape Naga's (and any active illusions') follow-up
+	# target can't escape The Last Empress's (and any active illusions') follow-up
 	# hits - the primary target's own upfront kill is already scored
 	# generically (see _kill_potential_bonus(), fed by this skill's own
 	# flat-damage _estimate_skill_damage() case), this only adds for a
@@ -2719,7 +2719,7 @@ static func _naga_ensnare_modifier(level_data: Dictionary, context: Dictionary) 
 
 	# Active illusions can keep attacking a target that can no longer run
 	# from them either - this also covers the design doc's own separate
-	# "rooting the target allows Naga/illusions to attack it" bullet,
+	# "rooting the target allows The Last Empress/illusions to attack it" bullet,
 	# which would otherwise double-count the same signal.
 	if bool(context.get("illusions_active", false)):
 		score += 20.0
@@ -2728,7 +2728,7 @@ static func _naga_ensnare_modifier(level_data: Dictionary, context: Dictionary) 
 
 
 ## Song of the Siren: not a direct-damage cast (no damage field of its
-## own at all) - its real destructive value is every hit Naga and any
+## own at all) - its real destructive value is every hit The Last Empress and any
 ## active illusions can land completely safely while every enemy in
 ## radius is stunned and unable to retaliate. Self-centered, same "reuse
 ## target_distance as its own self-cast range check" idiom Frost
@@ -2736,7 +2736,7 @@ static func _naga_ensnare_modifier(level_data: Dictionary, context: Dictionary) 
 ## use (see _tp_mothers_grasp_modifier()'s own docstring) - out of range in
 ## a real fight scores low rather than being excluded outright, same
 ## early-out shape Mother's Grasp's own uses.
-static func _naga_song_of_the_siren_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _last_empress_song_of_the_siren_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var radius: int = int(level_data.get("radius", 0))
 	var raw_distance: int = int(context.get("target_distance", -1))
 	var in_range: bool = raw_distance < 0 or raw_distance <= radius
@@ -2770,10 +2770,10 @@ static func _naga_song_of_the_siren_modifier(level_data: Dictionary, context: Di
 			low_hp_count += 1
 	score += 20.0 * float(low_hp_count)
 
-	# --- The offensive window itself: every hit Naga (and any active
+	# --- The offensive window itself: every hit The Last Empress (and any active
 	# illusions) land completely safely while enemies are stunned - see
-	# _naga_song_expected_damage()'s own docstring. ---
-	var total_physical_damage: float = _naga_song_expected_damage(level_data, context)
+	# _last_empress_song_expected_damage()'s own docstring. ---
+	var total_physical_damage: float = _last_empress_song_expected_damage(level_data, context)
 
 	var extra_kills: int = 0
 	for hp in living_hps:
@@ -2791,7 +2791,7 @@ static func _naga_song_of_the_siren_modifier(level_data: Dictionary, context: Di
 	# own Three Cheers modifier uses (see _raze_three_cheers_
 	# modifier()), scaled by this window's own real damage total instead
 	# of a flat number, per the design doc's own explicit "its value
-	# depends on how much physical damage Naga can actually deal, not a
+	# depends on how much physical damage The Last Empress can actually deal, not a
 	# flat bonus" instruction. ---
 	var armor_reduction: float = float(level_data.get("armor_reduction", 0.0))
 	var target_armor: float = float(context.get("target_armor", 0.0))
@@ -2799,7 +2799,7 @@ static func _naga_song_of_the_siren_modifier(level_data: Dictionary, context: Di
 		var reduction_pct: float = clampf(armor_reduction / target_armor, 0.0, 1.0)
 		score += total_physical_damage * reduction_pct * 0.3
 
-	# --- Mirror Image synergy: Naga's primary combo. Active illusions
+	# --- Mirror Image synergy: The Last Empress's primary combo. Active illusions
 	# turn the stun from pure control into a second wave of safe damage. ---
 	var illusions_active: bool = bool(context.get("illusions_active", false))
 	var stun_turns: int = int(level_data.get("stun_turns", 0))
@@ -2827,7 +2827,7 @@ static func _naga_song_of_the_siren_modifier(level_data: Dictionary, context: Di
 	# --- Opportunity cost: a single already-low-value target, no
 	# illusions up, and no real attack window isn't worth a high-mana
 	# ultimate's cooldown - a cheaper play can do the same job (per the
-	# design doc's own "apply a resource penalty when Naga is unable to
+	# design doc's own "apply a resource penalty when The Last Empress is unable to
 	# capitalize on the stun" instruction). A nudge, not a veto - the
 	# surrounding score comparison against every other candidate still
 	# gets the final say. ---
@@ -2840,17 +2840,17 @@ static func _naga_song_of_the_siren_modifier(level_data: Dictionary, context: Di
 
 ## Shared by both _estimate_skill_damage()'s own "song_of_the_siren" case
 ## (which feeds the generic kill-potential term against the primary
-## target) and _naga_song_of_the_siren_modifier() (which needs the same
+## target) and _last_empress_song_of_the_siren_modifier() (which needs the same
 ## total for its own armor-reduction/extra-kill math), so the two never
 ## drift apart. Song of the Siren has no damage field of its own at all -
-## its real value is every attack Naga (this level's own stun_turns
+## its real value is every attack The Last Empress (this level's own stun_turns
 ## worth of them - she can still act every turn the stun holds) and any
 ## active illusions land completely safely, plus whatever Rip Tide's own
 ## splash adds across the other stunned targets.
-static func _naga_song_expected_damage(level_data: Dictionary, context: Dictionary) -> float:
+static func _last_empress_song_expected_damage(level_data: Dictionary, context: Dictionary) -> float:
 	var stun_turns: int = int(level_data.get("stun_turns", 0))
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
-	var expected_naga_damage: float = hero_damage * float(stun_turns)
+	var expected_last_empress_damage: float = hero_damage * float(stun_turns)
 
 	var illusion_damage: float = 0.0
 	if bool(context.get("illusions_active", false)):
@@ -2858,17 +2858,17 @@ static func _naga_song_expected_damage(level_data: Dictionary, context: Dictiona
 
 	var hit_count: int = context.get("living_target_hps", []).size()
 	var rip_tide_aoe_pct: float = float(context.get("rip_tide_aoe_damage_pct", 0.0))
-	var splash_damage: float = expected_naga_damage * rip_tide_aoe_pct * float(maxi(hit_count - 1, 0))
+	var splash_damage: float = expected_last_empress_damage * rip_tide_aoe_pct * float(maxi(hit_count - 1, 0))
 
-	return expected_naga_damage + illusion_damage + splash_damage
+	return expected_last_empress_damage + illusion_damage + splash_damage
 
 
-## A plain Attack is only worth scoring above its flat baseline for Naga
+## A plain Attack is only worth scoring above its flat baseline for The Last Empress
 ## Siren when it can already finish the target off, when Rip Tide's own
 ## splash reaches more than one enemy, or when active illusions are
 ## already focus-firing the same target (see basic_attack_participates()'
 ## own docstring for why she opts in at all).
-static func _naga_basic_attack_modifier(context: Dictionary) -> float:
+static func _last_empress_basic_attack_modifier(context: Dictionary) -> float:
 	var score: float = 0.0
 
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
@@ -3748,7 +3748,7 @@ static func _luna_eclipse_modifier(level_data: Dictionary, context: Dictionary) 
 	if n <= 0:
 		# Nothing within radius at all - a wasted cast, same "out of
 		# range scores low" shape every other self-cast AoE ultimate in
-		# this file already uses (see _naga_song_of_the_siren_
+		# this file already uses (see _last_empress_song_of_the_siren_
 		# modifier()'s own early-out).
 		return -50.0
 

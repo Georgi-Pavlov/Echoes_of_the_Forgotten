@@ -38,7 +38,7 @@ texture = ExtResource("2")
 expand_mode = 1
 stretch_mode = 6
 
-[node name="MenuAtmosphere" parent="." instance=ExtResource("5")]
+[node name="MenuAtmosphere" parent="." unique_id=1616658081 instance=ExtResource("5")]
 layout_mode = 1
 
 [node name="WelcomeLabel" type="Label" parent="." unique_id=2035859572]
@@ -84,12 +84,12 @@ size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 22
 text = "Continue"
 
-[node name="Gap" type="Control" parent="ButtonsContainer"]
+[node name="Gap" type="Control" parent="ButtonsContainer" unique_id=1314856195]
 custom_minimum_size = Vector2(0, 10)
 layout_mode = 2
 mouse_filter = 2
 
-[node name="ExtraButtons" type="HBoxContainer" parent="ButtonsContainer"]
+[node name="ExtraButtons" type="HBoxContainer" parent="ButtonsContainer" unique_id=894030156]
 layout_mode = 2
 theme_override_constants/separation = 12
 alignment = 1
@@ -106,13 +106,13 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "How to Play"
 
-[node name="IntroButton" type="Button" parent="ButtonsContainer/ExtraButtons"]
+[node name="IntroButton" type="Button" parent="ButtonsContainer/ExtraButtons" unique_id=1477411835]
 custom_minimum_size = Vector2(150, 38)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Intro"
 
-[node name="LogOutButton" type="Button" parent="."]
+[node name="LogOutButton" type="Button" parent="." unique_id=601585099]
 layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
