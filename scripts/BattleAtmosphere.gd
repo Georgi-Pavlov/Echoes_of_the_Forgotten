@@ -6,7 +6,8 @@ extends Control
 # takes input, never touches game state. battle.gd calls setup() with
 # the zone id; effects only exist for zones that have them (currently
 # the Elderwild, the Kingdom of Morvain, Frostspire, The Everfrost, the
-# Verdant Scar and Scorchlands arenas) and nothing is drawn anywhere else.
+# Verdant Scar, Scorchlands and Drowned Empire arenas) and nothing is drawn
+# anywhere else.
 #
 # Elderwild:
 #   - autumn leaves blown across the forest on a gusting wind, in two
@@ -35,6 +36,10 @@ const VERDANT_SCAR_FX := preload("res://scripts/VerdantScarBattleAtmosphere.gd")
 # The Scorchlands arena - see ScorchlandsBattleAtmosphere.gd.
 const SCORCHLANDS_AREA := "res://assets/battle_areas/scorchlands_area.jpg"
 const SCORCHLANDS_FX := preload("res://scripts/ScorchlandsBattleAtmosphere.gd")
+# The Drowned Empire arena - see DrownedEmpireBattleAtmosphere.gd. Matched on
+# the arena image, like the two above.
+const DROWNED_EMPIRE_AREA := "res://assets/battle_areas/drowned_empire_area.png"
+const DROWNED_EMPIRE_FX := preload("res://scripts/DrownedEmpireBattleAtmosphere.gd")
 
 # Leaves live above the battle UI panel painted into the art.
 const ELD_LEAF_FLOOR := 0.64          # image UV y where they've faded out
@@ -96,6 +101,14 @@ func setup(zone_id: String) -> void:
 		var scorch: Control = SCORCHLANDS_FX.new()
 		add_child(scorch)
 		scorch.build(self, _background)
+		return
+	if _background.texture.resource_path == DROWNED_EMPIRE_AREA:
+		_zone = zone_id
+		# Its positions come from the Background's laid-out size.
+		await get_tree().process_frame
+		var drowned: Control = DROWNED_EMPIRE_FX.new()
+		add_child(drowned)
+		drowned.build(self, _background)
 		return
 	if zone_id == "kingdom_of_morvain":
 		# Morvain's effects live in their own script, as a child.

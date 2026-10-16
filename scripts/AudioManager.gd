@@ -277,8 +277,20 @@ func _stream_for(event: String) -> AudioStream:
 
 
 func _on_node_added(node: Node) -> void:
+	if node is LineEdit:
+		node.text_changed.connect(_on_line_edit_changed.bind(node))
 	if node is BaseButton and not node.pressed.is_connected(_on_button_pressed.bind(node)):
 		node.pressed.connect(_on_button_pressed.bind(node))
+
+
+## Typing in a text field (name, password) clatters like a typewriter; a
+## deletion gets the lower, duller key.
+func _on_line_edit_changed(text: String, edit: LineEdit) -> void:
+	if not is_instance_valid(edit):
+		return
+	var previous: int = edit.get_meta("typed_length", 0)
+	edit.set_meta("typed_length", text.length())
+	play_event("typewriter_back" if text.length() < previous else "typewriter_key", 0.0, 0.08)
 
 
 func _on_button_pressed(button: BaseButton) -> void:

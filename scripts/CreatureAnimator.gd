@@ -256,6 +256,55 @@ const PROFILES := {
 		"glow_color": Color(1.0, 0.45, 0.2),
 		"edge_color": Color(1.0, 0.4, 0.2),
 	},
+	# The Drowned Empire - things that never left the water: a slow swaying
+	# roll as if in a current, and a faint underwater ripple over them. The
+	# Last Empress breathes slowly, her kelp, hair and tentacles drifting
+	# (the most sway of the three), a teal glow when she casts.
+	"the_last_empress": {
+		"breath_amount": 0.013, "breath_speed": 1.2,
+		"sway_amount": 0.015, "sway_speed": 0.5,
+		"ripple_amount": 0.0035, "ripple_freq": 7.0, "ripple_speed": 1.3,
+		"glow_color": Color(0.4, 1.0, 0.9),
+		"edge_color": Color(0.45, 1.0, 0.9),
+	},
+	# Dreadlure, the deep-sea ambusher: slow, heavy breaths as it lurks, its
+	# tendrils and torn wings drifting in the dark current, the blue of its
+	# lure flaring when it casts.
+	"dreadlure": {
+		"breath_amount": 0.016, "breath_speed": 1.1,
+		"sway_amount": 0.013, "sway_speed": 0.45,
+		"ripple_amount": 0.004, "ripple_freq": 6.0, "ripple_speed": 1.1,
+		"glow_color": Color(0.35, 0.82, 1.0),
+		"edge_color": Color(0.4, 0.85, 1.0),
+	},
+	# The fish-lizard: long, heavy breaths and the slow sway of its tail and
+	# fins, gold flaring in its jaws when it strikes.
+	"drowned_empire_melee": {
+		"breath_amount": 0.018, "breath_speed": 1.5,
+		"sway_amount": 0.011, "sway_speed": 0.7,
+		"ripple_amount": 0.003, "ripple_freq": 8.0, "ripple_speed": 1.5,
+		"glow_color": Color(0.95, 0.72, 0.35),
+		"edge_color": Color(0.5, 0.9, 0.85),
+	},
+	# The Last Empress's Imperial Guard - ancient drowned warriors: a steady,
+	# braced breath, the weed on their armour stirring in the current, a
+	# gold glint on their spears when they strike.
+	"imperial_guard": {
+		"breath_amount": 0.014, "breath_speed": 1.5,
+		"sway_amount": 0.012, "sway_speed": 0.6,
+		"ripple_amount": 0.0035, "ripple_freq": 7.0, "ripple_speed": 1.4,
+		"glow_color": Color(0.95, 0.75, 0.4),
+		"edge_color": Color(0.45, 0.95, 0.85),
+	},
+	# The spear-bearing fish-man: a crouched, ready breath, the weed hanging
+	# off it stirring in the current, a cold green glow when it throws.
+	"drowned_empire_range": {
+		"breath_amount": 0.015, "breath_speed": 1.4,
+		"sway_amount": 0.014, "sway_speed": 0.6,
+		"ripple_amount": 0.0035, "ripple_freq": 7.0, "ripple_speed": 1.4,
+		"glow_color": Color(0.4, 0.95, 0.85),
+		"edge_color": Color(0.45, 1.0, 0.85),
+	},
 }
 
 const HIT_FLASH_COLOR := Color(1.0, 0.35, 0.3)

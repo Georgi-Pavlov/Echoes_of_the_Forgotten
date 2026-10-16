@@ -130,60 +130,60 @@ class_name EnemySkillAI
 # three_cheers_modifier() value shredding a heavily-armored target
 # without inventing a parallel armor system of its own.
 #
-# The Last Empress is the twelfth hero with real AI logic. Mirror Image is
+# The Last Empress is the twelfth hero with real AI logic. Imperial Guard is
 # "utility" category, same shape as Erynd's own Elderwild Companion - its
-# entire value (both the illusions' own expected total damage over their
+# entire value (both the guards' own expected total damage over their
 # FULL duration and the redirect chance that can soak a hit meant for
 # The Last Empress herself) is hero-specific, computed entirely in
-# _last_empress_mirror_image_modifier() rather than any generic category term
-# (see that function's own docstring). Ensnare is "offensive" (a root,
+# _last_empress_imperial_guard_modifier() rather than any generic category term
+# (see that function's own docstring). Shackles is "offensive" (a root,
 # not a stun - the target can still attack/cast while rooted, so unlike
 # Drowned Surge's/Barbed Lunge's own stuns it gets no generic "stun_turns" bonus of
 # its own, only the movement-denial/kill-setup value
-# _last_empress_ensnare_modifier() adds). Song of the Siren, The Last Empress's ultimate, is
+# _last_empress_shackles_modifier() adds). Luring Gaze, The Last Empress's ultimate, is
 # also "offensive" despite dealing no direct damage of its own - see
 # _last_empress_song_expected_damage()'s own docstring for what its "damage"
-# really means (every hit The Last Empress/her illusions land completely safely
+# really means (every hit The Last Empress/her guards land completely safely
 # while the stun holds), shared between _estimate_skill_damage()'s own
-# case and _last_empress_song_of_the_siren_modifier() so the two numbers never
-# drift apart. Rip Tide is passive, same as Frostborn/Kindled Resolve -
+# case and _last_empress_luring_gaze_modifier() so the two numbers never
+# drift apart. Empress's Will is passive, same as Frostborn/Kindled Resolve -
 # never in SKILL_INFO/HERO_TIE_BREAK/_estimate_skill_damage, never a
-# scored candidate; its bonuses reach Mirror Image/Song/a plain Attack
-# purely through context fields (rip_tide_illusion_damage_bonus_pct/
-# rip_tide_extra_illusion/rip_tide_illusion_duration_bonus/rip_tide_aoe_
+# scored candidate; its bonuses reach Imperial Guard/Luring Gaze/a plain Attack
+# purely through context fields (empress_will_guardians_damage_bonus_pct/
+# empress_will_extra_guard/empress_will_guard_duration_bonus/empress_will_aoe_
 # damage_pct) battle.gd's/EnemyHeroManager's own _build_*_ai_context()
-# compute fresh off The Last Empress's current Rip Tide level, same "empty/0 means
+# compute fresh off The Last Empress's current Empress's Will level, same "empty/0 means
 # locked" convention every other auto-triggered skill's own level-data
 # getter uses.
 #
-# Slardar is the thirteenth hero with real AI logic. Guardian Sprint is
+# Dreadlure is the thirteenth hero with real AI logic. Hunting Instinct is
 # "utility" category, same "the hero-specific modifier IS the whole
-# value" shape Mirror Image/Elderwild Companion already use - its value is almost
+# value" shape Imperial Guard/Elderwild Companion already use - its value is almost
 # entirely positional, not a generic damage/defensive term (see
-# _slardar_guardian_sprint_modifier()'s own docstring). Slithereen Crush
-# and Corrosive Haze are both "offensive", same shape as every other
-# self-cast/target-marking skill in this file. Bash of the Deep is
-# passive and, like Rip Tide/Kindled Resolve/Frostborn, never appears in
+# _dreadlure_hunting_instinct_modifier()'s own docstring). Paralytic Venom
+# and Deathlight Lure are both "offensive", same shape as every other
+# self-cast/target-marking skill in this file. Might of the Deep is
+# passive and, like Empress's Will/Kindled Resolve/Frostborn, never appears in
 # SKILL_INFO/HERO_TIE_BREAK/_estimate_skill_damage - its progression
-# reaches every one of Slardar's other actions purely through context
-# fields ("bash_attacks_required"/"bash_current_progress"/"bash_bonus_
-# damage_pct"/"bash_knockback" - see _slardar_bash_ready()/_slardar_bash_
+# reaches every one of Dreadlure's other actions purely through context
+# fields ("might_attacks_required"/"might_current_progress"/"might_bonus_
+# damage_pct"/"might_knockback" - see _dreadlure_might_ready()/_dreadlure_might_
 # knockback_value()), never as a scored candidate of its own.
 #
 # Mirana is the fourteenth hero with real AI logic. Starstorm is
-# "offensive", same self-centered-AoE shape as Slithereen Crush/Song of
-# the Siren. Sacred Arrow is also "offensive" - its own damage genuinely
+# "offensive", same self-centered-AoE shape as Paralytic Venom/Luring
+# Gaze. Sacred Arrow is also "offensive" - its own damage genuinely
 # scales with the real travel distance (see _mirana_sacred_arrow_
 # expected_damage()'s own docstring), never a flat number the way a
 # lesser implementation might read `base_damage` alone. Leap deals no
 # damage at all (it "sails clean over any enemy in the way" - see
 # battle.gd's own _activate_leap()), so it's "utility" category, same
-# "the modifier IS the whole value" shape Guardian Sprint/Mirror Image
+# "the modifier IS the whole value" shape Hunting Instinct/Imperial Guard
 # already use - see _mirana_leap_modifier()'s own docstring for how a
 # single cast can still end up scored for EITHER direction (toward or
 # away) since Leap always jumps in whichever way Mirana is currently
 # facing, never a chosen "toward the enemy" step the way Guardian
-# Sprint's own fallback movement is. Moonlight Shadow is "utility" too -
+# Instinct's own fallback movement is. Moonlight Shadow is "utility" too -
 # defensive protection, positioning, AND a guaranteed enhanced next
 # Attack all at once (see _mirana_moonlight_shadow_modifier()'s own
 # docstring), never scored as a pure escape.
@@ -197,7 +197,7 @@ class_name EnemySkillAI
 # evaluated (deterministic at one real candidate, a genuine expected
 # value at more than one - never a naive "beams x damage, guaranteed"
 # reading, and never a "one beam per enemy" assumption). Moon Glaives and
-# Lunar Blessing are both passive and, like Bash of the Deep/Rip Tide/
+# Lunar Blessing are both passive and, like Might of the Deep/Empress's Will/
 # Kindled Resolve/Frostborn, never appear in SKILL_INFO/HERO_TIE_BREAK/
 # _estimate_skill_damage - Lunar Blessing's own bonus is already folded
 # into "hero_damage" itself by _roll_enemy_hero_damage()/
@@ -260,12 +260,12 @@ const SKILL_INFO := {
 	"blast_hopper": {"category": "offensive", "base_score": 50.0},
 	"three_cheers": {"category": "offensive", "base_score": 45.0},
 	"kiss_the_wastes": {"category": "offensive", "base_score": 70.0},
-	"mirror_image": {"category": "utility", "base_score": 50.0},
-	"ensnare": {"category": "offensive", "base_score": 45.0},
-	"song_of_the_siren": {"category": "offensive", "base_score": 75.0},
-	"guardian_sprint": {"category": "utility", "base_score": 45.0},
-	"slithereen_crush": {"category": "offensive", "base_score": 55.0},
-	"corrosive_haze": {"category": "offensive", "base_score": 75.0},
+	"imperial_guard": {"category": "utility", "base_score": 50.0},
+	"shackles": {"category": "offensive", "base_score": 45.0},
+	"luring_gaze": {"category": "offensive", "base_score": 75.0},
+	"hunting_instinct": {"category": "utility", "base_score": 45.0},
+	"paralytic_venom": {"category": "offensive", "base_score": 55.0},
+	"deathlight_lure": {"category": "offensive", "base_score": 75.0},
 	"starstorm": {"category": "offensive", "base_score": 50.0},
 	"sacred_arrow": {"category": "offensive", "base_score": 65.0},
 	"leap": {"category": "utility", "base_score": 40.0},
@@ -312,8 +312,8 @@ const HERO_TIE_BREAK := {
 	"the_rootmother": ["mother's_grasp", "sanguine_bloom", "rootveil", "woven_flesh"],
 	"cinder": ["cinderbomb", "chainfire", "sweep"],
 	"raze": ["kiss_the_wastes", "blast_hopper", "double_trouble", "three_cheers"],
-	"the_last_empress": ["song_of_the_siren", "mirror_image", "ensnare"],
-	"slardar": ["corrosive_haze", "slithereen_crush", "guardian_sprint"],
+	"the_last_empress": ["luring_gaze", "imperial_guard", "shackles"],
+	"dreadlure": ["deathlight_lure", "paralytic_venom", "hunting_instinct"],
 	"mirana": ["moonlight_shadow", "sacred_arrow", "starstorm", "leap"],
 	"luna": ["eclipse", "lucent_beam"],
 }
@@ -357,10 +357,10 @@ static func resolve_hero_archetype(hero_static: Dictionary) -> String:
 		return "cinder"
 	if "kiss_the_wastes" in skill_ids:
 		return "raze"
-	if "song_of_the_siren" in skill_ids:
+	if "luring_gaze" in skill_ids:
 		return "the_last_empress"
-	if "slithereen_crush" in skill_ids:
-		return "slardar"
+	if "paralytic_venom" in skill_ids:
+		return "dreadlure"
 	if "sacred_arrow" in skill_ids:
 		return "mirana"
 	if "lucent_beam" in skill_ids:
@@ -424,11 +424,11 @@ static func evaluate_skill(skill_id: String, level_data: Dictionary, context: Di
 ## _raze_three_cheers_modifier()'s own early-out). The Last Empress opts in
 ## too - the design doc's own explicit requirement that Basic Attack
 ## always remain a real candidate, able to win outright (see its own
-## Scenario D: a low-HP target already in range, with Rip Tide's own
-## splash, can beat every one of her real skills). Slardar opts in for
+## Scenario D: a low-HP target already in range, with Empress's Will's own
+## splash, can beat every one of her real skills). Dreadlure opts in for
 ## the same "Basic Attack must always remain a candidate" requirement,
-## made especially important by Bash of the Deep - a Bash-ready Attack
-## with a real kill on the line can beat spending Corrosive Haze's own
+## made especially important by Might of the Deep - a Might-ready Attack
+## with a real kill on the line can beat spending Deathlight Lure's own
 ## mana/cooldown on a target about to die anyway (see this file's own
 ## Scenario C). Mirana opts in too, for the same reason - Moonlight
 ## Shadow directly enhances her next Attack, so a plain Attack has to be
@@ -438,7 +438,7 @@ static func evaluate_skill(skill_id: String, level_data: Dictionary, context: Di
 ## own right, not just the fallback for "nothing else qualified" (see
 ## _luna_basic_attack_modifier()'s own docstring).
 static func basic_attack_participates(archetype: String) -> bool:
-	return archetype == "kaelen_varr" or archetype == "the_primordial_hunger" or archetype == "frost_daughter" or archetype == "skarn" or archetype == "the_rootmother" or archetype == "cinder" or archetype == "raze" or archetype == "the_last_empress" or archetype == "slardar" or archetype == "mirana" or archetype == "luna"
+	return archetype == "kaelen_varr" or archetype == "the_primordial_hunger" or archetype == "frost_daughter" or archetype == "skarn" or archetype == "the_rootmother" or archetype == "cinder" or archetype == "raze" or archetype == "the_last_empress" or archetype == "dreadlure" or archetype == "mirana" or archetype == "luna"
 
 
 ## The score for a plain Attack, for a hero basic_attack_participates()
@@ -637,14 +637,14 @@ static func _estimate_skill_damage(skill_id: String, level_data: Dictionary, con
 			# those are estimated separately, more conservatively, in
 			# _raze_kiss_the_wastes_modifier() instead.
 			return float(level_data.get("main_damage", 0.0))
-		"ensnare":
+		"shackles":
 			return float(level_data.get("damage", 0.0))
-		"song_of_the_siren":
+		"luring_gaze":
 			return _last_empress_song_expected_damage(level_data, context)
-		"slithereen_crush":
+		"paralytic_venom":
 			return float(level_data.get("damage", 0.0))
-		"corrosive_haze":
-			return _slardar_corrosive_haze_expected_damage(level_data, context)
+		"deathlight_lure":
+			return _dreadlure_deathlight_lure_expected_damage(level_data, context)
 		"starstorm":
 			return float(level_data.get("damage", 0.0))
 		"sacred_arrow":
@@ -690,8 +690,8 @@ static func _hero_specific_modifier(archetype: String, skill_id: String, level_d
 			return _raze_modifier(skill_id, level_data, context)
 		"the_last_empress":
 			return _the_last_empress_modifier(skill_id, level_data, context)
-		"slardar":
-			return _slardar_modifier(skill_id, level_data, context)
+		"dreadlure":
+			return _dreadlure_modifier(skill_id, level_data, context)
 		"mirana":
 			return _mirana_modifier(skill_id, level_data, context)
 		"luna":
@@ -2574,61 +2574,59 @@ static func _raze_basic_attack_modifier(context: Dictionary) -> float:
 	return score
 
 
-## The Last Empress: tactical, control-oriented, illusion-focused. Every one of
+## The Last Empress: tactical, control-oriented, guard-focused. Every one of
 ## her skills leans on the same handful of context fields battle.gd's/
 ## EnemyHeroManager's own _build_*_ai_context() compute fresh each turn -
-## "illusions_active"/"illusion_count"/"illusion_turns_remaining"/
-## "illusion_total_damage_per_turn" (Mirror Image's current state, read
-## by Ensnare/Song/a plain Attack for their own synergy bonuses) and
-## "rip_tide_illusion_damage_bonus_pct"/"rip_tide_extra_illusion"/
-## "rip_tide_illusion_duration_bonus"/"rip_tide_aoe_damage_pct" (Rip
-## Tide's current level, folded into Mirror Image/Song/a plain Attack
+## "guards_active"/"guard_count"/"guard_turns_remaining"/
+## "guard_total_damage_per_turn" (Imperial Guard's current state, read
+## by Shackles/Luring Gaze/a plain Attack for their own synergy bonuses) and
+## "empress_will_guardians_damage_bonus_pct"/"empress_will_extra_guard"/
+## "empress_will_guard_duration_bonus"/"empress_will_aoe_damage_pct" (Empress's
+## Will's current level, folded into Imperial Guard/Luring Gaze/a plain Attack
 ## since the passive itself is never a scored candidate - see this
 ## file's own header comment).
 static func _the_last_empress_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
 	match skill_id:
-		"mirror_image":
-			return _last_empress_mirror_image_modifier(level_data, context)
-		"ensnare":
-			return _last_empress_ensnare_modifier(level_data, context)
-		"song_of_the_siren":
-			return _last_empress_song_of_the_siren_modifier(level_data, context)
+		"imperial_guard":
+			return _last_empress_imperial_guard_modifier(level_data, context)
+		"shackles":
+			return _last_empress_shackles_modifier(level_data, context)
+		"luring_gaze":
+			return _last_empress_luring_gaze_modifier(level_data, context)
 		BASIC_ATTACK_ID:
 			return _last_empress_basic_attack_modifier(context)
 		_:
 			return 0.0
 
 
-## Mirror Image: NOT a one-shot damage spell - its value is the
-## illusions' own expected total damage over their FULL duration
-## (offensive) plus the chance a hit meant for The Last Empress herself lands on an
-## illusion instead (defensive). Neither half is generic enough for
+## Imperial Guard: NOT a one-shot damage spell - its value is the
+## guards' own expected total damage over their FULL duration
+## (offensive) plus the cover a squad of extra bodies gives her when she's
+## hurt or outnumbered (defensive). Neither half is generic enough for
 ## _evaluate_offensive()/_evaluate_defensive() to cover (this skill's own
 ## SKILL_INFO category is "utility", same "the hero-specific modifier IS
 ## the whole value" shape Erynd's own Elderwild Companion uses - see
 ## _erynd_modifier()), so both live here together, exactly per the
-## design doc's own "a defensive Mirror Image can be the right call even
+## design doc's own "a defensive Imperial Guard can be the right call even
 ## with lower immediate damage" instruction.
-static func _last_empress_mirror_image_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _last_empress_imperial_guard_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
-	var illusions_count: int = int(level_data.get("illusions", 0)) + int(context.get("rip_tide_extra_illusion", 0))
-	var damage_pct: float = float(level_data.get("damage_pct", 0.0)) + float(context.get("rip_tide_illusion_damage_bonus_pct", 0.0))
-	var duration: int = int(level_data.get("duration", 0)) + int(context.get("rip_tide_illusion_duration_bonus", 0))
-	var hit_chance_pct: float = float(level_data.get("hit_chance_pct", 0.0))
+	var guards_count: int = int(level_data.get("guards", 0)) + int(context.get("empress_will_extra_guard", 0))
+	var damage_pct: float = float(level_data.get("damage_pct", 0.0)) + float(context.get("empress_will_guardians_damage_bonus_pct", 0.0))
+	var duration: int = int(level_data.get("duration", 0)) + int(context.get("empress_will_guard_duration_bonus", 0))
 
 	var living_hps: Array = context.get("living_target_hps", [])
 	var hit_count: int = living_hps.size()
 
 	var score: float = 0.0
 
-	# --- Offensive value: the illusions' own expected total damage over
+	# --- Offensive value: the guards' own expected total damage over
 	# the FULL duration, never just one turn's hit. There's no separate
 	# signal anywhere in this project for "a target The Last Empress herself can
-	# reach" versus "a target the illusions can reach" - both draw from
-	# the exact same in-range enemy pool (see battle.gd's own
-	# _fire_mirror_image_attack()) - so the design doc's own "+20 if at
+	# reach" versus "a target the guards can reach" (the guards walk to
+	# whoever is nearest - see battle.gd's own _enemy_guards_turn()) - so the design doc's own "+20 if at
 	# least one enemy is attackable" and "+20 if The Last Empress can attack the same
-	# target as the illusions" collapse into this single hit_count>=1
+	# target as the guards" collapse into this single hit_count>=1
 	# check rather than two independent ones.
 	if hit_count >= 1:
 		score += 40.0
@@ -2636,17 +2634,17 @@ static func _last_empress_mirror_image_modifier(level_data: Dictionary, context:
 		score += 25.0
 	if duration >= 2:
 		score += 20.0
-	if float(context.get("rip_tide_illusion_damage_bonus_pct", 0.0)) > 0.0:
+	if float(context.get("empress_will_guardians_damage_bonus_pct", 0.0)) > 0.0:
 		score += 15.0
 
-	var illusion_damage_per_turn: float = hero_damage * damage_pct * float(illusions_count)
-	var total_expected_damage: float = illusion_damage_per_turn * float(duration)
+	var guard_damage_per_turn: float = hero_damage * damage_pct * float(guards_count)
+	var total_expected_damage: float = guard_damage_per_turn * float(duration)
 	var target_hp: float = float(context.get("target_hp", 0.0))
 	if target_hp > 0.0 and total_expected_damage >= target_hp:
 		score += 25.0
 
-	# --- Defensive value: enemies can hit an illusion instead of The Last Empress
-	# herself - never purely offensive (see this function's own
+	# --- Defensive value: a squad of bodies standing between her and the
+	# fight - never purely offensive (see this function's own
 	# docstring). Reuses the same HP-ratio/outnumbered signals
 	# _evaluate_defensive() uses elsewhere, just feeding this skill's own
 	# value instead of the shared category term (which never runs for a
@@ -2658,27 +2656,25 @@ static func _last_empress_mirror_image_modifier(level_data: Dictionary, context:
 		score += 20.0
 	if int(context.get("enemy_count", 1)) >= 2:
 		score += 25.0
-	if hit_chance_pct >= 0.35:
-		score += 20.0
 
 	# --- Recasting mid-duration replaces a still-healthy set outright
-	# (_end_mirror_image() runs first every time - see battle.gd's own
-	# _activate_mirror_image()) - only worth it once the current set is
+	# (_end_imperial_guard() runs first every time - see battle.gd's own
+	# _activate_imperial_guard()) - only worth it once the current set is
 	# close to expiring anyway, never as a mid-duration "refresh". ---
-	if bool(context.get("illusions_active", false)) and int(context.get("illusion_turns_remaining", 0)) >= 2:
+	if bool(context.get("guards_active", false)) and int(context.get("guard_turns_remaining", 0)) >= 2:
 		score -= 25.0
 
 	return score
 
 
-## Ensnare: a ROOT, not a stun - the target can still attack and cast
+## Shackles: a ROOT, not a stun - the target can still attack and cast
 ## while rooted (see the design doc's own explicit "does not prevent
 ## attacking or skill usage" instruction), so unlike Drowned Surge's/Barbed Lunge's
 ## own stuns this gets no generic "stun_turns" bonus at all - its whole
 ## value is movement denial/kill setup: securing a kill the upfront hit
 ## alone wouldn't, keeping a target that would otherwise create distance
-## within reach, and letting active illusions keep attacking it too.
-static func _last_empress_ensnare_modifier(level_data: Dictionary, context: Dictionary) -> float:
+## within reach, and letting active guards keep attacking it too.
+static func _last_empress_shackles_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var score: float = 0.0
 
 	var target_hp: float = float(context.get("target_hp", 0.0))
@@ -2687,18 +2683,18 @@ static func _last_empress_ensnare_modifier(level_data: Dictionary, context: Dict
 		score += 20.0
 
 	# A kill the root itself doesn't land but SETS UP over the turns the
-	# target can't escape The Last Empress's (and any active illusions') follow-up
+	# target can't escape The Last Empress's (and any active guards') follow-up
 	# hits - the primary target's own upfront kill is already scored
 	# generically (see _kill_potential_bonus(), fed by this skill's own
 	# flat-damage _estimate_skill_damage() case), this only adds for a
 	# kill that needs the follow-up window to actually happen.
-	var ensnare_damage: float = float(level_data.get("damage", 0.0))
-	if target_hp > 0.0 and ensnare_damage < target_hp:
+	var shackles_damage: float = float(level_data.get("damage", 0.0))
+	if target_hp > 0.0 and shackles_damage < target_hp:
 		var root_turns: int = int(level_data.get("root_turns", 0))
 		var follow_up_damage: float = float(context.get("hero_damage", 0.0)) * float(root_turns)
-		if bool(context.get("illusions_active", false)):
-			follow_up_damage += float(context.get("illusion_total_damage_per_turn", 0.0)) * float(root_turns)
-		if ensnare_damage + follow_up_damage >= target_hp:
+		if bool(context.get("guards_active", false)):
+			follow_up_damage += float(context.get("guard_total_damage_per_turn", 0.0)) * float(root_turns)
+		if shackles_damage + follow_up_damage >= target_hp:
 			score += 25.0
 
 	# Only real in a hero fight (target_distance is absent in the
@@ -2713,30 +2709,30 @@ static func _last_empress_ensnare_modifier(level_data: Dictionary, context: Dict
 	if raw_distance >= 0:
 		if raw_distance > 1:
 			score += 15.0
-		var ensnare_range: int = int(level_data.get("range", 0))
-		if raw_distance > 0 and raw_distance <= ensnare_range:
+		var shackles_range: int = int(level_data.get("range", 0))
+		if raw_distance > 0 and raw_distance <= shackles_range:
 			score += 20.0
 
-	# Active illusions can keep attacking a target that can no longer run
+	# Active guards can keep attacking a target that can no longer run
 	# from them either - this also covers the design doc's own separate
-	# "rooting the target allows The Last Empress/illusions to attack it" bullet,
+	# "rooting the target allows The Last Empress/guards to attack it" bullet,
 	# which would otherwise double-count the same signal.
-	if bool(context.get("illusions_active", false)):
+	if bool(context.get("guards_active", false)):
 		score += 20.0
 
 	return score
 
 
-## Song of the Siren: not a direct-damage cast (no damage field of its
+## Luring Gaze: not a direct-damage cast (no damage field of its
 ## own at all) - its real destructive value is every hit The Last Empress and any
-## active illusions can land completely safely while every enemy in
+## active guards can land completely safely while every enemy in
 ## radius is stunned and unable to retaliate. Self-centered, same "reuse
 ## target_distance as its own self-cast range check" idiom Frost
 ## Daughter's own The Frost Tempest/The Rootmother's own Mother's Grasp already
 ## use (see _tp_mothers_grasp_modifier()'s own docstring) - out of range in
 ## a real fight scores low rather than being excluded outright, same
 ## early-out shape Mother's Grasp's own uses.
-static func _last_empress_song_of_the_siren_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _last_empress_luring_gaze_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var radius: int = int(level_data.get("radius", 0))
 	var raw_distance: int = int(context.get("target_distance", -1))
 	var in_range: bool = raw_distance < 0 or raw_distance <= radius
@@ -2771,7 +2767,7 @@ static func _last_empress_song_of_the_siren_modifier(level_data: Dictionary, con
 	score += 20.0 * float(low_hp_count)
 
 	# --- The offensive window itself: every hit The Last Empress (and any active
-	# illusions) land completely safely while enemies are stunned - see
+	# guards) land completely safely while enemies are stunned - see
 	# _last_empress_song_expected_damage()'s own docstring. ---
 	var total_physical_damage: float = _last_empress_song_expected_damage(level_data, context)
 
@@ -2799,18 +2795,18 @@ static func _last_empress_song_of_the_siren_modifier(level_data: Dictionary, con
 		var reduction_pct: float = clampf(armor_reduction / target_armor, 0.0, 1.0)
 		score += total_physical_damage * reduction_pct * 0.3
 
-	# --- Mirror Image synergy: The Last Empress's primary combo. Active illusions
+	# --- Imperial Guard synergy: The Last Empress's primary combo. Active guards
 	# turn the stun from pure control into a second wave of safe damage. ---
-	var illusions_active: bool = bool(context.get("illusions_active", false))
+	var guards_active: bool = bool(context.get("guards_active", false))
 	var stun_turns: int = int(level_data.get("stun_turns", 0))
-	if illusions_active:
+	if guards_active:
 		score += 25.0
-		var illusion_count: int = int(context.get("illusion_count", 0))
-		var illusion_turns_remaining: int = int(context.get("illusion_turns_remaining", 0))
-		var illusion_damage_per_turn: float = float(context.get("illusion_total_damage_per_turn", 0.0))
-		if illusion_count >= 2 and illusion_turns_remaining >= int(ceil(float(stun_turns) / 2.0)):
+		var guard_count: int = int(context.get("guard_count", 0))
+		var guard_turns_remaining: int = int(context.get("guard_turns_remaining", 0))
+		var guard_damage_per_turn: float = float(context.get("guard_total_damage_per_turn", 0.0))
+		if guard_count >= 2 and guard_turns_remaining >= int(ceil(float(stun_turns) / 2.0)):
 			score += 40.0
-		if illusion_count >= 2 and illusion_turns_remaining >= stun_turns and illusion_damage_per_turn > 0.0:
+		if guard_count >= 2 and guard_turns_remaining >= stun_turns and guard_damage_per_turn > 0.0:
 			score += 60.0
 
 	# --- Defensive use: only under real danger, never just "took some
@@ -2825,47 +2821,47 @@ static func _last_empress_song_of_the_siren_modifier(level_data: Dictionary, con
 		score += 30.0
 
 	# --- Opportunity cost: a single already-low-value target, no
-	# illusions up, and no real attack window isn't worth a high-mana
+	# guards up, and no real attack window isn't worth a high-mana
 	# ultimate's cooldown - a cheaper play can do the same job (per the
 	# design doc's own "apply a resource penalty when The Last Empress is unable to
 	# capitalize on the stun" instruction). A nudge, not a veto - the
 	# surrounding score comparison against every other candidate still
 	# gets the final say. ---
 	var target_hp: float = float(context.get("target_hp", 0.0))
-	if hit_count <= 1 and not illusions_active and total_physical_damage < target_hp * 0.4:
+	if hit_count <= 1 and not guards_active and total_physical_damage < target_hp * 0.4:
 		score -= 30.0
 
 	return score
 
 
-## Shared by both _estimate_skill_damage()'s own "song_of_the_siren" case
+## Shared by both _estimate_skill_damage()'s own "luring_gaze" case
 ## (which feeds the generic kill-potential term against the primary
-## target) and _last_empress_song_of_the_siren_modifier() (which needs the same
+## target) and _last_empress_luring_gaze_modifier() (which needs the same
 ## total for its own armor-reduction/extra-kill math), so the two never
-## drift apart. Song of the Siren has no damage field of its own at all -
+## drift apart. Luring Gaze has no damage field of its own at all -
 ## its real value is every attack The Last Empress (this level's own stun_turns
 ## worth of them - she can still act every turn the stun holds) and any
-## active illusions land completely safely, plus whatever Rip Tide's own
+## active guards land completely safely, plus whatever Empress's Will's own
 ## splash adds across the other stunned targets.
 static func _last_empress_song_expected_damage(level_data: Dictionary, context: Dictionary) -> float:
 	var stun_turns: int = int(level_data.get("stun_turns", 0))
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
 	var expected_last_empress_damage: float = hero_damage * float(stun_turns)
 
-	var illusion_damage: float = 0.0
-	if bool(context.get("illusions_active", false)):
-		illusion_damage = float(context.get("illusion_total_damage_per_turn", 0.0)) * float(stun_turns)
+	var guard_damage: float = 0.0
+	if bool(context.get("guards_active", false)):
+		guard_damage = float(context.get("guard_total_damage_per_turn", 0.0)) * float(stun_turns)
 
 	var hit_count: int = context.get("living_target_hps", []).size()
-	var rip_tide_aoe_pct: float = float(context.get("rip_tide_aoe_damage_pct", 0.0))
-	var splash_damage: float = expected_last_empress_damage * rip_tide_aoe_pct * float(maxi(hit_count - 1, 0))
+	var empress_will_aoe_pct: float = float(context.get("empress_will_aoe_damage_pct", 0.0))
+	var splash_damage: float = expected_last_empress_damage * empress_will_aoe_pct * float(maxi(hit_count - 1, 0))
 
-	return expected_last_empress_damage + illusion_damage + splash_damage
+	return expected_last_empress_damage + guard_damage + splash_damage
 
 
 ## A plain Attack is only worth scoring above its flat baseline for The Last Empress
-## Siren when it can already finish the target off, when Rip Tide's own
-## splash reaches more than one enemy, or when active illusions are
+## when it can already finish the target off, when Empress's Will's own
+## splash reaches more than one enemy, or when active guards are
 ## already focus-firing the same target (see basic_attack_participates()'
 ## own docstring for why she opts in at all).
 static func _last_empress_basic_attack_modifier(context: Dictionary) -> float:
@@ -2877,16 +2873,16 @@ static func _last_empress_basic_attack_modifier(context: Dictionary) -> float:
 		score += 50.0
 
 	var living_hps: Array = context.get("living_target_hps", [])
-	if float(context.get("rip_tide_aoe_damage_pct", 0.0)) > 0.0:
+	if float(context.get("empress_will_aoe_damage_pct", 0.0)) > 0.0:
 		var splash_targets: int = maxi(living_hps.size() - 1, 0)
 		if splash_targets >= 2:
 			score += 30.0
 		elif splash_targets == 1:
 			score += 15.0
 
-	if bool(context.get("illusions_active", false)):
-		# The illusions already focus-fire the same target a plain Attack
-		# would hit (see battle.gd's own _fire_mirror_image_attack()) -
+	if bool(context.get("guards_active", false)):
+		# The guards already focus-fire the same target a plain Attack
+		# would hit (see battle.gd's own _enemy_guards_turn()) -
 		# stacking a real Attack onto that same target keeps the whole
 		# squad's damage concentrated instead of spending mana on a fresh
 		# cast.
@@ -2899,59 +2895,59 @@ static func _last_empress_basic_attack_modifier(context: Dictionary) -> float:
 	return score
 
 
-## Slardar: aggressive melee bruiser, control-oriented, kill-focused,
+## Dreadlure: aggressive melee bruiser, control-oriented, kill-focused,
 ## armor-break/damage-amplification focused. Every one of his skills
 ## leans on context fields battle.gd's/EnemyHeroManager's own
 ## _build_*_ai_context() compute fresh each turn - "hero_move_distance"/
-## "sprint_bonus_movement"/"sprint_charge_damage_pct" (Guardian Sprint's
-## own reach, read by Corrosive Haze/a plain Attack too, since Sprint
+## "instinct_bonus_movement"/"instinct_charge_damage_pct" (Hunting Instinct's
+## own reach, read by Deathlight Lure/a plain Attack too, since Instinct
 ## itself is only ever scored as a candidate on the turn it's actually
-## cast), "bash_attacks_required"/"bash_current_progress"/"bash_bonus_
-## damage_pct"/"bash_knockback" (Bash of the Deep's current progression -
+## cast), "might_attacks_required"/"might_current_progress"/"might_bonus_
+## damage_pct"/"might_knockback" (Might of the Deep's current progression -
 ## the passive itself is never a scored candidate, see this file's own
-## header comment), "crush_radius"/"crush_damage" (Slithereen Crush's
-## current level, for Sprint's/Haze's own combo bonuses), and
+## header comment), "venom_radius"/"venom_damage" (Paralytic Venom's
+## current level, for Instinct's/Lure's own combo bonuses), and
 ## "target_marked_bonus_pct" (whether the CURRENT target is already
-## Corrosive Haze-marked, for a plain Attack's own synergy bonus).
-static func _slardar_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
+## Deathlight Lure-marked, for a plain Attack's own synergy bonus).
+static func _dreadlure_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
 	match skill_id:
-		"guardian_sprint":
-			return _slardar_guardian_sprint_modifier(level_data, context)
-		"slithereen_crush":
-			return _slardar_slithereen_crush_modifier(level_data, context)
-		"corrosive_haze":
-			return _slardar_corrosive_haze_modifier(level_data, context)
+		"hunting_instinct":
+			return _dreadlure_hunting_instinct_modifier(level_data, context)
+		"paralytic_venom":
+			return _dreadlure_paralytic_venom_modifier(level_data, context)
+		"deathlight_lure":
+			return _dreadlure_deathlight_lure_modifier(level_data, context)
 		BASIC_ATTACK_ID:
-			return _slardar_basic_attack_modifier(context)
+			return _dreadlure_basic_attack_modifier(context)
 		_:
 			return 0.0
 
 
-## True if Bash of the Deep is learned and the VERY NEXT qualifying
+## True if Might of the Deep is learned and the VERY NEXT qualifying
 ## Attack will trigger it - shared by every one of this hero's own
-## modifiers that care (Guardian Sprint's own "+20 enables a ready Bash"
-## bonus, Corrosive Haze's own Bash synergy, a plain Attack's own
+## modifiers that care (Hunting Instinct's own "+20 enables a ready Might"
+## bonus, Deathlight Lure's own Might synergy, a plain Attack's own
 ## substantial bonus) so none of them re-derive the same off-by-one
 ## threshold check differently.
-static func _slardar_bash_ready(context: Dictionary) -> bool:
-	var required: int = int(context.get("bash_attacks_required", 0))
+static func _dreadlure_might_ready(context: Dictionary) -> bool:
+	var required: int = int(context.get("might_attacks_required", 0))
 	if required <= 0:
 		return false
-	return int(context.get("bash_current_progress", 0)) + 1 >= required
+	return int(context.get("might_current_progress", 0)) + 1 >= required
 
 
-## Bash's own knockback: worth a real (if modest) bonus while Slardar is
+## Might's own knockback: worth a real (if modest) bonus while Dreadlure is
 ## actually threatened - a bit of breathing room right after he already
 ## landed the hit - but at full/moderate HP it only pushes the target OUT
 ## of his own melee follow-up range (he was already standing next to it
-## to land the Attack that triggered Bash in the first place), a real
+## to land the Attack that triggered Might in the first place), a real
 ## cost rather than a free one, per the design doc's own explicit "do not
 ## give large value to knockback if it moves the target away and makes
-## subsequent attacks harder" caution. Guardian Sprint's own current
+## subsequent attacks harder" caution. Hunting Instinct's own current
 ## reach being enough to close that same gap right back turns the cost
 ## into a wash instead of a loss.
-static func _slardar_bash_knockback_value(context: Dictionary) -> float:
-	var knockback: int = int(context.get("bash_knockback", 0))
+static func _dreadlure_might_knockback_value(context: Dictionary) -> float:
+	var knockback: int = int(context.get("might_knockback", 0))
 	if knockback <= 0:
 		return 0.0
 
@@ -2960,80 +2956,80 @@ static func _slardar_bash_knockback_value(context: Dictionary) -> float:
 	if hp_ratio < 0.35 or enemy_count >= 2:
 		return 12.0
 
-	if int(context.get("sprint_bonus_movement", 0)) >= knockback:
+	if int(context.get("instinct_bonus_movement", 0)) >= knockback:
 		return 0.0
 
 	return -8.0
 
 
-## The raw (pre-amplification) physical damage Slardar can realistically
+## The raw (pre-amplification) physical damage Dreadlure can realistically
 ## land on the current target over `duration` turns - Basic Attacks,
-## Bash of the Deep's own bonus procs along the way, one Slithereen Crush
-## hit if the target stays within its radius, and Guardian Sprint's own
-## charge damage if the target isn't already in melee range but Sprint
-## can close the gap. Shared by _slardar_corrosive_haze_modifier() (which
+## Might of the Deep's own bonus procs along the way, one Paralytic Venom
+## hit if the target stays within its radius, and Hunting Instinct's own
+## charge damage if the target isn't already in melee range but Instinct
+## can close the gap. Shared by _dreadlure_deathlight_lure_modifier() (which
 ## needs this to work out the debuff's own AMPLIFIED total, per the
 ## design doc's own "do not treat bonus_damage_pct as simply +20 score -
 ## estimate the actual bonus damage" instruction) and _estimate_skill_
-## damage()'s own "corrosive_haze" case (via _slardar_corrosive_haze_
+## damage()'s own "deathlight_lure" case (via _dreadlure_deathlight_lure_
 ## expected_damage()), so the two numbers never drift apart. `duration`
 ## is capped at 4 turns' worth of attacks even when the debuff itself
 ## lasts longer - the same "do not automatically assume every enemy
 ## stays in range for the full duration" caution Cinder's own Cinderbomb
-## modifier already follows, rather than letting a 6-turn Haze imply six
+## modifier already follows, rather than letting a 6-turn Lure imply six
 ## guaranteed hits.
-static func _slardar_expected_attacks_on_target(duration: int, context: Dictionary) -> float:
+static func _dreadlure_expected_attacks_on_target(duration: int, context: Dictionary) -> float:
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
 	var raw_distance: int = int(context.get("target_distance", -1))
-	var reach: int = int(context.get("hero_move_distance", 1)) + int(context.get("sprint_bonus_movement", 0))
+	var reach: int = int(context.get("hero_move_distance", 1)) + int(context.get("instinct_bonus_movement", 0))
 	var expected_hits: int = mini(duration, 4)
 
 	# No positions at all in the simulation (target_distance is absent) -
 	# every attack already reaches its target with no travel cost, same
 	# "no columns" simplification _tp_rootveil_modifier()'s own
-	# early-out already follows - so Slardar is always treated as already
+	# early-out already follows - so Dreadlure is always treated as already
 	# in melee range there.
 	var already_in_range: bool = raw_distance < 0 or raw_distance <= 0
-	var reachable_via_sprint: bool = raw_distance > 0 and raw_distance <= reach
+	var reachable_via_instinct: bool = raw_distance > 0 and raw_distance <= reach
 
 	var base_damage: float = 0.0
-	var sprint_damage: float = 0.0
+	var instinct_damage: float = 0.0
 	var attacks_landed: int = 0
 	if already_in_range:
 		base_damage = hero_damage * float(expected_hits)
 		attacks_landed = expected_hits
-	elif reachable_via_sprint:
+	elif reachable_via_instinct:
 		# Closing the distance costs the FIRST turn of the window - only
 		# the turns left over actually land a plain Attack, same "the
 		# travel itself isn't free" honesty this whole estimate leans on.
-		sprint_damage = hero_damage * float(context.get("sprint_charge_damage_pct", 0.0))
+		instinct_damage = hero_damage * float(context.get("instinct_charge_damage_pct", 0.0))
 		attacks_landed = maxi(expected_hits - 1, 0)
 		base_damage = hero_damage * float(attacks_landed)
 	# else: genuinely unreachable during the window - nothing to count.
 
-	var bash_required: int = int(context.get("bash_attacks_required", 0))
-	var bash_damage: float = 0.0
-	if bash_required > 0 and attacks_landed > 0:
-		var bash_progress: int = int(context.get("bash_current_progress", 0))
-		var expected_bash_procs: float = floor(float(attacks_landed + bash_progress) / float(bash_required))
-		bash_damage = expected_bash_procs * hero_damage * float(context.get("bash_bonus_damage_pct", 0.0))
+	var might_required: int = int(context.get("might_attacks_required", 0))
+	var might_damage: float = 0.0
+	if might_required > 0 and attacks_landed > 0:
+		var might_progress: int = int(context.get("might_current_progress", 0))
+		var expected_might_procs: float = floor(float(attacks_landed + might_progress) / float(might_required))
+		might_damage = expected_might_procs * hero_damage * float(context.get("might_bonus_damage_pct", 0.0))
 
-	var crush_damage: float = 0.0
-	var crush_radius: int = int(context.get("crush_radius", 0))
-	if crush_radius > 0 and (raw_distance < 0 or raw_distance <= crush_radius):
-		crush_damage = float(context.get("crush_damage", 0.0))
+	var venom_damage: float = 0.0
+	var venom_radius: int = int(context.get("venom_radius", 0))
+	if venom_radius > 0 and (raw_distance < 0 or raw_distance <= venom_radius):
+		venom_damage = float(context.get("venom_damage", 0.0))
 
-	return base_damage + sprint_damage + bash_damage + crush_damage
+	return base_damage + instinct_damage + might_damage + venom_damage
 
 
-## Guardian Sprint: NOT a pure damage ability - its primary value is
+## Hunting Instinct: NOT a pure damage ability - its primary value is
 ## positional (see the design doc's own explicit instruction). Out of
 ## reach even with the bonus movement folded in scores as a wasted cast,
-## already standing on the target scores as a redundant one (Sprint has
-## nothing left to set up that Basic Attack/Crush don't already have),
-## and landing on the target - which, per Guardian Sprint's own "stop on
+## already standing on the target scores as a redundant one (Instinct has
+## nothing left to set up that Basic Attack/Venom don't already have),
+## and landing on the target - which, per Hunting Instinct's own "stop on
 ## the first enemy in the way" rule (see battle.gd's own
-## _guardian_sprint_move_target()), always means reaching the enemy,
+## _hunting_instinct_move_target()), always means reaching the enemy,
 ## dealing charge damage, AND ending up in attack range simultaneously -
 ## is the one case that matters, so the design doc's own separate "+20
 ## reach"/"+20 charge damage"/"+20 attack range" bonuses collapse into
@@ -3042,7 +3038,7 @@ static func _slardar_expected_attacks_on_target(duration: int, context: Dictiona
 ## simulation (no positions there at all) - this returns a flat 0 in
 ## that case rather than guessing, same as every other position-
 ## dependent modifier in this file.
-static func _slardar_guardian_sprint_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _dreadlure_hunting_instinct_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var raw_distance: int = int(context.get("target_distance", -1))
 	if raw_distance < 0:
 		return 0.0
@@ -3053,7 +3049,7 @@ static func _slardar_guardian_sprint_modifier(level_data: Dictionary, context: D
 	if raw_distance <= 0:
 		# Already standing right on the target - vanishing distance that
 		# isn't there only delays whatever's already available (see the
-		# design doc's own "do not use Sprint without a meaningful
+		# design doc's own "do not use Instinct without a meaningful
 		# positional benefit" instruction).
 		score -= 20.0
 	elif raw_distance <= reach:
@@ -3064,13 +3060,13 @@ static func _slardar_guardian_sprint_modifier(level_data: Dictionary, context: D
 		if target_hp > 0.0 and charge_damage >= target_hp:
 			score += 25.0
 
-		if int(context.get("crush_radius", 0)) > 0:
+		if int(context.get("venom_radius", 0)) > 0:
 			# Landing ON the target's own column is within any radius
 			# >= 0, so there's no separate distance check needed here -
-			# reaching it at all already guarantees Crush would connect.
+			# reaching it at all already guarantees Venom would connect.
 			score += 15.0
 
-		if _slardar_bash_ready(context):
+		if _dreadlure_might_ready(context):
 			score += 20.0
 	else:
 		# Can't realistically reach the target even with the bonus
@@ -3090,7 +3086,7 @@ static func _slardar_guardian_sprint_modifier(level_data: Dictionary, context: D
 	return score
 
 
-## Slithereen Crush: one of Slardar's most frequently valuable actives -
+## Paralytic Venom: one of Dreadlure's most frequently valuable actives -
 ## real AoE damage/stun/burst, not a single-target nuke that happens to
 ## have a radius. The generic offensive scoring above already covers the
 ## primary target's own value/kill potential (fed by this skill's own
@@ -3098,7 +3094,7 @@ static func _slardar_guardian_sprint_modifier(level_data: Dictionary, context: D
 ## doc's own multi-target/high-threat/stun/kill-setup tiers on top, all
 ## computed from the ACTUAL affected positions (`living_target_hps`),
 ## never assumed from "is one enemy in range" alone.
-static func _slardar_slithereen_crush_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _dreadlure_paralytic_venom_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var living_hps: Array = context.get("living_target_hps", [])
 	var hit_count: int = living_hps.size()
 	if hit_count <= 0:
@@ -3138,32 +3134,32 @@ static func _slardar_slithereen_crush_modifier(level_data: Dictionary, context: 
 			extra_kills += 1
 	# The primary target's own kill is already scored generically (see
 	# _kill_potential_bonus(), fed by _estimate_skill_damage()'s own
-	# "slithereen_crush" case) - this only adds for kills BEYOND that
-	# one, same split Drowned Surge's/Mother's Grasp's/Song of the Siren's own
+	# "paralytic_venom" case) - this only adds for kills BEYOND that
+	# one, same split Drowned Surge's/Mother's Grasp's/Luring Gaze's own
 	# modifiers use.
 	if extra_kills >= 2:
 		score += 40.0 * float(extra_kills - 1)
 
-	# Crush → Bash: a stunned target Slardar can immediately follow up on
-	# is exactly the setup a ready Bash needs - per the design doc's own
-	# explicit "Slithereen Crush → Bash" synergy.
-	if _slardar_bash_ready(context):
+	# Venom → Might: a stunned target Dreadlure can immediately follow up on
+	# is exactly the setup a ready Might needs - per the design doc's own
+	# explicit "Paralytic Venom → Might" synergy.
+	if _dreadlure_might_ready(context):
 		score += 20.0
 
 	return score
 
 
-## Corrosive Haze: Slardar's ultimate - armor reduction + damage
+## Deathlight Lure: Dreadlure's ultimate - armor reduction + damage
 ## amplification + a multi-turn offensive setup, never a simple debuff
-## scored by a flat "+20 per 10% amplification" - see _slardar_expected_
+## scored by a flat "+20 per 10% amplification" - see _dreadlure_expected_
 ## attacks_on_target()'s own docstring for how the real bonus damage is
 ## actually estimated. Targets a high-HP/high-armor/dangerous enemy that
 ## will stick around long enough to be worth the setup, and backs off
-## when the target would die to a normal/Bash-ready Attack anyway (per
+## when the target would die to a normal/Might-ready Attack anyway (per
 ## the design doc's own explicit "casting the ultimate first may be
-## unnecessary" instruction) or when Slardar has no realistic way to
+## unnecessary" instruction) or when Dreadlure has no realistic way to
 ## reach it before the debuff mostly expires.
-static func _slardar_corrosive_haze_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _dreadlure_deathlight_lure_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var score: float = 0.0
 
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
@@ -3178,7 +3174,7 @@ static func _slardar_corrosive_haze_modifier(level_data: Dictionary, context: Di
 		score += 20.0
 
 	var raw_distance: int = int(context.get("target_distance", -1))
-	var reach: int = int(context.get("hero_move_distance", 1)) + int(context.get("sprint_bonus_movement", 0))
+	var reach: int = int(context.get("hero_move_distance", 1)) + int(context.get("instinct_bonus_movement", 0))
 	var can_attack_repeatedly: bool = raw_distance < 0 or raw_distance <= reach
 	if can_attack_repeatedly:
 		score += 20.0
@@ -3193,43 +3189,43 @@ static func _slardar_corrosive_haze_modifier(level_data: Dictionary, context: Di
 		score += 25.0
 
 	var duration: int = int(level_data.get("duration", 0))
-	var raw_total_damage: float = _slardar_expected_attacks_on_target(duration, context)
+	var raw_total_damage: float = _dreadlure_expected_attacks_on_target(duration, context)
 	var bonus_pct: float = float(level_data.get("bonus_damage_pct", 0.0))
-	var bonus_damage_from_haze: float = raw_total_damage * bonus_pct
+	var bonus_damage_from_lure: float = raw_total_damage * bonus_pct
 	# Scaled by the REAL estimated bonus damage, never a flat "+20 per
 	# 10%" reading of bonus_damage_pct - per the design doc's own
 	# explicit instruction.
-	score += bonus_damage_from_haze * 0.15
+	score += bonus_damage_from_lure * 0.15
 
-	var total_expected_damage: float = raw_total_damage + bonus_damage_from_haze
+	var total_expected_damage: float = raw_total_damage + bonus_damage_from_lure
 	if target_hp > 0.0 and total_expected_damage >= target_hp:
 		score += 30.0
 
-	# --- Haze + Bash: an already/soon-ready Bash means the amplified hit
-	# that triggers it benefits from both normal damage and Bash's own
-	# bonus - per the design doc's own explicit "Corrosive Haze + Bash"
+	# --- Lure + Might: an already/soon-ready Might means the amplified hit
+	# that triggers it benefits from both normal damage and Might's own
+	# bonus - per the design doc's own explicit "Deathlight Lure + Might"
 	# section (already folded into raw_total_damage above via
-	# _slardar_expected_attacks_on_target()'s own bash_damage term; this
+	# _dreadlure_expected_attacks_on_target()'s own might_damage term; this
 	# is the qualitative top-up on top of that). ---
-	var bash_ready: bool = _slardar_bash_ready(context)
-	if bash_ready:
+	var might_ready: bool = _dreadlure_might_ready(context)
+	if might_ready:
 		score += 15.0
 
-	# --- Early-out: a target that already dies to a normal (or Bash-
+	# --- Early-out: a target that already dies to a normal (or Might-
 	# ready) Attack has nothing left for a multi-turn debuff to exploit -
-	# per the design doc's own explicit "if Slardar can already kill the
-	# target with a normal/Bash attack, casting the ultimate first may be
+	# per the design doc's own explicit "if Dreadlure can already kill the
+	# target with a normal/Might attack, casting the ultimate first may be
 	# unnecessary" instruction. A steep penalty, not a hard veto - a
 	# genuinely strong multi-target/multi-turn setup can still outweigh
 	# it once every term above is in. ---
 	var immediate_kill_damage: float = hero_damage
-	if bash_ready:
-		immediate_kill_damage += hero_damage * float(context.get("bash_bonus_damage_pct", 0.0))
+	if might_ready:
+		immediate_kill_damage += hero_damage * float(context.get("might_bonus_damage_pct", 0.0))
 	if target_hp > 0.0 and immediate_kill_damage >= target_hp:
 		score -= 40.0
 
 	# --- Resource penalty: genuinely can't reach the target during the
-	# debuff's own window - per the design doc's own explicit "Slardar
+	# debuff's own window - per the design doc's own explicit "Dreadlure
 	# cannot reach the target" resource-penalty instruction. ---
 	if raw_distance >= 0 and raw_distance > reach and not (target_hp > 0.0 and immediate_kill_damage >= target_hp):
 		score -= 35.0
@@ -3237,47 +3233,47 @@ static func _slardar_corrosive_haze_modifier(level_data: Dictionary, context: Di
 	return score
 
 
-## Shared by both _estimate_skill_damage()'s own "corrosive_haze" case
+## Shared by both _estimate_skill_damage()'s own "deathlight_lure" case
 ## (which feeds the generic kill-potential term against the primary
-## target) and _slardar_corrosive_haze_modifier() (which needs the same
+## target) and _dreadlure_deathlight_lure_modifier() (which needs the same
 ## total for its own amplification/kill-potential math), so the two
 ## never drift apart - the mark's own total expected damage over its
 ## duration, raw physical output plus the amplified portion on top.
-static func _slardar_corrosive_haze_expected_damage(level_data: Dictionary, context: Dictionary) -> float:
+static func _dreadlure_deathlight_lure_expected_damage(level_data: Dictionary, context: Dictionary) -> float:
 	var duration: int = int(level_data.get("duration", 0))
-	var raw_total: float = _slardar_expected_attacks_on_target(duration, context)
+	var raw_total: float = _dreadlure_expected_attacks_on_target(duration, context)
 	var bonus_pct: float = float(level_data.get("bonus_damage_pct", 0.0))
 	return raw_total * (1.0 + bonus_pct)
 
 
-## A plain Attack is Slardar's single most important candidate - Bash of
+## A plain Attack is Dreadlure's single most important candidate - Might of
 ## the Deep rides on it, so this is scored well above the flat baseline
 ## whenever it matters, per the design doc's own explicit "it is
-## especially important for Slardar because of Bash of the Deep"
+## especially important for Dreadlure because of Might of the Deep"
 ## instruction, rather than only ever being the fallback for "nothing
 ## else qualified" (see basic_attack_participates()'s own docstring for
 ## why he opts in at all).
-static func _slardar_basic_attack_modifier(context: Dictionary) -> float:
+static func _dreadlure_basic_attack_modifier(context: Dictionary) -> float:
 	var score: float = 0.0
 
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
 	var target_hp: float = float(context.get("target_hp", 0.0))
-	var bash_ready: bool = _slardar_bash_ready(context)
+	var might_ready: bool = _dreadlure_might_ready(context)
 
 	var attack_damage: float = hero_damage
-	if bash_ready:
-		attack_damage += hero_damage * float(context.get("bash_bonus_damage_pct", 0.0))
+	if might_ready:
+		attack_damage += hero_damage * float(context.get("might_bonus_damage_pct", 0.0))
 		score += 30.0
-		score += _slardar_bash_knockback_value(context)
+		score += _dreadlure_might_knockback_value(context)
 
 	if target_hp > 0.0 and attack_damage >= target_hp:
 		score += 50.0
-		if bash_ready:
+		if might_ready:
 			score += 20.0
 
 	var marked_bonus_pct: float = float(context.get("target_marked_bonus_pct", 0.0))
 	if marked_bonus_pct > 0.0:
-		# The target is already Corrosive Haze-marked - a plain Attack
+		# The target is already Deathlight Lure-marked - a plain Attack
 		# realizes that amplification for free, right now, rather than
 		# spending another cast to set up more of it.
 		score += hero_damage * marked_bonus_pct * 0.5
@@ -3319,8 +3315,8 @@ static func _mirana_modifier(skill_id: String, level_data: Dictionary, context: 
 
 
 ## Starstorm: real AoE burst, not a single-target nuke that happens to
-## have a radius - same shape as Slithereen Crush's own modifier (see
-## _slardar_slithereen_crush_modifier()'s own docstring), minus the stun
+## have a radius - same shape as Paralytic Venom's own modifier (see
+## _dreadlure_paralytic_venom_modifier()'s own docstring), minus the stun
 ## (Starstorm deals damage only - see battle.gd's own _cast_starstorm()).
 ## The generic offensive scoring above already covers the primary
 ## target's own value/kill potential (fed by this skill's own flat-
@@ -3344,9 +3340,9 @@ static func _mirana_starstorm_modifier(level_data: Dictionary, context: Dictiona
 
 	# "High-threat enemy" has no real per-creep stat exposed to this
 	# shared context today (same gap this file's own header comment
-	# already documents for Sweep/Slithereen Crush) - the one
+	# already documents for Sweep/Paralytic Venom) - the one
 	# real, always-available signal is `target_is_hero`, same qualitative
-	# read _slardar_slithereen_crush_modifier() already uses it for.
+	# read _dreadlure_paralytic_venom_modifier() already uses it for.
 	if bool(context.get("target_is_hero", false)):
 		score += 20.0 * float(hit_count)
 
@@ -3543,7 +3539,7 @@ static func _mirana_leap_modifier(level_data: Dictionary, context: Dictionary) -
 ## all at once (see the design doc's own explicit framing). "utility"
 ## category (see this file's own header comment) means every point of
 ## value here is hero-specific, same "the modifier IS the whole value"
-## shape Mirror Image/Guardian Sprint already use.
+## shape Imperial Guard/Hunting Instinct already use.
 static func _mirana_moonlight_shadow_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var score: float = 0.0
 
@@ -3557,7 +3553,7 @@ static func _mirana_moonlight_shadow_modifier(level_data: Dictionary, context: D
 	# --- Offensive value: the guaranteed enhanced next Attack, scaled by
 	# the REAL bonus damage it generates - never a flat reading of
 	# bonus_damage_pct, same "estimate the actual bonus damage" honesty
-	# _slardar_corrosive_haze_modifier() already follows for its own
+	# _dreadlure_deathlight_lure_modifier() already follows for its own
 	# amplification percentage. ---
 	score += bonus_damage * 0.3
 
@@ -3670,7 +3666,7 @@ static func _mirana_basic_attack_modifier(context: Dictionary) -> float:
 ## time - see _roll_enemy_hero_damage()'s own docstring), and "eclipse_
 ## candidate_count"/"eclipse_candidate_hps"/"eclipse_candidate_max_hps"
 ## (every real beam candidate within Eclipse's own current radius right
-## now - the target, its illusions, and its Elderwild Companion all separately,
+## now - the target, its guards, and its Elderwild Companion all separately,
 ## mirroring the actual _tick_enemy_eclipse()/_tick_eclipse() candidate
 ## pool exactly, never just a single "target_hp").
 static func _luna_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
@@ -3738,7 +3734,7 @@ static func _luna_lucent_beam_modifier(level_data: Dictionary, context: Dictiona
 ## EXPECTED value, never treated as a guaranteed kill just because the
 ## raw beams×damage total exceeds someone's HP (per the design doc's own
 ## explicit caution). `eclipse_candidate_hps`/`_max_hps` are the REAL
-## beam candidates within radius right now (the target, its illusions,
+## beam candidates within radius right now (the target, its guards,
 ## its Elderwild Companion, each counted separately - see this file's own header
 ## comment), never a synthetic count.
 static func _luna_eclipse_modifier(level_data: Dictionary, context: Dictionary) -> float:
@@ -3748,7 +3744,7 @@ static func _luna_eclipse_modifier(level_data: Dictionary, context: Dictionary) 
 	if n <= 0:
 		# Nothing within radius at all - a wasted cast, same "out of
 		# range scores low" shape every other self-cast AoE ultimate in
-		# this file already uses (see _last_empress_song_of_the_siren_
+		# this file already uses (see _last_empress_luring_gaze_
 		# modifier()'s own early-out).
 		return -50.0
 
@@ -3826,7 +3822,7 @@ static func _luna_eclipse_modifier(level_data: Dictionary, context: Dictionary) 
 ## target's own share of the beam total works out to - beams×damage when
 ## it's the only real candidate in radius (fully deterministic - every
 ## beam has nowhere else to go), divided across every OTHER real
-## candidate (its own illusions, its Elderwild Companion) when they're also
+## candidate (its own guards, its Elderwild Companion) when they're also
 ## present, per the design doc's own explicit "do not assume an even
 ## deterministic distribution" instruction for the multi-target case.
 static func _luna_eclipse_expected_damage(level_data: Dictionary, context: Dictionary) -> float:

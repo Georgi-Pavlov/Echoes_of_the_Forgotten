@@ -1519,22 +1519,22 @@ var zones: Dictionary = {
 				},
 				"skills": [
 					{
-						"id": "mirror_image",
-						"name": "Mirror Image",
+						"id": "imperial_guard",
+						"name": "Imperial Guard",
 						"type": "standard",
-						"description": "Creates 3 illusions of herself in the columns in front of and behind her - each enemy attacking her has a chance to hit an illusion instead, and every turn all surviving illusions strike the same random enemy in her own attack range.",
+						"description": "The Last Empress summons her personal guard, ancient drowned warriors who emerge around the nearest enemy. The guards protect their sovereign by drawing attacks away from her, while striking nearby enemies whenever they find an opening. Their decayed forms can be destroyed, but their loyalty endures beyond death.",
 						"levels": [
-							{"illusions": 3, "hp_pct": 0.35, "damage_pct": 0.25, "hit_chance_pct": 0.20, "duration": 2, "mana_cost": 70, "cooldown": 5},
-							{"illusions": 3, "hp_pct": 0.40, "damage_pct": 0.3, "hit_chance_pct": 0.25, "duration": 3, "mana_cost": 90, "cooldown": 5},
-							{"illusions": 3, "hp_pct": 0.45, "damage_pct": 0.35, "hit_chance_pct": 0.35, "duration": 3, "mana_cost": 115, "cooldown": 6},
-							{"illusions": 3, "hp_pct": 0.50, "damage_pct": 0.4, "hit_chance_pct": 0.45, "duration": 4, "mana_cost": 140, "cooldown": 6}
+							{"guards": 3, "hp_pct": 0.35, "damage_pct": 0.4, "hit_chance_pct": 0.20, "duration": 3, "mana_cost": 70, "cooldown": 5},
+							{"guards": 3, "hp_pct": 0.4, "damage_pct": 0.45, "hit_chance_pct": 0.25, "duration": 3, "mana_cost": 90, "cooldown": 5},
+							{"guards": 3, "hp_pct": 0.45, "damage_pct": 0.5, "hit_chance_pct": 0.35, "duration": 4, "mana_cost": 115, "cooldown": 6},
+							{"guards": 3, "hp_pct": 0.5, "damage_pct": 0.55, "hit_chance_pct": 0.45, "duration": 4, "mana_cost": 140, "cooldown": 6}
 						]
 					},
 					{
-						"id": "ensnare",
-						"name": "Ensnare",
+						"id": "shackles",
+						"name": "Shackles",
 						"type": "standard",
-						"description": "Nets an enemy within range, damaging it and rooting it in place - it can still attack and cast skills, just not move or jump.",
+						"description": "The Last Empress commands spectral chains to erupt from the depths and bind an enemy within range. The shackles tear into their victim and hold it firmly in place, preventing movement and jumping while leaving it able to attack and cast skills.",
 						"levels": [
 							{"damage": 60, "range": 3, "root_turns": 1, "mana_cost": 60, "cooldown": 4},
 							{"damage": 100, "range": 4, "root_turns": 2, "mana_cost": 80, "cooldown": 4},
@@ -1543,22 +1543,22 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "rip_tide",
-						"name": "Rip Tide",
+						"id": "empress's_will",
+						"name": "Empress's Will",
 						"type": "passive",
-						"description": "Passive: her own Attacks splash AoE damage to nearby enemies, and boosts Mirror Image's illusions - more damage at every level, +1 turn of duration from level 3, and one extra illusion at level 4.",
+						"description": "Passive: The Last Empress's will flows through every strike, releasing a crushing surge that damages nearby enemies. Her authority also strengthens her Imperial Guard, increasing their damage and duration as her power grows. At its peak, her command summons an additional guardian.",
 						"levels": [
-							{"aoe_damage_pct": 0.15, "radius": 1, "illusion_damage_bonus_pct": 0.02, "illusion_duration_bonus": 0, "extra_illusion": 0},
-							{"aoe_damage_pct": 0.20, "radius": 1, "illusion_damage_bonus_pct": 0.03, "illusion_duration_bonus": 0, "extra_illusion": 0},
-							{"aoe_damage_pct": 0.25, "radius": 1, "illusion_damage_bonus_pct": 0.04, "illusion_duration_bonus": 1, "extra_illusion": 0},
-							{"aoe_damage_pct": 0.30, "radius": 1, "illusion_damage_bonus_pct": 0.05, "illusion_duration_bonus": 1, "extra_illusion": 1}
+							{"aoe_damage_pct": 0.15, "radius": 1, "guardians_damage_bonus_pct": 0.02, "guard_duration_bonus": 0, "extra_guard": 0},
+							{"aoe_damage_pct": 0.20, "radius": 1, "guardians_damage_bonus_pct": 0.03, "guard_duration_bonus": 0, "extra_guard": 0},
+							{"aoe_damage_pct": 0.25, "radius": 1, "guardians_damage_bonus_pct": 0.04, "guard_duration_bonus": 1, "extra_guard": 0},
+							{"aoe_damage_pct": 0.30, "radius": 1, "guardians_damage_bonus_pct": 0.05, "guard_duration_bonus": 1, "extra_guard": 1}
 						]
 					},
 					{
-						"id": "song_of_the_siren",
-						"name": "Song of the Siren",
+						"id": "luring_gaze",
+						"name": "Luring Gaze",
 						"type": "ultimate",
-						"description": "Ultimate: stuns every enemy within radius of The Last Empress and reduces their armor for the stun's duration - she and her illusions can still move and attack normally while it holds.",
+						"description": "Ultimate: The Last Empress fixes her gaze upon every enemy within range, revealing the haunting beauty that conceals her monstrous nature. Mesmerized by her presence, they become unable to act as their defenses weaken beneath her influence. The Empress and her Imperial Guard remain free to move and attack while her victims stand helpless before her.",
 						"levels": [
 							{"stun_turns": 3, "radius": 3, "armor_reduction": 5, "mana_cost": 200, "cooldown": 9},
 							{"stun_turns": 3, "radius": 3, "armor_reduction": 8, "mana_cost": 260, "cooldown": 10},
@@ -1573,10 +1573,10 @@ var zones: Dictionary = {
 				},
 			},
 			{
-				"id": "slardar",
-				"name": "Slardar",
-				"image": "res://assets/heroes/Slardar.png",
-				"background": "res://assets/zones/drowned_empire_slardar.png",
+				"id": "dreadlure",
+				"name": "Dreadlure",
+				"image": "res://assets/heroes/Dreadlure.png",
+				"background": "res://assets/zones/drowned_empire_dreadlure.jpg",
 				"range_type": "Melee",
 				"main_stat": "Strength ",
 				"stats": {
@@ -1592,10 +1592,10 @@ var zones: Dictionary = {
 				},
 				"skills": [
 					{
-						"id": "guardian_sprint",
-						"name": "Guardian Sprint",
+						"id": "hunting_instinct",
+						"name": "Hunting Instinct",
 						"type": "standard",
-						"description": "Grants bonus movement for the duration - if an enemy is in the way when she moves, she stops on it and deals damage.",
+						"description": "Dreadlure senses its prey and surges forward with terrifying speed. If an enemy stands in its path, Dreadlure stops upon reaching it and delivers a devastating strike.",
 						"levels": [
 							{"bonus_movement": 1, "duration": 1, "charge_damage_pct": 0.40, "mana_cost": 50, "cooldown": 4},
 							{"bonus_movement": 2, "duration": 2, "charge_damage_pct": 0.55, "mana_cost": 70, "cooldown": 4},
@@ -1604,10 +1604,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "slithereen_crush",
-						"name": "Slithereen Crush",
+						"id": "paralytic_venom",
+						"name": "Paralytic Venom",
 						"type": "standard",
-						"description": "Slams the ground, damaging and stunning every enemy within radius of Slardar.",
+						"description": "Dreadlure releases paralytic toxins into the surrounding area, damaging nearby enemies and immobilizing them as the venom overwhelms their bodies.",
 						"levels": [
 							{"damage": 90, "radius": 1, "stun_turns": 1, "mana_cost": 70, "cooldown": 4},
 							{"damage": 140, "radius": 1, "stun_turns": 1, "mana_cost": 95, "cooldown": 4},
@@ -1616,10 +1616,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "bash_of_the_deep",
-						"name": "Bash of the Deep",
+						"id": "might_of_the_deep",
+						"name": "Might of the Deep",
 						"type": "passive",
-						"description": "Passive: every few Attacks, the next one deals bonus damage and knocks the target back.",
+						"description": "With each attack, Dreadlure gathers primal strength. After a set number of strikes, its next attack unleashes devastating force, dealing bonus damage and knocking the target back.",
 						"levels": [
 							{"attacks_required": 3, "bonus_damage_pct": 0.40, "knockback": 1},
 							{"attacks_required": 3, "bonus_damage_pct": 0.60, "knockback": 1},
@@ -1628,10 +1628,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "corrosive_haze",
-						"name": "Corrosive Haze",
+						"id": "deathlight_lure",
+						"name": "Deathlight Lure",
 						"type": "ultimate",
-						"description": "Ultimate: marks a target within range, reducing its armor and increasing the damage it takes from her own attacks and skills for the duration.",
+						"description": "Ultimate: Dreadlure focuses the eerie glow of its bioluminescent lure on a single target, marking it as prey. Drawn to the unnatural light, the target can no longer hide from Dreadlure. The mark weakens its defenses and increases the damage it takes from Dreadlure's attacks and skills for the duration.",
 						"levels": [
 							{"armor_reduction": 6, "bonus_damage_pct": 0.10, "duration": 4, "range": 4, "mana_cost": 150, "cooldown": 8},
 							{"armor_reduction": 9, "bonus_damage_pct": 0.15, "duration": 5, "range": 5, "mana_cost": 200, "cooldown": 9},
@@ -1689,6 +1689,7 @@ var zones: Dictionary = {
 				"damage": 20,
 				"speed": 1,
 				"armor": 1,
+				"projectile": "harpoon_bolt",
 				"XP": 69,
 				"gold": "43-52"
 			}

@@ -1,7 +1,9 @@
 extends Control
 # ------------------------------------------------------------------
 # LastEmpressAtmosphere
-# The Drowned Empire's effects for The Last Empress's hero picker.
+# The Drowned Empire's effects for The Last Empress's and Dreadlure's hero
+# pickers (build()'s `hero` picks which half-left art is animated; the
+# drowned city on the right runs the same effects for both).
 # ZoneAtmosphere creates one of these (and frees it again with the rest
 # of its children) when her background is shown, then calls build().
 # Purely visual: never takes input, never touches game state.
@@ -74,6 +76,38 @@ const GEMS := [
 const GEM_COLOR := Color(0.4, 1.0, 0.9)
 const GEM_FLARE_EVERY := Vector2(2.5, 6.0)
 
+# --- Dreadlure (the same city on the right, a different creature on the left) ---
+const DREADLURE_FRAME_CALM_RECT := Vector4(0.008, 0.62, 0.478, 0.965)
+const DREADLURE_BREATHE_CENTER_UV := Vector2(0.18, 0.4)
+const DREADLURE_JELLYFISH := [
+	{"px": Vector2(912.0, 208.0), "radius": 0.06, "amp": 0.05, "speed": 0.42},
+	{"px": Vector2(862.0, 452.0), "radius": 0.07, "amp": 0.05, "speed": 0.36},
+	{"px": Vector2(1000.0, 566.0), "radius": 0.06, "amp": 0.05, "speed": 0.45},
+	{"px": Vector2(1120.0, 678.0), "radius": 0.05, "amp": 0.05, "speed": 0.4},
+	{"px": Vector2(1467.0, 155.0), "radius": 0.06, "amp": 0.05, "speed": 0.38},
+	{"px": Vector2(1545.0, 265.0), "radius": 0.07, "amp": 0.05, "speed": 0.44},
+]
+const DREADLURE_SHARKS := [
+	{"px": Vector2(1395.0, 125.0), "radius": 0.12, "amp": 0.005, "speed": 0.1},
+	{"px": Vector2(1440.0, 60.0), "radius": 0.1, "amp": 0.004, "speed": 0.08},
+]
+# The bioluminescent lure and the glowing tips of its tendrils (a wide, faint
+# halo first), then the frame's emblem.
+const DREADLURE_GEMS := [
+	{"px": Vector2(772.0, 157.0), "d": 150.0, "halo": true},
+	{"px": Vector2(772.0, 157.0), "d": 46.0},
+	{"px": Vector2(747.0, 481.0), "d": 22.0},
+	{"px": Vector2(798.0, 247.0), "d": 22.0},
+	{"px": Vector2(722.0, 200.0), "d": 16.0},
+	{"px": Vector2(397.0, 600.0), "d": 40.0},   # the frame's emblem
+]
+const DREADLURE_GEM_COLOR := Color(0.35, 0.82, 1.0)
+const DREADLURE_WINDOWS := [
+	Vector2(1204.0, 250.0), Vector2(1170.0, 270.0), Vector2(1205.0, 290.0),
+	Vector2(1170.0, 330.0), Vector2(1202.0, 330.0), Vector2(1205.0, 350.0),
+	Vector2(1205.0, 400.0), Vector2(1170.0, 400.0), Vector2(1205.0, 625.0),
+]
+
 # The palace's lit windows.
 const WINDOWS := [
 	Vector2(1175.0, 268.0), Vector2(1210.0, 264.0), Vector2(1243.0, 270.0),
@@ -107,6 +141,14 @@ const FISH_COLORS := [Color(0.6, 0.76, 0.88), Color(0.5, 0.68, 0.82), Color(0.9,
 const SNOW_COUNT := 70
 
 var _atm: Control
+# Per-hero art features (see build()).
+var _frame_rect := FRAME_CALM_RECT
+var _breathe_center := BREATHE_CENTER_UV
+var _jellyfish: Array = JELLYFISH
+var _sharks: Array = SHARKS
+var _gem_defs: Array = GEMS
+var _gem_color := GEM_COLOR
+var _window_pts: Array = WINDOWS
 var _background: TextureRect
 var _rng := RandomNumberGenerator.new()
 var _time := 0.0
@@ -135,7 +177,15 @@ var _snow: Array[Dictionary] = []
 
 ## `atm` is the owning ZoneAtmosphere - its image mapping helpers are
 ## reused so positions line up exactly with its own effects.
-func build(atm: Control, background: TextureRect) -> void:
+func build(atm: Control, background: TextureRect, hero: String = "last_empress") -> void:
+	if hero == "dreadlure":
+		_frame_rect = DREADLURE_FRAME_CALM_RECT
+		_breathe_center = DREADLURE_BREATHE_CENTER_UV
+		_jellyfish = DREADLURE_JELLYFISH
+		_sharks = DREADLURE_SHARKS
+		_gem_defs = DREADLURE_GEMS
+		_gem_color = DREADLURE_GEM_COLOR
+		_window_pts = DREADLURE_WINDOWS
 	_atm = atm
 	_background = background
 	_rng.randomize()
@@ -150,9 +200,9 @@ func build(atm: Control, background: TextureRect) -> void:
 	# the background texture.
 	var mat := ShaderMaterial.new()
 	mat.shader = BG_SHADER
-	mat.set_shader_parameter("calm_rect", FRAME_CALM_RECT)
+	mat.set_shader_parameter("calm_rect", _frame_rect)
 	mat.set_shader_parameter("aspect", _tex_size.x / _tex_size.y)
-	mat.set_shader_parameter("breathe_center", BREATHE_CENTER_UV)
+	mat.set_shader_parameter("breathe_center", _breathe_center)
 	mat.set_shader_parameter("breathe_radius", BREATHE_RADIUS)
 	mat.set_shader_parameter("breathe_amount", BREATHE_AMOUNT)
 	mat.set_shader_parameter("breathe_period", BREATHE_PERIOD)
@@ -164,7 +214,7 @@ func build(atm: Control, background: TextureRect) -> void:
 	var amp := PackedFloat32Array()
 	var speed := PackedFloat32Array()
 	var jelly_phases: Array[float] = []
-	for j in JELLYFISH:
+	for j in _jellyfish:
 		var uv: Vector2 = j["px"] / _tex_size
 		cx.append(uv.x)
 		cy.append(uv.y)
@@ -175,7 +225,7 @@ func build(atm: Control, background: TextureRect) -> void:
 		jelly_phases.append(ph)
 		amp.append(float(j["amp"]))
 		speed.append(float(j["speed"]))
-	for sh in SHARKS:
+	for sh in _sharks:
 		var uv: Vector2 = sh["px"] / _tex_size
 		cx.append(uv.x)
 		cy.append(uv.y)
@@ -239,8 +289,8 @@ func build(atm: Control, background: TextureRect) -> void:
 
 	# The jellyfish's own glow, pulsing with their bells.
 	_jelly_glows.clear()
-	for i in JELLYFISH.size():
-		var j: Dictionary = JELLYFISH[i]
+	for i in _jellyfish.size():
+		var j: Dictionary = _jellyfish[i]
 		_jelly_glows.append({
 			"node": _glow(j["px"], 54.0, JELLY_COLOR),
 			"phase": jelly_phases[i], "speed": float(j["speed"]),
@@ -248,7 +298,7 @@ func build(atm: Control, background: TextureRect) -> void:
 
 	# The palace windows.
 	_windows.clear()
-	for px in WINDOWS:
+	for px in _window_pts:
 		_windows.append({
 			"node": _glow(px, 26.0, WINDOW_COLOR),
 			"phase": _rng.randf() * TAU, "speed": _rng.randf_range(0.5, 1.3),
@@ -257,11 +307,12 @@ func build(atm: Control, background: TextureRect) -> void:
 
 	# The jewels.
 	_gems.clear()
-	for g in GEMS:
+	for g in _gem_defs:
 		_gems.append({
-			"node": _glow(g["px"], float(g["d"]) * 1.8, GEM_COLOR),
+			"node": _glow(g["px"], float(g["d"]) * 1.8, _gem_color),
 			"phase": _rng.randf() * TAU, "speed": _rng.randf_range(0.6, 1.4),
 			"flare": 0.0, "next": _rng.randf_range(1.0, GEM_FLARE_EVERY.y),
+			"halo": bool(g.get("halo", false)),
 		})
 
 	# Bubbles and marine snow, over everything.
@@ -349,6 +400,9 @@ func _update_glows(delta: float) -> void:
 		g["flare"] = move_toward(float(g["flare"]), 0.0, delta / 0.9)
 		var flare: float = float(g["flare"]) * float(g["flare"])
 		var b: float = 0.35 + 0.15 * sin(_time * float(g["speed"]) + float(g["phase"])) + 0.5 * flare
+		# A wide halo stays faint, only swelling as its light flares.
+		if g["halo"]:
+			b *= 0.45
 		g["node"].modulate = Color(b, b, b, 1.0)
 		g["node"].scale = Vector2.ONE * (0.9 + 0.1 * sin(_time * float(g["speed"]) + float(g["phase"])) + 0.4 * flare)
 
@@ -456,7 +510,7 @@ func _draw_snow() -> void:
 	for p in _snow:
 		var uv: Vector2 = p["uv"]
 		# Not over the painted stats frame.
-		if uv.x < FRAME_CALM_RECT.z and uv.y > FRAME_CALM_RECT.y - 0.02:
+		if uv.x < _frame_rect.z and uv.y > _frame_rect.y - 0.02:
 			continue
 		var pos := _pl(uv * _tex_size)
 		var d := Vector2.ONE * float(p["size"]) * 3.0 * _s

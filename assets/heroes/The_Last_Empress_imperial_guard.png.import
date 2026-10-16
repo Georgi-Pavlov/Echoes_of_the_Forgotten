@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b11xt0rlxoeru"
-path="res://.godot/imported/Slardar.png-62bcf6d9f1f934227326afd2531465b6.ctex"
+uid="uid://dh4fx1yh37whc"
+path="res://.godot/imported/The_Last_Empress_imperial_guard.png-b8d4fc829c9c1197757d24483c84417f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/heroes/Slardar.png"
-dest_files=["res://.godot/imported/Slardar.png-62bcf6d9f1f934227326afd2531465b6.ctex"]
+source_file="res://assets/heroes/The_Last_Empress_imperial_guard.png"
+dest_files=["res://.godot/imported/The_Last_Empress_imperial_guard.png-b8d4fc829c9c1197757d24483c84417f.ctex"]
 
 [params]
 

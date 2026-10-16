@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bs0v7xn8wjt2b"
-path="res://.godot/imported/drowned_empire_slardar.png-3213e076e9c68c749040530ff5d2920f.ctex"
+uid="uid://qr2lwm4c5r4w"
+path="res://.godot/imported/drowned_empire_dreadlure.jpg-af206dbfdcb72fc03d56960d2fedfe7e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/zones/drowned_empire_slardar.png"
-dest_files=["res://.godot/imported/drowned_empire_slardar.png-3213e076e9c68c749040530ff5d2920f.ctex"]
+source_file="res://assets/zones/drowned_empire_dreadlure.jpg"
+dest_files=["res://.godot/imported/drowned_empire_dreadlure.jpg-af206dbfdcb72fc03d56960d2fedfe7e.ctex"]
 
 [params]
 

@@ -108,37 +108,37 @@ class_name EnemySkillRange
 # RANGE_CHECKED_SKILL_IDS below) - it "targets any enemy on the field,"
 # with no range limit, mirroring the player's own _start_return_to_the_void_
 # targeting()'s complete lack of a distance filter.
-#   - Ensnare (The Last Empress's): a targeted cast with its own per-level
+#   - Shackles (The Last Empress's): a targeted cast with its own per-level
 #     `range` field, same "distance <= radius" comparison as Mark of Stillness's/
 #     Sanguine Bloom's own.
-#   - Corrosive Haze (Slardar's ultimate): also a targeted cast with its
+#   - Deathlight Lure (Dreadlure's ultimate): also a targeted cast with its
 #     own per-level `range` field, same "distance <= radius" comparison
-#     as Ensnare's own just above.
+#     as Shackles's own just above.
 #   - Sacred Arrow (Mirana's): also a targeted cast with its own per-
 #     level `range` field, same "distance <= radius" comparison as
-#     Ensnare's/Corrosive Haze's own just above.
+#     Shackles's/Deathlight Lure's own just above.
 #   - Lucent Beam (Luna's): also a targeted cast with its own per-level
 #     `range` field, same "distance <= radius" comparison as Sacred
 #     Arrow's own just above.
-# The Last Empress's Song of the Siren is deliberately NOT range-checked here
+# The Last Empress's Luring Gaze is deliberately NOT range-checked here
 # either, despite being a self-centered AoE like Abyssal Spasm/Sweep
 # above - unlike those two, it's scored (not gated) against range,
 # the same "out of range scores low rather than being excluded outright"
 # shape Mother's Grasp's/The Frost Tempest's own self-cast ultimates already use
-# (see EnemySkillAI's own _last_empress_song_of_the_siren_modifier(), which reads
-# `target_distance` itself). Mirror Image is a self-buff with no target
-# of its own to reach at cast time at all, same as Bestial Rage/Rootveil/Woven Flesh above. Rip Tide is passive and never even reaches
+# (see EnemySkillAI's own _last_empress_luring_gaze_modifier(), which reads
+# `target_distance` itself). Imperial Guard is a self-buff with no target
+# of its own to reach at cast time at all, same as Bestial Rage/Rootveil/Woven Flesh above. Empress's Will is passive and never even reaches
 # this file, same as Kindled Resolve/Frostborn.
-# Slardar's Slithereen Crush follows Song of the Siren's own precedent
+# Dreadlure's Paralytic Venom follows Luring Gaze's own precedent
 # exactly - a self-centered AoE stun scored (not gated) against range via
-# EnemySkillAI's own _slardar_slithereen_crush_modifier() (fed by
+# EnemySkillAI's own _dreadlure_paralytic_venom_modifier() (fed by
 # `living_target_hps`, already empty out of range), so it's never in
-# RANGE_CHECKED_SKILL_IDS either. Guardian Sprint is a self-buff with no
-# target of its own to reach at cast time, same as Mirror Image above -
+# RANGE_CHECKED_SKILL_IDS either. Hunting Instinct is a self-buff with no
+# target of its own to reach at cast time, same as Imperial Guard above -
 # its value is purely about what the boosted NEXT move can then reach
-# (see EnemySkillAI's own _slardar_guardian_sprint_modifier()). Bash of
+# (see EnemySkillAI's own _dreadlure_hunting_instinct_modifier()). Might of
 # the Deep is passive and never even reaches this file.
-# Mirana's Starstorm follows Slithereen Crush's own precedent exactly - a
+# Mirana's Starstorm follows Paralytic Venom's own precedent exactly - a
 # self-centered AoE scored (not gated) against range via EnemySkillAI's
 # own _mirana_starstorm_modifier() (fed by `living_target_hps`, already
 # empty out of range), so it's never in RANGE_CHECKED_SKILL_IDS either.
@@ -146,7 +146,7 @@ class_name EnemySkillRange
 # attempt it, same as Blast Hopper above - it "sails clean over any
 # enemy in the way" regardless of range (see battle.gd's own
 # _activate_leap()). Moonlight Shadow is a self-buff with no target of
-# its own to reach at cast time, same as Mirror Image/Guardian Sprint
+# its own to reach at cast time, same as Imperial Guard/Hunting Instinct
 # above.
 # Luna's Eclipse is a self-cast ultimate with no target of its own to
 # reach at cast time either, same as Moonlight Shadow above - its own
@@ -178,7 +178,7 @@ class_name EnemySkillRange
 # _raze_blast_hopper_modifier()), never a candidacy gate here.
 # ============================================================
 
-const RANGE_CHECKED_SKILL_IDS: Array[String] = ["abyssal_spasm", "thornbind", "whisper_of_the_veil", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "frostbound_rupture", "charge", "glacier_breaker", "sanguine_bloom", "sweep", "chainfire", "cinderbomb", "three_cheers", "kiss_the_wastes", "double_trouble", "ensnare", "corrosive_haze", "sacred_arrow", "lucent_beam"]
+const RANGE_CHECKED_SKILL_IDS: Array[String] = ["abyssal_spasm", "thornbind", "whisper_of_the_veil", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "frostbound_rupture", "charge", "glacier_breaker", "sanguine_bloom", "sweep", "chainfire", "cinderbomb", "three_cheers", "kiss_the_wastes", "double_trouble", "shackles", "deathlight_lure", "sacred_arrow", "lucent_beam"]
 
 
 ## True if `skill_id` needs a range check at all before being cast -
@@ -199,7 +199,7 @@ static func requires_range_check(skill_id: String) -> bool:
 ## requires_range_check().
 static func is_in_range(skill_id: String, distance: int, radius: int, attack_range: int) -> bool:
 	match skill_id:
-		"abyssal_spasm", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "frostbound_rupture", "charge", "sanguine_bloom", "sweep", "chainfire", "cinderbomb", "ensnare", "corrosive_haze", "sacred_arrow", "lucent_beam":
+		"abyssal_spasm", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "frostbound_rupture", "charge", "sanguine_bloom", "sweep", "chainfire", "cinderbomb", "shackles", "deathlight_lure", "sacred_arrow", "lucent_beam":
 			return distance <= radius
 		"thornbind", "whisper_of_the_veil", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "glacier_breaker", "three_cheers", "kiss_the_wastes":
 			return distance <= attack_range

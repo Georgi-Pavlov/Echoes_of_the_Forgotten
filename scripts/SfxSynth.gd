@@ -14,6 +14,8 @@ const RATE := 22050
 const EVENTS := {
 	"ui_click": -10.0,
 	"button": -4.0,
+	"typewriter_key": -8.0,
+	"typewriter_back": -8.0,
 	"hit": -6.0,
 	"death": -4.0,
 	"shotgun": -3.0,
@@ -50,6 +52,8 @@ static func make(event: String) -> AudioStreamWAV:
 	_rng.seed = hash(event)
 	match event:
 		"ui_click": return _ui_click()
+		"typewriter_key": return _typewriter(1.0)
+		"typewriter_back": return _typewriter(0.75)
 		"hit": return _hit()
 		"death": return _death()
 		"shotgun": return _shotgun(0.5, 1.0)
@@ -160,6 +164,19 @@ static func _ui_click() -> AudioStreamWAV:
 	_add_sweep(buf, 0.0, 0.05, 1100.0, 700.0, 60.0, 0.6)
 	_add_crack(buf, 0.0, 0.02, 120.0, 0.3)
 	return _finish(buf, 0.7)
+
+
+## A typewriter key: the sharp strike of the typebar on the platen (a hard
+## crack over a short metallic ring) and the dull thunk of the key bottoming
+## out just behind it. `pitch` lowers it for the backspace.
+static func _typewriter(pitch: float) -> AudioStreamWAV:
+	var buf := _buffer(0.11)
+	_add_crack(buf, 0.0, 0.025, 150.0, 0.9)
+	_add_sweep(buf, 0.0, 0.05, 2300.0 * pitch, 1500.0 * pitch, 70.0, 0.35)
+	_add_sweep(buf, 0.002, 0.07, 3400.0 * pitch, 3000.0 * pitch, 90.0, 0.12)
+	_add_noise(buf, 0.012, 0.05, 0.2, 0.05, 55.0, 0.55)
+	_add_sweep(buf, 0.012, 0.05, 190.0 * pitch, 110.0 * pitch, 50.0, 0.5)
+	return _finish(buf, 0.8)
 
 
 static func _hit() -> AudioStreamWAV:

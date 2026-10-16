@@ -92,6 +92,11 @@ const ANIMATED_CREATURE_PROFILES := {
 	"scorchlands_melee": "scorchlands_melee",
 	"scorchlands_melee_2": "scorchlands_melee",
 	"scorchlands_range": "scorchlands_range",
+	"the_last_empress": "the_last_empress",
+	"dreadlure": "dreadlure",
+	"drowned_empire_melee": "drowned_empire_melee",
+	"drowned_empire_melee_2": "drowned_empire_melee",
+	"drowned_empire_range": "drowned_empire_range",
 	# A rival Erynd's own bear; the player's is attached in
 	# _elderwild_companion() (it isn't spawned through _spawn_enemy()).
 	"enemy_elderwild_companion": "elderwild_companion",
@@ -268,10 +273,9 @@ const BEAR_DEATH_HP_PENALTY_PCT := 0.2
 # can't act yet.
 var _rival_fx_in_flight: bool = false
 
-# The Last Empress's Mirror Image (see _spawn_illusion_node()) fades every
-# illusion's copy of the hero's own portrait to this alpha, so the real
-# hero still reads clearly among his own decoys.
-const HERO_ILLUSION_ALPHA := 0.45
+# The Last Empress's Imperial Guard (see _spawn_guard()): the art of one of
+# her drowned warriors - the player's guards and a rival's alike.
+const IMPERIAL_GUARD_IMAGE_PATH := "res://assets/heroes/The_Last_Empress_imperial_guard.png"
 
 # The Primordial Hunger's The Test of Time (see _activate_the_test_of_time()) always
 # uses this art for the hero's portrait while it's active, regardless
@@ -325,44 +329,9 @@ const STARSTORM_GLOW_COLOR := Color(1.0, 0.8, 0.3, 0.35)
 const STARSTORM_DROP_HEIGHT := 360.0
 const STARSTORM_DROP_SIDEWAYS := 180.0
 
-# The Last Empress's Ensnare (see _play_net_throw()): the thrown net's rope
-# and rim/weight colors, its radius in px while flying, the spacing of
-# its mesh, and how long it stays draped over the target before fading.
-const ENSNARE_ROPE_COLOR := Color(0.82, 0.74, 0.52, 0.95)
-const ENSNARE_RIM_COLOR := Color(0.62, 0.5, 0.3, 1.0)
-const ENSNARE_NET_RADIUS := 34.0
-const ENSNARE_MESH_SPACING := 11.0
-const ENSNARE_DRAPE_SECONDS := 0.5
-# How wide the landed net is, as a fraction of the target sprite's width.
-const ENSNARE_DRAPE_WIDTH_RATIO := 0.5
-
-# The Last Empress's Song of the Siren (see _play_siren_song_wave()/
-# _set_siren_lullaby()): the song's teal-blue (rings and notes), the
-# sleepers' blue tint, and the lullaby child node's name so its
-# presence can be looked up.
-const SIREN_SONG_COLOR := Color(0.35, 0.8, 1.0, 1.0)
-const SIREN_SLEEP_TINT_COLOR := Color(0.35, 0.5, 1.0, 1.0)
-const SIREN_LULLABY_NAME := "SirenLullaby"
-
-# Slardar's Corrosive Haze (see _play_corrosive_haze_glob()/
-# _set_corrosive_haze()): the thrown glob's ooze and rim, the cast
-# flash, the lingering haze's smoke and the drips running down the
-# marked unit, and the haze child node's name so its presence can be
-# looked up.
-const CORROSIVE_HAZE_OOZE_COLOR := Color(0.42, 0.48, 0.18, 1.0)
-const CORROSIVE_HAZE_RIM_COLOR := Color(0.28, 0.3, 0.1, 1.0)
-const CORROSIVE_HAZE_FLASH_COLOR := Color(0.9, 1.5, 0.4, 1)
-const CORROSIVE_HAZE_SMOKE_COLOR := Color(0.45, 0.5, 0.22, 0.35)
-const CORROSIVE_HAZE_DRIP_COLOR := Color(0.38, 0.45, 0.14, 0.9)
-const CORROSIVE_HAZE_NAME := "CorrosiveHaze"
-
-# Slardar's Slithereen Crush (see _play_slithereen_crush()): the
-# seawater shockwave ring, its spray, the rock chunks it kicks up, and
-# how long the ring takes to reach full size.
-const SLITHEREEN_CRUSH_WATER_COLOR := Color(0.3, 0.6, 0.95, 0.9)
-const SLITHEREEN_CRUSH_SPRAY_COLOR := Color(0.6, 0.85, 1.0, 1.0)
-const SLITHEREEN_CRUSH_ROCK_COLOR := Color(0.42, 0.36, 0.3, 1.0)
-const SLITHEREEN_CRUSH_WAVE_SECONDS := 0.35
+# Dreadlure's Paralytic Venom (see _play_paralytic_venom()): how long the
+# toxin cloud takes to reach full size.
+const PARALYTIC_VENOM_WAVE_SECONDS := 0.5
 const SACRED_ARROW_DURATION_PER_COLUMN := 0.025
 
 # Skarn's Glacier Breaker (see _resolve_glacier_breaker_cast()) deliberately
@@ -504,23 +473,23 @@ var _woven_flesh_turns_remaining: int = 0
 var _woven_flesh_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
-# Slardar's Guardian Sprint: a self-cast that arms this level's own
+# Dreadlure's Hunting Instinct: a self-cast that arms this level's own
 # bonus_movement/charge_damage_pct for `level_data.duration` turns -
 # doesn't move the hero itself (casting just consumes the turn like any
 # other self-buff), it only changes what his NEXT normal moves do (see
-# _hero_move()'s own read of _guardian_sprint_turns_remaining). While
+# _hero_move()'s own read of _hunting_instinct_turns_remaining). While
 # active, a move adds bonus_movement to the usual distance AND always
 # stops on the first enemy in its path (the melee "stop on top of an
 # enemy" rule _melee_move_target() already uses, applied here
 # regardless of range_type), dealing charge_damage_pct of a freshly-
 # rolled hero Attack to whatever it stopped on - no stun, just the hit.
 # Same "casting turn doesn't count" pattern as every other duration-
-# based buff (see _tick_guardian_sprint()).
+# based buff (see _tick_hunting_instinct()).
 # ------------------------------------------------------------------
-var _guardian_sprint_turns_remaining: int = 0
-var _guardian_sprint_bonus_movement: int = 0
-var _guardian_sprint_charge_damage_pct: float = 0.0
-var _guardian_sprint_duration_pending_start: bool = false
+var _hunting_instinct_turns_remaining: int = 0
+var _hunting_instinct_bonus_movement: int = 0
+var _hunting_instinct_charge_damage_pct: float = 0.0
+var _hunting_instinct_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
 # Cinder's Kindled Resolve: a passive - no cast, no cooldown/mana
@@ -603,32 +572,26 @@ var _kiss_marked_enemy: Dictionary = {}
 var _kiss_the_wastes_level_data: Dictionary = {}
 
 # ------------------------------------------------------------------
-# The Last Empress's Mirror Image: a self-cast that spawns this level's own
-# `illusions` count (always 3) of decoys, one in the column immediately
-# in front of the hero, one immediately behind, and a third doubling up
-# randomly on whichever of those two columns (see _activate_mirror_
-# image()) - each a Dictionary of {pos_index, current_hp, max_hp, node}
-# in `_illusions`, own HP pool sized off `hp_pct` of the hero's own max
-# HP. While any are up, apply_damage() (every hit that would otherwise
-# land on the hero, from any source) rolls `hit_chance_pct` to redirect
-# the ENTIRE hit onto a random living illusion instead - a full
-# redirect, not a split, and completely bypassing the hero's own
-# defensive mechanics (Kindled Resolve stacks, The Mist Remembers, Veil of the
-# Forgotten) since nothing actually touched him this time. Every hero turn
-# that isn't the casting one, every surviving illusion also strikes the
-# SAME randomly-picked living enemy within the hero's own attack range
-# for `damage_pct` of a freshly-rolled hero Attack each (see
-# _fire_mirror_image_attack(), called from _tick_mirror_image()) - same
-# "casting turn doesn't count" pattern as every other duration-based
-# buff. Ends (despawning every surviving illusion) once the duration
-# runs out; recasting mid-duration replaces the set outright, same as
-# Woven Flesh/Cinderbomb's own "recast overwrites" reasoning.
+# The Last Empress's Imperial Guard: a cast, from anywhere on the board,
+# that raises this level's own `guards` count (3) of drowned warriors around
+# the enemy closest to the hero (see _activate_imperial_guard()) - each a
+# Dictionary of {pos_index, current_hp, max_hp, facing, node, hp_label} in
+# `_guards`, own HP pool sized off `hp_pct` of the hero's own max HP. They
+# are real units on the board, like the Elderwild Companion: every turn
+# (_guards_turn(), just before the enemies') each one strikes an enemy
+# sharing its column - melee range, for `damage_pct` of a freshly-rolled
+# hero Attack - or, with none there, walks toward the nearest enemy,
+# turning left or right as it goes. The enemies fight them back: a creep
+# attacks the hero if he's in its reach, and the guards only when he
+# isn't (see _enemy_turn()). Same "casting turn doesn't count" pattern as
+# every other duration-based buff. Ends (despawning every surviving guard)
+# once the duration runs out; recasting mid-duration replaces the set
+# outright, same as Woven Flesh/Cinderbomb's own "recast overwrites" reasoning.
 # ------------------------------------------------------------------
-var _illusions: Array = []
-var _illusion_damage_pct: float = 0.0
-var _illusion_hit_chance_pct: float = 0.0
-var _illusions_turns_remaining: int = 0
-var _illusions_duration_pending_start: bool = false
+var _guards: Array = []
+var _guard_damage_pct: float = 0.0
+var _guards_turns_remaining: int = 0
+var _guards_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
 # The Primordial Hunger's ultimate, The Hunger Calls: freezes a target enemy
@@ -775,8 +738,8 @@ var _bear: Dictionary = {}
 # not targeted at all; those still reach the bear through their own
 # AoE collateral, same as before.
 const ENEMY_BEAR_TARGETABLE_SKILLS: Array[String] = [
-	"thornbind", "whisper_of_the_veil", "drowned_surge", "corrosive_haze", "sacred_arrow",
-	"lucent_beam", "ensnare", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold",
+	"thornbind", "whisper_of_the_veil", "drowned_surge", "deathlight_lure", "sacred_arrow",
+	"lucent_beam", "shackles", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold",
 	"return_to_the_void", "maddening_roar", "the_hunger_calls", "winters_grip", "charge",
 	"glacier_breaker", "sanguine_bloom", "three_cheers",
 ]
@@ -793,11 +756,14 @@ var _enemy_skill_on_bear: bool = false
 # EnemySkillAI.WHISPER_OF_THE_VEIL_SELF_ID) rather than at the player or his bear.
 var _enemy_whisper_of_the_veil_self: bool = false
 
-# True while the player's current stun came from a rival's Song of the
-# Siren - purely cosmetic, so the lullaby (see _refresh_siren_
-# lullabies()) shows for that sleep and not for any other stun sharing
+# True while the player's current stun came from a rival's Luring Gaze
+# - purely cosmetic, so the trance (see _refresh_luring_gaze_
+# trances()) shows for that stun and not for any other stun sharing
 # _player_stun_turns_left. Cleared once that stun runs out.
-var _player_siren_song_asleep: bool = false
+var _player_luring_gaze_entranced: bool = false
+# Set by a rival's Paralytic Venom alongside its stun - drives the held state
+# (see _refresh_venom_paralysis()).
+var _player_venom_paralyzed: bool = false
 
 # Whether the player is hidden from the rival for the turn being
 # decided right now (see _enemy_hero_turn()) - lets the skill picker
@@ -911,11 +877,11 @@ var _the_mist_remembers_duration_pending_start: bool = false
 # above, so just the one counter.
 var _pull_of_the_abyss_attack_count: int = 0
 
-# Slardar's Bash of the Deep - same "count plain Attacks toward a
+# Dreadlure's Might of the Deep - same "count plain Attacks toward a
 # threshold, consume them all once reached" idiom as Pull of the Abyss's own
-# counter just above (see _maybe_consume_bash_of_the_deep_stack(),
+# counter just above (see _maybe_consume_might_of_the_deep_stack(),
 # called from _apply_hero_attack()).
-var _bash_of_the_deep_attack_count: int = 0
+var _might_of_the_deep_attack_count: int = 0
 
 # ------------------------------------------------------------------
 # A rival hero's own skills, during a hero fight (_in_hero_fight) -
@@ -1035,23 +1001,23 @@ var _enemy_the_mist_remembers_duration_pending_start: bool = false
 # from _resolve_enemy_hero_attack()).
 var _enemy_pull_of_the_abyss_attack_count: int = 0
 
-# Slardar's Bash of the Deep, on the rival - same "count plain Attacks
+# Dreadlure's Might of the Deep, on the rival - same "count plain Attacks
 # toward a threshold, consume them all once reached" idiom as
 # Pull of the Abyss's own counter just above (see
-# _maybe_consume_enemy_bash_of_the_deep_stack(), called from
+# _maybe_consume_enemy_might_of_the_deep_stack(), called from
 # _resolve_enemy_hero_attack()).
-var _enemy_bash_of_the_deep_attack_count: int = 0
+var _enemy_might_of_the_deep_attack_count: int = 0
 
-# Slardar's Guardian Sprint, on the rival - mirrors the player's own
-# _guardian_sprint_bonus_movement/_guardian_sprint_charge_damage_pct/
-# _guardian_sprint_turns_remaining/_guardian_sprint_duration_pending_
+# Dreadlure's Hunting Instinct, on the rival - mirrors the player's own
+# _hunting_instinct_bonus_movement/_hunting_instinct_charge_damage_pct/
+# _hunting_instinct_turns_remaining/_hunting_instinct_duration_pending_
 # start fields exactly: a self-buff that boosts the rival's own NEXT
 # moves (see _enemy_hero_turn()'s own movement fallback) rather than an
 # instant leap - doesn't move the rival itself when cast.
-var _enemy_guardian_sprint_bonus_movement: int = 0
-var _enemy_guardian_sprint_charge_damage_pct: float = 0.0
-var _enemy_guardian_sprint_turns_remaining: int = 0
-var _enemy_guardian_sprint_duration_pending_start: bool = false
+var _enemy_hunting_instinct_bonus_movement: int = 0
+var _enemy_hunting_instinct_charge_damage_pct: float = 0.0
+var _enemy_hunting_instinct_turns_remaining: int = 0
+var _enemy_hunting_instinct_duration_pending_start: bool = false
 
 # Mirana's ultimate, Moonlight Shadow, cast by the rival - mirrors Shadow
 # Dance's own shape above: while active the boss can't be targeted by any
@@ -1059,7 +1025,7 @@ var _enemy_guardian_sprint_duration_pending_start: bool = false
 # _update_enemy_hero_visibility(), both extended to also read this flag),
 # and its own bonus_damage_pct folds into the rival's next Attack as a
 # PERCENTAGE of the roll (see _resolve_enemy_hero_attack()), same "post-
-# roll percentage" shape Bash of the Deep's own bonus uses, rather than
+# roll percentage" shape Might of the Deep's own bonus uses, rather than
 # Depthsveil's flat pre-roll one. Reveals itself (ends) the instant
 # that empowered Attack actually lands, whether or not it kills the
 # player - same "one guaranteed hit, then the invisibility is spent"
@@ -1075,7 +1041,7 @@ var _enemy_moonlight_shadow_duration_pending_start: bool = false
 # ECLIPSE_BEAMS_PER_TURN beams per End Turn (see _tick_enemy_eclipse()),
 # each independently picking ONE random living, targetable candidate from
 # everything within radius columns of the rival's CURRENT position - the
-# player, one of his own illusions, or his own Elderwild Companion, all equally
+# player, one of his own guards, or his own Elderwild Companion, all equally
 # likely (see _tick_enemy_eclipse()'s own docstring) - with NO cap on how
 # many beams the same candidate can take. Doesn't lock the rival's own
 # actions while it's ticking, same as the player-side copy.
@@ -1225,37 +1191,29 @@ var _enemy_kiss_the_wastes_active: bool = false
 var _enemy_kiss_the_wastes_turns_left: int = 0
 var _enemy_kiss_the_wastes_level_data: Dictionary = {}
 
-# The Last Empress's Mirror Image, cast by the rival - mirrors the player's own
-# _illusions/_illusion_damage_pct/_illusion_hit_chance_pct/_illusions_
-# turns_remaining/_illusions_duration_pending_start fields exactly (see
-# that block's own comment above): each entry in _enemy_illusions is a
-# {pos_index, current_hp, max_hp, node} Dictionary, own HP pool sized off
-# `hp_pct` of the boss's own effective max HP. While any are up,
-# _deal_fixed_damage_to_enemy() rolls `hit_chance_pct` to redirect a hit
-# meant for the boss onto a random surviving illusion instead - see that
-# function's own comment. Every rival turn that isn't the casting one,
-# every surviving illusion also strikes the player for `damage_pct` of a
-# freshly-rolled rival Attack each (see _fire_enemy_mirror_image_
-# attack(), called from _tick_enemy_mirror_image()). Rip Tide's own
-# bonuses (extra_illusion, illusion_damage_bonus_pct, illusion_duration_
+# The Last Empress's Imperial Guard, cast by the rival - the same skill as
+# the player's own (see the block above _guards), just on the other side:
+# a cast raises this level's `guards` count of drowned warriors around the
+# player-side unit CLOSEST to the boss (the hero, his Elderwild Companion
+# or one of his own guards), and each entry in _enemy_guards is the same
+# {pos_index, current_hp, max_hp, facing, node, hp_label, enemy} Dictionary
+# the player's guards use, own HP pool sized off `hp_pct` of the boss's own
+# effective max HP. Every rival turn (_enemy_guards_turn(), after the
+# player's guards and before the creeps') each one strikes whoever of the
+# player's side shares its column - the hero first, if he's there and
+# visible, else the bear, else one of his guards, for `damage_pct` of a
+# freshly-rolled rival Attack - or, with nobody there, walks toward the
+# nearest of them, turning as it goes. The player's guards, AoE skills and
+# a melee Attack in the same column can all hit them back. Empress's Will's
+# own bonuses (extra_guard, guardians_damage_bonus_pct, guard_duration_
 # bonus) are folded straight in at cast time, read fresh off
-# _get_enemy_rip_tide_level_data() - a no-op while the rival hasn't
+# _get_enemy_empress_will_level_data() - a no-op while the rival hasn't
 # learned it, same "empty means locked" convention every other auto-
 # triggered skill's own level-data getter uses.
-var _enemy_illusions: Array = []
-var _enemy_illusion_damage_pct: float = 0.0
-var _enemy_illusion_hit_chance_pct: float = 0.0
-var _enemy_illusions_turns_remaining: int = 0
-var _enemy_illusions_duration_pending_start: bool = false
-
-# Set by _deal_fixed_damage_to_enemy() every time it redirects a hit
-# onto one of the boss's own illusions instead of the boss itself -
-# reset to {} at the top of every one of its calls, so this only ever
-# reflects the MOST RECENT call's own outcome. Read right after by
-# _apply_hero_attack() so Bash of the Deep's own knockback (which
-# needs to know WHAT actually got hit) can move the illusion that took
-# the hit instead of the boss that didn't.
-var _last_enemy_illusion_redirect: Dictionary = {}
+var _enemy_guards: Array = []
+var _enemy_guard_damage_pct: float = 0.0
+var _enemy_guards_turns_remaining: int = 0
+var _enemy_guards_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
 # What the rival's skills above do TO THE PLAYER. All of this only
@@ -1280,6 +1238,9 @@ var _player_leeching_hunger_penalty: Dictionary = {"damage": 0.0, "hp": 0.0, "ma
 # _on_skill_pressed(); the DoT ticks at the start of the player's own
 # turn, alongside everything else in _tick_player_turn_start_effects().
 var _player_root_turns_left: int = 0
+# True while that root came from a rival's Shackles - purely cosmetic, so the
+# chains (see _refresh_shackles()) show for it and for no other root.
+var _player_shackled: bool = false
 var _player_silence_turns_left: int = 0
 var _player_thornbind_dot_damage: float = 0.0
 var _player_thornbind_dot_turns_left: int = 0
@@ -1290,6 +1251,9 @@ var _player_thornbind_dot_turns_left: int = 0
 # rival keeps acting until it wears off, the same way a stunned enemy
 # just loses its turn to the player's own Barbed Lunge.
 var _player_stun_turns_left: int = 0
+# _player_stun_turns_left as _end_turn() began - lets it tell a stun already
+# in force (consumes this turn) from one a rival just landed (starts next turn).
+var _stun_before_enemy_phase: int = 0
 
 # Set alongside _player_stun_turns_left specifically by
 # _cast_enemy_the_hunger_calls() (see that function's own comment on why
@@ -1388,19 +1352,19 @@ var _player_mothers_grasp_dot_turns_left: int = 0
 var _player_armor_reduction: float = 0.0
 var _player_armor_reduction_turns_left: int = 0
 
-# Slardar's ultimate, Corrosive Haze, cast by the rival on the player -
-# mirrors the player-side per-enemy "corrosive_haze_bonus_pct" field
-# (see _resolve_corrosive_haze_cast()), just held as a battle-local var
+# Dreadlure's ultimate, Deathlight Lure, cast by the rival on the player -
+# mirrors the player-side per-enemy "deathlight_lure_bonus_pct" field
+# (see _resolve_deathlight_lure_cast()), just held as a battle-local var
 # since there's only one player to track it on. Read by apply_damage()
 # to boost every hit the player takes from the rival's own attacks/
 # skills, mirroring _deal_fixed_damage_to_enemy()'s own "is_hero_action"
 # check. Shares _player_armor_reduction_turns_left above as its own
 # turns-left counter, same "share the shred's own timer" convention the
-# player-side copy uses (see _resolve_corrosive_haze_cast()'s own
-# comment) - Corrosive Haze's own armor_reduction half is folded
+# player-side copy uses (see _resolve_deathlight_lure_cast()'s own
+# comment) - Deathlight Lure's own armor_reduction half is folded
 # straight into that same shared field, additively, rather than getting
 # a second one of its own.
-var _player_corrosive_haze_bonus_pct: float = 0.0
+var _player_deathlight_lure_bonus_pct: float = 0.0
 
 # Raze's ultimate, Kiss the Wastes, cast by the rival on the player -
 # mirrors the player-side per-enemy kiss_burn_dot_damage/kiss_
@@ -1489,17 +1453,17 @@ var _pending_three_cheers_level_data: Dictionary = {}
 # actually clicked (_resolve_kiss_the_wastes_cast()).
 var _pending_kiss_the_wastes_level_data: Dictionary = {}
 
-# The Last Empress's Ensnare, held the same way as every other targeted
-# skill's own pending level data above, from the moment _start_ensnare_
+# The Last Empress's Shackles, held the same way as every other targeted
+# skill's own pending level data above, from the moment _start_shackles_
 # targeting() opens targeting until a target is actually clicked
-# (_resolve_ensnare_cast()).
-var _pending_ensnare_level_data: Dictionary = {}
+# (_resolve_shackles_cast()).
+var _pending_shackles_level_data: Dictionary = {}
 
-# Slardar's Corrosive Haze, held the same way as every other targeted
+# Dreadlure's Deathlight Lure, held the same way as every other targeted
 # skill's own pending level data above, from the moment _start_
-# corrosive_haze_targeting() opens targeting until a target is actually
-# clicked (_resolve_corrosive_haze_cast()).
-var _pending_corrosive_haze_level_data: Dictionary = {}
+# deathlight_lure_targeting() opens targeting until a target is actually
+# clicked (_resolve_deathlight_lure_cast()).
+var _pending_deathlight_lure_level_data: Dictionary = {}
 
 # Mirana's Sacred Arrow, held the same way as every other targeted
 # skill's own pending level data above, from the moment _start_
@@ -1630,8 +1594,8 @@ const ENEMY_KNOWN_SKILL_IDS: Array[String] = [
 	"rootveil", "sanguine_bloom", "woven_flesh", "mother's_grasp",
 	"sweep", "chainfire", "cinderbomb",
 	"double_trouble", "blast_hopper", "three_cheers", "kiss_the_wastes",
-	"mirror_image", "ensnare", "song_of_the_siren",
-	"guardian_sprint", "slithereen_crush", "corrosive_haze",
+	"imperial_guard", "shackles", "luring_gaze",
+	"hunting_instinct", "paralytic_venom", "deathlight_lure",
 	"starstorm", "sacred_arrow", "leap", "moonlight_shadow",
 	"lucent_beam", "eclipse",
 ]
@@ -1706,6 +1670,7 @@ var _stage_generation: int = 0
 
 func _process(_delta: float) -> void:
 	_refresh_bear_hp_label()
+	_refresh_guard_hp_labels()
 
 
 func _ready() -> void:
@@ -1717,6 +1682,7 @@ func _ready() -> void:
 	# Moving has its own sound (the steps), so no generic button click.
 	move_left_button.set_meta(AudioManager.NO_CLICK_META, true)
 	move_right_button.set_meta(AudioManager.NO_CLICK_META, true)
+	attack_button.set_meta(AudioManager.NO_CLICK_META, true)
 	attack_button.pressed.connect(_on_attack_pressed)
 	hero_image.gui_input.connect(_on_hero_image_gui_input)
 	level_up_ok_button.pressed.connect(_on_level_up_continue_pressed)
@@ -2266,6 +2232,10 @@ func _refresh_enemy_overhead_labels() -> void:
 	_refresh_kindled_embers()
 	var groups: Dictionary = {}
 	for enemy in _enemies:
+		# An invisible rival hero takes no slot in the stack - a gap would
+		# give its column away.
+		if enemy["static"].get("is_hero_fight_boss", false) and _is_enemy_hero_invisible():
+			continue
 		var col: int = enemy["pos_index"]
 		if not groups.has(col):
 			groups[col] = []
@@ -2301,6 +2271,8 @@ func _refresh_enemy_overhead_labels() -> void:
 				continue
 
 			var is_boss: bool = enemy["static"].get("is_hero_fight_boss", false)
+			var concealed: bool = is_boss and _is_enemy_hero_invisible()
+			label.visible = not concealed
 			var max_hp: float = _enemy_hero_effective_max_hp(enemy) if is_boss else float(enemy["static"].get("hp", 1))
 			var current_hp: float = maxf(0.0, float(enemy.get("current_hp", 0)))
 			label.text = "%d / %d" % [roundi(current_hp), maxi(1, roundi(max_hp))]
@@ -2319,7 +2291,7 @@ func _refresh_enemy_overhead_labels() -> void:
 			var status_label: Label = enemy.get("status_label")
 			if status_label != null:
 				var status_text: String = _enemy_status_effect_text(enemy)
-				status_label.visible = status_text != ""
+				status_label.visible = status_text != "" and not concealed
 				if status_label.visible:
 					status_label.text = status_text
 					status_label.position = Vector2(label.position.x + ENEMY_HP_LABEL_WIDTH + ENEMY_STATUS_LABEL_GAP, label_top)
@@ -2536,8 +2508,11 @@ func _refresh_bars() -> void:
 	_refresh_winters_grip_hands()
 	_refresh_frost_tempest_fx()
 	_refresh_mothers_grasp_roots()
-	_refresh_siren_lullabies()
-	_refresh_corrosive_haze()
+	_refresh_shackles()
+	_refresh_luring_gaze_trances()
+	_refresh_deathlight_lure()
+	_refresh_venom_paralysis()
+	_refresh_might_of_the_deep()
 	_refresh_mark_of_stillness_frost()
 	_refresh_void_marks()
 	_refresh_kindled_embers()
@@ -2701,6 +2676,7 @@ func _populate_skill_buttons() -> void:
 			status_label.text = "Ready"
 			status_label.add_theme_color_override("font_color", Color(0.5, 1, 0.5, 1))
 
+		btn.set_meta(AudioManager.NO_CLICK_META, true)
 		slot.add_child(btn)
 		slot.add_child(mana_label)
 		slot.add_child(status_label)
@@ -2814,12 +2790,12 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 			# above - the mana/cooldown/turn spend happens once the
 			# click resolves (_resolve_kiss_the_wastes_cast), not here.
 			return
-		"mirror_image":
-			_activate_mirror_image(level_data)
-		"guardian_sprint":
-			_activate_guardian_sprint(level_data)
-		"slithereen_crush":
-			if not _cast_slithereen_crush(level_data):
+		"imperial_guard":
+			_activate_imperial_guard(level_data)
+		"hunting_instinct":
+			_activate_hunting_instinct(level_data)
+		"paralytic_venom":
+			if not _cast_paralytic_venom(level_data):
 				# No enemies in range - same as above, no-op.
 				return
 		"starstorm":
@@ -2848,24 +2824,24 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 			_activate_leap(level_data)
 		"moonlight_shadow":
 			_activate_moonlight_shadow(level_data)
-		"corrosive_haze":
-			if not _start_corrosive_haze_targeting(level_data):
+		"deathlight_lure":
+			if not _start_deathlight_lure_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_corrosive_haze_cast), not here.
+			# click resolves (_resolve_deathlight_lure_cast), not here.
 			return
-		"ensnare":
-			if not _start_ensnare_targeting(level_data):
+		"shackles":
+			if not _start_shackles_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_ensnare_cast), not here.
+			# click resolves (_resolve_shackles_cast), not here.
 			return
-		"song_of_the_siren":
-			if not _cast_song_of_the_siren(level_data):
+		"luring_gaze":
+			if not _cast_luring_gaze(level_data):
 				# No enemies in range - same as above, no-op.
 				return
 		"chainfire":
@@ -3185,9 +3161,9 @@ func _cast_abyssal_spasm(level_data: Dictionary) -> bool:
 		if is_instance_valid(enemy.get("node")):
 			_flash_bounce_hit(enemy["node"])
 	# Self-centered on the hero, same as the check above - a rival's own
-	# illusion (The Last Empress's Mirror Image) can be in range independently
+	# guard (The Last Empress's Imperial Guard) can be in range independently
 	# of whether the boss itself currently is.
-	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, radius, pact_damage, true)
+	_deal_aoe_damage_to_enemy_guards(_hero_pos_index, radius, pact_damage, true)
 
 	return true
 
@@ -3219,9 +3195,9 @@ func _cast_sweep(level_data: Dictionary) -> bool:
 		if is_instance_valid(enemy.get("node")):
 			_flash_bounce_hit(enemy["node"])
 	# Self-centered on the hero, same as the check above - a rival's own
-	# illusion (The Last Empress's Mirror Image) can be in range independently
+	# guard (The Last Empress's Imperial Guard) can be in range independently
 	# of whether the boss itself currently is.
-	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, radius, sweep_damage, true)
+	_deal_aoe_damage_to_enemy_guards(_hero_pos_index, radius, sweep_damage, true)
 
 	return true
 
@@ -3237,13 +3213,13 @@ func _play_sweep_flames(pos_index: int, radius: int) -> void:
 	SweepFlamesFX.play(_fx_layer, center, half_width, get_viewport_rect().size.y / 4.0)
 
 
-## Slardar's Slithereen Crush: deals `level_data.damage` and stuns
+## Dreadlure's Paralytic Venom: deals `level_data.damage` and stuns
 ## (target["stun_turns_left"], same shared field Barbed Lunge's/Drowned Surge's own
-## stun use) every enemy within `level_data.radius` columns of Slardar -
+## stun use) every enemy within `level_data.radius` columns of Dreadlure -
 ## same shape as _cast_sweep() above, just with a stun folded
 ## in and only ever stunning a hit that actually left the target alive.
 ## Returns false (no mana/turn/cooldown spent) if nothing is in range.
-func _cast_slithereen_crush(level_data: Dictionary) -> bool:
+func _cast_paralytic_venom(level_data: Dictionary) -> bool:
 	var radius: int = int(level_data.get("radius", 0))
 	var targets: Array = []
 	for enemy in _enemies:
@@ -3256,29 +3232,31 @@ func _cast_slithereen_crush(level_data: Dictionary) -> bool:
 		_show_message_over_hero("No enemies in range")
 		return false
 
-	var crush_damage: float = float(level_data.get("damage", 0))
+	var venom_damage: float = float(level_data.get("damage", 0))
 	var stun_turns: int = int(level_data.get("stun_turns", 0))
 	# Everyone the wave will hit, captured (and the slam played) before
 	# any damage lands - a kill frees its node.
 	var hit_nodes: Array = []
 	for enemy in targets:
 		hit_nodes.append(enemy.get("node"))
-	for illusion in _enemy_illusions:
-		if _distance(illusion["pos_index"], _hero_pos_index) <= radius:
-			hit_nodes.append(illusion.get("node"))
-	_play_slithereen_crush(hero_image, radius, hit_nodes)
+	for guard in _enemy_guards:
+		if _distance(guard["pos_index"], _hero_pos_index) <= radius:
+			hit_nodes.append(guard.get("node"))
+	_play_paralytic_venom(hero_image, radius, hit_nodes)
 
 	for enemy in targets:
-		_deal_fixed_damage_to_enemy(enemy, crush_damage)
+		_deal_fixed_damage_to_enemy(enemy, venom_damage)
 		if enemy.get("current_hp", 0) > 0:
 			enemy["stun_turns_left"] = stun_turns
+			enemy["venom_paralyzed"] = stun_turns > 0
+			enemy["luring_gaze_entranced"] = false
 	# Self-centered on the hero, same as the check above - a rival's own
-	# illusion (The Last Empress's Mirror Image) can be in range independently
+	# guard (The Last Empress's Imperial Guard) can be in range independently
 	# of whether the boss itself currently is. The rival's own Spirit
 	# Bear needs no equivalent call - it's a genuine _enemies entry
 	# (see _summon_enemy_elderwild_companion()), so the `targets` loop above
 	# already caught it, stun included.
-	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, radius, crush_damage)
+	_deal_aoe_damage_to_enemy_guards(_hero_pos_index, radius, venom_damage)
 
 	return true
 
@@ -3286,7 +3264,7 @@ func _cast_slithereen_crush(level_data: Dictionary) -> bool:
 ## Mirana's Starstorm: deals `level_data.damage` (a flat amount, not a
 ## roll off the hero's own attack) to every enemy within
 ## `level_data.radius` columns of Mirana - same shape as
-## _cast_sweep()/_cast_slithereen_crush() above, just with no
+## _cast_sweep()/_cast_paralytic_venom() above, just with no
 ## stun/CC folded in. Returns false (no mana/turn/cooldown spent) if
 ## nothing is in range.
 func _cast_starstorm(level_data: Dictionary) -> bool:
@@ -3308,25 +3286,25 @@ func _cast_starstorm(level_data: Dictionary) -> bool:
 	var star_nodes: Array = []
 	for enemy in targets:
 		star_nodes.append(enemy.get("node"))
-	for illusion in _enemy_illusions:
-		if _distance(illusion["pos_index"], _hero_pos_index) <= radius:
-			star_nodes.append(illusion.get("node"))
+	for guard in _enemy_guards:
+		if _distance(guard["pos_index"], _hero_pos_index) <= radius:
+			star_nodes.append(guard.get("node"))
 	_play_starfall(star_nodes)
 
 	for enemy in targets:
 		_deal_fixed_damage_to_enemy(enemy, starstorm_damage)
 	# Self-centered on the hero, same as the check above - a rival's own
-	# illusion (The Last Empress's Mirror Image) can be in range independently
+	# guard (The Last Empress's Imperial Guard) can be in range independently
 	# of whether the boss itself currently is. The rival's own Spirit
 	# Bear needs no equivalent call - it's a genuine _enemies entry
 	# (see _summon_enemy_elderwild_companion()), so the `targets` loop above
 	# already caught it.
-	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, radius, starstorm_damage)
+	_deal_aoe_damage_to_enemy_guards(_hero_pos_index, radius, starstorm_damage)
 
 	return true
 
 
-## The Last Empress's ultimate, Song of the Siren: stuns (target["stun_turns_
+## The Last Empress's ultimate, Luring Gaze: stuns (target["stun_turns_
 ## left"], same shared field Barbed Lunge's/Drowned Surge's/Blast Hopper's own
 ## stun use) and shreds the armor (target["armor_reduction"]/
 ## "armor_reduction_turns_left", the same per-instance runtime fields
@@ -3336,11 +3314,11 @@ func _cast_starstorm(level_data: Dictionary) -> bool:
 ## refreshable debuff in this file uses) of every enemy within this
 ## level's own radius of the hero's CURRENT position, both for this
 ## level's own stun_turns. Purely offensive - no damage of its own, and
-## nothing about the hero himself changes (he and his illusions can
+## nothing about the hero himself changes (he and his guards can
 ## still move/attack normally the whole time, unlike Kiss the Wastes'
 ## own channel). Returns false (no mana/turn/cooldown spent) if nothing
 ## is in range.
-func _cast_song_of_the_siren(level_data: Dictionary) -> bool:
+func _cast_luring_gaze(level_data: Dictionary) -> bool:
 	var radius: int = int(level_data.get("radius", 0))
 	var targets: Array = []
 	for enemy in _enemies:
@@ -3358,14 +3336,20 @@ func _cast_song_of_the_siren(level_data: Dictionary) -> bool:
 	for enemy in targets:
 		enemy["stun_turns_left"] = stun_turns
 		enemy["armor_reduction"] = float(enemy.get("armor_reduction", 0.0)) + armor_reduction
-		enemy["armor_reduction_turns_left"] = stun_turns
-		# Marks this stun as the song's sleep - drives the lullaby (see
-		# _refresh_siren_lullabies()).
-		enemy["siren_song_asleep"] = true
+		# +1: the shred ticks at the start of each enemy turn, BEFORE that
+		# turn's stun check, so it must outlast the last stunned turn.
+		enemy["armor_reduction_turns_left"] = stun_turns + 1
+		# Marks this stun as the gaze's trance - drives its visual (see
+		# _refresh_luring_gaze_trances()).
+		enemy["luring_gaze_entranced"] = true
+		enemy["venom_paralyzed"] = false
 
-	_play_siren_song_wave(hero_image, radius)
-	_refresh_siren_lullabies()
-	_show_message_over_hero("Song of the Siren!")
+	var gazed: Array = []
+	for enemy in targets:
+		gazed.append(enemy.get("node"))
+	_play_luring_gaze(hero_image, gazed)
+	_refresh_luring_gaze_trances()
+	_show_message_over_hero("Luring Gaze!")
 	return true
 
 
@@ -3399,10 +3383,10 @@ func _cast_double_trouble(level_data: Dictionary) -> bool:
 	var trouble_damage: float = float(level_data.get("damage", 0))
 	for enemy in targets:
 		_deal_fixed_damage_to_enemy(enemy, trouble_damage)
-	# Same directional cone as the check above - a rival's own illusion
-	# (The Last Empress's Mirror Image) ahead of the hero can be caught in it
+	# Same directional cone as the check above - a rival's own guard
+	# (The Last Empress's Imperial Guard) ahead of the hero can be caught in it
 	# independently of whether the boss itself currently is.
-	_deal_directional_aoe_damage_to_enemy_illusions(_hero_pos_index, direction, range_columns, trouble_damage)
+	_deal_directional_aoe_damage_to_enemy_guards(_hero_pos_index, direction, range_columns, trouble_damage)
 
 	_play_double_trouble_effect(hero_image, direction, range_columns)
 
@@ -3513,9 +3497,9 @@ func _activate_blast_hopper(level_data: Dictionary) -> void:
 			if enemy.get("current_hp", 0) > 0:
 				enemy["stun_turns_left"] = stun_turns
 	# Centered on the landing spot, same as the check above - a rival's
-	# own illusion (The Last Empress's Mirror Image) can be in range
+	# own guard (The Last Empress's Imperial Guard) can be in range
 	# independently of whether the boss itself currently is.
-	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, radius, damage)
+	_deal_aoe_damage_to_enemy_guards(_hero_pos_index, radius, damage)
 
 
 ## Mirana's Leap: hops level_data.jump_distance columns in whatever
@@ -3535,7 +3519,7 @@ func _activate_leap(level_data: Dictionary) -> void:
 	_update_hero_position()
 
 
-## Resolves an Ensnare cast on `target`: `level_data.damage` (mitigated
+## Resolves an Shackles cast on `target`: `level_data.damage` (mitigated
 ## by the target's own armor via _deal_fixed_damage_to_enemy(), same
 ## helper Abyssal Spasm/Drowned Surge/The Sunken One use) plus a root for this level's
 ## own `root_turns` - reusing _apply_root() with no `silence_turns`/
@@ -3545,20 +3529,22 @@ func _activate_leap(level_data: Dictionary) -> void:
 ## move or jump (see _is_enemy_rooted()'s own call sites in
 ## _enemy_turn()/_enemy_hero_turn(), which only ever gate movement
 ## branches). Only roots if the hit actually left it alive.
-func _resolve_ensnare_cast(target: Dictionary, level_data: Dictionary) -> void:
+func _resolve_shackles_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	var damage: float = float(level_data.get("damage", 0))
-	# Thrown before the hit lands - it may kill (and free) the target.
-	_play_net_throw(hero_image, target.get("node"))
 	_deal_fixed_damage_to_enemy(target, damage)
 	if target.get("current_hp", 0) > 0:
 		_apply_root(target, level_data)
+		# The chains stay on it for as long as this root does (see
+		# _refresh_shackles()).
+		target["shackled"] = true
+		_refresh_shackles()
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["ensnare"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("ensnare", _skill_cooldowns["ensnare"])
+	_skill_cooldowns["shackles"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("shackles", _skill_cooldowns["shackles"])
 	_refresh_skill_cooldown_labels()
 
 	if _battle_over or _stage_generation != generation_before:
@@ -3567,11 +3553,11 @@ func _resolve_ensnare_cast(target: Dictionary, level_data: Dictionary) -> void:
 	_mark_turn_used()
 
 
-## Resolves a Corrosive Haze cast on `target`: reduces its armor by
+## Resolves a Deathlight Lure cast on `target`: reduces its armor by
 ## this level's own `armor_reduction` (target["armor_reduction"], the
-## same per-instance runtime field Three Cheers's own shred and Song
-## of the Siren use - stacking additively with any already on it) and
-## marks it with `bonus_damage_pct` (target["corrosive_haze_bonus_pct"],
+## same per-instance runtime field Three Cheers's own shred and Luring
+## Gaze use - stacking additively with any already on it) and
+## marks it with `bonus_damage_pct` (target["deathlight_lure_bonus_pct"],
 ## read by _deal_fixed_damage_to_enemy() to boost every hit it takes
 ## from the hero's own attacks/skills - overwritten outright on
 ## recast, not stacked, since a second mark isn't meant to double the
@@ -3580,21 +3566,23 @@ func _resolve_ensnare_cast(target: Dictionary, level_data: Dictionary) -> void:
 ## _tick_enemy_turn_start_effects()'s own comment on why that's fine to
 ## share with Three Cheers's shred. Deals no damage of its own - a
 ## pure debuff.
-func _resolve_corrosive_haze_cast(target: Dictionary, level_data: Dictionary) -> void:
+func _resolve_deathlight_lure_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	target["armor_reduction"] = float(target.get("armor_reduction", 0.0)) + float(level_data.get("armor_reduction", 0))
-	target["corrosive_haze_bonus_pct"] = float(level_data.get("bonus_damage_pct", 0.0))
+	target["deathlight_lure_bonus_pct"] = float(level_data.get("bonus_damage_pct", 0.0))
 	target["armor_reduction_turns_left"] = int(level_data.get("duration", 0))
+	if target["static"].get("is_hero_fight_boss", false):
+		_reveal_enemy_hero()
 
-	_play_corrosive_haze_glob(hero_image, target.get("node"))
-	_refresh_corrosive_haze()
-	_show_message_over_hero("Corrosive Haze!")
+	_play_deathlight_lure(hero_image, target.get("node"))
+	_refresh_deathlight_lure()
+	_show_message_over_hero("Deathlight Lure!")
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["corrosive_haze"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("corrosive_haze", _skill_cooldowns["corrosive_haze"])
+	_skill_cooldowns["deathlight_lure"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("deathlight_lure", _skill_cooldowns["deathlight_lure"])
 	_refresh_skill_cooldown_labels()
 
 	if _battle_over or _stage_generation != generation_before:
@@ -3754,10 +3742,10 @@ func _resolve_drowned_surge_cast(target: Dictionary, level_data: Dictionary) -> 
 				_play_drowned_surge_splash(enemy.get("node"))
 				_deal_fixed_damage_to_enemy(enemy, damage)
 		# Centered on the target's own column, same as the splash above -
-		# a rival's own illusion (The Last Empress's Mirror Image) can be in
+		# a rival's own guard (The Last Empress's Imperial Guard) can be in
 		# range independently of whether the boss itself currently is.
-		_play_drowned_surge_splash_on_illusions(_enemy_illusions, target_pos, radius)
-		_deal_aoe_damage_to_enemy_illusions(target_pos, radius, damage)
+		_play_drowned_surge_splash_on_guards(_enemy_guards, target_pos, radius)
+		_deal_aoe_damage_to_enemy_guards(target_pos, radius, damage)
 
 	# No Depthsveil check here, unlike Thornbind's own resolve - that
 	# only ever matters for Veyrik's own kit, and Drowned Surge belongs to
@@ -3906,9 +3894,9 @@ func _cast_the_sunken_one(level_data: Dictionary) -> bool:
 		for enemy in hit_targets:
 			if _enemies.any(func(e: Dictionary) -> bool: return is_same(e, enemy)):
 				_deal_fixed_damage_to_enemy(enemy, damage)
-		# A rival's own illusion (The Last Empress's Mirror Image) in the line
+		# A rival's own guard (The Last Empress's Imperial Guard) in the line
 		# of fire is caught in it too.
-		_deal_line_aoe_damage_to_enemy_illusions(span.x, span.y, damage)
+		_deal_line_aoe_damage_to_enemy_guards(span.x, span.y, damage)
 		_shake_screen()
 		if TutorialManager.is_active and TutorialManager.current_stage == 3 \
 		and (_tutorial_stage3_step == "cast_ultimate" or _tutorial_stage3_step == "cast_ultimate_ready"):
@@ -4018,9 +4006,9 @@ func _resolve_chainfire_cast(target: Dictionary, level_data: Dictionary) -> void
 			if is_instance_valid(enemy.get("node")):
 				_flash_bounce_hit(enemy["node"])
 		# Same line as above (captured before the pull moved the hero off
-		# start_col) - a rival's own illusion (The Last Empress's Mirror Image)
+		# start_col) - a rival's own guard (The Last Empress's Imperial Guard)
 		# standing anywhere along it can still be caught in it.
-		_deal_line_aoe_damage_to_enemy_illusions(start_col, end_col, damage, true)
+		_deal_line_aoe_damage_to_enemy_guards(start_col, end_col, damage, true)
 		if _battle_over or _stage_generation != generation_before:
 			return
 		_mark_turn_used()
@@ -4097,9 +4085,9 @@ func _resolve_cinderbomb_cast(target: Dictionary, level_data: Dictionary) -> voi
 			if is_instance_valid(enemy.get("node")):
 				_flash_bounce_hit(enemy["node"])
 		# Planted at the target's own position at cast time - a rival's
-		# own illusion (The Last Empress's Mirror Image) there (or nearby) takes
+		# own guard (The Last Empress's Imperial Guard) there (or nearby) takes
 		# the same initial burst.
-		_deal_aoe_damage_to_enemy_illusions(pos_index, radius, cast_damage, true)
+		_deal_aoe_damage_to_enemy_guards(pos_index, radius, cast_damage, true)
 		_shake_screen()
 
 		_despawn_cinderbomb()
@@ -4187,9 +4175,9 @@ func _tick_cinderbomb() -> void:
 			if is_instance_valid(enemy.get("node")):
 				_flash_bounce_hit(enemy["node"])
 	# Same FIXED planted position as the check above - a rival's own
-	# illusion can be in range independently of whether the boss itself
+	# guard can be in range independently of whether the boss itself
 	# currently is.
-	_deal_aoe_damage_to_enemy_illusions(pos_index, radius, damage_per_turn, true)
+	_deal_aoe_damage_to_enemy_guards(pos_index, radius, damage_per_turn, true)
 
 	_cinderbomb["turns_remaining"] = int(_cinderbomb["turns_remaining"]) - 1
 	if int(_cinderbomb["turns_remaining"]) <= 0:
@@ -4308,534 +4296,186 @@ func _play_sacred_arrow_flight(caster_node: Control, target_node: TextureRect, d
 	tween.tween_callback(arrow.queue_free)
 
 
-## Purely cosmetic: Song of the Siren's cast - three soft teal-blue
-## rings spreading out from `caster_node` (flattened, like a ripple
-## across the ground) to about `radius` columns (the song's own reach -
-## at least half a column, so a radius-0 cast still reads), one after
-## another, with a handful of music notes drifting up and outward on the
-## wave. The sleep itself is shown per unit by _set_siren_lullaby().
-## Same layering as _play_double_trouble_effect().
-func _play_siren_song_wave(caster_node: Variant, radius: int) -> void:
-	if not is_instance_valid(caster_node) or not (caster_node is Control):
-		return
-	var center: Vector2 = caster_node.position + caster_node.size / 2.0
-	var reach: float = _grid_unit() * maxf(0.5, float(radius)) + caster_node.size.x * 0.3
-
-	for i in 3:
-		var ring := Line2D.new()
-		ring.width = 3.0
-		ring.default_color = SIREN_SONG_COLOR
-		ring.antialiased = true
-		for k in range(41):
-			var angle: float = k * TAU / 40.0
-			ring.add_point(Vector2(cos(angle), sin(angle) * 0.45) * reach)
-		var holder := Node2D.new()
-		holder.position = center
-		holder.scale = Vector2(0.1, 0.1)
-		holder.modulate.a = 0.0
-		holder.add_child(ring)
-		add_child(holder)
-		move_child(holder, enemies_layer.get_index() + 1)
-
-		var tween: Tween = holder.create_tween()
-		tween.tween_interval(i * 0.18)
-		tween.tween_property(holder, "modulate:a", 0.9, 0.05)
-		tween.tween_property(holder, "scale", Vector2.ONE, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		tween.parallel().tween_property(holder, "modulate:a", 0.0, 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		tween.tween_callback(holder.queue_free)
-
-	for i in 6:
-		var note: Node2D = _build_music_note(randf_range(14.0, 20.0), SIREN_SONG_COLOR)
-		var angle: float = -PI + (float(i) + 0.5) * PI / 6.0
-		var target: Vector2 = center + Vector2(cos(angle) * reach * 0.8, sin(angle) * reach * 0.5 - 30.0)
-		note.position = center
-		note.modulate.a = 0.0
-		add_child(note)
-		move_child(note, enemies_layer.get_index() + 1)
-
-		var tween: Tween = note.create_tween()
-		tween.tween_interval(i * 0.06)
-		tween.tween_property(note, "modulate:a", 1.0, 0.1)
-		tween.tween_property(note, "position", target, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		tween.parallel().tween_property(note, "rotation", randf_range(-0.4, 0.4), 0.9)
-		tween.tween_property(note, "modulate:a", 0.0, 0.3)
-		tween.tween_callback(note.queue_free)
+## Purely cosmetic: Luring Gaze - her eyes ignite, the arena darkens round
+## the edges, her glamour slips, and threads of light run from her eyes to
+## every one of `target_nodes`, each locking rigid as its thread connects
+## (see LuringGazeFX). The stun itself is shown per unit, for as long as it
+## lasts, by _refresh_luring_gaze_trances(). `heavy` darkens the vignette
+## more - for a rival's cast, when it's the player being gazed at.
+func _play_luring_gaze(caster_node: Variant, target_nodes: Array, heavy: bool = false) -> void:
+	LuringGazeFX.cast(self, caster_node, target_nodes, hero_image, heavy, func(node: Variant) -> void:
+		if is_instance_valid(node) and node is TextureRect:
+			_sprite_flash(node, 1.06, Color(1.5, 1.45, 1.7, 1.0))
+	)
 
 
-## A single eighth note of `size` px (roughly its height), drawn in
-## `color` from plain shapes and centered near its head: a tilted oval
-## head, a stem rising from its right side, and a flag curling off the
-## top. Same "no art asset" approach as _build_star()/_build_net().
-func _build_music_note(size: float, color: Color) -> Node2D:
-	var note := Node2D.new()
-
-	var head := Polygon2D.new()
-	head.color = color
-	var head_points := PackedVector2Array()
-	for k in range(12):
-		var a: float = k * TAU / 12.0
-		head_points.append(Vector2(cos(a) * size * 0.3, sin(a) * size * 0.2).rotated(-0.4))
-	head.polygon = head_points
-	note.add_child(head)
-
-	var stem := Line2D.new()
-	stem.width = maxf(1.5, size * 0.1)
-	stem.default_color = color
-	stem.add_point(Vector2(size * 0.26, -size * 0.05))
-	stem.add_point(Vector2(size * 0.26, -size * 0.95))
-	note.add_child(stem)
-
-	var flag := Line2D.new()
-	flag.width = maxf(1.5, size * 0.1)
-	flag.default_color = color
-	flag.joint_mode = Line2D.LINE_JOINT_ROUND
-	flag.add_point(Vector2(size * 0.26, -size * 0.95))
-	flag.add_point(Vector2(size * 0.55, -size * 0.7))
-	flag.add_point(Vector2(size * 0.5, -size * 0.45))
-	note.add_child(flag)
-
-	return note
-
-
-## Keeps Song of the Siren's lullaby in sync with who's currently asleep
-## from it - every enemy whose stun came from the song (the
-## "siren_song_asleep" mark its cast sets), the player (the
-## _player_siren_song_asleep flag a rival's cast sets), and his Spirit
-## Bear (the same mark, on _bear). Called from
-## _refresh_bars() (i.e. constantly), same approach as
+## Keeps Luring Gaze's hold (see LuringGazeFX.set_trance()) in sync with
+## who's currently held by it - every enemy whose stun came from the gaze
+## (the "luring_gaze_entranced" mark its cast sets), the player (the
+## _player_luring_gaze_entranced flag a rival's cast sets), and his Elderwild
+## Companion (the same mark, on _bear). The motes stream toward whoever
+## cast it: the hero, for his own cast, or the rival boss for theirs. Called
+## from _refresh_bars() (i.e. constantly), same approach as
 ## _refresh_thornbind_vines(). A mark only counts while the stun it rode
 ## in on is still running, and is cleared here once that stun is over -
 ## so a later stun from anything else (Drowned Surge, Winter's Grip...) never
-## shows a lullaby.
-func _refresh_siren_lullabies() -> void:
+## shows the hold.
+func _refresh_luring_gaze_trances() -> void:
+	var rival: Variant = _get_hero_fight_boss().get("node")
 	for enemy in _enemies:
-		if enemy.get("siren_song_asleep", false) and int(enemy.get("stun_turns_left", 0)) <= 0:
-			enemy["siren_song_asleep"] = false
-		_set_siren_lullaby(enemy.get("node"), bool(enemy.get("siren_song_asleep", false)))
-	if _player_siren_song_asleep and _player_stun_turns_left <= 0:
-		_player_siren_song_asleep = false
-	_set_siren_lullaby(hero_image, _player_siren_song_asleep)
+		if enemy.get("luring_gaze_entranced", false) and int(enemy.get("stun_turns_left", 0)) <= 0:
+			enemy["luring_gaze_entranced"] = false
+		LuringGazeFX.set_trance(enemy.get("node"), bool(enemy.get("luring_gaze_entranced", false)), hero_image)
+	if _player_luring_gaze_entranced and _player_stun_turns_left <= 0:
+		_player_luring_gaze_entranced = false
+	LuringGazeFX.set_trance(hero_image, _player_luring_gaze_entranced, rival)
 	if _is_bear_alive():
-		if _bear.get("siren_song_asleep", false) and int(_bear.get("stun_turns_left", 0)) <= 0:
-			_bear["siren_song_asleep"] = false
-		_set_siren_lullaby(_bear.get("node"), bool(_bear.get("siren_song_asleep", false)))
+		if _bear.get("luring_gaze_entranced", false) and int(_bear.get("stun_turns_left", 0)) <= 0:
+			_bear["luring_gaze_entranced"] = false
+		LuringGazeFX.set_trance(_bear.get("node"), bool(_bear.get("luring_gaze_entranced", false)), rival)
 
 
-## Purely cosmetic: puts Song of the Siren's lullaby on a sleeping
-## `node` (or takes it off) - a gentle blue tint over the sprite's own
-## silhouette (a tinted copy of its texture, the same no-clash overlay
-## approach as the frost/The Mist Remembers's glow - it never touches the
-## sprite's own modulate/self_modulate) that slowly breathes, plus a
-## music note floating up off its head and fading every ~0.8s. Both
-## live under one child Control, so they follow the sprite's position/
-## scale/fades for free. Fades in/out; only does anything when the
-## state actually changes (the child's presence is the marker).
-func _set_siren_lullaby(node: Variant, active: bool) -> void:
-	if not is_instance_valid(node) or not (node is TextureRect):
+## Purely cosmetic: Deathlight Lure's cast - the lure on `from_node`
+## (Dreadlure) flares with blue light and a thread of it runs out to
+## `to_node` (the marked target), which flashes cold blue as it lands (see
+## DreadlureFX.lure_flash()). The lingering mark is _set_deathlight_lure()'s.
+func _play_deathlight_lure(from_node: Variant, to_node: Variant) -> void:
+	if not (from_node is Control) or not (to_node is Control):
 		return
-	var lullaby: Control = node.get_node_or_null(SIREN_LULLABY_NAME)
-	if active == (lullaby != null):
-		return
-
-	if not active:
-		# Renamed right away so a quick re-sleep during the fade creates a
-		# fresh lullaby instead of finding this dying one.
-		lullaby.name = SIREN_LULLABY_NAME + "Fading"
-		for key in ["tint_tween", "note_tween"]:
-			var loop: Variant = lullaby.get_meta(key, null)
-			if loop is Tween and loop.is_valid():
-				loop.kill()
-		var fade: Tween = lullaby.create_tween()
-		fade.tween_property(lullaby, "modulate:a", 0.0, 0.4)
-		fade.tween_callback(lullaby.queue_free)
-		return
-
-	lullaby = Control.new()
-	lullaby.name = SIREN_LULLABY_NAME
-	lullaby.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lullaby.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	lullaby.modulate.a = 0.0
-	node.add_child(lullaby)
-
-	var tint := TextureRect.new()
-	tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tint.texture = node.texture
-	tint.expand_mode = node.expand_mode
-	tint.stretch_mode = node.stretch_mode
-	tint.flip_h = node.flip_h
-	tint.flip_v = node.flip_v
-	tint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	tint.self_modulate = SIREN_SLEEP_TINT_COLOR
-	lullaby.add_child(tint)
-
-	var fade_in: Tween = lullaby.create_tween()
-	fade_in.tween_property(lullaby, "modulate:a", 1.0, 0.4)
-
-	# The tint slowly breathes, and follows the sprite turning around.
-	var tint_tween: Tween = lullaby.create_tween().set_loops()
-	tint_tween.tween_method(
-		func(phase: float) -> void:
-			if not is_instance_valid(node):
-				return
-			tint.flip_h = node.flip_h
-			tint.texture = node.texture
-			tint.modulate.a = lerpf(0.25, 0.45, 0.5 - 0.5 * cos(phase * TAU)),
-		0.0, 1.0, 2.0
+	DreadlureFX.lure_flash(_fx_layer, from_node, to_node, func(node: Variant) -> void:
+		if is_instance_valid(node) and node is TextureRect:
+			_sprite_flash(node, 1.05, Color(0.8, 1.2, 1.6, 1.0))
 	)
-	lullaby.set_meta("tint_tween", tint_tween)
-
-	# A note floats up off his head every ~0.8s.
-	var note_tween: Tween = lullaby.create_tween().set_loops()
-	note_tween.tween_callback(func() -> void:
-		if not is_instance_valid(node):
-			return
-		var note: Node2D = _build_music_note(randf_range(12.0, 16.0), SIREN_SONG_COLOR)
-		var start: Vector2 = Vector2(node.size.x * randf_range(0.4, 0.6), -4.0)
-		note.position = start
-		note.modulate.a = 0.0
-		lullaby.add_child(note)
-		var drift: Tween = note.create_tween()
-		drift.tween_property(note, "modulate:a", 1.0, 0.2)
-		drift.parallel().tween_property(note, "position", start + Vector2(randf_range(-14.0, 14.0), -44.0), 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		drift.parallel().tween_property(note, "rotation", randf_range(-0.35, 0.35), 1.4)
-		drift.tween_property(note, "modulate:a", 0.0, 0.3)
-		drift.tween_callback(note.queue_free)
-	)
-	note_tween.tween_interval(0.8)
-	lullaby.set_meta("note_tween", note_tween)
 
 
-## Purely cosmetic: Corrosive Haze's cast - a glob of murky ooze lobbed
-## from `from_node` (Slardar) to `to_node` (the marked target) - the
-## orb projectile (_play_orb_projectile()) -
-## in CORROSIVE_HAZE_OOZE_COLOR with a darker rim, bursting into a
-## splatter of dark droplets and flashing the target sickly green. The
-## lingering haze is _set_corrosive_haze()'s.
-func _play_corrosive_haze_glob(from_node: Variant, to_node: Variant) -> void:
-	_play_orb_projectile(from_node, to_node, CORROSIVE_HAZE_OOZE_COLOR, CORROSIVE_HAZE_RIM_COLOR, CORROSIVE_HAZE_FLASH_COLOR, 28.0)
-
-
-## Keeps Corrosive Haze's lingering haze in sync with who's currently
+## Keeps Deathlight Lure's lingering lure in sync with who's currently
 ## marked - every enemy and the player's own Elderwild Companion carrying a
-## "corrosive_haze_bonus_pct" > 0, and the player while
-## _player_corrosive_haze_bonus_pct > 0 (a rival's cast). The mark's
+## "deathlight_lure_bonus_pct" > 0, and the player while
+## _player_deathlight_lure_bonus_pct > 0 (a rival's cast). The mark's
 ## own countdown (armor_reduction_turns_left) already clears those to 0
-## when it ends, so the haze just follows them. Called from
+## when it ends, so the lure just follows them. Called from
 ## _refresh_bars() (i.e. constantly), same approach as
 ## _refresh_thornbind_vines().
-func _refresh_corrosive_haze() -> void:
+func _refresh_deathlight_lure() -> void:
 	for enemy in _enemies:
-		_set_corrosive_haze(enemy.get("node"), float(enemy.get("corrosive_haze_bonus_pct", 0.0)) > 0.0)
-	_set_corrosive_haze(hero_image, _player_corrosive_haze_bonus_pct > 0.0)
+		_set_deathlight_lure(enemy.get("node"), float(enemy.get("deathlight_lure_bonus_pct", 0.0)) > 0.0)
+	_set_deathlight_lure(hero_image, _player_deathlight_lure_bonus_pct > 0.0)
 	if _is_bear_alive():
-		_set_corrosive_haze(_bear.get("node"), float(_bear.get("corrosive_haze_bonus_pct", 0.0)) > 0.0)
+		_set_deathlight_lure(_bear.get("node"), float(_bear.get("deathlight_lure_bonus_pct", 0.0)) > 0.0)
 
 
-## Purely cosmetic: puts Corrosive Haze's rusting haze on a marked
-## `node` (or takes it off) - slow semi-transparent smoke puffs drifting
-## up off its body, plus corrosion drips running down the sprite and
-## dropping off every ~0.45s. Lives under a child Control, so it
-## follows the sprite's position/scale for free - but NOT its stealth
-## fade: the haze is the mark's true sight, so its inner layer divides
-## out the sprite's own alpha every frame, staying fully visible over a
-## faded (Depthsveil/Rootveil/Moonlight Shadow) target. Fades
-## in/out; only does anything when the state actually changes (the
-## child's presence is the marker).
-func _set_corrosive_haze(node: Variant, active: bool) -> void:
-	if not is_instance_valid(node) or not (node is Control):
-		return
-	var haze: Control = node.get_node_or_null(CORROSIVE_HAZE_NAME)
-	if active == (haze != null):
-		return
-
-	if not active:
-		# Renamed right away so a quick re-mark during the fade creates a
-		# fresh haze instead of finding this dying one.
-		haze.name = CORROSIVE_HAZE_NAME + "Fading"
-		var drip_loop: Variant = haze.get_meta("drip_tween", null)
-		if drip_loop is Tween and drip_loop.is_valid():
-			drip_loop.kill()
-		var smoke: CPUParticles2D = haze.get_meta("smoke", null)
-		if is_instance_valid(smoke):
-			smoke.emitting = false
-		var fade: Tween = haze.create_tween()
-		fade.tween_property(haze, "modulate:a", 0.0, 0.6)
-		fade.tween_callback(haze.queue_free)
-		return
-
-	# Outer layer: fades in/out. Inner layer: cancels the sprite's own
-	# stealth fade (see below).
-	haze = Control.new()
-	haze.name = CORROSIVE_HAZE_NAME
-	haze.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	haze.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	haze.modulate.a = 0.0
-	node.add_child(haze)
-	var inner := Control.new()
-	inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	haze.add_child(inner)
-
-	# Each puff fades in, holds, then fades out as it rises.
-	var clear_smoke := Color(CORROSIVE_HAZE_SMOKE_COLOR.r, CORROSIVE_HAZE_SMOKE_COLOR.g, CORROSIVE_HAZE_SMOKE_COLOR.b, 0.0)
-	var ramp := Gradient.new()
-	ramp.offsets = PackedFloat32Array([0.0, 0.3, 1.0])
-	ramp.colors = PackedColorArray([clear_smoke, CORROSIVE_HAZE_SMOKE_COLOR, clear_smoke])
-	var smoke := CPUParticles2D.new()
-	smoke.position = Vector2(node.size.x / 2.0, node.size.y * 0.55)
-	smoke.amount = 9
-	smoke.lifetime = 1.8
-	smoke.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	smoke.emission_rect_extents = Vector2(node.size.x * 0.25, node.size.y * 0.25)
-	smoke.direction = Vector2(0, -1)
-	smoke.spread = 20.0
-	smoke.gravity = Vector2.ZERO
-	smoke.initial_velocity_min = 8.0
-	smoke.initial_velocity_max = 18.0
-	smoke.scale_amount_min = 10.0
-	smoke.scale_amount_max = 18.0
-	smoke.color_ramp = ramp
-	inner.add_child(smoke)
-	smoke.emitting = true
-	haze.set_meta("smoke", smoke)
-
-	var fade_in: Tween = haze.create_tween()
-	fade_in.tween_property(haze, "modulate:a", 1.0, 0.5)
-
-	# Every ~0.45s: keep the true-sight compensation current, and let
-	# another corrosion drip run down the sprite and fall off.
-	var drip_tween: Tween = haze.create_tween().set_loops()
-	drip_tween.tween_callback(func() -> void:
-		if not is_instance_valid(node):
-			return
-		inner.modulate.a = 1.0 / maxf(float(node.modulate.a), 0.2)
-		var drip := ColorRect.new()
-		drip.color = CORROSIVE_HAZE_DRIP_COLOR
-		drip.size = Vector2(4, 8)
-		drip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var start := Vector2(node.size.x * randf_range(0.3, 0.7), node.size.y * randf_range(0.2, 0.55))
-		drip.position = start
-		inner.add_child(drip)
-		var fall: Tween = drip.create_tween()
-		# Slides slowly down the body first, then drops away.
-		fall.tween_property(drip, "position:y", start.y + 14.0, 0.5).set_trans(Tween.TRANS_SINE)
-		fall.tween_property(drip, "position:y", start.y + 14.0 + randf_range(30.0, 50.0), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		fall.parallel().tween_property(drip, "modulate:a", 0.0, 0.35)
-		fall.tween_callback(drip.queue_free)
-	)
-	drip_tween.tween_interval(0.45)
-	haze.set_meta("drip_tween", drip_tween)
+## Purely cosmetic: hangs Deathlight Lure's mark on a marked `node` (or
+## takes it off) - the lure bobbing over its head with rings of light, and a
+## cold outline round the body (see DreadlureFX.set_mark()). Lives under a
+## child Control, so it follows the sprite for free; only does anything when
+## the state actually changes.
+func _set_deathlight_lure(node: Variant, active: bool) -> void:
+	DreadlureFX.set_mark(node, active)
 
 
-## Purely cosmetic: Slithereen Crush - Slardar (`caster_node`) stomps
-## (a quick squash-and-bounce on his own sprite, plus a light screen
-## shake), and a ring of seawater bursts out across the ground from his
-## feet to about `radius` columns (flattened like a shockwave, at least
-## half a column for a radius-0 cast), kicking up water spray and rock
-## chunks along its edge. Each node in `hit_nodes` (every unit the
-## crush hits) gets the standard red splash hit-flash and a small
-## splash of water at its feet right as the wave reaches it. Feet
-## positions are captured up front, so a unit killed by the hit still
-## gets its splash. Same layering as _play_double_trouble_effect().
-func _play_slithereen_crush(caster_node: Variant, radius: int, hit_nodes: Array) -> void:
+## Purely cosmetic: Paralytic Venom - Dreadlure (`caster_node`) rears up
+## and releases the toxins: a ring of pale cloud rolls out from its body to
+## about `radius` columns (at least half a column for a radius-0 cast),
+## throwing up threads of venom along its edge (see DreadlureFX.
+## venom_cloud()). Each node in `hit_nodes` (every unit the venom hits) gets
+## a hit-flash right as the cloud reaches it. The held state afterward is
+## _refresh_venom_paralysis()'s.
+func _play_paralytic_venom(caster_node: Variant, radius: int, hit_nodes: Array) -> void:
 	if not is_instance_valid(caster_node) or not (caster_node is Control):
 		return
 	var feet: Vector2 = caster_node.position + Vector2(caster_node.size.x / 2.0, caster_node.size.y * 0.9)
 	var reach: float = _grid_unit() * maxf(0.5, float(radius)) + caster_node.size.x * 0.3
 
-	# The stomp - squashed down, then back, from whatever base scale an
-	# enlarging buff currently has him at.
+	# Rearing up, then settling, from whatever base scale an enlarging buff
+	# currently has it at.
 	var base_scale: Vector2 = caster_node.get_meta("base_scale", Vector2.ONE)
 	caster_node.pivot_offset = Vector2(caster_node.size.x / 2.0, caster_node.size.y)
-	var stomp: Tween = caster_node.create_tween()
-	stomp.tween_property(caster_node, "scale", base_scale * Vector2(1.12, 0.85), 0.07)
-	stomp.tween_property(caster_node, "scale", base_scale, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	stomp.tween_callback(func() -> void:
+	var rear: Tween = caster_node.create_tween()
+	rear.tween_property(caster_node, "scale", base_scale * Vector2(0.97, 1.07), 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	rear.tween_property(caster_node, "scale", base_scale, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	rear.tween_callback(func() -> void:
 		# Every other effect scales around the sprite's center.
 		if is_instance_valid(caster_node):
 			caster_node.pivot_offset = caster_node.size / 2.0
 	)
-	_shake_screen()
 
-	# The shockwave ring.
-	var ring := Line2D.new()
-	ring.width = 7.0
-	ring.default_color = SLITHEREEN_CRUSH_WATER_COLOR
-	ring.antialiased = true
-	for k in range(49):
-		var angle: float = k * TAU / 48.0
-		ring.add_point(Vector2(cos(angle), sin(angle) * 0.3) * reach)
-	var holder := Node2D.new()
-	holder.position = feet
-	holder.scale = Vector2(0.05, 0.05)
-	holder.add_child(ring)
-	add_child(holder)
-	move_child(holder, enemies_layer.get_index() + 1)
-	var wave: Tween = holder.create_tween()
-	wave.tween_property(holder, "scale", Vector2.ONE, SLITHEREEN_CRUSH_WAVE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	wave.tween_property(holder, "modulate:a", 0.0, 0.25)
-	wave.tween_callback(holder.queue_free)
+	DreadlureFX.venom_cloud(_fx_layer, caster_node, reach, PARALYTIC_VENOM_WAVE_SECONDS, hit_nodes)
 
-	# Spray and rocks thrown up along the ring's edge as it arrives there.
-	var edge_points: int = 8
-	for k in range(edge_points):
-		var angle: float = k * TAU / edge_points
-		var edge: Vector2 = feet + Vector2(cos(angle), sin(angle) * 0.3) * reach
-		var at_edge: Tween = create_tween()
-		at_edge.tween_interval(SLITHEREEN_CRUSH_WAVE_SECONDS * 0.8)
-		at_edge.tween_callback(func() -> void: _play_crush_spray(edge, 1.0))
-
-	# Each unit hit: splash hit-flash + a small splash at its feet, as
-	# the wave reaches it.
 	for node in hit_nodes:
 		if not is_instance_valid(node) or not (node is Control):
 			continue
 		var node_feet: Vector2 = node.position + Vector2(node.size.x / 2.0, node.size.y * 0.9)
 		var reach_fraction: float = clampf(absf(node_feet.x - feet.x) / reach, 0.0, 1.0)
 		var on_hit: Tween = create_tween()
-		on_hit.tween_interval(SLITHEREEN_CRUSH_WAVE_SECONDS * sqrt(reach_fraction))
+		on_hit.tween_interval(PARALYTIC_VENOM_WAVE_SECONDS * sqrt(reach_fraction))
 		on_hit.tween_callback(func() -> void:
-			_play_crush_spray(node_feet, 0.6)
 			if is_instance_valid(node) and node is TextureRect:
 				_flash_bounce_hit(node)
 		)
 
 
-## One burst of Slithereen Crush's spray at `pos` - seawater droplets
-## thrown up and falling back, plus a few tumbling rock chunks - scaled
-## by `strength` (1.0 = along the shockwave's own edge). Same
-## CPUParticles2D one-shot-burst recipe as _spawn_three_cheers_impact().
-func _play_crush_spray(pos: Vector2, strength: float) -> void:
-	var lifetime: float = 0.6
-	for layer in [[SLITHEREEN_CRUSH_SPRAY_COLOR, int(14 * strength), 2.5, 5.0], [SLITHEREEN_CRUSH_ROCK_COLOR, int(5 * strength), 4.0, 7.0]]:
-		var particles := CPUParticles2D.new()
-		particles.position = pos
-		particles.emitting = false
-		particles.one_shot = true
-		particles.amount = maxi(2, int(layer[1]))
-		particles.lifetime = lifetime
-		particles.explosiveness = 0.95
-		particles.direction = Vector2(0, -1)
-		particles.spread = 35.0
-		particles.gravity = Vector2(0, 700)
-		particles.initial_velocity_min = 120.0 * strength
-		particles.initial_velocity_max = 230.0 * strength
-		particles.angle_min = 0.0
-		particles.angle_max = 360.0
-		particles.angular_velocity_min = -300.0
-		particles.angular_velocity_max = 300.0
-		particles.scale_amount_min = layer[2]
-		particles.scale_amount_max = layer[3]
-		particles.color = layer[0]
-		add_child(particles)
-		move_child(particles, enemies_layer.get_index() + 1)
-		particles.emitting = true
-		get_tree().create_timer(lifetime + 0.2).timeout.connect(particles.queue_free)
+## Keeps Paralytic Venom's held state (see DreadlureFX.set_paralysis()) on
+## everyone it stunned - every enemy and the Elderwild Companion marked
+## "venom_paralyzed", and the player (a rival's cast) - for as long as the
+## stun that came with it lasts. Called from _refresh_bars() (i.e.
+## constantly), same approach as _refresh_luring_gaze_trances(): a mark
+## only counts while its stun is still running, and is cleared here once
+## it's over.
+func _refresh_venom_paralysis() -> void:
+	for enemy in _enemies:
+		if enemy.get("venom_paralyzed", false) and int(enemy.get("stun_turns_left", 0)) <= 0:
+			enemy["venom_paralyzed"] = false
+		DreadlureFX.set_paralysis(enemy.get("node"), bool(enemy.get("venom_paralyzed", false)))
+	if _player_venom_paralyzed and _player_stun_turns_left <= 0:
+		_player_venom_paralyzed = false
+	DreadlureFX.set_paralysis(hero_image, _player_venom_paralyzed)
+	if _is_bear_alive():
+		if _bear.get("venom_paralyzed", false) and int(_bear.get("stun_turns_left", 0)) <= 0:
+			_bear["venom_paralyzed"] = false
+		DreadlureFX.set_paralysis(_bear.get("node"), bool(_bear.get("venom_paralyzed", false)))
 
 
-## Purely cosmetic: Ensnare's net - thrown from `from_node` (the
-## caster) to `to_node` (the target) on a slight upward arc, spinning
-## and opening up from a tight bundle to full size as it flies, then
-## draping over the target (ENSNARE_DRAPE_WIDTH_RATIO of its width, a
-## little flattened)
-## for ENSNARE_DRAPE_SECONDS before fading. The root/damage have already
-## been applied; this never gates on it. Start/end points are captured
-## up front, so a target killed by the hit still gets its net. Same
-## layering as _play_double_trouble_effect().
-func _play_net_throw(from_node: Variant, to_node: Variant) -> void:
-	if not (from_node is Control) or not (to_node is Control):
-		return
-	if not is_instance_valid(from_node) or not is_instance_valid(to_node):
-		return
-
-	var start: Vector2 = from_node.position + from_node.size / 2.0
-	var end: Vector2 = to_node.position + to_node.size / 2.0
-	var travel: Vector2 = end - start
-	var normal: Vector2 = Vector2(-travel.y, travel.x).normalized() if travel.length() > 0.001 else Vector2.UP
-	# Always bulge upward, whichever way it's thrown.
-	if normal.y > 0.0:
-		normal = -normal
-	var control_point: Vector2 = (start + end) / 2.0 + normal * minf(80.0, travel.length() * 0.25)
-	var flight_time: float = clampf(travel.length() / 800.0, 0.3, 0.55)
-	var spin: float = TAU * (1.0 if travel.x >= 0.0 else -1.0)
-
-	var net: Node2D = _build_net(ENSNARE_NET_RADIUS)
-	net.position = start
-	net.scale = Vector2(0.25, 0.25)
-	add_child(net)
-	move_child(net, enemies_layer.get_index() + 1)
-
-	# Draped: half as wide as the target, a little flattened.
-	var drape_scale: float = maxf(0.3, to_node.size.x * ENSNARE_DRAPE_WIDTH_RATIO / (2.0 * ENSNARE_NET_RADIUS))
-	var tween: Tween = net.create_tween()
-	tween.tween_method(
-		func(t: float) -> void:
-			var a: Vector2 = start.lerp(control_point, t)
-			var b: Vector2 = control_point.lerp(end, t)
-			net.position = a.lerp(b, t),
-		0.0, 1.0, flight_time
-	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.parallel().tween_property(net, "scale", Vector2.ONE, flight_time).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(net, "rotation", spin, flight_time)
-	tween.tween_property(net, "scale", Vector2(drape_scale, drape_scale * 0.85), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(net, "rotation", spin + 0.15, 0.12)
-	tween.tween_callback(func() -> void:
-		if is_instance_valid(to_node) and to_node is TextureRect:
-			_pulse_caster_sprite(to_node, false)
-	)
-	tween.tween_interval(ENSNARE_DRAPE_SECONDS)
-	tween.tween_property(net, "modulate:a", 0.0, 0.3)
-	tween.tween_callback(net.queue_free)
+## Keeps Might of the Deep's charge (see DreadlureFX.set_might_charge()) on
+## whichever side has the passive: the player's hero, and - in a hero fight -
+## the rival, if it's the one with it.
+func _refresh_might_of_the_deep() -> void:
+	var data: Dictionary = _get_might_of_the_deep_level_data()
+	var charge: int = _might_of_the_deep_attack_count if not data.is_empty() else 0
+	DreadlureFX.set_might_charge(hero_image, charge, not data.is_empty() and charge + 1 >= int(data.get("attacks_required", 1)))
+	if _in_hero_fight:
+		var rival: Variant = _get_hero_fight_boss().get("node")
+		var rival_data: Dictionary = _get_enemy_might_of_the_deep_level_data()
+		var rival_charge: int = _enemy_might_of_the_deep_attack_count if not rival_data.is_empty() else 0
+		DreadlureFX.set_might_charge(rival, rival_charge, not rival_data.is_empty() and rival_charge + 1 >= int(rival_data.get("attacks_required", 1)))
 
 
-## Builds Ensnare's net out of plain shapes, centered on its own origin:
-## a diamond mesh of rope cords (two sets of parallel chords at +/-45
-## degrees, each clipped to the circle) inside a round rim, with small
-## weights spaced around the edge. Same "no art asset" approach as
-## _build_sacred_arrow()/_build_star().
-func _build_net(radius: float) -> Node2D:
-	var net := Node2D.new()
+## Keeps Shackles' chains (see ShacklesFX) on whoever is currently held by
+## them - every enemy and the Elderwild Companion marked "shackled", and the
+## player (a rival's cast) - for exactly as long as the root that came with
+## the cast lasts. Called from _refresh_bars() (i.e. constantly), same
+## approach as _refresh_mothers_grasp_roots(): the chains just follow
+## current state instead of being toggled at every cast/tick/dispel site. A
+## root from anything else (Thornbind, Rootveil) never raises them: the flag
+## is only ever set by Shackles itself, and cleared here the moment its
+## root has run out, so a later root of another kind can't resurrect them.
+func _refresh_shackles() -> void:
+	for enemy in _enemies:
+		if int(enemy.get("root_turns_left", 0)) <= 0:
+			enemy["shackled"] = false
+		ShacklesFX.set_on(self, enemy.get("node"), bool(enemy.get("shackled", false)), _on_shackles_snapped.bind(enemy.get("node")))
+	if _player_root_turns_left <= 0:
+		_player_shackled = false
+	ShacklesFX.set_on(self, hero_image, _player_shackled, _on_shackles_snapped.bind(hero_image))
+	if _is_bear_alive():
+		if int(_bear.get("root_turns_left", 0)) <= 0:
+			_bear["shackled"] = false
+		ShacklesFX.set_on(self, _bear.get("node"), bool(_bear.get("shackled", false)), _on_shackles_snapped.bind(_bear.get("node")))
 
-	for direction in [Vector2(1, 1).normalized(), Vector2(1, -1).normalized()]:
-		var across: Vector2 = Vector2(-direction.y, direction.x)
-		var steps: int = int(floor(radius / ENSNARE_MESH_SPACING))
-		for k in range(-steps, steps + 1):
-			var offset: float = k * ENSNARE_MESH_SPACING
-			if absf(offset) >= radius:
-				continue
-			var half_chord: float = sqrt(radius * radius - offset * offset)
-			var cord := Line2D.new()
-			cord.width = 2.0
-			cord.default_color = ENSNARE_ROPE_COLOR
-			cord.antialiased = true
-			cord.add_point(across * offset - direction * half_chord)
-			cord.add_point(across * offset + direction * half_chord)
-			net.add_child(cord)
 
-	var rim := Line2D.new()
-	rim.width = 3.5
-	rim.default_color = ENSNARE_RIM_COLOR
-	rim.antialiased = true
-	rim.joint_mode = Line2D.LINE_JOINT_ROUND
-	var rim_points: int = 28
-	for k in range(rim_points + 1):
-		var angle: float = k * TAU / rim_points
-		rim.add_point(Vector2(cos(angle), sin(angle)) * radius)
-	net.add_child(rim)
-
-	for k in range(6):
-		var angle: float = k * TAU / 6.0
-		var weight := Polygon2D.new()
-		weight.color = ENSNARE_RIM_COLOR
-		var weight_points := PackedVector2Array()
-		for j in range(8):
-			var a: float = j * TAU / 8.0
-			weight_points.append(Vector2(cos(a), sin(a)) * 3.5)
-		weight.polygon = weight_points
-		weight.position = Vector2(cos(angle), sin(angle)) * radius
-		net.add_child(weight)
-
-	return net
+## The chains cinching shut on `node`: its sprite pulses.
+func _on_shackles_snapped(node: Variant) -> void:
+	if is_instance_valid(node) and node is TextureRect:
+		_pulse_caster_sprite(node, false)
 
 
 ## Purely cosmetic: Starstorm's meteors - STARSTORM_STARS_PER_TARGET
@@ -5032,11 +4672,11 @@ func _resolve_the_hollow_cold_cast(target: Dictionary, level_data: Dictionary) -
 			enemy["the_hollow_cold_dot_turns_left"] = duration
 			if is_instance_valid(enemy.get("node")):
 				_flash_bounce_hit(enemy["node"], MARK_OF_STILLNESS_FLASH_COLOR)
-	# The rival's own illusions (The Last Empress's Mirror Image) in the same
-	# area get the same DoT - ticked by _tick_enemy_illusions_the_hollow_cold()
+	# The rival's own guards (The Last Empress's Imperial Guard) in the same
+	# area get the same DoT - ticked by _tick_enemy_guards_the_hollow_cold()
 	# at the start of the enemy turn. The rival's own Elderwild Companion needs
 	# nothing extra: it's a regular _enemies entry, already marked above.
-	_mark_illusions_the_hollow_cold(_enemy_illusions, target_pos, radius, damage, duration)
+	_mark_guards_the_hollow_cold(_enemy_guards, target_pos, radius, damage, duration)
 
 	_play_the_hollow_cold_swirl(target.get("node"), radius)
 	_open_hollow_cold_tear(target.get("node"), target_pos, radius, duration, false)
@@ -5319,22 +4959,22 @@ func _fire_kiss_the_wastes_shot(impact_delay: float = 0.0) -> void:
 		if _distance(enemy["pos_index"], impact_pos) == 1:
 			_deal_fixed_damage_to_enemy(enemy, splash_damage)
 
-	# A rival's own illusion (The Last Empress's Mirror Image) exactly on the
+	# A rival's own guard (The Last Empress's Imperial Guard) exactly on the
 	# impact column takes main_damage, one column either side takes
 	# splash_damage - same split as the regular-enemy checks above,
 	# rather than the single flat radius _deal_aoe_damage_to_enemy_
-	# illusions() would give (which can't tell "the impact column
+	# guards() would give (which can't tell "the impact column
 	# itself" apart from "one column over").
-	if not _enemy_illusions.is_empty():
+	if not _enemy_guards.is_empty():
 		var boss: Dictionary = _get_hero_fight_boss()
 		if not boss.is_empty():
 			var boss_armor: float = _enemy_hero_effective_armor(boss)
-			for illusion in _enemy_illusions.duplicate():
-				var illusion_dist: int = _distance(illusion["pos_index"], impact_pos)
-				if illusion_dist == 0:
-					_deal_damage_to_enemy_illusion(illusion, _apply_armor_reduction(main_damage, boss_armor))
-				elif illusion_dist == 1:
-					_deal_damage_to_enemy_illusion(illusion, _apply_armor_reduction(splash_damage, boss_armor))
+			for guard in _enemy_guards.duplicate():
+				var guard_dist: int = _distance(guard["pos_index"], impact_pos)
+				if guard_dist == 0:
+					_deal_damage_to_enemy_guard(guard, _apply_armor_reduction(main_damage, boss_armor))
+				elif guard_dist == 1:
+					_deal_damage_to_enemy_guard(guard, _apply_armor_reduction(splash_damage, boss_armor))
 
 	_play_kiss_the_wastes_impact_effect(impact_pos, impact_delay, hero_image)
 
@@ -5380,235 +5020,490 @@ func _play_kiss_the_wastes_impact_effect(pos_index: int, delay: float = 0.0, cas
 
 
 # ------------------------------------------------------------------
-# The Last Empress's Mirror Image (see the field comment above _illusions for
+# The Last Empress's Imperial Guard (see the field comment above _guards for
 # the overall shape).
 # ------------------------------------------------------------------
 
-## Activates Mirror Image: replaces any illusions already up outright
-## (_end_mirror_image() first - recasting mid-duration just resets the
-## set, nothing carries over), then spawns this level's own `illusions`
-## count of decoys - one immediately in front of the hero, one
-## immediately behind (both clamped to the grid, so at the very edge a
-## decoy can end up sharing the hero's own column instead of going out
-## of bounds), and any beyond those first two doubling up randomly on
-## one of those same two columns. "Front"/"behind" follows the hero's
-## own CURRENT facing (hero_image.flip_h, same convention Double Trouble/
-## Blast Hopper already read) rather than a fixed board direction.
-## Rip Tide's own bonuses (extra_illusion, illusion_damage_bonus_pct,
-## illusion_duration_bonus) are folded straight in here, read fresh off
-## _get_rip_tide_level_data() at cast time - a no-op contribution while
+## How far a guard walks each turn, in columns - the same single step a
+## creep takes.
+const IMPERIAL_GUARD_SPEED := 1
+
+## Activates Imperial Guard: replaces any guards already up outright
+## (_end_imperial_guard() first - recasting mid-duration just resets the
+## set, nothing carries over), then raises this level's own `guards` count
+## of drowned warriors around the enemy CLOSEST to the hero - from
+## anywhere on the board, no range needed. One rises on the side of that
+## enemy facing the hero, one on its far side (both clamped to the grid,
+## so at the very edge one can end up sharing the enemy's own column), and
+## any beyond those first two double up randomly on one of those same two
+## columns. With no enemy left to rise around, they gather beside the hero
+## instead. Every guard starts out facing the enemy it was raised around.
+## Empress's Will's own bonuses (extra_guard, guardians_damage_bonus_pct,
+## guard_duration_bonus) are folded straight in here, read fresh off
+## _get_empress_will_level_data() at cast time - a no-op contribution while
 ## that skill isn't learned, same "empty means locked" convention every
 ## other auto-triggered skill's own level-data getter uses. Always
-## "succeeds" - self-cast, no target or range requirement, same as
-## every other self-cast buff.
-func _activate_mirror_image(level_data: Dictionary) -> void:
-	_end_mirror_image()
+## "succeeds" - no target or range requirement, same as every other
+## self-cast buff.
+func _activate_imperial_guard(level_data: Dictionary) -> void:
+	_end_imperial_guard()
 
-	var rip_tide_level_data: Dictionary = _get_rip_tide_level_data()
+	var empress_will_level_data: Dictionary = _get_empress_will_level_data()
 
-	var direction: int = -1 if hero_image.flip_h else 1
-	var front_pos: int = clampi(_hero_pos_index + direction, 0, GRID_COLUMNS - 1)
-	var behind_pos: int = clampi(_hero_pos_index - direction, 0, GRID_COLUMNS - 1)
+	var anchor_pos: int
+	var near_side: int
+	var closest: Dictionary = _closest_enemy_to_hero()
+	if closest.is_empty():
+		anchor_pos = _hero_pos_index
+		near_side = 1 if hero_image.flip_h else -1
+	else:
+		anchor_pos = int(closest["pos_index"])
+		near_side = _step_toward(anchor_pos, _hero_pos_index)
+		if near_side == 0:
+			near_side = -1
+	var near_pos: int = clampi(anchor_pos + near_side, 0, GRID_COLUMNS - 1)
+	var far_pos: int = clampi(anchor_pos - near_side, 0, GRID_COLUMNS - 1)
 
-	var illusions_count: int = int(level_data.get("illusions", 3)) + int(rip_tide_level_data.get("extra_illusion", 0))
-	var illusion_hp: float = _hero_max_hp() * float(level_data.get("hp_pct", 0.0))
+	var guards_count: int = int(level_data.get("guards", 3)) + int(empress_will_level_data.get("extra_guard", 0))
+	var guard_hp: float = _hero_max_hp() * float(level_data.get("hp_pct", 0.0))
 
-	for i in range(illusions_count):
+	for i in range(guards_count):
 		var pos: int
 		if i == 0:
-			pos = front_pos
+			pos = near_pos
 		elif i == 1:
-			pos = behind_pos
+			pos = far_pos
 		else:
-			pos = front_pos if randf() < 0.5 else behind_pos
-		_illusions.append({
-			"pos_index": pos,
-			"current_hp": illusion_hp,
-			"max_hp": illusion_hp,
-			"node": _spawn_illusion_node(pos),
-		})
+			pos = near_pos if randf() < 0.5 else far_pos
+		var facing: int = _step_toward(pos, anchor_pos)
+		if facing == 0:
+			facing = -near_side
+		_guards.append(_spawn_guard(pos, facing, guard_hp))
 
-	_illusion_damage_pct = float(level_data.get("damage_pct", 0.0)) + float(rip_tide_level_data.get("illusion_damage_bonus_pct", 0.0))
-	_illusion_hit_chance_pct = float(level_data.get("hit_chance_pct", 0.0))
-	_illusions_turns_remaining = int(level_data.get("duration", 0)) + int(rip_tide_level_data.get("illusion_duration_bonus", 0))
+	_guard_damage_pct = float(level_data.get("damage_pct", 0.0)) + float(empress_will_level_data.get("guardians_damage_bonus_pct", 0.0))
+	_guards_turns_remaining = int(level_data.get("duration", 0)) + int(empress_will_level_data.get("guard_duration_bonus", 0))
 	# The casting turn itself doesn't count - duration only starts
-	# ticking (and the illusions only start attacking) from the turn
-	# after (see _tick_mirror_image()), same as every other duration-
-	# based buff.
-	_illusions_duration_pending_start = true
+	# ticking (and the guards only start acting) from the turn after (see
+	# _guards_turn()/_tick_imperial_guard()), same as every other duration-
+	# based buff. The enemies can still go for them this very turn.
+	_guards_duration_pending_start = true
 
-	_show_message_over_hero("Mirror Image!")
+	_show_message_over_hero("Imperial Guard!")
 
 
-## Purely visual: a copy of the hero's own current portrait, faded to
-## HERO_ILLUSION_ALPHA so the real hero still reads clearly among his
-## own decoys, positioned on `pos_index`'s own column at the same
-## size/scale _set_hero_image() already gives hero_image itself.
-func _spawn_illusion_node(pos_index: int) -> TextureRect:
+## The living enemy closest to the hero, by columns (ties go to whichever
+## comes first) - {} when none are left.
+func _closest_enemy_to_hero() -> Dictionary:
+	var closest: Dictionary = {}
+	var closest_distance: int = GRID_COLUMNS + 1
+	for enemy in _enemies:
+		var d: int = _distance(enemy["pos_index"], _hero_pos_index)
+		if d < closest_distance:
+			closest_distance = d
+			closest = enemy
+	return closest
+
+
+## Raises one guard on `pos_index`'s own column facing `facing` (+1 right,
+## -1 left; its art faces right natively, so left is a flip): its sprite
+## at the same height and size as a creep's, climbing up out of the floor
+## as it fades in, with an "current / max" HP label over it (kept in sync
+## by _refresh_guard_hp_labels()) and a CreatureAnimator for the same
+## idle/attack/hit/move reactions the creeps have. Returns the guard's
+## Dictionary: {pos_index, current_hp, max_hp, facing, node, hp_label,
+## enemy}. `enemy_side` marks one raised by a rival Last Empress (kept in
+## _enemy_guards instead of _guards - see _guard_group()).
+func _spawn_guard(pos_index: int, facing: int, hp: float, enemy_side: bool = false) -> Dictionary:
+	var texture: Texture2D = hero_image.texture
+	if ResourceLoader.exists(IMPERIAL_GUARD_IMAGE_PATH):
+		texture = load(IMPERIAL_GUARD_IMAGE_PATH)
+
 	var tex_rect := TextureRect.new()
-	tex_rect.texture = hero_image.texture
+	tex_rect.texture = texture
 	tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
-	tex_rect.size = hero_image.size
+	tex_rect.size = _creature_size(texture)
 	tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tex_rect.flip_h = hero_image.flip_h
-	tex_rect.modulate = Color(1, 1, 1, HERO_ILLUSION_ALPHA)
-	tex_rect.position = Vector2(_index_to_x(pos_index), _creature_top_y(tex_rect.size.y))
+	tex_rect.flip_h = facing < 0
+	# A guard joining others already in its column stands a little apart,
+	# so you can see how many there are.
+	var group: Array = _enemy_guards if enemy_side else _guards
+	var already_here: int = 0
+	for other in group:
+		if other["pos_index"] == pos_index:
+			already_here += 1
+	var rest := Vector2(_index_to_x(pos_index) + _guard_stack_offset(already_here), _creature_top_y(tex_rect.size.y))
+	tex_rect.position = rest + Vector2(0.0, 36.0)
+	tex_rect.modulate.a = 0.0
 	add_child(tex_rect)
 	# Same reasoning as _elderwild_companion()'s own move_child() call -
 	# render at the hero/enemy layer, not on top of every UI panel.
 	move_child(tex_rect, enemies_layer.get_index() + 1)
-	return tex_rect
+	CreatureAnimator.attach(tex_rect, "imperial_guard")
+
+	var rise := tex_rect.create_tween()
+	rise.tween_property(tex_rect, "position", rest, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	rise.parallel().tween_property(tex_rect, "modulate:a", 1.0, 0.3)
+
+	var hp_label := Label.new()
+	hp_label.size = Vector2(ENEMY_HP_LABEL_WIDTH, ENEMY_HP_LABEL_HEIGHT)
+	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hp_label.add_theme_color_override("font_color", ENEMY_HP_LABEL_COLOR)
+	hp_label.add_theme_font_size_override("font_size", ENEMY_HP_LABEL_FONT_SIZE)
+	hp_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	hp_label.add_theme_constant_override("outline_size", 3)
+	add_child(hp_label)
+	move_child(hp_label, tex_rect.get_index() + 1)
+
+	var guard := {
+		"pos_index": pos_index,
+		"current_hp": hp,
+		"max_hp": hp,
+		"facing": facing,
+		"node": tex_rect,
+		"hp_label": hp_label,
+		"enemy": enemy_side,
+	}
+	_refresh_guard_hp_label(guard)
+	return guard
 
 
-## Ticks Mirror Image's duration down once per End Turn, same timing
-## (and same "the casting turn doesn't count" skip) as every other
-## duration-based buff - firing the illusions' own attack
-## (_fire_mirror_image_attack()) on every tick that actually counts
-## against the duration, then ending the effect once it runs out. A
-## no-op once every illusion has already died in combat (see
-## _kill_illusion()) even if the duration itself hasn't run out yet.
-func _tick_mirror_image() -> void:
-	if _illusions.is_empty():
+## The array `guard` belongs to: the rival's guards for one raised by a
+## rival Last Empress, the player's own otherwise.
+func _guard_group(guard: Dictionary) -> Array:
+	return _enemy_guards if bool(guard.get("enemy", false)) else _guards
+
+
+## Keeps every guard's HP label's text and position current. Run every
+## frame from _process() (same reasoning as _refresh_bear_hp_label()): a
+## guard's HP changes through many generic paths, and its node slides
+## between columns. Guards sharing a column stack their labels upward, above
+## any creep labels already stacked there (see
+## _refresh_enemy_overhead_labels()), so none print over another - the
+## player's guards and the rival's alike.
+func _refresh_guard_hp_labels() -> void:
+	var slots: Dictionary = {}
+	for group in [_guards, _enemy_guards]:
+		for guard in group:
+			var col: int = guard["pos_index"]
+			if not slots.has(col):
+				var enemies_here: int = 0
+				for enemy in _enemies:
+					if enemy["pos_index"] == col:
+						enemies_here += 1
+				slots[col] = enemies_here
+			_refresh_guard_hp_label(guard, int(slots[col]))
+			slots[col] = int(slots[col]) + 1
+
+
+func _refresh_guard_hp_label(guard: Dictionary, slot: int = 0) -> void:
+	var label: Label = guard.get("hp_label")
+	var node: Control = guard.get("node")
+	if not is_instance_valid(label) or not is_instance_valid(node):
 		return
-
-	if _illusions_duration_pending_start:
-		_illusions_duration_pending_start = false
-		return
-
-	_fire_mirror_image_attack()
-
-	_illusions_turns_remaining -= 1
-	if _illusions_turns_remaining <= 0:
-		_end_mirror_image()
+	label.text = "%d / %d" % [roundi(maxf(0.0, float(guard.get("current_hp", 0)))), maxi(1, roundi(float(guard.get("max_hp", 1))))]
+	label.position = Vector2(
+		node.position.x + node.size.x / 2.0 - ENEMY_HP_LABEL_WIDTH / 2.0,
+		node.position.y - ENEMY_HP_LABEL_GAP - ENEMY_HP_LABEL_HEIGHT - float(slot) * (ENEMY_HP_LABEL_HEIGHT + ENEMY_HP_LABEL_GAP))
 
 
-## Every surviving illusion strikes the SAME randomly-picked living,
-## targetable enemy within the hero's own normal attack range
-## (_hero_attack_column_range(), same reach a plain Attack/most of his
-## skills use) - each illusion rolling its own hero-damage instance
-## (_roll_hero_damage()) scaled by _illusion_damage_pct, same "own roll
-## per hit" idiom Three Cheers's own shots use, mitigated by the
-## target's own armor via _deal_fixed_damage_to_enemy(). Stops early if
-## that focus-fire kills the target partway through - a no-op if
-## nothing is in range this turn.
-func _fire_mirror_image_attack() -> void:
-	var col_range: int = _hero_attack_column_range()
-	var targets: Array = []
-	for enemy in _enemies:
-		if _is_target_hidden(enemy):
-			continue
-		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
-			targets.append(enemy)
+## How far to the right the `slot`th guard standing in one column is set
+## from the first.
+func _guard_stack_offset(slot: int) -> float:
+	return float(slot) * 26.0
 
-	if targets.is_empty():
-		return
 
-	var target: Dictionary = targets[randi() % targets.size()]
-	for illusion in _illusions.duplicate():
-		if target.get("current_hp", 0) <= 0:
+## Where `guard`'s sprite belongs: its column, nudged right by its place
+## among the guards sharing that column.
+func _guard_rest_position(guard: Dictionary) -> Vector2:
+	var slot: int = 0
+	for other in _guard_group(guard):
+		if is_same(other, guard):
 			break
-		var illusion_damage: float = _roll_hero_damage() * _illusion_damage_pct
-		_deal_fixed_damage_to_enemy(target, illusion_damage)
-		if _battle_over:
+		if other["pos_index"] == guard["pos_index"]:
+			slot += 1
+	var node: Control = guard["node"]
+	return Vector2(_index_to_x(guard["pos_index"]) + _guard_stack_offset(slot), _creature_top_y(node.size.y))
+
+
+## Re-seats every guard, on both sides, on its column after any of them
+## moved or died.
+func _relayout_guards() -> void:
+	for group in [_guards, _enemy_guards]:
+		for guard in group:
+			if is_instance_valid(guard.get("node")):
+				guard["node"].position = _guard_rest_position(guard)
+
+
+## Ticks Imperial Guard's duration down once per End Turn, same timing
+## (and same "the casting turn doesn't count" skip) as every other
+## duration-based buff, then ends the effect once it runs out. The guards'
+## own actions happen separately, in _guards_turn(). A no-op once every
+## guard has already died in combat (see _kill_guard()) even if the
+## duration itself hasn't run out yet.
+func _tick_imperial_guard() -> void:
+	if _guards.is_empty():
+		return
+
+	if _guards_duration_pending_start:
+		_guards_duration_pending_start = false
+		return
+
+	_guards_turns_remaining -= 1
+	if _guards_turns_remaining <= 0:
+		_end_imperial_guard()
+
+
+## The guards act automatically once per turn, right alongside the enemies
+## (see _end_turn(), where they go just before them): each one attacks an
+## enemy sharing its column - melee range - or, failing that, a guard a
+## rival Last Empress raised there; with neither, it closes in on the
+## nearest of them at its own speed (columns per turn), turning to face
+## the way it walks and stopping early if that walk would carry it onto an
+## enemy's column anyway (see _melee_move_target()). They sit out the
+## casting turn, and do nothing once every enemy is already dead.
+func _guards_turn() -> void:
+	if _guards.is_empty() or _enemies.is_empty() or _guards_duration_pending_start:
+		return
+
+	for guard in _guards.duplicate():
+		if not is_instance_valid(guard.get("node")):
+			continue
+		var target: Dictionary = _get_enemy_at(guard["pos_index"])
+		if not target.is_empty():
+			_guard_attack(guard, target)
+			if _battle_over:
+				return
+			continue
+		var rival_guard: Dictionary = _enemy_guard_at(guard["pos_index"])
+		if not rival_guard.is_empty():
+			_guard_attack_enemy_guard(guard, rival_guard)
+			continue
+
+		var nearest_pos: int = -1
+		var nearest_distance: int = GRID_COLUMNS + 1
+		for enemy in _enemies:
+			var d: int = _distance(enemy["pos_index"], guard["pos_index"])
+			if d < nearest_distance:
+				nearest_distance = d
+				nearest_pos = enemy["pos_index"]
+		for rival in _enemy_guards:
+			var dg: int = _distance(rival["pos_index"], guard["pos_index"])
+			if dg < nearest_distance:
+				nearest_distance = dg
+				nearest_pos = rival["pos_index"]
+		if nearest_pos == -1:
 			return
+		var direction: int = _step_toward(guard["pos_index"], nearest_pos)
+		if direction == 0:
+			continue
+		_move_guard(guard, _melee_move_target(guard["pos_index"], direction, IMPERIAL_GUARD_SPEED), direction)
+	_relayout_guards()
 
 
-## Ends Mirror Image, despawning every surviving illusion - called both
-## when its duration runs out (_tick_mirror_image()) and defensively at
-## the top of _activate_mirror_image() so a recast mid-duration never
+## The rival's guard standing in `pos_index`'s own column, the one with the
+## least HP left (ties go to whichever comes first) - {} when none is
+## there.
+func _enemy_guard_at(pos_index: int) -> Dictionary:
+	var lowest: Dictionary = {}
+	for guard in _enemy_guards:
+		if guard["pos_index"] != pos_index:
+			continue
+		if lowest.is_empty() or float(guard.get("current_hp", 0)) < float(lowest.get("current_hp", 0)):
+			lowest = guard
+	return lowest
+
+
+## One of the player's guards strikes a guard the rival raised, in its own
+## column: the same freshly-rolled hero Attack scaled by _guard_damage_pct as
+## any other guard blow, mitigated by the boss's own effective armor.
+func _guard_attack_enemy_guard(guard: Dictionary, rival_guard: Dictionary) -> void:
+	var animator := CreatureAnimator.of(guard["node"])
+	if animator != null:
+		animator.play_attack(float(guard.get("facing", 1)))
+	var boss: Dictionary = _get_hero_fight_boss()
+	var armor: float = _enemy_hero_effective_armor(boss) if not boss.is_empty() else 0.0
+	_deal_damage_to_enemy_guard(rival_guard, _apply_armor_reduction(_roll_hero_damage() * _guard_damage_pct, armor))
+
+
+## One guard strikes `target`, an enemy in its own column: a freshly-rolled
+## hero Attack scaled by _guard_damage_pct (the same "own roll per hit"
+## idiom Three Cheers's shots use), mitigated by the target's own armor via
+## _deal_fixed_damage_to_enemy() - the guard's own blow, not the hero's, so
+## Deathlight Lure's bonus never applies to it (same as the bear's).
+func _guard_attack(guard: Dictionary, target: Dictionary) -> void:
+	var animator := CreatureAnimator.of(guard["node"])
+	if animator != null:
+		animator.play_attack(float(guard.get("facing", 1)))
+	_deal_fixed_damage_to_enemy(target, _roll_hero_damage() * _guard_damage_pct, false, false)
+
+
+## Slides a guard to column `new_pos`, turning its art to face the way it
+## walked (left or right) and sliding it over with a CreatureAnimator hop,
+## the same as a creep's _move_enemy().
+func _move_guard(guard: Dictionary, new_pos: int, direction: int) -> void:
+	var node: TextureRect = guard["node"]
+	guard["pos_index"] = new_pos
+	guard["facing"] = direction
+	node.flip_h = direction < 0
+	var old_x: float = node.position.x
+	node.position = _guard_rest_position(guard)
+	var animator := CreatureAnimator.of(node)
+	if animator != null and not is_equal_approx(old_x, node.position.x):
+		animator.play_move(old_x - node.position.x)
+
+
+## Puts every guard back on the hero's own column, facing right, at the
+## start of a new stage/hero fight - no slide, they simply start the fresh
+## encounter there (same as _reset_bear_to_hero_column()).
+func _reset_guards_to_hero_column() -> void:
+	for guard in _guards:
+		guard["pos_index"] = _hero_pos_index
+		guard["facing"] = 1
+		var node: TextureRect = guard.get("node")
+		if is_instance_valid(node):
+			node.flip_h = false
+	_relayout_guards()
+	for guard in _guards:
+		_refresh_guard_hp_label(guard)
+
+
+## The guards standing in `pos_index`'s own column (melee reach).
+func _guards_at(pos_index: int) -> Array:
+	var found: Array = []
+	for guard in _guards:
+		if guard["pos_index"] == pos_index:
+			found.append(guard)
+	return found
+
+
+## The nearest guard within `reach` columns of `pos_index` (ties go to the
+## one with the least HP left) - {} when none is that close.
+func _nearest_guard_within(pos_index: int, reach: int) -> Dictionary:
+	var best: Dictionary = {}
+	var best_distance: int = reach + 1
+	for guard in _guards:
+		var d: int = _distance(guard["pos_index"], pos_index)
+		if d > reach:
+			continue
+		if d < best_distance or (d == best_distance and float(guard.get("current_hp", 0)) < float(best.get("current_hp", 0))):
+			best_distance = d
+			best = guard
+	return best
+
+
+## An enemy's attack landing on `guard`: `raw_damage` mitigated by the
+## hero's own armor (a guard has no defense stat of its own), same as the
+## redirected hits and AoE collateral always were.
+func _enemy_attack_guard(guard: Dictionary, raw_damage: float) -> void:
+	_deal_damage_to_guard(guard, _apply_armor_reduction(raw_damage, _hero_armor()))
+
+
+## Ends Imperial Guard, despawning every surviving guard - called both
+## when its duration runs out (_tick_imperial_guard()) and defensively at
+## the top of _activate_imperial_guard() so a recast mid-duration never
 ## leaks the old set's nodes. Only shows the "fades" message if there
 ## was actually something to end (so casting it fresh, with nothing yet
 ## up to replace, stays silent).
-func _end_mirror_image() -> void:
-	var had_illusions: bool = not _illusions.is_empty()
-	for illusion in _illusions:
-		if is_instance_valid(illusion.get("node")):
-			illusion["node"].queue_free()
-	_illusions.clear()
-	_illusion_damage_pct = 0.0
-	_illusion_hit_chance_pct = 0.0
-	_illusions_turns_remaining = 0
-	_illusions_duration_pending_start = false
+func _end_imperial_guard() -> void:
+	var had_guards: bool = not _guards.is_empty()
+	for guard in _guards:
+		if is_instance_valid(guard.get("node")):
+			guard["node"].queue_free()
+		if is_instance_valid(guard.get("hp_label")):
+			guard["hp_label"].queue_free()
+	_guards.clear()
+	_guard_damage_pct = 0.0
+	_guards_turns_remaining = 0
+	_guards_duration_pending_start = false
 
-	if had_illusions:
-		_show_message_over_hero("Mirror Image fades")
-
-
-## Applies `amount` of already-mitigated damage to `illusion` - the
-## illusion-side equivalent of _deal_damage_to_bear(), just against the
-## `_illusions` array instead of the single `_bear` dict. Called from
-## apply_damage() whenever a hit redirects onto an illusion instead of
-## the hero.
-func _deal_damage_to_illusion(illusion: Dictionary, amount: float) -> void:
-	illusion["current_hp"] = float(illusion.get("current_hp", 0.0)) - amount
-	if is_instance_valid(illusion.get("node")):
-		_show_damage_number(illusion["node"], amount)
-	if illusion["current_hp"] <= 0:
-		_kill_illusion(illusion)
+	if had_guards:
+		_show_message_over_hero("Imperial Guard fades")
 
 
-## Removes one illusion that's died in combat - used both here (a
-## redirected hit finishing it off) and, in principle, anywhere else an
-## illusion's HP could hit 0. Doesn't end Mirror Image outright even if
-## this was the last one; _tick_mirror_image()'s own early-empty check
-## just makes every remaining tick (attack + duration decrement) a
-## no-op until the duration itself finally runs out.
-func _kill_illusion(illusion: Dictionary) -> void:
-	if is_instance_valid(illusion.get("node")):
-		illusion["node"].queue_free()
-	_illusions.erase(illusion)
+## Applies `amount` of already-mitigated damage to `guard` - the
+## guard-side equivalent of _deal_damage_to_bear(), just against the
+## `_guards` array instead of the single `_bear` dict. Called when an
+## enemy attacks a guard (_enemy_attack_guard()) and from every enemy AoE
+## that sweeps over one. The guard flinches, unless a projectile is still
+## flying toward it (see _deferred_hit_node).
+func _deal_damage_to_guard(guard: Dictionary, amount: float) -> void:
+	guard["current_hp"] = float(guard.get("current_hp", 0.0)) - amount
+	var node: Variant = guard.get("node")
+	if is_instance_valid(node):
+		_show_damage_number(node, amount)
+		var animator := CreatureAnimator.of(node)
+		if animator != null and node != _deferred_hit_node:
+			animator.play_hit()
+	if guard["current_hp"] <= 0:
+		_kill_guard(guard)
+
+
+## Removes one guard that's died in combat, its body dissolving the way a
+## creep's does. Doesn't end Imperial Guard outright even if this was the
+## last one; _tick_imperial_guard()'s own early-empty check just makes
+## every remaining tick a no-op until the duration itself finally runs out.
+func _kill_guard(guard: Dictionary) -> void:
+	if is_instance_valid(guard.get("node")):
+		CreatureAnimator.spawn_death_ghost(guard["node"], _fx_layer)
+		guard["node"].queue_free()
+	if is_instance_valid(guard.get("hp_label")):
+		guard["hp_label"].queue_free()
+	_guards.erase(guard)
+	_relayout_guards()
 
 
 ## Any enemy AoE skill that damages the hero over an area should ALSO
-## independently hit every surviving illusion within that same area -
-## illusions are real occupants of their own columns, not something
+## independently hit every surviving guard within that same area -
+## guards are real occupants of their own columns, not something
 ## folded into apply_damage()'s own redirect-chance roll (that roll
 ## only ever fires for a hit actually landing on the hero; an AoE's
-## OTHER victims, illusions included, are unconditional collateral, not
+## OTHER victims, guards included, are unconditional collateral, not
 ## a chance). Called alongside (never instead of) whatever apply_damage()
 ## call the AoE skill already makes for the hero himself - see each
 ## enemy skill cast function's own call site. `amount` is the RAW,
-## pre-mitigation damage the AoE deals to the hero - each illusion
+## pre-mitigation damage the AoE deals to the hero - each guard
 ## mitigates it separately via the hero's own armor, same as apply_
-## damage()'s own redirect roll does, since an illusion is a copy of
+## damage()'s own redirect roll does, since a guard is a copy of
 ## him, not a separate combatant with its own defense stat. A no-op
-## while no illusions are up.
+## while no guards are up.
 ## `flash_hits` gives each one hit the same red hit-flash as Moon
 ## Glaives' bounce (_flash_bounce_hit()) - off by default, opted into by
 ## Abyssal Spasm.
-func _deal_aoe_damage_to_illusions(center_pos_index: int, radius: int, amount: float, flash_hits: bool = false) -> void:
-	if _illusions.is_empty() or amount <= 0.0:
+func _deal_aoe_damage_to_guards(center_pos_index: int, radius: int, amount: float, flash_hits: bool = false) -> void:
+	if _guards.is_empty() or amount <= 0.0:
 		return
 
 	var mitigated: float = _apply_armor_reduction(amount, _hero_armor())
-	for illusion in _illusions.duplicate():
-		if _distance(illusion["pos_index"], center_pos_index) <= radius:
-			_deal_damage_to_illusion(illusion, mitigated)
-			if flash_hits and is_instance_valid(illusion.get("node")):
-				_flash_bounce_hit(illusion["node"])
+	for guard in _guards.duplicate():
+		if _distance(guard["pos_index"], center_pos_index) <= radius:
+			_deal_damage_to_guard(guard, mitigated)
+			if flash_hits and is_instance_valid(guard.get("node")):
+				_flash_bounce_hit(guard["node"])
 
 
-## The line-shaped equivalent of _deal_aoe_damage_to_illusions() above -
+## The line-shaped equivalent of _deal_aoe_damage_to_guards() above -
 ## for The Sunken One's/Chainfire's own "every column between the caster
 ## and the target, inclusive of both ends" line, rather than a radius
-## around one point. Same "amount is raw, each illusion mitigates it
+## around one point. Same "amount is raw, each guard mitigates it
 ## separately via the hero's own armor" contract.
 ## `flash_hits` gives each one hit the standard splash hit-flash
 ## (_flash_bounce_hit()) - off by default, opted into by Chainfire.
-func _deal_line_aoe_damage_to_illusions(start_pos_index: int, end_pos_index: int, amount: float, flash_hits: bool = false) -> void:
-	if _illusions.is_empty() or amount <= 0.0:
+func _deal_line_aoe_damage_to_guards(start_pos_index: int, end_pos_index: int, amount: float, flash_hits: bool = false) -> void:
+	if _guards.is_empty() or amount <= 0.0:
 		return
 
 	var start_col: int = mini(start_pos_index, end_pos_index)
 	var end_col: int = maxi(start_pos_index, end_pos_index)
 	var mitigated: float = _apply_armor_reduction(amount, _hero_armor())
-	for illusion in _illusions.duplicate():
-		var pos: int = illusion["pos_index"]
+	for guard in _guards.duplicate():
+		var pos: int = guard["pos_index"]
 		if pos >= start_col and pos <= end_col:
-			_deal_damage_to_illusion(illusion, mitigated)
-			if flash_hits and is_instance_valid(illusion.get("node")):
-				_flash_bounce_hit(illusion["node"])
+			_deal_damage_to_guard(guard, mitigated)
+			if flash_hits and is_instance_valid(guard.get("node")):
+				_flash_bounce_hit(guard["node"])
 
 
 ## The directional-cone equivalent of the two AoE-shape helpers above -
@@ -5616,17 +5511,17 @@ func _deal_line_aoe_damage_to_illusions(start_pos_index: int, end_pos_index: int
 ## caster, in whichever direction it's facing, up to range_columns"
 ## cone (same shape _cast_double_trouble()'s own "ahead" check uses for
 ## the player's copy), rather than a radius or a line between two
-## points. Same "amount is raw, each illusion mitigates it separately
+## points. Same "amount is raw, each guard mitigates it separately
 ## via the hero's own armor" contract.
-func _deal_directional_aoe_damage_to_illusions(origin_pos_index: int, direction: int, range_columns: int, amount: float) -> void:
-	if _illusions.is_empty() or amount <= 0.0:
+func _deal_directional_aoe_damage_to_guards(origin_pos_index: int, direction: int, range_columns: int, amount: float) -> void:
+	if _guards.is_empty() or amount <= 0.0:
 		return
 
 	var mitigated: float = _apply_armor_reduction(amount, _hero_armor())
-	for illusion in _illusions.duplicate():
-		var ahead: int = (illusion["pos_index"] - origin_pos_index) * direction
+	for guard in _guards.duplicate():
+		var ahead: int = (guard["pos_index"] - origin_pos_index) * direction
 		if ahead >= 0 and ahead <= range_columns:
-			_deal_damage_to_illusion(illusion, mitigated)
+			_deal_damage_to_guard(guard, mitigated)
 
 
 ## Resolves a Return to the Void cast on `target`: `level_data.damage` to
@@ -5663,9 +5558,9 @@ func _resolve_return_to_the_void_cast(target: Dictionary, level_data: Dictionary
 		if _distance(enemy["pos_index"], target_pos) <= radius:
 			hit_targets.append(enemy)
 			struck.append(enemy.get("node"))
-	for illusion in _enemy_illusions:
-		if _distance(illusion["pos_index"], target_pos) <= radius:
-			struck.append(illusion.get("node"))
+	for guard in _enemy_guards:
+		if _distance(guard["pos_index"], target_pos) <= radius:
+			struck.append(guard.get("node"))
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
@@ -5689,9 +5584,9 @@ func _resolve_return_to_the_void_cast(target: Dictionary, level_data: Dictionary
 				enemy["return_to_the_void_execute_pct"] = execute_pct
 		_refresh_mark_of_stillness_frost()
 		# Centered on the target's own column, same as the check above - a
-		# rival's own illusion (The Last Empress's Mirror Image) can be in range
+		# rival's own guard (The Last Empress's Imperial Guard) can be in range
 		# independently of whether the boss itself currently is.
-		_deal_aoe_damage_to_enemy_illusions(target_pos, radius, damage)
+		_deal_aoe_damage_to_enemy_guards(target_pos, radius, damage)
 
 		if target.get("current_hp", 0) > 0:
 			target["stun_turns_left"] = int(level_data.get("stun_turns", 1))
@@ -5733,9 +5628,9 @@ func _resolve_maddening_roar_cast(target: Dictionary, level_data: Dictionary) ->
 		if _distance(enemy["pos_index"], target_pos) <= shatter_range:
 			shatter_targets.append(enemy)
 			shatter_nodes.append(enemy.get("node"))
-	for illusion in _enemy_illusions:
-		if _distance(illusion["pos_index"], target_pos) <= shatter_range:
-			shatter_nodes.append(illusion.get("node"))
+	for guard in _enemy_guards:
+		if _distance(guard["pos_index"], target_pos) <= shatter_range:
+			shatter_nodes.append(guard.get("node"))
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
@@ -5760,9 +5655,9 @@ func _resolve_maddening_roar_cast(target: Dictionary, level_data: Dictionary) ->
 			if still_here.call(enemy):
 				_deal_fixed_damage_to_enemy(enemy, shatter_damage)
 		# Centered on the target's own column, same as the check above - a
-		# rival's own illusion (The Last Empress's Mirror Image) can be in range
+		# rival's own guard (The Last Empress's Imperial Guard) can be in range
 		# independently of whether the boss itself currently is.
-		_deal_aoe_damage_to_enemy_illusions(target_pos, shatter_range, shatter_damage)
+		_deal_aoe_damage_to_enemy_guards(target_pos, shatter_range, shatter_damage)
 		if _battle_over or _stage_generation != generation_before:
 			return
 		_mark_turn_used()
@@ -5907,7 +5802,7 @@ func _resolve_rimecleaver_cast(target: Dictionary, level_data: Dictionary) -> vo
 	var target_pos: int = target["pos_index"]
 
 	var splash_targets: Array = []
-	var splash_illusions: Array = []
+	var splash_guards: Array = []
 	if radius > 0:
 		for enemy in _enemies:
 			if is_same(enemy, target) or _is_target_hidden(enemy):
@@ -5915,11 +5810,11 @@ func _resolve_rimecleaver_cast(target: Dictionary, level_data: Dictionary) -> vo
 			if _distance(enemy["pos_index"], target_pos) <= radius:
 				splash_targets.append(enemy)
 		# Centered on the target's own column, same as the splash above -
-		# a rival's own illusion (The Last Empress's Mirror Image) can be in
+		# a rival's own guard (The Last Empress's Imperial Guard) can be in
 		# range independently of whether the boss itself currently is.
-		for illusion in _enemy_illusions:
-			if _distance(illusion["pos_index"], target_pos) <= radius:
-				splash_illusions.append(illusion)
+		for guard in _enemy_guards:
+			if _distance(guard["pos_index"], target_pos) <= radius:
+				splash_guards.append(guard)
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
@@ -5946,7 +5841,7 @@ func _resolve_rimecleaver_cast(target: Dictionary, level_data: Dictionary) -> vo
 			if not _enemies.any(func(e: Dictionary) -> bool: return is_same(e, enemy)):
 				continue
 			_deal_fixed_damage_to_enemy(enemy, damage)
-		_deal_aoe_damage_to_enemy_illusions(target_pos, radius, damage)
+		_deal_aoe_damage_to_enemy_guards(target_pos, radius, damage)
 		if _battle_over or _stage_generation != generation_before:
 			return
 		_mark_turn_used()
@@ -5954,8 +5849,8 @@ func _resolve_rimecleaver_cast(target: Dictionary, level_data: Dictionary) -> vo
 	var pass_nodes: Array = []
 	for enemy in splash_targets:
 		pass_nodes.append(enemy.get("node"))
-	for illusion in splash_illusions:
-		pass_nodes.append(illusion.get("node"))
+	for guard in splash_guards:
+		pass_nodes.append(guard.get("node"))
 	var on_pass := func(i: int) -> void:
 		if not _battle_over and _stage_generation == generation_before:
 			_flash_frost_briefly(pass_nodes[i], RIMECLEAVER_FROST_SECONDS, BOUNCE_HIT_FLASH_COLOR)
@@ -6140,7 +6035,7 @@ func _apply_cleaver_cleave(target: Dictionary, attack_damage: float) -> void:
 ## only - no on-hit effects (lifesteal, Leeching Hunger, Moon Glaives...)
 ## for the second target, same as Cleaver's splash. A full charge with
 ## no second enemy in range stays full for the next Attack instead of
-## being spent. Rival illusions aren't eligible - they only ever take
+## being spent. Rival guards aren't eligible - they only ever take
 ## redirected attacks and AoE damage; the rival's own Elderwild Companion, a
 ## regular enemy, is. Owning several doesn't split more often (the +10
 ## damage still stacks per copy), same as Cleaver. No-op for melee
@@ -6179,31 +6074,31 @@ func _find_hunters_bow_second_target(target: Dictionary) -> Dictionary:
 
 
 # ------------------------------------------------------------------
-# The Last Empress's Rip Tide - a passive, so unlike every cast skill above
+# The Last Empress's Empress's Will - a passive, so unlike every cast skill above
 # there's no button/cast/mana/cooldown for it. Two independent halves:
 # a Pull of the Abyss/Cleaver-style AoE splash off the hero's own plain
-# Attacks (_apply_rip_tide_cleave(), called from _apply_hero_attack()),
-# and a set of flat bonuses folded into Mirror Image's own cast
-# (_activate_mirror_image() reads _get_rip_tide_level_data() itself -
+# Attacks (_apply_empress_will_cleave(), called from _apply_hero_attack()),
+# and a set of flat bonuses folded into Imperial Guard's own cast
+# (_activate_imperial_guard() reads _get_empress_will_level_data() itself -
 # see that function's own comment) rather than anything ticked or
 # tracked here.
 # ------------------------------------------------------------------
 
-## Rip Tide's level data for whatever level the player has it at right
+## Empress's Will's level data for whatever level the player has it at right
 ## now - {} if it isn't learned at all (level 0), the same "empty means
 ## locked" convention every other auto-triggered skill's own
 ## _get_*_level_data() helper uses.
-func _get_rip_tide_level_data() -> Dictionary:
-	var level: int = PlayerManager.get_skill_level("rip_tide")
+func _get_empress_will_level_data() -> Dictionary:
+	var level: int = PlayerManager.get_skill_level("empress's_will")
 	if level <= 0:
 		return {}
 	for skill in _hero_static.get("skills", []):
-		if skill.get("id", "") == "rip_tide":
+		if skill.get("id", "") == "empress's_will":
 			return GameManager.get_skill_level_data(skill, level)
 	return {}
 
 
-## Rip Tide's own AoE splash: identical shape to Pull of the Abyss's/
+## Empress's Will's own AoE splash: identical shape to Pull of the Abyss's/
 ## Cleaver's own cleave above (% of the attack's own raw damage, before
 ## the main target's own armor reduces it, splashed to every OTHER
 ## living enemy within `radius` columns, each mitigated by its own
@@ -6211,8 +6106,8 @@ func _get_rip_tide_level_data() -> Dictionary:
 ## radius rather than a flat item bonus or a consumed stack - independent
 ## of and stacks with Pull of the Abyss's/Cleaver's, same as those two already
 ## stack with each other. A no-op while the skill isn't learned.
-func _apply_rip_tide_cleave(target: Dictionary, attack_damage: float) -> void:
-	var level_data: Dictionary = _get_rip_tide_level_data()
+func _apply_empress_will_cleave(target: Dictionary, attack_damage: float) -> void:
+	var level_data: Dictionary = _get_empress_will_level_data()
 	if level_data.is_empty():
 		return
 
@@ -6228,13 +6123,13 @@ func _apply_rip_tide_cleave(target: Dictionary, attack_damage: float) -> void:
 ## takes `splash_damage` - raw and pre-mitigation, each still mitigated
 ## by ITS OWN armor via _deal_fixed_damage_to_enemy() - and gets
 ## _flash_bounce_hit()'s red flash, the same one Moon Glaives' bounces
-## use, so a splashed enemy visibly reads as hit. Every enemy illusion
-## within that same radius is hit (and flashed) too - illusions are
+## use, so a splashed enemy visibly reads as hit. Every enemy guard
+## within that same radius is hit (and flashed) too - guards are
 ## unconditional collateral on any AoE splash, same rule Moon Glaives
 ## follows. The boss's own Elderwild Companion needs nothing extra: it's a
 ## regular _enemies entry, so the loop reaches it like any other enemy.
 ##
-## Shared by Pull of the Abyss, the Cleaver item and Rip Tide - any future
+## Shared by Pull of the Abyss, the Cleaver item and Empress's Will - any future
 ## cleave/splash should route through here too, so they all behave and
 ## look the same.
 func _apply_splash_damage(target: Dictionary, splash_damage: float, radius: int) -> void:
@@ -6254,13 +6149,13 @@ func _apply_splash_damage(target: Dictionary, splash_damage: float, radius: int)
 			if is_instance_valid(enemy.get("node")):
 				_flash_bounce_hit(enemy["node"])
 
-	_deal_aoe_damage_to_enemy_illusions(target_pos, radius, splash_damage, true)
+	_deal_aoe_damage_to_enemy_guards(target_pos, radius, splash_damage, true)
 
 
 # ------------------------------------------------------------------
 # Luna's Moon Glaives - a passive, so unlike every cast skill above
 # there's no button/cast/mana/cooldown for it. Unlike Pull of the Abyss's/
-# Cleaver's/Rip Tide's cleave above (every OTHER enemy within radius,
+# Cleaver's/Empress's Will's cleave above (every OTHER enemy within radius,
 # uncapped), this caps at this level's own `bounces` count - see
 # _apply_moon_glaives_bounces()'s own comment.
 # ------------------------------------------------------------------
@@ -6284,11 +6179,11 @@ func _get_moon_glaives_level_data() -> Dictionary:
 ## column each take `bounce_damage_pct` of `attack_damage` - the same
 ## raw, pre-mitigation roll `target` was just hit with - still mitigated
 ## by their own armor separately via _deal_fixed_damage_to_enemy(),
-## mirroring Pull of the Abyss's/Cleaver's/Rip Tide's own "one rolled amount,
+## mirroring Pull of the Abyss's/Cleaver's/Empress's Will's own "one rolled amount,
 ## many separately-mitigated hits" pattern, just capped at `bounces`
 ## targets (nearest first) instead of hitting everyone in range. Any
-## enemy illusion within that same radius is ALSO hit, via
-## _deal_aoe_damage_to_enemy_illusions() - illusions are unconditional
+## enemy guard within that same radius is ALSO hit, via
+## _deal_aoe_damage_to_enemy_guards() - guards are unconditional
 ## collateral on any AoE splash, never counted toward the bounce cap
 ## (see that function's own comment). The boss's own Elderwild Companion needs
 ## no separate call: it's a regular _enemies entry (see
@@ -6313,7 +6208,7 @@ func _apply_moon_glaives_bounces(target: Dictionary, attack_damage: float) -> vo
 	var radius: int = int(level_data.get("bounce_range", 0))
 	var target_pos: int = target["pos_index"]
 
-	_deal_aoe_damage_to_enemy_illusions(target_pos, radius, bounce_damage)
+	_deal_aoe_damage_to_enemy_guards(target_pos, radius, bounce_damage)
 
 	var candidates: Array = []
 	for enemy in _enemies:
@@ -6354,7 +6249,7 @@ func _get_lunar_blessing_level_data() -> Dictionary:
 
 
 # ------------------------------------------------------------------
-# Slardar's Bash of the Deep - a passive, so unlike every cast skill
+# Dreadlure's Might of the Deep - a passive, so unlike every cast skill
 # above there's no button/cast/mana/cooldown for it. Counts the hero's
 # own plain Attacks toward this level's own attacks_required threshold
 # (same "build a stack, consume it all once the threshold's reached"
@@ -6366,16 +6261,16 @@ func _get_lunar_blessing_level_data() -> Dictionary:
 # afterward.
 # ------------------------------------------------------------------
 
-## Bash of the Deep's level data for whatever level the player has it
+## Might of the Deep's level data for whatever level the player has it
 ## at right now - {} if it isn't learned at all (level 0), the same
 ## "empty means locked" convention every other auto-triggered skill's
 ## own _get_*_level_data() helper uses.
-func _get_bash_of_the_deep_level_data() -> Dictionary:
-	var level: int = PlayerManager.get_skill_level("bash_of_the_deep")
+func _get_might_of_the_deep_level_data() -> Dictionary:
+	var level: int = PlayerManager.get_skill_level("might_of_the_deep")
 	if level <= 0:
 		return {}
 	for skill in _hero_static.get("skills", []):
-		if skill.get("id", "") == "bash_of_the_deep":
+		if skill.get("id", "") == "might_of_the_deep":
 			return GameManager.get_skill_level_data(skill, level)
 	return {}
 
@@ -6385,16 +6280,16 @@ func _get_bash_of_the_deep_level_data() -> Dictionary:
 ## consumes them all and returns the level data for that same Attack to
 ## apply its bonus/knockback with. Returns {} (a no-op contribution)
 ## every other Attack, and while the skill isn't learned at all.
-func _maybe_consume_bash_of_the_deep_stack() -> Dictionary:
-	var level_data: Dictionary = _get_bash_of_the_deep_level_data()
+func _maybe_consume_might_of_the_deep_stack() -> Dictionary:
+	var level_data: Dictionary = _get_might_of_the_deep_level_data()
 	if level_data.is_empty():
 		return {}
 
-	_bash_of_the_deep_attack_count += 1
-	if _bash_of_the_deep_attack_count < int(level_data.get("attacks_required", 1)):
+	_might_of_the_deep_attack_count += 1
+	if _might_of_the_deep_attack_count < int(level_data.get("attacks_required", 1)):
 		return {}
 
-	_bash_of_the_deep_attack_count = 0
+	_might_of_the_deep_attack_count = 0
 	return level_data
 
 
@@ -6406,7 +6301,7 @@ func _maybe_consume_bash_of_the_deep_stack() -> Dictionary:
 ## (this is a passive proc off a plain Attack, not its own cast).
 ## Repositions instantly via _move_enemy(), the same helper regular
 ## enemy AI movement already uses.
-func _apply_bash_of_the_deep_knockback(target: Dictionary, level_data: Dictionary) -> void:
+func _apply_might_of_the_deep_knockback(target: Dictionary, level_data: Dictionary) -> void:
 	var knockback_columns: int = int(level_data.get("knockback", 0))
 	var direction: int = -1 if hero_image.flip_h else 1
 	var pos: int = target["pos_index"]
@@ -6421,33 +6316,6 @@ func _apply_bash_of_the_deep_knockback(target: Dictionary, level_data: Dictionar
 
 	if pos != target["pos_index"]:
 		_move_enemy(target, pos)
-
-
-## The illusion-side equivalent of _apply_bash_of_the_deep_knockback()
-## above, for when the triggering hit actually landed on one of the
-## boss's own illusions instead (see _apply_hero_attack()'s own read of
-## _last_enemy_illusion_redirect). Same movement rule, just repositioning
-## an illusion dict directly instead of going through _move_enemy() -
-## that helper assumes an "static"/is_hero_fight-flavored enemy entry,
-## which an illusion (a plain {pos_index, current_hp, max_hp, node}
-## dict, never added to _enemies) doesn't have.
-func _apply_bash_of_the_deep_illusion_knockback(illusion: Dictionary, level_data: Dictionary) -> void:
-	var knockback_columns: int = int(level_data.get("knockback", 0))
-	var direction: int = -1 if hero_image.flip_h else 1
-	var pos: int = illusion["pos_index"]
-
-	for i in range(knockback_columns):
-		var next_pos: int = pos + direction
-		if next_pos < 0 or next_pos >= GRID_COLUMNS:
-			break
-		if not _get_enemy_at(next_pos).is_empty():
-			break
-		pos = next_pos
-
-	if pos != illusion["pos_index"]:
-		illusion["pos_index"] = pos
-		if is_instance_valid(illusion.get("node")):
-			illusion["node"].position = Vector2(_index_to_x(pos), _creature_top_y(illusion["node"].size.y))
 
 
 # ------------------------------------------------------------------
@@ -6527,9 +6395,9 @@ func _tick_frost_tempest() -> void:
 	for enemy in _enemies:
 		if not _is_target_hidden(enemy) and _distance(enemy["pos_index"], _hero_pos_index) <= _frost_tempest_radius:
 			hit_nodes.append(enemy.get("node"))
-	for illusion in _enemy_illusions:
-		if _distance(illusion["pos_index"], _hero_pos_index) <= _frost_tempest_radius:
-			hit_nodes.append(illusion.get("node"))
+	for guard in _enemy_guards:
+		if _distance(guard["pos_index"], _hero_pos_index) <= _frost_tempest_radius:
+			hit_nodes.append(guard.get("node"))
 	_flash_frost_tempest_hits(hit_nodes)
 
 	for enemy in _enemies.duplicate():
@@ -6540,9 +6408,9 @@ func _tick_frost_tempest() -> void:
 			if _battle_over:
 				return
 	# Self-centered on the hero's CURRENT position, same as the check
-	# above - a rival's own illusion (The Last Empress's Mirror Image) can be
+	# above - a rival's own guard (The Last Empress's Imperial Guard) can be
 	# in range independently of whether the boss itself currently is.
-	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, _frost_tempest_radius, _frost_tempest_damage_per_turn)
+	_deal_aoe_damage_to_enemy_guards(_hero_pos_index, _frost_tempest_radius, _frost_tempest_damage_per_turn)
 
 	_frost_tempest_turns_remaining -= 1
 	if _frost_tempest_turns_remaining <= 0:
@@ -6605,8 +6473,8 @@ func _activate_eclipse(level_data: Dictionary) -> void:
 ## targetable candidate from everything within radius columns of the
 ## hero's CURRENT position (re-checked fresh here, not fixed at cast
 ## time, so the range follows her if she moves) - a real enemy or, while
-## the rival has Mirror Image up, one of its illusions, both equally
-## likely since an illusion is a real occupant of its own column same as
+## the rival has Imperial Guard up, one of its guards, both equally
+## likely since a guard is a real occupant of its own column same as
 ## the boss's own Elderwild Companion already is (it's a regular _enemies entry,
 ## same reasoning as Moon Glaives' own bounce - see
 ## _apply_moon_glaives_bounces()'s own comment). A beam with nothing in
@@ -6636,9 +6504,9 @@ func _tick_eclipse() -> void:
 			if _distance(enemy["pos_index"], _hero_pos_index) <= _eclipse_radius:
 				candidates.append(enemy)
 		if not boss.is_empty():
-			for illusion in _enemy_illusions:
-				if _distance(illusion["pos_index"], _hero_pos_index) <= _eclipse_radius:
-					candidates.append(illusion)
+			for guard in _enemy_guards:
+				if _distance(guard["pos_index"], _hero_pos_index) <= _eclipse_radius:
+					candidates.append(guard)
 
 		if not candidates.is_empty():
 			var picked: Dictionary = candidates[randi() % candidates.size()]
@@ -6646,7 +6514,7 @@ func _tick_eclipse() -> void:
 				_deal_fixed_damage_to_enemy(picked, _eclipse_damage_per_beam)
 			else:
 				var mitigated: float = _apply_armor_reduction(_eclipse_damage_per_beam, _enemy_hero_effective_armor(boss))
-				_deal_damage_to_enemy_illusion(picked, mitigated)
+				_deal_damage_to_enemy_guard(picked, mitigated)
 			# Same falling moonlight beam Lucent Beam lands with (see
 			# _play_lucent_beam_impact()'s own comment) - purely cosmetic,
 			# played alongside the damage above rather than gating it.
@@ -7539,11 +7407,11 @@ func _activate_mothers_grasp(level_data: Dictionary) -> void:
 			enemy["mothers_grasp_dot_damage"] = dot_damage
 			enemy["mothers_grasp_dot_turns_left"] = root_duration
 
-	# A rival's own illusion (The Last Empress's Mirror Image) has no root/DoT
+	# A rival's own guard (The Last Empress's Imperial Guard) has no root/DoT
 	# of its own to carry the way a regular enemy does above - just a
 	# one-time hit for whatever's caught in the burst, centered on the
 	# hero's own position, same as the check above.
-	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, radius, dot_damage)
+	_deal_aoe_damage_to_enemy_guards(_hero_pos_index, radius, dot_damage)
 	_play_mothers_grasp_slam(hero_image)
 	_refresh_mothers_grasp_roots()
 
@@ -7636,8 +7504,8 @@ func _apply_root(target: Dictionary, level_data: Dictionary) -> void:
 ## actually consumed, the same "check with the CURRENT value, use it,
 ## decrement after" pattern stun_turns_left already uses in _enemy_turn().
 func _tick_enemy_turn_start_effects(enemy: Dictionary) -> void:
-	# Three Cheers's armor shred and Slardar's Corrosive Haze both
-	# write "armor_reduction" (Corrosive Haze also "corrosive_haze_
+	# Three Cheers's armor shred and Dreadlure's Deathlight Lure both
+	# write "armor_reduction" (Deathlight Lure also "deathlight_lure_
 	# bonus_pct", see _deal_fixed_damage_to_enemy()'s own read of it) -
 	# cast during the PLAYER's turn, but only ever ticked here (the
 	# start of THIS enemy's own turn), so the round either was cast in
@@ -7651,7 +7519,7 @@ func _tick_enemy_turn_start_effects(enemy: Dictionary) -> void:
 		enemy["armor_reduction_turns_left"] -= 1
 		if enemy.get("armor_reduction_turns_left", 0) <= 0:
 			enemy["armor_reduction"] = 0.0
-			enemy["corrosive_haze_bonus_pct"] = 0.0
+			enemy["deathlight_lure_bonus_pct"] = 0.0
 
 	# Kiss the Wastes' burn: re-armed (both damage and turns_left) by
 	# every main-hit shot that lands on this enemy (see
@@ -7816,7 +7684,7 @@ func _tick_player_turn_start_effects() -> void:
 		_player_the_hollow_cold_dot_turns_left -= 1
 		if _player_the_hollow_cold_dot_damage > 0.0:
 			apply_damage(_player_the_hollow_cold_dot_damage)
-	# His illusions caught in the same vortex tick right here too,
+	# His guards caught in the same vortex tick right here too,
 	# independently of whether the hero himself still is - and so does
 	# every DoT a rival has put on his Elderwild Companion.
 	_tick_player_allies_the_hollow_cold()
@@ -7868,7 +7736,7 @@ func _tick_player_turn_start_effects() -> void:
 		_player_armor_reduction_turns_left -= 1
 		if _player_armor_reduction_turns_left <= 0:
 			_player_armor_reduction = 0.0
-			_player_corrosive_haze_bonus_pct = 0.0
+			_player_deathlight_lure_bonus_pct = 0.0
 
 	if _player_kiss_burn_dot_turns_left > 0:
 		_player_kiss_burn_dot_turns_left -= 1
@@ -8237,7 +8105,7 @@ func _dispel_all_hero_effects() -> void:
 	_player_mothers_grasp_dot_turns_left = 0
 	_player_armor_reduction = 0.0
 	_player_armor_reduction_turns_left = 0
-	_player_corrosive_haze_bonus_pct = 0.0
+	_player_deathlight_lure_bonus_pct = 0.0
 	_player_kiss_burn_dot_damage = 0.0
 	_player_kiss_burn_dot_turns_left = 0
 
@@ -8295,8 +8163,8 @@ func _is_hero_hidden() -> bool:
 
 ## Whether the rival can currently see (and therefore attack, chase, or
 ## otherwise target) the player, despite Depthsveil's/Rootveil's/Moonlight Shadow's own stealth - true sight from a rival
-## Slardar's own Corrosive Haze (_player_corrosive_haze_bonus_pct > 0,
-## the same field _cast_enemy_corrosive_haze() writes and apply_damage()
+## Dreadlure's own Deathlight Lure (_player_deathlight_lure_bonus_pct > 0,
+## the same field _cast_enemy_deathlight_lure() writes and apply_damage()
 ## reads for its own damage bonus, both sharing _player_armor_reduction_
 ## turns_left's own countdown) overrides it for as long as the mark
 ## holds. Deliberately kept separate from _is_hero_hidden() itself -
@@ -8308,7 +8176,7 @@ func _is_hero_hidden() -> bool:
 ## can currently see the player (_enemy_turn()/_enemy_hero_turn()) in
 ## place of a bare _is_hero_hidden() read.
 func _can_enemy_see_hero() -> bool:
-	if _player_corrosive_haze_bonus_pct > 0.0:
+	if _player_deathlight_lure_bonus_pct > 0.0:
 		return true
 	return not _is_hero_hidden()
 
@@ -8440,6 +8308,16 @@ func _end_moonlight_shadow() -> void:
 	_moonlight_shadow_turns_remaining = 0
 	_moonlight_shadow_duration_pending_start = false
 	_update_hero_visibility()
+
+
+## Breaks whichever veil the player's hero is under - what a rival's
+## true sight (Deathlight Lure) does to him: he is revealed on the spot.
+func _reveal_player_hero() -> void:
+	if not _is_hero_hidden():
+		return
+	_end_depthsveil()
+	_end_rootveil()
+	_end_moonlight_shadow()
 
 
 ## Slight fade to represent invisibility - fully opaque and visible
@@ -8747,10 +8625,10 @@ func _deal_damage_to_bear(amount: float) -> void:
 	if not _is_bear_alive():
 		return
 
-	# A rival's Corrosive Haze on the bear boosts every hit it takes,
+	# A rival's Deathlight Lure on the bear boosts every hit it takes,
 	# and its/Three Cheers's armor shred lowers its armor - same two
 	# effects the player's own apply_damage() applies to him.
-	amount *= (1.0 + float(_bear.get("corrosive_haze_bonus_pct", 0.0)))
+	amount *= (1.0 + float(_bear.get("deathlight_lure_bonus_pct", 0.0)))
 	var bear_armor: float = float(_bear.get("armor", 0)) - float(_bear.get("armor_reduction", 0.0))
 	var mitigated: float = _apply_armor_reduction(amount, bear_armor)
 	mitigated *= (1.0 - _blood_of_the_wild_damage_reduction_pct)
@@ -8763,9 +8641,9 @@ func _deal_damage_to_bear(amount: float) -> void:
 
 ## Any enemy AoE skill that damages the hero over an area should ALSO
 ## independently hit the Elderwild Companion if it's standing within that same
-## area - same reasoning as the illusion-side equivalent
-## (_deal_aoe_damage_to_illusions()), just against the single `_bear`
-## dict instead of the `_illusions` array. Unlike that helper, `amount`
+## area - same reasoning as the guard-side equivalent
+## (_deal_aoe_damage_to_guards()), just against the single `_bear`
+## dict instead of the `_guards` array. Unlike that helper, `amount`
 ## is passed straight to _deal_damage_to_bear() un-mitigated - the bear
 ## has its own armor stat (set at summon time), not the hero's, and
 ## that function already mitigates with it internally. A no-op while no
@@ -8861,7 +8739,7 @@ func _bear_turn() -> void:
 
 	# A rival's stun (Drowned Surge/Sacred Arrow/Lucent Beam/Return to the Void/
 	# Winter's Grip/The Hunger Calls/Charge/Glacier Breaker aimed at the bear)
-	# costs it this whole turn; a root (Thornbind/Ensnare) still lets it
+	# costs it this whole turn; a root (Thornbind/Shackles) still lets it
 	# attack what's already on its column, just not walk. Both are
 	# checked with their CURRENT value before ticking down - the same
 	# "use it, then decrement" order the rival's own root/stun use - so
@@ -8876,7 +8754,7 @@ func _bear_turn() -> void:
 
 	var target: Dictionary = _get_enemy_at(_bear["pos_index"])
 	if not target.is_empty():
-		# The bear's own attack, not the hero's - Corrosive Haze's own
+		# The bear's own attack, not the hero's - Deathlight Lure's own
 		# bonus (see _deal_fixed_damage_to_enemy()'s own is_hero_action
 		# param) never applies to it.
 		var bear_animator := CreatureAnimator.of(_bear["node"])
@@ -8981,8 +8859,8 @@ func _tick_skill_cooldowns() -> void:
 	_tick_mark_of_the_mist_effects()
 	_tick_kindled_resolve_stacks()
 	_tick_cinderbomb()
-	_tick_mirror_image()
-	_tick_guardian_sprint()
+	_tick_imperial_guard()
+	_tick_hunting_instinct()
 	_tick_enemy_passive_regen()
 
 	if _in_hero_fight:
@@ -9006,8 +8884,8 @@ func _tick_skill_cooldowns() -> void:
 		_tick_enemy_kindled_resolve_stacks()
 		_apply_enemy_kindled_resolve_regen()
 		_tick_enemy_cinderbomb()
-		_tick_enemy_mirror_image()
-		_tick_enemy_guardian_sprint()
+		_tick_enemy_imperial_guard()
+		_tick_enemy_hunting_instinct()
 		_tick_enemy_moonlight_shadow()
 		_tick_enemy_eclipse()
 
@@ -9182,9 +9060,9 @@ func _end_veil_of_the_forgotten(exploded: bool) -> void:
 		if is_instance_valid(enemy.get("node")):
 			_flash_bounce_hit(enemy["node"])
 	# Self-centered on the hero, same as the check above - a rival's own
-	# illusion (The Last Empress's Mirror Image) can be in range independently
+	# guard (The Last Empress's Imperial Guard) can be in range independently
 	# of whether the boss itself currently is.
-	_deal_aoe_damage_to_enemy_illusions(_hero_pos_index, radius, aoe_damage, true)
+	_deal_aoe_damage_to_enemy_guards(_hero_pos_index, radius, aoe_damage, true)
 
 	_show_message_over_hero("Shield shattered!")
 
@@ -9648,30 +9526,14 @@ func apply_damage(amount: float) -> float:
 	if _the_test_of_time_active:
 		return 0.0
 
-	# Slardar's Corrosive Haze: boosts every hit the player takes from the
+	# Dreadlure's Deathlight Lure: boosts every hit the player takes from the
 	# rival's own attacks/skills by this level's own bonus_damage_pct -
-	# applied to the RAW amount, before armor mitigation and before
-	# Mirror Image's own redirect just below, mirroring
+	# applied to the RAW amount, before armor mitigation, mirroring
 	# _deal_fixed_damage_to_enemy()'s own "is_hero_action" check (the
-	# mark is about how fragile the PLAYER is, not about whatever ends up
-	# absorbing the hit). 0.0 (a no-op) while nothing has marked him.
-	if _player_corrosive_haze_bonus_pct > 0.0:
-		amount *= (1.0 + _player_corrosive_haze_bonus_pct)
-
-	# Mirror Image: every hit that would otherwise land on the hero, from
-	# ANY source, has a chance to be redirected onto a random surviving
-	# illusion instead - a full redirect, not a split, and completely
-	# bypassing every one of the hero's own defensive mechanics below
-	# (Kindled Resolve's stack, Blood of the Wild, The Mist Remembers, Veil of the
-	# Forgotten) since nothing actually touched him this time. Uses the
-	# hero's own armor for mitigation, same as if he'd taken it himself -
-	# an illusion is a copy of him, not a separate combatant with its
-	# own defense stat.
-	if not _illusions.is_empty() and randf() < _illusion_hit_chance_pct:
-		var illusion: Dictionary = _illusions[randi() % _illusions.size()]
-		var illusion_damage: float = _apply_armor_reduction(amount, _hero_armor())
-		_deal_damage_to_illusion(illusion, illusion_damage)
-		return illusion_damage
+	# mark is about how fragile the PLAYER is). 0.0 (a no-op) while
+	# nothing has marked him.
+	if _player_deathlight_lure_bonus_pct > 0.0:
+		amount *= (1.0 + _player_deathlight_lure_bonus_pct)
 
 	var hero_animator := CreatureAnimator.of(hero_image)
 	if hero_animator != null and hero_image != _deferred_hit_node:
@@ -10051,16 +9913,16 @@ func _ranged_move_target(start: int, direction: int, distance: int) -> int:
 	return pos
 
 
-## Guardian Sprint's own movement rule: walks up to `distance` columns
+## Hunting Instinct's own movement rule: walks up to `distance` columns
 ## from `start` in `direction`, stopping early at the board edge, a
 ## rival's Frostbound Rupture wall, OR - unlike a plain ranged move, and
 ## regardless of the hero's own range_type - the first enemy's column
 ## along the way, same "stop on top of an enemy" rule
 ## _melee_move_target() already uses. Returns both the landing column
 ## and whatever enemy it stopped on ({} if it ran the full distance
-## clean), for _hero_move() to deal Guardian Sprint's own charge_damage
+## clean), for _hero_move() to deal Hunting Instinct's own charge_damage
 ## to.
-func _guardian_sprint_move_target(start: int, direction: int, distance: int) -> Dictionary:
+func _hunting_instinct_move_target(start: int, direction: int, distance: int) -> Dictionary:
 	var pos: int = start
 	var hit_enemy: Dictionary = {}
 
@@ -10080,50 +9942,50 @@ func _guardian_sprint_move_target(start: int, direction: int, distance: int) -> 
 	return {"pos": pos, "hit_enemy": hit_enemy}
 
 
-## Activates Guardian Sprint: arms this level's own bonus_movement/
+## Activates Hunting Instinct: arms this level's own bonus_movement/
 ## charge_damage_pct for `level_data.duration` turns. Doesn't move the
 ## hero himself - only _hero_move()'s own read of
-## _guardian_sprint_turns_remaining changes what his NEXT normal moves
+## _hunting_instinct_turns_remaining changes what his NEXT normal moves
 ## do. Always "succeeds" - no target or range requirement, same as
 ## every other self-cast buff.
-func _activate_guardian_sprint(level_data: Dictionary) -> void:
-	_guardian_sprint_bonus_movement = int(level_data.get("bonus_movement", 0))
-	_guardian_sprint_charge_damage_pct = float(level_data.get("charge_damage_pct", 0.0))
-	_guardian_sprint_turns_remaining = int(level_data.get("duration", 0))
+func _activate_hunting_instinct(level_data: Dictionary) -> void:
+	_hunting_instinct_bonus_movement = int(level_data.get("bonus_movement", 0))
+	_hunting_instinct_charge_damage_pct = float(level_data.get("charge_damage_pct", 0.0))
+	_hunting_instinct_turns_remaining = int(level_data.get("duration", 0))
 	# The casting turn itself doesn't count - duration only starts
-	# ticking from the turn after (see _tick_guardian_sprint()), same as
+	# ticking from the turn after (see _tick_hunting_instinct()), same as
 	# every other duration-based buff. The bonus itself is already live
 	# the instant this returns, same as Woven Flesh's own bonus_armor -
 	# only the countdown toward it running out is delayed.
-	_guardian_sprint_duration_pending_start = true
+	_hunting_instinct_duration_pending_start = true
 
-	_show_message_over_hero("Guardian Sprint!")
+	_show_message_over_hero("Hunting Instinct!")
 
 
-## Ticks Guardian Sprint's duration down once per End Turn, same timing
+## Ticks Hunting Instinct's duration down once per End Turn, same timing
 ## (and same "the casting turn doesn't count" skip) as every other
 ## duration-based buff.
-func _tick_guardian_sprint() -> void:
-	if _guardian_sprint_turns_remaining <= 0:
+func _tick_hunting_instinct() -> void:
+	if _hunting_instinct_turns_remaining <= 0:
 		return
 
-	if _guardian_sprint_duration_pending_start:
-		_guardian_sprint_duration_pending_start = false
+	if _hunting_instinct_duration_pending_start:
+		_hunting_instinct_duration_pending_start = false
 		return
 
-	_guardian_sprint_turns_remaining -= 1
-	if _guardian_sprint_turns_remaining <= 0:
-		_end_guardian_sprint()
+	_hunting_instinct_turns_remaining -= 1
+	if _hunting_instinct_turns_remaining <= 0:
+		_end_hunting_instinct()
 
 
-## Ends Guardian Sprint once its duration runs out.
-func _end_guardian_sprint() -> void:
-	_guardian_sprint_turns_remaining = 0
-	_guardian_sprint_bonus_movement = 0
-	_guardian_sprint_charge_damage_pct = 0.0
-	_guardian_sprint_duration_pending_start = false
+## Ends Hunting Instinct once its duration runs out.
+func _end_hunting_instinct() -> void:
+	_hunting_instinct_turns_remaining = 0
+	_hunting_instinct_bonus_movement = 0
+	_hunting_instinct_charge_damage_pct = 0.0
+	_hunting_instinct_duration_pending_start = false
 
-	_show_message_over_hero("Guardian Sprint wears off")
+	_show_message_over_hero("Hunting Instinct wears off")
 
 
 func _hero_move(direction: int) -> void:
@@ -10150,13 +10012,17 @@ func _hero_move(direction: int) -> void:
 	var generation_before: int = _stage_generation
 	var distance: int = _hero_move_distance()
 
-	if _guardian_sprint_turns_remaining > 0:
-		distance += _guardian_sprint_bonus_movement
-		var sprint_result: Dictionary = _guardian_sprint_move_target(_hero_pos_index, direction, distance)
-		_hero_pos_index = int(sprint_result["pos"])
-		var charged_enemy: Dictionary = sprint_result["hit_enemy"]
+	if _hunting_instinct_turns_remaining > 0:
+		distance += _hunting_instinct_bonus_movement
+		var instinct_result: Dictionary = _hunting_instinct_move_target(_hero_pos_index, direction, distance)
+		_hero_pos_index = int(instinct_result["pos"])
+		var charged_enemy: Dictionary = instinct_result["hit_enemy"]
+		hero_image.flip_h = direction < 0
+		var from_global: Vector2 = hero_image.global_position
+		var landing_shift := Vector2(_index_to_x(_hero_pos_index) - hero_image.position.x, 0.0)
+		DreadlureFX.surge(_fx_layer, hero_image, from_global, from_global + landing_shift, charged_enemy.get("node") if not charged_enemy.is_empty() else null)
 		if not charged_enemy.is_empty():
-			var charge_damage: float = _roll_hero_damage() * _guardian_sprint_charge_damage_pct
+			var charge_damage: float = _roll_hero_damage() * _hunting_instinct_charge_damage_pct
 			_deal_fixed_damage_to_enemy(charged_enemy, charge_damage)
 	elif _is_ranged_hero():
 		_hero_pos_index = _ranged_move_target(_hero_pos_index, direction, distance)
@@ -10169,7 +10035,7 @@ func _hero_move(direction: int) -> void:
 
 	_update_hero_position()
 
-	# A Guardian Sprint charge landing the killing blow could clear the
+	# A Hunting Instinct charge landing the killing blow could clear the
 	# stage (or win a hero fight) and move on to a fresh encounter -
 	# same bail-out every skill resolver already uses before spending
 	# the turn, needed here for the first time since this is the first
@@ -10223,9 +10089,34 @@ func _on_attack_pressed() -> void:
 func _resolve_melee_attack() -> void:
 	var target: Dictionary = _get_enemy_at(_hero_pos_index)
 	if target.is_empty():
+		# Nothing real here - but a guard a rival Last Empress raised may
+		# be standing in this column, and a melee blow can fell it.
+		var rival_guard: Dictionary = _enemy_guard_at(_hero_pos_index)
+		if not rival_guard.is_empty():
+			_attack_enemy_guard(rival_guard)
+			return
 		_show_message_over_hero("No enemy in range")
 		return
 	_apply_hero_attack(target)
+
+
+## The hero's plain melee Attack on one of the rival's guards in his own
+## column: his usual attack lunge and a freshly-rolled hero hit, mitigated
+## by the boss's own effective armor (a guard has no defense stat of its
+## own). Spends the turn like any Attack. None of the on-hit extras of
+## _apply_hero_attack() (cleaves, lifesteal, knockback) apply - they're
+## all written around a real enemy.
+func _attack_enemy_guard(rival_guard: Dictionary) -> void:
+	var generation_before: int = _stage_generation
+	var hero_animator := CreatureAnimator.of(hero_image)
+	if hero_animator != null:
+		hero_animator.play_attack(-1.0 if hero_image.flip_h else 1.0, true)
+	var boss: Dictionary = _get_hero_fight_boss()
+	var armor: float = _enemy_hero_effective_armor(boss) if not boss.is_empty() else 0.0
+	_deal_damage_to_enemy_guard(rival_guard, _apply_armor_reduction(_roll_hero_damage(), armor))
+	if _battle_over or _stage_generation != generation_before:
+		return
+	_mark_turn_used()
 
 
 ## How many columns away a ranged hero can hit, from their Range
@@ -10380,11 +10271,11 @@ func _start_undertow_targeting(level_data: Dictionary) -> bool:
 	return true
 
 
-## Slardar's Corrosive Haze target picking: same column-range/highlight
+## Dreadlure's Deathlight Lure target picking: same column-range/highlight
 ## mechanism as every other targeted skill above, using this level's
 ## own `range` field (4-6 columns, growing with level). Returns false
 ## (and shows a message) if nothing is in range.
-func _start_corrosive_haze_targeting(level_data: Dictionary) -> bool:
+func _start_deathlight_lure_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = int(level_data.get("range", 4))
@@ -10399,8 +10290,8 @@ func _start_corrosive_haze_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "corrosive_haze"
-	_pending_corrosive_haze_level_data = level_data
+	_targeting_purpose = "deathlight_lure"
+	_pending_deathlight_lure_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
@@ -10458,12 +10349,12 @@ func _start_lucent_beam_targeting(level_data: Dictionary) -> bool:
 	return true
 
 
-## The Last Empress's Ensnare target picking: same column-range/highlight
+## The Last Empress's Shackles target picking: same column-range/highlight
 ## mechanism as every other targeted skill above, using this level's
 ## own `range` field (3-6 columns, growing with level) rather than the
-## hero's normal attack range - Ensnare reaches further than a plain
+## hero's normal attack range - Shackles reaches further than a plain
 ## Attack. Returns false (and shows a message) if nothing is in range.
-func _start_ensnare_targeting(level_data: Dictionary) -> bool:
+func _start_shackles_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = int(level_data.get("range", 3))
@@ -10478,8 +10369,8 @@ func _start_ensnare_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "ensnare"
-	_pending_ensnare_level_data = level_data
+	_targeting_purpose = "shackles"
+	_pending_shackles_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
@@ -11041,10 +10932,10 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 	var whisper_of_the_veil_level_data: Dictionary = _pending_whisper_of_the_veil_level_data
 	var drowned_surge_level_data: Dictionary = _pending_drowned_surge_level_data
 	var undertow_level_data: Dictionary = _pending_undertow_level_data
-	var corrosive_haze_level_data: Dictionary = _pending_corrosive_haze_level_data
+	var deathlight_lure_level_data: Dictionary = _pending_deathlight_lure_level_data
 	var sacred_arrow_level_data: Dictionary = _pending_sacred_arrow_level_data
 	var lucent_beam_level_data: Dictionary = _pending_lucent_beam_level_data
-	var ensnare_level_data: Dictionary = _pending_ensnare_level_data
+	var shackles_level_data: Dictionary = _pending_shackles_level_data
 	var chainfire_level_data: Dictionary = _pending_chainfire_level_data
 	var cinderbomb_level_data: Dictionary = _pending_cinderbomb_level_data
 	var three_cheers_level_data: Dictionary = _pending_three_cheers_level_data
@@ -11071,14 +10962,14 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 		_resolve_drowned_surge_cast(enemy, drowned_surge_level_data)
 	elif purpose == "undertow":
 		_resolve_undertow_cast(enemy, undertow_level_data)
-	elif purpose == "corrosive_haze":
-		_resolve_corrosive_haze_cast(enemy, corrosive_haze_level_data)
+	elif purpose == "deathlight_lure":
+		_resolve_deathlight_lure_cast(enemy, deathlight_lure_level_data)
 	elif purpose == "sacred_arrow":
 		_resolve_sacred_arrow_cast(enemy, sacred_arrow_level_data)
 	elif purpose == "lucent_beam":
 		_resolve_lucent_beam_cast(enemy, lucent_beam_level_data)
-	elif purpose == "ensnare":
-		_resolve_ensnare_cast(enemy, ensnare_level_data)
+	elif purpose == "shackles":
+		_resolve_shackles_cast(enemy, shackles_level_data)
 	elif purpose == "chainfire":
 		_resolve_chainfire_cast(enemy, chainfire_level_data)
 	elif purpose == "cinderbomb":
@@ -11163,7 +11054,7 @@ func _apply_hero_attack(target: Dictionary) -> void:
 	var depthsveil_bonus: float = _depthsveil_bonus_damage if _depthsveil_active else 0.0
 	# Mirana's own Moonlight Shadow pays off the same way, just as a
 	# PERCENTAGE of the attack's own rolled damage (folded in AFTER the
-	# roll, below - same "post-roll percentage" shape Bash of the
+	# roll, below - same "post-roll percentage" shape Might of the
 	# Deep's own bonus uses) rather than Depthsveil's flat pre-roll
 	# bonus. Only one of the two could ever be active in a given battle
 	# (different heroes' own kits), so this never double-counts either
@@ -11179,21 +11070,21 @@ func _apply_hero_attack(target: Dictionary) -> void:
 	# total), same as Depthsveil's own one-shot bonus above.
 	var pull_of_the_abyss_level_data: Dictionary = _maybe_consume_pull_of_the_abyss_stack()
 	var pull_of_the_abyss_bonus: float = float(pull_of_the_abyss_level_data.get("bonus_damage", 0.0))
-	# Bash of the Deep counts this Attack toward its own threshold too,
+	# Might of the Deep counts this Attack toward its own threshold too,
 	# same idea as Pull of the Abyss's stack just above - once reached, this
 	# hit's own damage is boosted by a PERCENTAGE of itself (folded in
 	# below, after the roll - unlike Pull of the Abyss's flat pre-roll bonus),
 	# and the target gets knocked back afterward (see
-	# _apply_bash_of_the_deep_knockback(), called once the target's
+	# _apply_might_of_the_deep_knockback(), called once the target's
 	# final position actually matters again, after every cleave above
 	# that reads it has already resolved).
-	var bash_level_data: Dictionary = _maybe_consume_bash_of_the_deep_stack()
+	var might_level_data: Dictionary = _maybe_consume_might_of_the_deep_stack()
 
 	var attack_damage: float = _roll_hero_damage(depthsveil_bonus + pull_of_the_abyss_bonus)
 	if moonlight_shadow_active_bonus_pct > 0.0:
 		attack_damage += attack_damage * moonlight_shadow_active_bonus_pct
-	if not bash_level_data.is_empty():
-		attack_damage += attack_damage * float(bash_level_data.get("bonus_damage_pct", 0.0))
+	if not might_level_data.is_empty():
+		attack_damage += attack_damage * float(might_level_data.get("bonus_damage_pct", 0.0))
 	var mitigated_damage: float = _deal_fixed_damage_to_enemy(target, attack_damage)
 	_deferred_hit_node = null
 	_apply_leeching_hunger_steal(target)
@@ -11226,33 +11117,26 @@ func _apply_hero_attack(target: Dictionary) -> void:
 	# _apply_hunters_bow_split()'s own gates).
 	_apply_hunters_bow_split(target, attack_damage)
 
-	# Rip Tide's own AoE splash - a no-op unless the skill is learned
-	# (see _apply_rip_tide_cleave()'s own gate). Independent of and
+	# Empress's Will's own AoE splash - a no-op unless the skill is learned
+	# (see _apply_empress_will_cleave()'s own gate). Independent of and
 	# stacks with Pull of the Abyss's/Cleaver's above.
-	_apply_rip_tide_cleave(target, attack_damage)
+	_apply_empress_will_cleave(target, attack_damage)
 
 	# Moon Glaives' own bounce - a no-op unless the skill is learned
 	# (see _apply_moon_glaives_bounces()'s own gate). Independent of and
-	# stacks with Pull of the Abyss's/Cleaver's/Rip Tide's above.
+	# stacks with Pull of the Abyss's/Cleaver's/Empress's Will's above.
 	_apply_moon_glaives_bounces(target, attack_damage)
 
-	# Bash of the Deep's own knockback - after every cleave above that
+	# Might of the Deep's own knockback - after every cleave above that
 	# reads target["pos_index"] as ITS OWN splash center, so none of
 	# them end up centered on where the target gets shoved to instead
 	# of where it actually stood when hit. A no-op unless this attack
 	# is the one that triggered the stack (see
-	# _maybe_consume_bash_of_the_deep_stack()). If the hit actually
-	# landed on one of the boss's own illusions instead of the boss
-	# itself (The Last Empress's Mirror Image redirect, see
-	# _deal_fixed_damage_to_enemy()'s own comment), knock THAT back
-	# instead - "target" never took the hit at all this time, so
-	# shoving it would move something the attack never touched.
-	if not bash_level_data.is_empty():
-		if not _last_enemy_illusion_redirect.is_empty():
-			if _last_enemy_illusion_redirect.get("current_hp", 0) > 0:
-				_apply_bash_of_the_deep_illusion_knockback(_last_enemy_illusion_redirect, bash_level_data)
-		elif target.get("current_hp", 0) > 0:
-			_apply_bash_of_the_deep_knockback(target, bash_level_data)
+	# _maybe_consume_might_of_the_deep_stack()).
+	if not might_level_data.is_empty():
+		DreadlureFX.might_strike(_fx_layer, target.get("node"), -1 if hero_image.flip_h else 1)
+		if target.get("current_hp", 0) > 0:
+			_apply_might_of_the_deep_knockback(target, might_level_data)
 
 	if depthsveil_bonus > 0.0:
 		_end_depthsveil()
@@ -11304,51 +11188,28 @@ func _deal_damage_to_enemy(target: Dictionary) -> void:
 ## `is_critical` just forwards to _show_damage_number()'s own bigger-
 ## and-golden-with-a-"!" treatment (see Glacier Breaker's own
 ## _resolve_glacier_breaker_cast()) - it has no effect on the damage math
-## itself, only how the number reads. `is_hero_action` gates Slardar's
-## own Corrosive Haze bonus (see below) - true for every hero attack/
+## itself, only how the number reads. `is_hero_action` gates Dreadlure's
+## own Deathlight Lure bonus (see below) - true for every hero attack/
 ## skill call site (the overwhelming majority, so it defaults true),
 ## false only at the handful of calls that AREN'T the hero's own doing:
 ## a DoT tick (_tick_enemy_turn_start_effects()), the Elderwild Companion's own
 ## attack (_bear_turn()), and another creep piling onto a The Hunger
 ## Calls target (_enemy_turn()'s own curse redirect).
 func _deal_fixed_damage_to_enemy(target: Dictionary, amount: float, is_critical: bool = false, is_hero_action: bool = true) -> float:
-	# Slardar's Corrosive Haze: boosts every hit THIS specific marked
+	# Dreadlure's Deathlight Lure: boosts every hit THIS specific marked
 	# target takes from the hero's own attacks/skills by this level's
 	# own bonus_damage_pct - applied to the RAW amount, before armor
-	# mitigation and before Mirror Image's own redirect just below, so
-	# a hit that ends up landing on one of the boss's own illusions
+	# mitigation and before Imperial Guard's own redirect just below, so
+	# a hit that ends up landing on one of the boss's own guards
 	# instead still carries the mark's bonus (the mark is about how
 	# fragile the TARGET is, not about whatever ends up absorbing the
 	# hit).
 	if is_hero_action:
-		var vulnerability_pct: float = float(target.get("corrosive_haze_bonus_pct", 0.0))
+		var vulnerability_pct: float = float(target.get("deathlight_lure_bonus_pct", 0.0))
 		if vulnerability_pct > 0.0:
 			amount *= (1.0 + vulnerability_pct)
 
 	var is_boss: bool = target["static"].get("is_hero_fight_boss", false)
-
-	# Reset on every call, whoever it's for - _apply_hero_attack() reads
-	# this right after its own call here to tell "the boss actually took
-	# it" apart from "it got redirected onto an illusion instead" (see
-	# that function's own Bash of the Deep knockback comment), so a
-	# stale value from some EARLIER, unrelated call must never survive
-	# to be misread as this one's outcome.
-	_last_enemy_illusion_redirect = {}
-
-	# The Last Empress's Mirror Image, cast by the rival - every hit that would
-	# otherwise land on the boss has a chance to be redirected onto a
-	# random surviving illusion instead, mirroring the player's own
-	# apply_damage() redirect (see that function's own comment) - a full
-	# redirect, not a split, bypassing Kindled Resolve's stack/Savage
-	# Roar/The Mist Remembers/Veil of the Forgotten since nothing actually touched
-	# the boss this time. Uses the boss's own armor for mitigation, same
-	# as if it had taken the hit itself.
-	if is_boss and not _enemy_illusions.is_empty() and randf() < _enemy_illusion_hit_chance_pct:
-		var illusion: Dictionary = _enemy_illusions[randi() % _enemy_illusions.size()]
-		var illusion_damage: float = _apply_armor_reduction(amount, _enemy_hero_effective_armor(target))
-		_deal_damage_to_enemy_illusion(illusion, illusion_damage, is_critical)
-		_last_enemy_illusion_redirect = illusion
-		return illusion_damage
 
 	# Raze's Three Cheers is the only thing that ever writes
 	# "armor_reduction" (see _resolve_three_cheers_cast()/
@@ -11447,18 +11308,18 @@ func _get_enemy_at(pos_index: int) -> Dictionary:
 ## targeting(), _start_thornbind_targeting(), _cast_abyssal_spasm()), exactly
 ## mirroring what the player's own Depthsveil/Rootveil does to
 ## him in _enemy_turn() (both folded into his own _is_hero_hidden()).
-## Slardar's Corrosive Haze overrides this for whichever enemy it's
-## currently marked (target["corrosive_haze_bonus_pct"] > 0, the same
-## per-instance field _resolve_corrosive_haze_cast() writes and _deal_
+## Dreadlure's Deathlight Lure overrides this for whichever enemy it's
+## currently marked (target["deathlight_lure_bonus_pct"] > 0, the same
+## per-instance field _resolve_deathlight_lure_cast() writes and _deal_
 ## fixed_damage_to_enemy() reads for its own damage bonus, both sharing
-## armor_reduction_turns_left's own countdown) - true sight lets Slardar
+## armor_reduction_turns_left's own countdown) - true sight lets Dreadlure
 ## keep attacking it, targeting it with a skill, or catching it in an
 ## AoE for as long as the mark holds, stealth notwithstanding. Since
 ## this function is the single choke point literally every one of those
 ## call sites already checks, that one override covers all of them for
 ## free - no per-skill changes needed.
 func _is_target_hidden(target: Dictionary) -> bool:
-	if float(target.get("corrosive_haze_bonus_pct", 0.0)) > 0.0:
+	if float(target.get("deathlight_lure_bonus_pct", 0.0)) > 0.0:
 		return false
 	return target["static"].get("is_hero_fight_boss", false) and (_enemy_depthsveil_active or _enemy_rootveil_active or _enemy_moonlight_shadow_active)
 
@@ -11785,6 +11646,7 @@ func _advance_to_next_stage() -> void:
 	_hero_pos_index = 1
 	_update_hero_position()
 	_reset_bear_to_hero_column()
+	_reset_guards_to_hero_column()
 
 	_turn_count = 0
 	_next_reinforcement_turn = REINFORCEMENT_INTERVAL
@@ -11866,6 +11728,7 @@ func _start_hero_fight(hero_static: Dictionary) -> void:
 	_hero_pos_index = 1
 	_update_hero_position()
 	_reset_bear_to_hero_column()
+	_reset_guards_to_hero_column()
 
 	_turn_count = 0
 	_next_reinforcement_turn = REINFORCEMENT_INTERVAL
@@ -11987,7 +11850,7 @@ func _reset_enemy_hero_state(hero_static: Dictionary) -> void:
 	_enemy_kiss_the_wastes_turns_left = 0
 	_enemy_kiss_the_wastes_level_data = {}
 
-	_end_enemy_mirror_image()
+	_end_enemy_imperial_guard()
 
 	var stats: Dictionary = hero_static.get("stats", {})
 	_enemy_max_mana = float(stats.get("mana", 0))
@@ -12025,12 +11888,12 @@ func _reset_enemy_hero_state(hero_static: Dictionary) -> void:
 	_player_mothers_grasp_dot_turns_left = 0
 	_player_armor_reduction = 0.0
 	_player_armor_reduction_turns_left = 0
-	_player_corrosive_haze_bonus_pct = 0.0
+	_player_deathlight_lure_bonus_pct = 0.0
 	_player_kiss_burn_dot_damage = 0.0
 	_player_kiss_burn_dot_turns_left = 0
 
-	_end_enemy_guardian_sprint()
-	_enemy_bash_of_the_deep_attack_count = 0
+	_end_enemy_hunting_instinct()
+	_enemy_might_of_the_deep_attack_count = 0
 	_end_enemy_moonlight_shadow()
 	_end_enemy_eclipse()
 
@@ -12081,7 +11944,10 @@ func _end_turn() -> void:
 		return
 
 	_cancel_targeting()
+	_stun_before_enemy_phase = _player_stun_turns_left
 	_bear_turn()
+	_guards_turn()
+	_enemy_guards_turn()
 	_enemy_turn()
 
 	if _recruited.get("current_hp", 0) <= 0:
@@ -12123,7 +11989,11 @@ func _end_turn() -> void:
 		_handle_defeat()
 		return
 
-	if _player_stun_turns_left > 0:
+	# A stun a rival landed during THIS end-of-turn (or one raised past what
+	# was already there) hasn't cost the player a turn yet - it starts
+	# counting from his next turn, so only a stun that was already in force
+	# when this function began is decremented here.
+	if _player_stun_turns_left > 0 and _player_stun_turns_left <= _stun_before_enemy_phase:
 		_player_stun_turns_left -= 1
 		if _player_stun_turns_left <= 0:
 			_player_the_hunger_calls_active = false
@@ -12306,11 +12176,11 @@ func _enemy_turn() -> void:
 	var curse_target_pos: int = curse_target.get("pos_index", -1) if curse_active else -1
 	var curse_damage_multiplier: float = 1.0 + _hunger_calls_bonus_damage_pct
 
-	# The rival's own illusions caught in the player's The Hollow Cold tick
+	# The rival's own guards caught in the player's The Hollow Cold tick
 	# at the start of the enemy turn, same as every enemy's own DoT
-	# does just below. Illusions never decide the battle, so no
+	# does just below. Guards never decide the battle, so no
 	# _battle_over bail-out is needed here.
-	_tick_enemy_illusions_the_hollow_cold()
+	_tick_enemy_guards_the_hollow_cold()
 	_tick_hollow_cold_tears(false)
 
 	for enemy in _enemies.duplicate():
@@ -12344,7 +12214,7 @@ func _enemy_turn() -> void:
 
 		var enemy_type: String = enemy_static.get("type", "")
 		var enemy_damage: float = float(enemy_static.get("damage", 0))
-		# Slardar's own Corrosive Haze (see _can_enemy_see_hero()'s own
+		# Dreadlure's own Deathlight Lure (see _can_enemy_see_hero()'s own
 		# comment) overrides this - true sight lets him keep fighting a
 		# hidden player normally, stealth notwithstanding.
 		var hero_hidden: bool = not _can_enemy_see_hero()
@@ -12379,7 +12249,7 @@ func _enemy_turn() -> void:
 					_play_enemy_attack_lunge(enemy, curse_target_pos)
 					_fire_enemy_projectile(enemy, curse_target.get("node"))
 					# Another creep's own attack, not the hero's - Corrosive
-					# Haze's own bonus never applies to it.
+					# Lure's own bonus never applies to it.
 					_deal_fixed_damage_to_enemy(curse_target, enemy_damage * curse_damage_multiplier, false, false)
 					_deferred_hit_node = null
 				elif not rooted:
@@ -12432,6 +12302,15 @@ func _enemy_turn() -> void:
 				_deal_damage_to_bear(enemy_damage)
 				_deferred_hit_node = null
 				attacked = true
+			elif not _nearest_guard_within(enemy["pos_index"], _enemy_attack_range(enemy)).is_empty():
+				# The hero's out of reach (or hidden), but one of his Imperial
+				# Guard is close enough to shoot instead - the nearest one.
+				var shot_guard: Dictionary = _nearest_guard_within(enemy["pos_index"], _enemy_attack_range(enemy))
+				_play_enemy_attack_lunge(enemy, shot_guard["pos_index"])
+				_fire_enemy_projectile(enemy, shot_guard.get("node"))
+				_enemy_attack_guard(shot_guard, enemy_damage)
+				_deferred_hit_node = null
+				attacked = true
 
 			if not attacked and not rooted:
 				# TOO FAR from anything worth shooting: close in on
@@ -12457,6 +12336,13 @@ func _enemy_turn() -> void:
 				_play_enemy_attack_lunge(enemy)
 				_deal_damage_to_bear(enemy_damage)
 				attacked = true
+			elif not _guards_at(enemy["pos_index"]).is_empty():
+				# The hero isn't in reach (or can't be seen), but one of his
+				# Imperial Guard stands right here - the weakest of them
+				# takes the blow.
+				_play_enemy_attack_lunge(enemy)
+				_enemy_attack_guard(_nearest_guard_within(enemy["pos_index"], 0), enemy_damage)
+				attacked = true
 
 			if not attacked and not rooted:
 				var target_pos: int = _nearest_threat_pos(enemy["pos_index"], hero_hidden)
@@ -12467,25 +12353,33 @@ func _enemy_turn() -> void:
 						_move_enemy(enemy, next_pos)
 
 
-## Whichever "threat" - the hero, or the Elderwild Companion if one is
-## currently summoned - sits closer to `enemy_pos`, ties going to the
-## hero. Only used to choose a movement target when nothing is in
-## attack/flee range this turn (see _enemy_turn()).
+## Whichever "threat" - the hero, the Elderwild Companion if one is
+## currently summoned, or any of the Last Empress's Imperial Guard - sits
+## closest to `enemy_pos`, ties going to the hero. Only used to choose a
+## movement target when nothing is in attack/flee range this turn (see
+## _enemy_turn()).
 ##
 ## `hero_is_hidden` excludes the hero from consideration entirely -
 ## while Veyrik is invisible enemies can't track him to move toward
-## him, only the bear (if one is out). Returns -1 when there's
-## nothing left to chase, which the caller reads as "don't move".
+## him, only the bear and the guards (if any are out). Returns -1 when
+## there's nothing left to chase, which the caller reads as "don't move".
 func _nearest_threat_pos(enemy_pos: int, hero_is_hidden: bool = false) -> int:
-	if hero_is_hidden:
-		return _bear["pos_index"] if _is_bear_alive() else -1
-
-	if not _is_bear_alive():
-		return _hero_pos_index
-
-	var hero_distance: int = _distance(enemy_pos, _hero_pos_index)
-	var bear_distance: int = _distance(enemy_pos, _bear["pos_index"])
-	return _bear["pos_index"] if bear_distance < hero_distance else _hero_pos_index
+	var best_pos: int = -1
+	var best_distance: int = GRID_COLUMNS + 1
+	if not hero_is_hidden:
+		best_pos = _hero_pos_index
+		best_distance = _distance(enemy_pos, _hero_pos_index)
+	if _is_bear_alive():
+		var bear_distance: int = _distance(enemy_pos, _bear["pos_index"])
+		if bear_distance < best_distance:
+			best_pos = _bear["pos_index"]
+			best_distance = bear_distance
+	for guard in _guards:
+		var guard_distance: int = _distance(enemy_pos, guard["pos_index"])
+		if guard_distance < best_distance:
+			best_pos = guard["pos_index"]
+			best_distance = guard_distance
+	return best_pos
 
 
 # ------------------------------------------------------------------
@@ -12544,7 +12438,7 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 
 	var enemy_type: String = _enemy_hero_attack_type(enemy)
 	var hero_distance: int = _distance(enemy["pos_index"], _hero_pos_index)
-	# Slardar's own Corrosive Haze (see _can_enemy_see_hero()'s own
+	# Dreadlure's own Deathlight Lure (see _can_enemy_see_hero()'s own
 	# comment) overrides this - true sight lets him keep fighting a
 	# hidden player normally, stealth notwithstanding.
 	var hero_hidden: bool = not _can_enemy_see_hero()
@@ -12609,18 +12503,23 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 	if not hero_hidden and not rooted:
 		var step: int = _step_toward(enemy["pos_index"], _hero_pos_index)
 		if step != 0:
-			# Slardar's Guardian Sprint boosts this same fallback move,
+			# Dreadlure's Hunting Instinct boosts this same fallback move,
 			# same "changes what the NEXT normal move does" shape the
 			# player's own copy has in _hero_move() - a no-op walk of 1
 			# column, same as every other enemy, while it isn't active.
-			if _enemy_guardian_sprint_turns_remaining > 0:
-				var sprint_distance: int = 1 + _enemy_guardian_sprint_bonus_movement
-				var sprint_result: Dictionary = _enemy_guardian_sprint_move_target(enemy["pos_index"], step, sprint_distance)
-				var landing_pos: int = int(sprint_result["pos"])
+			if _enemy_hunting_instinct_turns_remaining > 0:
+				var instinct_distance: int = 1 + _enemy_hunting_instinct_bonus_movement
+				var instinct_result: Dictionary = _enemy_hunting_instinct_move_target(enemy["pos_index"], step, instinct_distance)
+				var landing_pos: int = int(instinct_result["pos"])
 				if landing_pos != enemy["pos_index"]:
+					var rival_node: TextureRect = enemy["node"]
+					rival_node.flip_h = step < 0
+					var rival_from: Vector2 = rival_node.global_position
+					var rival_shift := Vector2(_index_to_x(landing_pos) - rival_node.position.x, 0.0)
+					DreadlureFX.surge(_fx_layer, rival_node, rival_from, rival_from + rival_shift, hero_image if bool(instinct_result["hit_player"]) else null)
 					_move_enemy(enemy, landing_pos)
-				if bool(sprint_result["hit_player"]):
-					var charge_damage: float = _roll_enemy_hero_damage(enemy) * _enemy_guardian_sprint_charge_damage_pct
+				if bool(instinct_result["hit_player"]):
+					var charge_damage: float = _roll_enemy_hero_damage(enemy) * _enemy_hunting_instinct_charge_damage_pct
 					apply_damage(charge_damage)
 			else:
 				var next_pos: int = enemy["pos_index"] + step
@@ -12681,17 +12580,17 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 	var attacking_from_enemy_rootveil: bool = _enemy_rootveil_active
 	var pull_of_the_abyss_level_data: Dictionary = _maybe_consume_enemy_pull_of_the_abyss_stack()
 	var pull_of_the_abyss_bonus: float = float(pull_of_the_abyss_level_data.get("bonus_damage", 0.0))
-	# Bash of the Deep counts this Attack toward its own threshold too,
+	# Might of the Deep counts this Attack toward its own threshold too,
 	# same idea as Pull of the Abyss's stack just above - once reached, this
 	# hit's own damage is boosted by a PERCENTAGE of itself (folded in
 	# below, after the roll - unlike Pull of the Abyss's flat pre-roll bonus),
 	# and the player gets knocked back afterward (see
-	# _apply_enemy_bash_of_the_deep_knockback(), called once apply_
+	# _apply_enemy_might_of_the_deep_knockback(), called once apply_
 	# damage() has already resolved).
-	var bash_level_data: Dictionary = _maybe_consume_enemy_bash_of_the_deep_stack()
+	var might_level_data: Dictionary = _maybe_consume_enemy_might_of_the_deep_stack()
 	# Mirana's own Moonlight Shadow pays off the same way, just as a
 	# PERCENTAGE of the attack's own rolled damage (folded in AFTER the
-	# roll, below), same "post-roll percentage" shape Bash of the Deep's
+	# roll, below), same "post-roll percentage" shape Might of the Deep's
 	# own bonus uses. Only one of Depthsveil/Moonlight Shadow could
 	# ever be active in a given fight (different heroes' own kits), so
 	# this never double-counts either way.
@@ -12699,8 +12598,8 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 	var attack_damage: float = _roll_enemy_hero_damage(enemy, shadow_bonus + pull_of_the_abyss_bonus)
 	if moonlight_shadow_active_bonus_pct > 0.0:
 		attack_damage += attack_damage * moonlight_shadow_active_bonus_pct
-	if not bash_level_data.is_empty():
-		attack_damage += attack_damage * float(bash_level_data.get("bonus_damage_pct", 0.0))
+	if not might_level_data.is_empty():
+		attack_damage += attack_damage * float(might_level_data.get("bonus_damage_pct", 0.0))
 	_play_hero_attack_effect(_enemy_hero_static, enemy.get("node"), hero_image, _enemy_beast_of_the_elderwild_active)
 	var mitigated: float = apply_damage(attack_damage)
 	_deferred_hit_node = null
@@ -12709,13 +12608,13 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 	_apply_enemy_wildbond_lifesteal(enemy, mitigated)
 	_apply_enemy_mark_of_the_mist_stack()
 	_apply_enemy_frostbound_fangs_attack()
-	# Rip Tide's splash onto the player's illusions/bear near him - a
+	# Empress's Will's splash onto the player's guards/bear near him - a
 	# no-op unless the skill is learned.
-	_apply_enemy_rip_tide_splash(attack_damage)
+	_apply_enemy_empress_will_splash(attack_damage)
 
 	if not pull_of_the_abyss_level_data.is_empty():
 		# Its bonus damage is already folded into the roll above; the
-		# cleave reaches the player's own illusions/bear standing near
+		# cleave reaches the player's own guards/bear standing near
 		# him (see _apply_enemy_pull_of_the_abyss_cleave()).
 		_show_rising_message_over(hero_image, "Pull of the Abyss!", PULL_OF_THE_ABYSS_TEXT_COLOR)
 		_apply_enemy_pull_of_the_abyss_cleave(attack_damage, pull_of_the_abyss_level_data)
@@ -12725,14 +12624,19 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 	# Pull of the Abyss's above.
 	_apply_enemy_moon_glaives_bounces(attack_damage)
 
-	# Bash of the Deep's own knockback - after leeching hunger/lifesteal/
+	# Might of the Deep's own knockback - after leeching hunger/lifesteal/
 	# Mark of the Mist above, same "resolve every OTHER effect of the hit
 	# before shoving the target somewhere else" ordering
 	# _apply_hero_attack()'s own player-side copy follows. A no-op unless
 	# this attack is the one that triggered the stack, and only if the
 	# player actually survived it.
-	if not bash_level_data.is_empty() and _recruited.get("current_hp", 0) > 0:
-		_apply_enemy_bash_of_the_deep_knockback(enemy, bash_level_data)
+	if not might_level_data.is_empty():
+		var strike_dir: int = _step_toward(enemy["pos_index"], _hero_pos_index)
+		if strike_dir == 0:
+			strike_dir = -1 if bool(enemy["node"].flip_h) else 1
+		DreadlureFX.might_strike(_fx_layer, hero_image, strike_dir)
+	if not might_level_data.is_empty() and _recruited.get("current_hp", 0) > 0:
+		_apply_enemy_might_of_the_deep_knockback(enemy, might_level_data)
 
 	if _enemy_depthsveil_active and shadow_bonus > 0.0:
 		_end_enemy_depthsveil()
@@ -12763,7 +12667,7 @@ func _roll_enemy_hero_damage(enemy: Dictionary, extra_bonus: float = 0.0) -> flo
 	# once learned. Applied last so it scales the whole roll, mirroring
 	# the player's own _roll_hero_damage() exactly - this is the ONE
 	# place it's ever folded in, so every caller of this function (a
-	# plain Attack, Guardian Sprint's own charge damage, etc.) already has
+	# plain Attack, Hunting Instinct's own charge damage, etc.) already has
 	# it baked into whatever it reads back, with nothing further to add.
 	var lunar_blessing_bonus_pct: float = float(_get_enemy_lunar_blessing_level_data().get("bonus_damage_pct", 0.0))
 	if lunar_blessing_bonus_pct > 0.0:
@@ -13039,7 +12943,7 @@ func _enemy_has_unaffordable_ready_skill(enemy_type: String, hero_distance: int,
 ##     Pull of the Abyss, and what that's worth - see
 ##     _maybe_consume_enemy_pull_of_the_abyss_stack() for the real activation
 ##     this only ever previews. cleave_targets counts the player's own
-##     illusions/Elderwild Companion within cleave_columns of him - the only
+##     guards/Elderwild Companion within cleave_columns of him - the only
 ##     things besides the player himself the cleave can reach (see
 ##     _apply_enemy_pull_of_the_abyss_cleave()).
 ##   - kaelen_varr_drowned_surge_combo_ready/kaelen_varr_the_sunken_one_combo_ready: whether
@@ -13101,47 +13005,47 @@ func _enemy_has_unaffordable_ready_skill(enemy_type: String, hero_distance: int,
 ##     armored one. EnemyHeroManager's own _build_npc_ai_context() reads
 ##     a creep target's own static armor instead, since the simulation
 ##     has no per-turn buff/debuff armor system of its own.
-##   - illusions_active/illusion_count/illusion_turns_remaining/illusion_
-##     total_damage_per_turn: The Last Empress's own Mirror Image, live off
-##     _enemy_illusions - for EnemySkillAI's own _last_empress_mirror_image_
-##     modifier()/_last_empress_ensnare_modifier()/_last_empress_song_of_the_siren_
+##   - guards_active/guard_count/guard_turns_remaining/guard_
+##     total_damage_per_turn: The Last Empress's own Imperial Guard, live off
+##     _enemy_guards - for EnemySkillAI's own _last_empress_imperial_guard_
+##     modifier()/_last_empress_shackles_modifier()/_last_empress_luring_gaze_
 ##     modifier()/_last_empress_basic_attack_modifier(), all of which read this
-##     turn's illusion state to score their own Mirror Image synergy (see
-##     each one's own docstring). illusion_total_damage_per_turn is the
+##     turn's guard state to score their own Imperial Guard synergy (see
+##     each one's own docstring). guard_total_damage_per_turn is the
 ##     WHOLE squad's own expected hit next turn (_roll_enemy_hero_damage()
-##     x _enemy_illusion_damage_pct x illusion count), not a per-illusion
-##     figure, so callers never have to re-multiply by illusion_count
+##     x _enemy_guard_damage_pct x guard count), not a per-guard
+##     figure, so callers never have to re-multiply by guard_count
 ##     themselves.
-##   - rip_tide_illusion_damage_bonus_pct/rip_tide_extra_illusion/rip_
-##     tide_illusion_duration_bonus/rip_tide_aoe_damage_pct: The Last Empress's
-##     own Rip Tide, read fresh off _get_enemy_rip_tide_level_data() -
-##     Rip Tide is passive and never itself a scored candidate (see
+##   - empress_will_guardians_damage_bonus_pct/empress_will_extra_guard/
+##     empress_will_guard_duration_bonus/empress_will_aoe_damage_pct: The Last Empress's
+##     own Empress's Will, read fresh off _get_enemy_empress_will_level_data() -
+##     Empress's Will is passive and never itself a scored candidate (see
 ##     EnemySkillAI's own header comment), so its bonuses only ever reach
-##     Mirror Image/Song of the Siren/a plain Attack through these four
+##     Imperial Guard/Luring Gaze/a plain Attack through these four
 ##     fields. All 0/0.0 while the rival hasn't learned it.
 ##   - hero_move_distance: the rival's own baseline per-turn movement (1 -
 ##     every enemy always takes exactly one column per turn, see
 ##     _hero_move_distance()'s own header comment) before Guardian
-##     Sprint's own bonus - for Slardar's own reach math.
-##   - sprint_bonus_movement/sprint_charge_damage_pct: Guardian Sprint's
+##     Instinct's own bonus - for Dreadlure's own reach math.
+##   - instinct_bonus_movement/instinct_charge_damage_pct: Hunting Instinct's
 ##     CURRENT level, read fresh off _get_enemy_skill_level_data() - 0/0.0
-##     while unlearned. Guardian Sprint is scored as a candidate only on
-##     the turn it's actually cast, so other skills (Corrosive Haze's own
+##     while unlearned. Hunting Instinct is scored as a candidate only on
+##     the turn it's actually cast, so other skills (Deathlight Lure's own
 ##     reach check, a plain Attack's own knockback-wash check) need these
-##     independently of whatever Sprint itself is being scored with.
-##   - bash_attacks_required/bash_current_progress/bash_bonus_damage_pct/
-##     bash_knockback: Slardar's own Bash of the Deep, read fresh off
-##     _get_enemy_bash_of_the_deep_level_data()/_enemy_bash_of_the_deep_
+##     independently of whatever Instinct itself is being scored with.
+##   - might_attacks_required/might_current_progress/might_bonus_damage_pct/
+##     might_knockback: Dreadlure's own Might of the Deep, read fresh off
+##     _get_enemy_might_of_the_deep_level_data()/_enemy_might_of_the_deep_
 ##     attack_count - passive and never itself a scored candidate (see
 ##     EnemySkillAI's own header comment), so its progression only ever
-##     reaches Guardian Sprint/Slithereen Crush/Corrosive Haze/a plain
+##     reaches Hunting Instinct/Paralytic Venom/Deathlight Lure/a plain
 ##     Attack through these fields. All 0/0.0 while unlearned.
-##   - crush_radius/crush_damage: Slithereen Crush's CURRENT level, read
-##     fresh off _get_enemy_skill_level_data() - for Guardian Sprint's/
-##     Corrosive Haze's own combo bonuses, same reasoning as Sprint's own
+##   - venom_radius/venom_damage: Paralytic Venom's CURRENT level, read
+##     fresh off _get_enemy_skill_level_data() - for Hunting Instinct's/
+##     Deathlight Lure's own combo bonuses, same reasoning as Instinct's own
 ##     fields above.
 ##   - target_marked_bonus_pct: whether the player is CURRENTLY Corrosive
-##     Haze-marked, and by how much (_player_corrosive_haze_bonus_pct) -
+##     Lure-marked, and by how much (_player_deathlight_lure_bonus_pct) -
 ##     for a plain Attack's own synergy bonus.
 ##   - hero_attack_range: the rival's own basic-attack reach for its type
 ##     (base_attack_range, already computed below) - for Mirana's own
@@ -13153,8 +13057,8 @@ func _enemy_has_unaffordable_ready_skill(enemy_type: String, hero_distance: int,
 ##     levels, read fresh off _get_enemy_skill_level_data() - each of her
 ##     skills is only ever scored as a candidate on the turn it's itself
 ##     being cast, so Leap's/Moonlight Shadow's own combo bonuses need
-##     these independently, same reasoning Slardar's own "crush_radius"/
-##     "crush_damage" fields already established.
+##     these independently, same reasoning Dreadlure's own "venom_radius"/
+##     "venom_damage" fields already established.
 ##   - moonlight_shadow_active/moonlight_shadow_bonus_damage_pct:
 ##     Mirana's own current stealth state - for a plain Attack's own
 ##     substantial bonus while it's up (see EnemySkillAI's own _mirana_
@@ -13168,7 +13072,7 @@ func _enemy_has_unaffordable_ready_skill(enemy_type: String, hero_distance: int,
 ##     off _get_enemy_moon_glaives_level_data() - 0/0.0 while unlearned.
 ##   - moon_glaives_valid_bounce_targets/moon_glaives_bounce_target_hps:
 ##     the ACTUAL bounce targets right now - every one of the player's
-##     own illusions, plus his own Elderwild Companion, within bounce_range of
+##     own guards, plus his own Elderwild Companion, within bounce_range of
 ##     his own column (the only column a rival Attack could ever bounce
 ##     from - see _apply_enemy_moon_glaives_bounces()'s own docstring for
 ##     why there's no second real _enemies-style target here) - never the
@@ -13180,7 +13084,7 @@ func _enemy_has_unaffordable_ready_skill(enemy_type: String, hero_distance: int,
 ##   - eclipse_candidate_count/eclipse_candidate_hps/eclipse_candidate_
 ##     max_hps: every REAL beam candidate within Luna's own Eclipse
 ##     radius right now - the player (if in range), each of his own
-##     illusions in range, and his own Elderwild Companion if in range - mirrors
+##     guards in range, and his own Elderwild Companion if in range - mirrors
 ##     _tick_enemy_eclipse()'s own candidate pool exactly (see
 ##     EnemySkillAI's own _luna_eclipse_modifier()/_luna_eclipse_
 ##     expected_damage() for how this drives the ultimate's own scoring).
@@ -13195,22 +13099,22 @@ func _build_enemy_ai_context(enemy: Dictionary, enemy_type: String, hero_distanc
 	var base_attack_range: int = _enemy_attack_range(enemy) if enemy_type == "range" else 0
 
 	# Luna's Moon Glaives: the ACTUAL bounce targets right now - every one
-	# of the player's own illusions, plus his own Elderwild Companion, within
+	# of the player's own guards, plus his own Elderwild Companion, within
 	# bounce_range of his own column (see _apply_enemy_moon_glaives_
 	# bounces()'s own docstring for why that's the only column a rival
 	# Attack could ever bounce from in a hero fight).
 	var moon_glaives_level_data: Dictionary = _get_enemy_skill_level_data("moon_glaives")
 	var moon_glaives_bounce_range: int = int(moon_glaives_level_data.get("bounce_range", 0))
 	var moon_glaives_bounce_target_hps: Array = []
-	for illusion in _illusions:
-		if _distance(illusion["pos_index"], _hero_pos_index) <= moon_glaives_bounce_range:
-			moon_glaives_bounce_target_hps.append(float(illusion.get("current_hp", 0.0)))
+	for guard in _guards:
+		if _distance(guard["pos_index"], _hero_pos_index) <= moon_glaives_bounce_range:
+			moon_glaives_bounce_target_hps.append(float(guard.get("current_hp", 0.0)))
 	if _is_bear_alive() and _distance(_bear["pos_index"], _hero_pos_index) <= moon_glaives_bounce_range:
 		moon_glaives_bounce_target_hps.append(float(_bear.get("current_hp", 0.0)))
 
 	# Luna's Eclipse: every REAL beam candidate within radius of the
 	# rival's OWN current position right now - the player himself, each
-	# of his own illusions, and his own Elderwild Companion - mirrors
+	# of his own guards, and his own Elderwild Companion - mirrors
 	# _tick_enemy_eclipse()'s own candidate pool exactly.
 	var eclipse_level_data: Dictionary = _get_enemy_skill_level_data("eclipse")
 	var eclipse_radius: int = int(eclipse_level_data.get("radius", 0))
@@ -13219,10 +13123,10 @@ func _build_enemy_ai_context(enemy: Dictionary, enemy_type: String, hero_distanc
 	if hero_distance <= eclipse_radius:
 		eclipse_candidate_hps.append(float(_recruited.get("current_hp", 0)))
 		eclipse_candidate_max_hps.append(_hero_max_hp())
-	for illusion in _illusions:
-		if _distance(illusion["pos_index"], enemy["pos_index"]) <= eclipse_radius:
-			eclipse_candidate_hps.append(float(illusion.get("current_hp", 0.0)))
-			eclipse_candidate_max_hps.append(float(illusion.get("max_hp", 0.0)))
+	for guard in _guards:
+		if _distance(guard["pos_index"], enemy["pos_index"]) <= eclipse_radius:
+			eclipse_candidate_hps.append(float(guard.get("current_hp", 0.0)))
+			eclipse_candidate_max_hps.append(float(guard.get("max_hp", 0.0)))
 	if _is_bear_alive() and _distance(_bear["pos_index"], enemy["pos_index"]) <= eclipse_radius:
 		eclipse_candidate_hps.append(float(_bear.get("current_hp", 0.0)))
 		eclipse_candidate_max_hps.append(float(_bear.get("hp", _bear.get("current_hp", 0.0))))
@@ -13262,24 +13166,24 @@ func _build_enemy_ai_context(enemy: Dictionary, enemy_type: String, hero_distanc
 		"kindled_resolve_max_stacks": int(_get_enemy_kindled_resolve_level_data().get("max_stacks", 0)),
 		"target_is_hero": true,
 		"target_armor": _hero_armor(),
-		"illusions_active": not _enemy_illusions.is_empty(),
-		"illusion_count": _enemy_illusions.size(),
-		"illusion_turns_remaining": _enemy_illusions_turns_remaining,
-		"illusion_total_damage_per_turn": _roll_enemy_hero_damage(enemy) * _enemy_illusion_damage_pct * float(_enemy_illusions.size()),
-		"rip_tide_illusion_damage_bonus_pct": float(_get_enemy_rip_tide_level_data().get("illusion_damage_bonus_pct", 0.0)),
-		"rip_tide_extra_illusion": int(_get_enemy_rip_tide_level_data().get("extra_illusion", 0)),
-		"rip_tide_illusion_duration_bonus": int(_get_enemy_rip_tide_level_data().get("illusion_duration_bonus", 0)),
-		"rip_tide_aoe_damage_pct": float(_get_enemy_rip_tide_level_data().get("aoe_damage_pct", 0.0)),
+		"guards_active": not _enemy_guards.is_empty(),
+		"guard_count": _enemy_guards.size(),
+		"guard_turns_remaining": _enemy_guards_turns_remaining,
+		"guard_total_damage_per_turn": _roll_enemy_hero_damage(enemy) * _enemy_guard_damage_pct * float(_enemy_guards.size()),
+		"empress_will_guardians_damage_bonus_pct": float(_get_enemy_empress_will_level_data().get("guardians_damage_bonus_pct", 0.0)),
+		"empress_will_extra_guard": int(_get_enemy_empress_will_level_data().get("extra_guard", 0)),
+		"empress_will_guard_duration_bonus": int(_get_enemy_empress_will_level_data().get("guard_duration_bonus", 0)),
+		"empress_will_aoe_damage_pct": float(_get_enemy_empress_will_level_data().get("aoe_damage_pct", 0.0)),
 		"hero_move_distance": 1,
-		"sprint_bonus_movement": int(_get_enemy_skill_level_data("guardian_sprint").get("bonus_movement", 0)),
-		"sprint_charge_damage_pct": float(_get_enemy_skill_level_data("guardian_sprint").get("charge_damage_pct", 0.0)),
-		"bash_attacks_required": int(_get_enemy_bash_of_the_deep_level_data().get("attacks_required", 0)),
-		"bash_current_progress": _enemy_bash_of_the_deep_attack_count,
-		"bash_bonus_damage_pct": float(_get_enemy_bash_of_the_deep_level_data().get("bonus_damage_pct", 0.0)),
-		"bash_knockback": int(_get_enemy_bash_of_the_deep_level_data().get("knockback", 0)),
-		"crush_radius": int(_get_enemy_skill_level_data("slithereen_crush").get("radius", 0)),
-		"crush_damage": float(_get_enemy_skill_level_data("slithereen_crush").get("damage", 0.0)),
-		"target_marked_bonus_pct": _player_corrosive_haze_bonus_pct,
+		"instinct_bonus_movement": int(_get_enemy_skill_level_data("hunting_instinct").get("bonus_movement", 0)),
+		"instinct_charge_damage_pct": float(_get_enemy_skill_level_data("hunting_instinct").get("charge_damage_pct", 0.0)),
+		"might_attacks_required": int(_get_enemy_might_of_the_deep_level_data().get("attacks_required", 0)),
+		"might_current_progress": _enemy_might_of_the_deep_attack_count,
+		"might_bonus_damage_pct": float(_get_enemy_might_of_the_deep_level_data().get("bonus_damage_pct", 0.0)),
+		"might_knockback": int(_get_enemy_might_of_the_deep_level_data().get("knockback", 0)),
+		"venom_radius": int(_get_enemy_skill_level_data("paralytic_venom").get("radius", 0)),
+		"venom_damage": float(_get_enemy_skill_level_data("paralytic_venom").get("damage", 0.0)),
+		"target_marked_bonus_pct": _player_deathlight_lure_bonus_pct,
 		"hero_attack_range": base_attack_range,
 		"starstorm_radius": int(_get_enemy_skill_level_data("starstorm").get("radius", 0)),
 		"sacred_arrow_range": int(_get_enemy_skill_level_data("sacred_arrow").get("range", 0)),
@@ -13477,18 +13381,18 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 			_cast_enemy_three_cheers(enemy, level_data)
 		"kiss_the_wastes":
 			_cast_enemy_kiss_the_wastes(level_data)
-		"mirror_image":
-			_cast_enemy_mirror_image(enemy, level_data)
-		"ensnare":
-			_cast_enemy_ensnare(level_data)
-		"song_of_the_siren":
-			_cast_enemy_song_of_the_siren(enemy, level_data)
-		"guardian_sprint":
-			_cast_enemy_guardian_sprint(level_data)
-		"slithereen_crush":
-			_cast_enemy_slithereen_crush(enemy, level_data)
-		"corrosive_haze":
-			_cast_enemy_corrosive_haze(level_data)
+		"imperial_guard":
+			_cast_enemy_imperial_guard(enemy, level_data)
+		"shackles":
+			_cast_enemy_shackles(level_data)
+		"luring_gaze":
+			_cast_enemy_luring_gaze(enemy, level_data)
+		"hunting_instinct":
+			_cast_enemy_hunting_instinct(level_data)
+		"paralytic_venom":
+			_cast_enemy_paralytic_venom(enemy, level_data)
+		"deathlight_lure":
+			_cast_enemy_deathlight_lure(level_data)
 		"starstorm":
 			_cast_enemy_starstorm(enemy, level_data)
 		"sacred_arrow":
@@ -13587,7 +13491,9 @@ const SPRITE_FLASH_TWEEN_META := "sprite_flash_tween"
 func _sprite_flash(node: TextureRect, peak_scale: float, flash_modulate: Color) -> void:
 	if not is_instance_valid(node):
 		return
-	var running: Variant = node.get_meta(SPRITE_FLASH_TWEEN_META, null)
+	# (has_meta first: get_meta() with a null default still logs an error
+	# for a key that isn't there, which it never is for a sprite's first flash.)
+	var running: Variant = node.get_meta(SPRITE_FLASH_TWEEN_META) if node.has_meta(SPRITE_FLASH_TWEEN_META) else null
 	if running is Tween and running.is_valid():
 		running.kill()
 	var rest_modulate: Color = node.get_meta(SPRITE_FLASH_REST_META, node.modulate)
@@ -13671,7 +13577,7 @@ func _play_thornbind_effect(node: TextureRect) -> void:
 ## its root (both armed with the same root_duration) and ticks down
 ## right as the last rooted turn begins, so the vines sink back into
 ## the ground just as the unit is about to be free - and a root from
-## anything else (Thornbind, Ensnare) never grows vines.
+## anything else (Thornbind, Shackles) never grows vines.
 func _refresh_mothers_grasp_roots() -> void:
 	# The ridge of upheaval runs from the caster's feet - the hero's for
 	# his own cast, the rival's for theirs.
@@ -13735,7 +13641,7 @@ func _play_ground_dirt(pos: Vector2, width: float) -> void:
 ## follow current state instead of being toggled at every cast/tick/
 ## dispel/reset site, same approach as _refresh_status_effects().
 ## "Thornbound" = rooted AND still carrying Thornbind's own DoT, so
-## Ensnare's/Mother's Grasp's plain roots (which never set the Thornbind DoT)
+## Shackles's/Mother's Grasp's plain roots (which never set the Thornbind DoT)
 ## don't grow them.
 func _refresh_thornbind_vines() -> void:
 	for enemy in _enemies:
@@ -13781,19 +13687,19 @@ func _refresh_mark_of_stillness_frost() -> void:
 		or _player_return_to_the_void_dot_turns_left > 0 or _player_winters_grip_dot_turns_left > 0 or _player_the_hunger_calls_active \
 		or _the_test_of_time_active \
 		or (rival_field_center >= 0 and _distance(_hero_pos_index, rival_field_center) <= _enemy_frost_tempest_radius))
-	# Illusions (either side) can only ever carry The Hollow Cold's DoT,
+	# Guards (either side) can only ever carry The Hollow Cold's DoT,
 	# never Mark of Stillness's - a single-target cast never lands on one - or
 	# stand inside the opposing side's The Frost Tempest. The player's own
 	# Elderwild Companion can carry either DoT (a rival can aim Mark of Stillness at it -
 	# see _cast_enemy_mark_of_stillness_on_bear()).
-	for illusion in _illusions:
-		var illusion_frozen: bool = illusion.get("the_hollow_cold_dot_turns_left", 0) > 0 \
-			or (rival_field_center >= 0 and _distance(illusion["pos_index"], rival_field_center) <= _enemy_frost_tempest_radius)
-		_set_mark_of_stillness_frost(illusion.get("node"), illusion_frozen)
-	for illusion in _enemy_illusions:
-		var enemy_illusion_frozen: bool = illusion.get("the_hollow_cold_dot_turns_left", 0) > 0 \
-			or (player_field_center >= 0 and _distance(illusion["pos_index"], player_field_center) <= _frost_tempest_radius)
-		_set_mark_of_stillness_frost(illusion.get("node"), enemy_illusion_frozen)
+	for guard in _guards:
+		var guard_frozen: bool = guard.get("the_hollow_cold_dot_turns_left", 0) > 0 \
+			or (rival_field_center >= 0 and _distance(guard["pos_index"], rival_field_center) <= _enemy_frost_tempest_radius)
+		_set_mark_of_stillness_frost(guard.get("node"), guard_frozen)
+	for guard in _enemy_guards:
+		var enemy_guard_frozen: bool = guard.get("the_hollow_cold_dot_turns_left", 0) > 0 \
+			or (player_field_center >= 0 and _distance(guard["pos_index"], player_field_center) <= _frost_tempest_radius)
+		_set_mark_of_stillness_frost(guard.get("node"), enemy_guard_frozen)
 	if _is_bear_alive():
 		var bear_frozen: bool = int(_bear.get("mark_of_stillness_dot_turns_left", 0)) > 0 or int(_bear.get("the_hollow_cold_dot_turns_left", 0)) > 0 \
 			or int(_bear.get("return_to_the_void_dot_turns_left", 0)) > 0 or int(_bear.get("winters_grip_dot_turns_left", 0)) > 0 \
@@ -14210,9 +14116,9 @@ func _cast_enemy_abyssal_spasm(enemy: Dictionary, level_data: Dictionary) -> voi
 	# catches (see _cast_abyssal_spasm()).
 	_flash_bounce_hit(hero_image)
 	# Abyssal Spasm is centered on the CASTER's own column, not the
-	# player's - an illusion standing near the rival (not necessarily
+	# player's - a guard standing near the rival (not necessarily
 	# near the hero) can still be caught in it.
-	_deal_aoe_damage_to_illusions(enemy["pos_index"], int(level_data.get("radius", 0)), pact_damage, true)
+	_deal_aoe_damage_to_guards(enemy["pos_index"], int(level_data.get("radius", 0)), pact_damage, true)
 	_deal_aoe_damage_to_bear(enemy["pos_index"], int(level_data.get("radius", 0)), pact_damage, true)
 
 
@@ -14383,17 +14289,44 @@ func _end_enemy_depthsveil() -> void:
 	_update_enemy_hero_visibility()
 
 
-## Fades the boss's own enemy node while hidden, the same visual cue
-## the player's own Depthsveil gives his portrait - just as a direct
-## modulate on the enemy TextureRect rather than a dedicated node,
-## since a hero-fight boss is otherwise a completely ordinary entry in
-## _enemies.
+## Whether the rival hero is currently invisible (any of its veils).
+func _is_enemy_hero_invisible() -> bool:
+	return _enemy_depthsveil_active or _enemy_rootveil_active or _enemy_moonlight_shadow_active
+
+
+## An invisible rival hero genuinely vanishes: its sprite, HP and status
+## labels are hidden, so the player can't see - or play around - where it
+## is (the player's OWN invisibility, by contrast, only fades his portrait
+## so he can still find himself on the board).
 func _update_enemy_hero_visibility() -> void:
 	var boss: Dictionary = _get_hero_fight_boss()
 	if boss.is_empty() or not is_instance_valid(boss["node"]):
 		return
-	var hidden: bool = _enemy_depthsveil_active or _enemy_rootveil_active or _enemy_moonlight_shadow_active
-	boss["node"].modulate = Color(1, 1, 1, 0.4) if hidden else Color(1, 1, 1, 1)
+	# Deathlight Lure is true sight: a hero it marks can't stay invisible -
+	# the veil breaks the moment it would take hold (or the mark lands).
+	if _is_enemy_hero_invisible() and float(boss.get("deathlight_lure_bonus_pct", 0.0)) > 0.0:
+		_reveal_enemy_hero()
+		return
+	var hidden: bool = _is_enemy_hero_invisible()
+	boss["node"].visible = not hidden
+	boss["node"].modulate = Color(1, 1, 1, 1)
+	var hp_label: Control = boss.get("hp_label")
+	if is_instance_valid(hp_label):
+		hp_label.visible = not hidden
+	var status_label: Control = boss.get("status_label")
+	if hidden and is_instance_valid(status_label):
+		status_label.visible = false
+	_refresh_enemy_overhead_labels()
+
+
+## Breaks every veil on the rival hero - what a "see invisible" skill or item
+## calls when it catches it: the hero is revealed on the spot.
+func _reveal_enemy_hero() -> void:
+	if not _is_enemy_hero_invisible():
+		return
+	_end_enemy_depthsveil()
+	_end_enemy_rootveil()
+	_end_enemy_moonlight_shadow()
 
 
 # ------------------------------------------------------------------
@@ -14672,7 +14605,7 @@ func _play_whisper_of_the_veil_effect(from_node: Variant, to_node: Variant) -> v
 	)
 
 
-## The glowing-ball projectile behind Corrosive Haze's visual: a ball
+## The glowing-ball projectile behind Deathlight Lure's visual: a ball
 ## of `color` (rimmed in `rim_color`) flies on a slight upward arc from
 ## `from_node` to `to_node`, trailing sparks, then bursts
 ## (_play_orb_impact()) and flashes the target in `flash_color`.
@@ -14842,7 +14775,7 @@ func _tick_enemy_veil_of_the_forgotten() -> void:
 ## Ends the rival's Veil of the Forgotten, whether its duration simply ran out
 ## (`exploded` false) or enough damage drained it to 0 HP (`exploded`
 ## true, from _deal_fixed_damage_to_enemy()) - in which case it deals
-## the cast's own aoe_damage to the player, his illusions and his bear,
+## the cast's own aoe_damage to the player, his guards and his bear,
 ## each only if within the shield's own radius columns of the boss -
 ## the same radius-around-the-caster rule the player's own explosion
 ## uses (see _end_veil_of_the_forgotten()).
@@ -14863,7 +14796,7 @@ func _end_enemy_veil_of_the_forgotten(exploded: bool) -> void:
 	if not exploded:
 		return
 
-	# Same radius-around-the-boss check as his illusions/bear below - the
+	# Same radius-around-the-boss check as his guards/bear below - the
 	# hero is only caught in it if he's actually standing close enough.
 	var hero_in_range: bool = not boss.is_empty() and _distance(_hero_pos_index, boss["pos_index"]) <= radius
 	if hero_in_range and not _is_hero_hidden():
@@ -14871,11 +14804,11 @@ func _end_enemy_veil_of_the_forgotten(exploded: bool) -> void:
 		# Same red hit-flash as Abyssal Spasm.
 		_flash_bounce_hit(hero_image)
 	# The explosion is centered on the boss's own column, not the
-	# player's - an illusion or the bear standing near him can still be
+	# player's - a guard or the bear standing near him can still be
 	# caught in it. Outside the stealth check above on purpose: the
-	# hero hiding only protects the hero, not his illusions or bear.
+	# hero hiding only protects the hero, not his guards or bear.
 	if not boss.is_empty():
-		_deal_aoe_damage_to_illusions(boss["pos_index"], radius, aoe_damage, true)
+		_deal_aoe_damage_to_guards(boss["pos_index"], radius, aoe_damage, true)
 		_deal_aoe_damage_to_bear(boss["pos_index"], radius, aoe_damage, true)
 
 
@@ -14896,28 +14829,28 @@ func _cast_enemy_drowned_surge(level_data: Dictionary) -> void:
 	_play_drowned_surge_splash(hero_image)
 	apply_damage(damage)
 	# Drowned Surge's own splash radius is centered on the impact point (the
-	# player, the only possible target here) - an illusion near the
+	# player, the only possible target here) - a guard near the
 	# player can still be caught in it even though the single-hit
 	# simplification above skips it for other creeps.
 	var radius: int = int(level_data.get("radius", 0))
-	_play_drowned_surge_splash_on_illusions(_illusions, _hero_pos_index, radius)
+	_play_drowned_surge_splash_on_guards(_guards, _hero_pos_index, radius)
 	if _is_bear_alive() and _distance(_bear["pos_index"], _hero_pos_index) <= radius:
 		_play_drowned_surge_splash(_bear.get("node"))
-	_deal_aoe_damage_to_illusions(_hero_pos_index, radius, damage)
+	_deal_aoe_damage_to_guards(_hero_pos_index, radius, damage)
 	_deal_aoe_damage_to_bear(_hero_pos_index, radius, damage)
 	_player_stun_turns_left = int(level_data.get("stun_turns", 1))
 	_show_message_over_hero("Stunned!")
 
 
-## Drowned Surge's spray under every illusion in `illusions` (either side's
-## array - `_illusions` or `_enemy_illusions`) within `radius` columns
+## Drowned Surge's spray under every guard in `guards` (either side's
+## array - `_guards` or `_enemy_guards`) within `radius` columns
 ## of `center_pos_index` - the same area check the matching
-## _deal_aoe_damage_to_*illusions() helper uses. Called just BEFORE
-## that damage, since a killed illusion's node gets freed.
-func _play_drowned_surge_splash_on_illusions(illusions: Array, center_pos_index: int, radius: int) -> void:
-	for illusion in illusions:
-		if _distance(illusion["pos_index"], center_pos_index) <= radius:
-			_play_drowned_surge_splash(illusion.get("node"))
+## _deal_aoe_damage_to_*guards() helper uses. Called just BEFORE
+## that damage, since a killed guard's node gets freed.
+func _play_drowned_surge_splash_on_guards(guards: Array, center_pos_index: int, radius: int) -> void:
+	for guard in guards:
+		if _distance(guard["pos_index"], center_pos_index) <= radius:
+			_play_drowned_surge_splash(guard.get("node"))
 
 
 ## Purely cosmetic: Drowned Surge erupting under `node` (an enemy hit by the
@@ -15014,7 +14947,7 @@ func _cast_enemy_undertow() -> void:
 # own _cast_the_sunken_one(): the ship surfaces behind the rival and
 # fires toward the player, out to this level's range. The player (if
 # he's in that span - the AI only picks it when he is), the player's
-# Elderwild Companion and any illusions standing in it all take the
+# Elderwild Companion and any guards standing in it all take the
 # damage when the first ball lands. Until then the player can't act
 # (_rival_fx_in_flight), since the rival's turn is already over by the
 # time the ship has even surfaced.
@@ -15051,7 +14984,7 @@ func _cast_enemy_the_sunken_one(enemy: Dictionary, level_data: Dictionary) -> vo
 			return
 		if _hero_pos_index >= span.x and _hero_pos_index <= span.y:
 			apply_damage(damage)
-		_deal_line_aoe_damage_to_illusions(span.x, span.y, damage)
+		_deal_line_aoe_damage_to_guards(span.x, span.y, damage)
 		_deal_line_aoe_damage_to_bear(span.x, span.y, damage)
 		_shake_screen()
 		_refresh_bars()
@@ -15231,9 +15164,9 @@ func _cast_enemy_the_hollow_cold(level_data: Dictionary) -> void:
 	_flash_bounce_hit(hero_image, MARK_OF_STILLNESS_FLASH_COLOR)
 
 	# Centered on the player (the vortex's only possible target here) -
-	# his illusions and Elderwild Companion within that radius get the same DoT,
+	# his guards and Elderwild Companion within that radius get the same DoT,
 	# ticked alongside his own in _tick_player_turn_start_effects().
-	_mark_illusions_the_hollow_cold(_illusions, _hero_pos_index, radius, damage, duration)
+	_mark_guards_the_hollow_cold(_guards, _hero_pos_index, radius, damage, duration)
 	if _is_bear_alive() and _distance(_bear["pos_index"], _hero_pos_index) <= radius:
 		_bear["the_hollow_cold_dot_damage"] = damage
 		_bear["the_hollow_cold_dot_turns_left"] = duration
@@ -15246,53 +15179,53 @@ func _cast_enemy_the_hollow_cold(level_data: Dictionary) -> void:
 
 
 ## Arms The Hollow Cold's DoT (`damage` per turn for `duration` turns) onto
-## every illusion in `illusions` - either side's array, `_illusions` or
-## `_enemy_illusions` - within `radius` columns of `center_pos_index`,
+## every guard in `guards` - either side's array, `_guards` or
+## `_enemy_guards` - within `radius` columns of `center_pos_index`,
 ## the same area check the enemy-side loop uses, and gives each one the
-## cast's icy flash. Stored on the illusion's own Dictionary under the
+## cast's icy flash. Stored on the guard's own Dictionary under the
 ## same the_hollow_cold_dot_* keys an enemy uses; ticked by
-## _tick_enemy_illusions_the_hollow_cold()/_tick_player_allies_the_hollow_cold().
-func _mark_illusions_the_hollow_cold(illusions: Array, center_pos_index: int, radius: int, damage: float, duration: int) -> void:
-	for illusion in illusions:
-		if _distance(illusion["pos_index"], center_pos_index) <= radius:
-			illusion["the_hollow_cold_dot_damage"] = damage
-			illusion["the_hollow_cold_dot_turns_left"] = duration
-			if is_instance_valid(illusion.get("node")):
-				_flash_bounce_hit(illusion["node"], MARK_OF_STILLNESS_FLASH_COLOR)
+## _tick_enemy_guards_the_hollow_cold()/_tick_player_allies_the_hollow_cold().
+func _mark_guards_the_hollow_cold(guards: Array, center_pos_index: int, radius: int, damage: float, duration: int) -> void:
+	for guard in guards:
+		if _distance(guard["pos_index"], center_pos_index) <= radius:
+			guard["the_hollow_cold_dot_damage"] = damage
+			guard["the_hollow_cold_dot_turns_left"] = duration
+			if is_instance_valid(guard.get("node")):
+				_flash_bounce_hit(guard["node"], MARK_OF_STILLNESS_FLASH_COLOR)
 
 
-## Ticks The Hollow Cold's DoT on the rival's own illusions - once per enemy
+## Ticks The Hollow Cold's DoT on the rival's own guards - once per enemy
 ## turn, at its very start (see _enemy_turn()), the same timing every
 ## enemy's own DoT ticks at. Each tick is mitigated by the boss's own
 ## effective armor, the same way every other hit on one of his
-## illusions is (see _deal_aoe_damage_to_enemy_illusions()).
-func _tick_enemy_illusions_the_hollow_cold() -> void:
-	if _enemy_illusions.is_empty():
+## guards is (see _deal_aoe_damage_to_enemy_guards()).
+func _tick_enemy_guards_the_hollow_cold() -> void:
+	if _enemy_guards.is_empty():
 		return
 	var boss: Dictionary = _get_hero_fight_boss()
 	var armor: float = _enemy_hero_effective_armor(boss) if not boss.is_empty() else 0.0
-	for illusion in _enemy_illusions.duplicate():
-		if illusion.get("the_hollow_cold_dot_turns_left", 0) <= 0:
+	for guard in _enemy_guards.duplicate():
+		if guard.get("the_hollow_cold_dot_turns_left", 0) <= 0:
 			continue
-		illusion["the_hollow_cold_dot_turns_left"] -= 1
-		var dot: float = float(illusion.get("the_hollow_cold_dot_damage", 0))
+		guard["the_hollow_cold_dot_turns_left"] -= 1
+		var dot: float = float(guard.get("the_hollow_cold_dot_damage", 0))
 		if dot > 0.0:
-			_deal_damage_to_enemy_illusion(illusion, _apply_armor_reduction(dot, armor))
+			_deal_damage_to_enemy_guard(guard, _apply_armor_reduction(dot, armor))
 
 
-## Ticks The Hollow Cold's DoT on the player's own illusions - called from
+## Ticks The Hollow Cold's DoT on the player's own guards - called from
 ## _tick_player_turn_start_effects(), right alongside the hero's own
-## tick. Illusions mitigate with the hero's own armor (same as every
-## other hit on them - see _deal_aoe_damage_to_illusions()).
+## tick. Guards mitigate with the hero's own armor (same as every
+## other hit on them - see _deal_aoe_damage_to_guards()).
 func _tick_player_allies_the_hollow_cold() -> void:
 	var hero_armor: float = _hero_armor()
-	for illusion in _illusions.duplicate():
-		if illusion.get("the_hollow_cold_dot_turns_left", 0) <= 0:
+	for guard in _guards.duplicate():
+		if guard.get("the_hollow_cold_dot_turns_left", 0) <= 0:
 			continue
-		illusion["the_hollow_cold_dot_turns_left"] -= 1
-		var dot: float = float(illusion.get("the_hollow_cold_dot_damage", 0))
+		guard["the_hollow_cold_dot_turns_left"] -= 1
+		var dot: float = float(guard.get("the_hollow_cold_dot_damage", 0))
 		if dot > 0.0:
-			_deal_damage_to_illusion(illusion, _apply_armor_reduction(dot, hero_armor))
+			_deal_damage_to_guard(guard, _apply_armor_reduction(dot, hero_armor))
 
 	# The Elderwild Companion's own The Hollow Cold tick - along with every other DoT
 	# a rival can put on it - lives in _tick_bear_turn_start_effects().
@@ -15376,9 +15309,9 @@ func _cast_enemy_return_to_the_void(level_data: Dictionary) -> void:
 	var damage: float = float(level_data.get("damage", 0))
 	var radius: int = int(level_data.get("radius", 0))
 	var struck: Array = [hero_image]
-	for illusion in _illusions:
-		if _distance(illusion["pos_index"], _hero_pos_index) <= radius:
-			struck.append(illusion.get("node"))
+	for guard in _guards:
+		if _distance(guard["pos_index"], _hero_pos_index) <= radius:
+			struck.append(guard.get("node"))
 	if _is_bear_alive() and _distance(_bear["pos_index"], _hero_pos_index) <= radius:
 		struck.append(_bear.get("node"))
 	_show_message_over_hero("Return to the Void!")
@@ -15394,9 +15327,9 @@ func _cast_enemy_return_to_the_void(level_data: Dictionary) -> void:
 			return
 		apply_damage(damage)
 		# Return to the Void's own splash radius is centered on the impact point (the
-		# player, the only possible target here) - an illusion near the
+		# player, the only possible target here) - a guard near the
 		# player can still be caught in it.
-		_deal_aoe_damage_to_illusions(_hero_pos_index, radius, damage)
+		_deal_aoe_damage_to_guards(_hero_pos_index, radius, damage)
 		_deal_aoe_damage_to_bear(_hero_pos_index, radius, damage)
 		_player_return_to_the_void_dot_damage = float(level_data.get("dot_damage", 0))
 		_player_return_to_the_void_dot_turns_left = int(level_data.get("dot_duration", 0))
@@ -15508,9 +15441,9 @@ func _cast_enemy_maddening_roar(level_data: Dictionary) -> void:
 	var shatter_range: int = int(level_data.get("shatter_range", 0))
 	var shatter_damage: float = float(level_data.get("shatter_damage", 0))
 	var shatter_nodes: Array = []
-	for illusion in _illusions:
-		if _distance(illusion["pos_index"], _hero_pos_index) <= shatter_range:
-			shatter_nodes.append(illusion.get("node"))
+	for guard in _guards:
+		if _distance(guard["pos_index"], _hero_pos_index) <= shatter_range:
+			shatter_nodes.append(guard.get("node"))
 	if _is_bear_alive() and _distance(_bear["pos_index"], _hero_pos_index) <= shatter_range:
 		shatter_nodes.append(_bear.get("node"))
 	# The player can't act until the roar has landed - same as the
@@ -15533,9 +15466,9 @@ func _cast_enemy_maddening_roar(level_data: Dictionary) -> void:
 			return
 		# Maddening Roar's own splash (its lighter shatter_damage, not the
 		# main hit) is centered on the impact point (the player, the only
-		# possible target here) - an illusion near the player can still be
+		# possible target here) - a guard near the player can still be
 		# caught in it.
-		_deal_aoe_damage_to_illusions(_hero_pos_index, shatter_range, shatter_damage)
+		_deal_aoe_damage_to_guards(_hero_pos_index, shatter_range, shatter_damage)
 		_deal_aoe_damage_to_bear(_hero_pos_index, shatter_range, shatter_damage)
 		_refresh_bars()
 		_update_action_buttons()
@@ -15718,20 +15651,20 @@ func _cast_enemy_rimecleaver(level_data: Dictionary) -> void:
 			return
 		# Rimecleaver's own splash (the same damage as the main hit) is
 		# centered on the impact point (the player, the only possible
-		# target here) - an illusion near the player can still be caught
+		# target here) - a guard near the player can still be caught
 		# in it.
-		_deal_aoe_damage_to_illusions(_hero_pos_index, radius, damage)
+		_deal_aoe_damage_to_guards(_hero_pos_index, radius, damage)
 		_deal_aoe_damage_to_bear(_hero_pos_index, radius, damage)
 		_rival_fx_in_flight = false
 		_refresh_bars()
 		_update_action_buttons()
-	# Anyone else caught (an illusion, the bear) flashes red and frosts as
+	# Anyone else caught (a guard, the bear) flashes red and frosts as
 	# the swing cuts through them.
 	var pass_nodes: Array = []
 	if radius > 0:
-		for illusion in _illusions:
-			if _distance(illusion["pos_index"], _hero_pos_index) <= radius:
-				pass_nodes.append(illusion.get("node"))
+		for guard in _guards:
+			if _distance(guard["pos_index"], _hero_pos_index) <= radius:
+				pass_nodes.append(guard.get("node"))
 		if _is_bear_alive() and _distance(_bear["pos_index"], _hero_pos_index) <= radius:
 			pass_nodes.append(_bear.get("node"))
 	var on_pass := func(i: int) -> void:
@@ -15799,9 +15732,9 @@ func _tick_enemy_frost_tempest() -> void:
 		var hit_nodes: Array = []
 		if _distance(boss_pos, _hero_pos_index) <= _enemy_frost_tempest_radius:
 			hit_nodes.append(hero_image)
-		for illusion in _illusions:
-			if _distance(illusion["pos_index"], boss_pos) <= _enemy_frost_tempest_radius:
-				hit_nodes.append(illusion.get("node"))
+		for guard in _guards:
+			if _distance(guard["pos_index"], boss_pos) <= _enemy_frost_tempest_radius:
+				hit_nodes.append(guard.get("node"))
 		if _is_bear_alive() and _distance(_bear["pos_index"], boss_pos) <= _enemy_frost_tempest_radius:
 			hit_nodes.append(_bear.get("node"))
 		_flash_frost_tempest_hits(hit_nodes)
@@ -15809,9 +15742,9 @@ func _tick_enemy_frost_tempest() -> void:
 		if _distance(boss["pos_index"], _hero_pos_index) <= _enemy_frost_tempest_radius:
 			apply_damage(_enemy_frost_tempest_damage_per_turn)
 		# Centered on the boss's own CURRENT position, same as the hero
-		# check above - an illusion can be in range independently of
+		# check above - a guard can be in range independently of
 		# whether the hero himself currently is.
-		_deal_aoe_damage_to_illusions(boss["pos_index"], _enemy_frost_tempest_radius, _enemy_frost_tempest_damage_per_turn)
+		_deal_aoe_damage_to_guards(boss["pos_index"], _enemy_frost_tempest_radius, _enemy_frost_tempest_damage_per_turn)
 		_deal_aoe_damage_to_bear(boss["pos_index"], _enemy_frost_tempest_radius, _enemy_frost_tempest_damage_per_turn)
 
 	_enemy_frost_tempest_turns_remaining -= 1
@@ -16192,11 +16125,11 @@ func _cast_enemy_mothers_grasp(enemy: Dictionary, level_data: Dictionary) -> voi
 		_player_mothers_grasp_dot_damage = dot_damage
 		_player_mothers_grasp_dot_turns_left = root_duration
 
-	# Illusions have no root/DoT of their own to carry the way the hero
+	# Guards have no root/DoT of their own to carry the way the hero
 	# does above - just a one-time hit for whatever's caught in the
 	# burst, centered on the caster's own column, same as the check
 	# above.
-	_deal_aoe_damage_to_illusions(enemy["pos_index"], radius, dot_damage)
+	_deal_aoe_damage_to_guards(enemy["pos_index"], radius, dot_damage)
 	_deal_aoe_damage_to_bear(enemy["pos_index"], radius, dot_damage)
 	_play_mothers_grasp_slam(enemy.get("node"))
 	_refresh_mothers_grasp_roots()
@@ -16233,9 +16166,9 @@ func _cast_enemy_sweep(enemy: Dictionary, level_data: Dictionary) -> void:
 		# The standard splash hit-flash (see _apply_splash_damage()).
 		_flash_bounce_hit(hero_image)
 	# Centered on the caster's own column, same as the check above - an
-	# illusion can be in range independently of whether the player
+	# guard can be in range independently of whether the player
 	# himself currently is.
-	_deal_aoe_damage_to_illusions(enemy["pos_index"], radius, damage, true)
+	_deal_aoe_damage_to_guards(enemy["pos_index"], radius, damage, true)
 	_deal_aoe_damage_to_bear(enemy["pos_index"], radius, damage, true)
 	_show_message_over_hero("Sweep!")
 
@@ -16254,7 +16187,7 @@ func _cast_enemy_sweep(enemy: Dictionary, level_data: Dictionary) -> void:
 func _cast_enemy_chainfire(enemy: Dictionary, level_data: Dictionary) -> void:
 	var damage: float = float(level_data.get("damage", 0))
 	# The chain reaches the whole line from the rival's own column to
-	# the player's - an illusion standing anywhere along that path can
+	# the player's - a guard standing anywhere along that path can
 	# still be caught in it, same as every enemy along the player's own
 	# Chainfire's path. Read BEFORE the rival's own pull below moves
 	# it off "enemy["pos_index"]".
@@ -16285,7 +16218,7 @@ func _cast_enemy_chainfire(enemy: Dictionary, level_data: Dictionary) -> void:
 		apply_damage(damage)
 		# The standard splash hit-flash (see _apply_splash_damage()).
 		_flash_bounce_hit(hero_image)
-		_deal_line_aoe_damage_to_illusions(from_col, to_col, damage, true)
+		_deal_line_aoe_damage_to_guards(from_col, to_col, damage, true)
 		_deal_line_aoe_damage_to_bear(from_col, to_col, damage, true)
 		_refresh_bars()
 		if _recruited.get("current_hp", 0) <= 0:
@@ -16388,9 +16321,9 @@ func _cast_enemy_cinderbomb(enemy: Dictionary, level_data: Dictionary) -> void:
 			apply_damage(cast_damage)
 			# The standard splash hit-flash (see _apply_splash_damage()).
 			_flash_bounce_hit(hero_image)
-		# Planted at the player's own position at cast time - an illusion
+		# Planted at the player's own position at cast time - a guard
 		# there (or nearby) takes the same initial burst.
-		_deal_aoe_damage_to_illusions(pos_index, radius, cast_damage, true)
+		_deal_aoe_damage_to_guards(pos_index, radius, cast_damage, true)
 		_deal_aoe_damage_to_bear(pos_index, radius, cast_damage, true)
 		_shake_screen()
 
@@ -16435,9 +16368,9 @@ func _tick_enemy_cinderbomb() -> void:
 		# The standard splash hit-flash (see _apply_splash_damage()).
 		_flash_bounce_hit(hero_image)
 	# Centered on the same FIXED planted position as the check above -
-	# an illusion can be in range independently of whether the player
+	# a guard can be in range independently of whether the player
 	# himself currently is.
-	_deal_aoe_damage_to_illusions(pos_index, radius, damage_per_turn, true)
+	_deal_aoe_damage_to_guards(pos_index, radius, damage_per_turn, true)
 	_deal_aoe_damage_to_bear(pos_index, radius, damage_per_turn, true)
 
 	_enemy_cinderbomb["turns_remaining"] = int(_enemy_cinderbomb["turns_remaining"]) - 1
@@ -16475,7 +16408,7 @@ func _cast_enemy_double_trouble(enemy: Dictionary, level_data: Dictionary) -> vo
 	# direction it's facing" cone _enemy_skill_in_range()'s own
 	# Double Trouble case already checks against the player.
 	var direction: int = -1 if bool(enemy["node"].flip_h) else 1
-	_deal_directional_aoe_damage_to_illusions(int(enemy["pos_index"]), direction, int(level_data.get("range", 0)), damage)
+	_deal_directional_aoe_damage_to_guards(int(enemy["pos_index"]), direction, int(level_data.get("range", 0)), damage)
 	_deal_directional_aoe_damage_to_bear(int(enemy["pos_index"]), direction, int(level_data.get("range", 0)), damage)
 	# Same particle cone the player's own cast gets (see
 	# _play_double_trouble_effect()'s own comment), bursting from the
@@ -16521,9 +16454,9 @@ func _cast_enemy_blast_hopper(enemy: Dictionary, level_data: Dictionary) -> void
 		if _recruited.get("current_hp", 0) > 0:
 			_player_stun_turns_left = int(level_data.get("stun_turns", 0))
 	# Centered on the landing spot, same as the check above - an
-	# illusion can be in range independently of whether the player
+	# guard can be in range independently of whether the player
 	# himself currently is.
-	_deal_aoe_damage_to_illusions(landing_pos, radius, damage)
+	_deal_aoe_damage_to_guards(landing_pos, radius, damage)
 	_deal_aoe_damage_to_bear(landing_pos, radius, damage)
 
 	_show_message_over_hero("Blast Hopper!")
@@ -16575,56 +16508,56 @@ func _cast_enemy_three_cheers(enemy: Dictionary, level_data: Dictionary) -> void
 
 
 # ------------------------------------------------------------------
-# The Last Empress's passive, Rip Tide, on the rival - mirrors the player's own
-# _get_rip_tide_level_data(). Never a scored candidate of its own (see
-# EnemySkillAI's own header comment) - its bonuses only ever reach Mirror
-# Image/Song of the Siren/a plain Attack through _build_enemy_ai_
-# context()'s own "rip_tide_*" fields. Its AoE splash (aoe_damage_pct/
+# The Last Empress's passive, Empress's Will, on the rival - mirrors the player's own
+# _get_empress_will_level_data(). Never a scored candidate of its own (see
+# EnemySkillAI's own header comment) - its bonuses only ever reach Imperial
+# Guard/Luring Gaze/a plain Attack through _build_enemy_ai_
+# context()'s own "empress_will_*" fields. Its AoE splash (aoe_damage_pct/
 # radius) never has an actual second target to reach in a real hero fight
 # (there's only ever the one player to hit - same "no cleave" collapse
 # Abyssal Spasm's/The Sunken One's/Sweep's own rival copies already have,
 # see _cast_enemy_abyssal_spasm()'s own docstring), so unlike the player's
-# own _apply_rip_tide_cleave(), its splash off her plain Attack reaches
-# the player's own illusions and Elderwild Companion near him (see
-# _apply_enemy_rip_tide_splash()) - the player himself is the struck
-# target, never hit twice. "rip_tide_aoe_damage_pct" also feeds
+# own _apply_empress_will_cleave(), its splash off her plain Attack reaches
+# the player's own guards and Elderwild Companion near him (see
+# _apply_enemy_empress_will_splash()) - the player himself is the struck
+# target, never hit twice. "empress_will_aoe_damage_pct" also feeds
 # EnemySkillAI's own scoring.
 # ------------------------------------------------------------------
 
-## Rip Tide's level data for whatever level the rival has it at right
+## Empress's Will's level data for whatever level the rival has it at right
 ## now - {} if it isn't learned at all (level 0), the same "empty means
 ## locked" convention every other auto-triggered skill's own _get_enemy_
 ## *_level_data() helper uses.
-func _get_enemy_rip_tide_level_data() -> Dictionary:
-	var level: int = PlayerManager.get_npc_skill_level(_enemy_hero_id, "rip_tide")
+func _get_enemy_empress_will_level_data() -> Dictionary:
+	var level: int = PlayerManager.get_npc_skill_level(_enemy_hero_id, "empress's_will")
 	if level <= 0:
 		return {}
-	var skill: Dictionary = _find_enemy_skill("rip_tide")
+	var skill: Dictionary = _find_enemy_skill("empress's_will")
 	if skill.is_empty():
 		return {}
 	return GameManager.get_skill_level_data(skill, level)
 
 
-## The rival's Rip Tide splash off her plain Attack on the player - the
-## mirror of the player's own _apply_rip_tide_cleave(): this level's
+## The rival's Empress's Will splash off her plain Attack on the player - the
+## mirror of the player's own _apply_empress_will_cleave(): this level's
 ## aoe_damage_pct of `attack_damage` (the Attack's raw, pre-mitigation
-## roll) splashed onto every one of the player's illusions and his
+## roll) splashed onto every one of the player's guards and his
 ## Elderwild Companion within this level's radius of the player (the struck
 ## target, never hit twice), each mitigated by its own armor (the
-## illusions via the hero's, the bear via its own - see
-## _deal_aoe_damage_to_illusions()/_deal_aoe_damage_to_bear()) and
+## guards via the hero's, the bear via its own - see
+## _deal_aoe_damage_to_guards()/_deal_aoe_damage_to_bear()) and
 ## given the standard splash hit-flash. A no-op while the skill isn't
-## learned. Only her own Attack splashes - her illusions' attacks
-## (_fire_enemy_mirror_image_attack()) don't.
-func _apply_enemy_rip_tide_splash(attack_damage: float) -> void:
-	var level_data: Dictionary = _get_enemy_rip_tide_level_data()
+## learned. Only her own Attack splashes - her guards' attacks
+## (_enemy_guards_turn()) don't.
+func _apply_enemy_empress_will_splash(attack_damage: float) -> void:
+	var level_data: Dictionary = _get_enemy_empress_will_level_data()
 	if level_data.is_empty():
 		return
 	var splash_damage: float = attack_damage * float(level_data.get("aoe_damage_pct", 0.0))
 	if splash_damage <= 0.0:
 		return
 	var radius: int = int(level_data.get("radius", 0))
-	_deal_aoe_damage_to_illusions(_hero_pos_index, radius, splash_damage, true)
+	_deal_aoe_damage_to_guards(_hero_pos_index, radius, splash_damage, true)
 	_deal_aoe_damage_to_bear(_hero_pos_index, radius, splash_damage, true)
 
 
@@ -16632,7 +16565,7 @@ func _apply_enemy_rip_tide_splash(attack_damage: float) -> void:
 ## on the player - the mirror of the player's own
 ## _apply_pull_of_the_abyss_cleave(): `level_data`'s cleave_damage_pct of
 ## `attack_damage` (the Attack's raw, pre-mitigation roll, Pull of the Abyss's
-## own bonus already folded in) to every one of the player's illusions
+## own bonus already folded in) to every one of the player's guards
 ## and his Elderwild Companion within cleave_columns of the player (the struck
 ## target, never hit twice), each mitigated by its own armor and given
 ## the standard splash hit-flash.
@@ -16641,18 +16574,18 @@ func _apply_enemy_pull_of_the_abyss_cleave(attack_damage: float, level_data: Dic
 	if cleave_damage <= 0.0:
 		return
 	var radius: int = int(level_data.get("cleave_columns", 1))
-	_deal_aoe_damage_to_illusions(_hero_pos_index, radius, cleave_damage, true)
+	_deal_aoe_damage_to_guards(_hero_pos_index, radius, cleave_damage, true)
 	_deal_aoe_damage_to_bear(_hero_pos_index, radius, cleave_damage, true)
 
 
-## How many of the player's own illusions, plus his Elderwild Companion, stand
+## How many of the player's own guards, plus his Elderwild Companion, stand
 ## within `radius` columns of him - what a rival's splash/cleave off an
 ## Attack on the player could also reach. Feeds the AI's own scoring
 ## (e.g. Pull of the Abyss's cleave target count).
 func _count_player_allies_near_hero(radius: int) -> int:
 	var count: int = 0
-	for illusion in _illusions:
-		if _distance(illusion["pos_index"], _hero_pos_index) <= radius:
+	for guard in _guards:
+		if _distance(guard["pos_index"], _hero_pos_index) <= radius:
 			count += 1
 	if _is_bear_alive() and _distance(_bear["pos_index"], _hero_pos_index) <= radius:
 		count += 1
@@ -16660,165 +16593,214 @@ func _count_player_allies_near_hero(radius: int) -> int:
 
 
 # ------------------------------------------------------------------
-# The Last Empress's Mirror Image, cast by the rival - mirrors the player's own
-# _activate_mirror_image()/_spawn_illusion_node()/_tick_mirror_image()/
-# _fire_mirror_image_attack()/_end_mirror_image()/_deal_damage_to_
-# illusion()/_kill_illusion(). Unlike the player's own copy (which spawns
-# decoys in the columns immediately in front of and behind the hero),
-# there's only one possible target in a hero fight (the player), so
-# _fire_enemy_mirror_image_attack() collapses to a single "every
-# surviving illusion hits the player" loop rather than picking among
-# multiple enemies, same "no cleave" simplification every other rival
-# AoE cast already uses.
+# The Last Empress's Imperial Guard, cast by the rival - the same skill as
+# the player's own (see the block above _guards and _activate_imperial_
+# guard()), played from the boss's side: _cast_enemy_imperial_guard()/
+# _tick_enemy_imperial_guard()/_enemy_guards_turn()/_end_enemy_imperial_
+# guard()/_deal_damage_to_enemy_guard()/_kill_enemy_guard(). The guards are
+# the same walking units - same art, labels and reactions (see
+# _spawn_guard()) - kept in _enemy_guards, and fight the player's side: the
+# hero, his Elderwild Companion and his own guards.
 # ------------------------------------------------------------------
 
-func _cast_enemy_mirror_image(enemy: Dictionary, level_data: Dictionary) -> void:
-	_end_enemy_mirror_image()
+## Raises the rival's guards around the player-side unit closest to the
+## boss - the hero, his Elderwild Companion or one of his own guards - from
+## anywhere on the board. One rises on the side of that unit facing the
+## boss, one on its far side (both clamped to the grid), and any beyond
+## those first two double up randomly on one of the same two columns. Every
+## guard starts out facing the unit it was raised around. Recasting
+## replaces the set outright, like the player's.
+func _cast_enemy_imperial_guard(enemy: Dictionary, level_data: Dictionary) -> void:
+	_end_enemy_imperial_guard()
 
-	var rip_tide_level_data: Dictionary = _get_enemy_rip_tide_level_data()
+	var empress_will_level_data: Dictionary = _get_enemy_empress_will_level_data()
 
-	var direction: int = -1 if bool(enemy["node"].flip_h) else 1
 	var caster_pos: int = int(enemy["pos_index"])
-	var front_pos: int = clampi(caster_pos + direction, 0, GRID_COLUMNS - 1)
-	var behind_pos: int = clampi(caster_pos - direction, 0, GRID_COLUMNS - 1)
+	var anchor_pos: int = _hero_pos_index
+	var anchor_distance: int = _distance(caster_pos, _hero_pos_index)
+	if _is_bear_alive() and _distance(caster_pos, _bear["pos_index"]) < anchor_distance:
+		anchor_pos = int(_bear["pos_index"])
+		anchor_distance = _distance(caster_pos, anchor_pos)
+	for guard in _guards:
+		if _distance(caster_pos, guard["pos_index"]) < anchor_distance:
+			anchor_pos = int(guard["pos_index"])
+			anchor_distance = _distance(caster_pos, anchor_pos)
 
-	var illusions_count: int = int(level_data.get("illusions", 3)) + int(rip_tide_level_data.get("extra_illusion", 0))
-	var illusion_hp: float = _enemy_hero_effective_max_hp(enemy) * float(level_data.get("hp_pct", 0.0))
+	var near_side: int = _step_toward(anchor_pos, caster_pos)
+	if near_side == 0:
+		near_side = -1
+	var near_pos: int = clampi(anchor_pos + near_side, 0, GRID_COLUMNS - 1)
+	var far_pos: int = clampi(anchor_pos - near_side, 0, GRID_COLUMNS - 1)
 
-	for i in range(illusions_count):
+	var guards_count: int = int(level_data.get("guards", 3)) + int(empress_will_level_data.get("extra_guard", 0))
+	var guard_hp: float = _enemy_hero_effective_max_hp(enemy) * float(level_data.get("hp_pct", 0.0))
+
+	for i in range(guards_count):
 		var pos: int
 		if i == 0:
-			pos = front_pos
+			pos = near_pos
 		elif i == 1:
-			pos = behind_pos
+			pos = far_pos
 		else:
-			pos = front_pos if randf() < 0.5 else behind_pos
-		_enemy_illusions.append({
-			"pos_index": pos,
-			"current_hp": illusion_hp,
-			"max_hp": illusion_hp,
-			"node": _spawn_enemy_illusion_node(pos, enemy["node"]),
-		})
+			pos = near_pos if randf() < 0.5 else far_pos
+		var facing: int = _step_toward(pos, anchor_pos)
+		if facing == 0:
+			facing = -near_side
+		_enemy_guards.append(_spawn_guard(pos, facing, guard_hp, true))
 
-	_enemy_illusion_damage_pct = float(level_data.get("damage_pct", 0.0)) + float(rip_tide_level_data.get("illusion_damage_bonus_pct", 0.0))
-	_enemy_illusion_hit_chance_pct = float(level_data.get("hit_chance_pct", 0.0))
-	_enemy_illusions_turns_remaining = int(level_data.get("duration", 0)) + int(rip_tide_level_data.get("illusion_duration_bonus", 0))
+	_enemy_guard_damage_pct = float(level_data.get("damage_pct", 0.0)) + float(empress_will_level_data.get("guardians_damage_bonus_pct", 0.0))
+	_enemy_guards_turns_remaining = int(level_data.get("duration", 0)) + int(empress_will_level_data.get("guard_duration_bonus", 0))
 	# The casting turn itself doesn't count - duration only starts
-	# ticking (and the illusions only start attacking) from the turn
-	# after (see _tick_enemy_mirror_image()), same as every other
-	# duration-based buff.
-	_enemy_illusions_duration_pending_start = true
+	# ticking (and the guards only start acting) from the turn after (see
+	# _enemy_guards_turn()/_tick_enemy_imperial_guard()), same as every
+	# other duration-based buff.
+	_enemy_guards_duration_pending_start = true
 
-	_show_message_over_hero("Mirror Image!")
-
-
-## Purely visual: a copy of `source_node`'s own current texture, faded to
-## HERO_ILLUSION_ALPHA so the real boss still reads clearly among its own
-## decoys, positioned on `pos_index`'s own column - mirrors the player's
-## own _spawn_illusion_node() exactly, just reading `source_node`'s own
-## texture/flip_h/size instead of hero_image's.
-func _spawn_enemy_illusion_node(pos_index: int, source_node: TextureRect) -> TextureRect:
-	var tex_rect := TextureRect.new()
-	tex_rect.texture = source_node.texture
-	tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
-	tex_rect.size = source_node.size
-	tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tex_rect.flip_h = source_node.flip_h
-	tex_rect.modulate = Color(1, 1, 1, HERO_ILLUSION_ALPHA)
-	tex_rect.position = Vector2(_index_to_x(pos_index), _creature_top_y(tex_rect.size.y))
-	add_child(tex_rect)
-	move_child(tex_rect, enemies_layer.get_index() + 1)
-	return tex_rect
+	_show_message_over_hero("Imperial Guard!")
 
 
-## Ticks the rival's Mirror Image duration down once per End Turn, same
+## Ticks the rival's Imperial Guard duration down once per End Turn, same
 ## timing (and same "the casting turn doesn't count" skip) as every other
-## duration-based buff - firing the illusions' own attack
-## (_fire_enemy_mirror_image_attack()) on every tick that actually counts
-## against the duration, then ending the effect once it runs out. A no-op
-## once every illusion has already died in combat, and while none are up
-## at all.
-func _tick_enemy_mirror_image() -> void:
-	if _enemy_illusions.is_empty():
+## duration-based buff, then ends the effect once it runs out. The guards'
+## own actions happen separately, in _enemy_guards_turn(). A no-op once
+## every guard has already died in combat, and while none are up at all.
+func _tick_enemy_imperial_guard() -> void:
+	if _enemy_guards.is_empty():
 		return
 
-	if _enemy_illusions_duration_pending_start:
-		_enemy_illusions_duration_pending_start = false
+	if _enemy_guards_duration_pending_start:
+		_enemy_guards_duration_pending_start = false
 		return
 
-	_fire_enemy_mirror_image_attack()
-
-	_enemy_illusions_turns_remaining -= 1
-	if _enemy_illusions_turns_remaining <= 0:
-		_end_enemy_mirror_image()
+	_enemy_guards_turns_remaining -= 1
+	if _enemy_guards_turns_remaining <= 0:
+		_end_enemy_imperial_guard()
 
 
-## Every surviving illusion strikes the player - the only possible target
-## in a hero fight - each illusion rolling its own rival-damage instance
-## (_roll_enemy_hero_damage()) scaled by _enemy_illusion_damage_pct, same
-## "own roll per hit" idiom the player's own _fire_mirror_image_attack()
-## uses, mitigated by the player's own current armor via apply_damage().
-## Stops early if that focus-fire finishes the player off partway
-## through.
-func _fire_enemy_mirror_image_attack() -> void:
+## The rival's guards act once per turn (see _end_turn(), where they go after
+## the player's guards and just before the creeps): each one strikes
+## whoever of the player's side shares its column - the hero first, if
+## he's there and the rival can see him, then his Elderwild Companion, then
+## one of his guards - for `damage_pct` of a freshly-rolled rival Attack. With
+## nobody in its column it closes in on the nearest of them, one column a
+## turn, turning to face the way it walks. They sit out the casting turn.
+func _enemy_guards_turn() -> void:
+	if _enemy_guards.is_empty() or _enemy_guards_duration_pending_start:
+		return
 	var boss: Dictionary = _get_hero_fight_boss()
 	if boss.is_empty():
 		return
-	for illusion in _enemy_illusions.duplicate():
-		if _recruited.get("current_hp", 0) <= 0:
-			break
-		var illusion_damage: float = _roll_enemy_hero_damage(boss) * _enemy_illusion_damage_pct
-		apply_damage(illusion_damage)
+
+	var can_see_hero: bool = _can_enemy_see_hero()
+	for guard in _enemy_guards.duplicate():
+		if not is_instance_valid(guard.get("node")):
+			continue
+		var pos: int = guard["pos_index"]
+		var damage: float = _roll_enemy_hero_damage(boss) * _enemy_guard_damage_pct
+
+		var struck: bool = true
+		if pos == _hero_pos_index and can_see_hero:
+			_enemy_guard_swing(guard)
+			apply_damage(damage)
+			if _recruited.get("current_hp", 0) <= 0:
+				return
+		elif _is_bear_alive() and _bear["pos_index"] == pos:
+			_enemy_guard_swing(guard)
+			_deal_damage_to_bear(damage)
+		elif not _guards_at(pos).is_empty():
+			_enemy_guard_swing(guard)
+			_enemy_attack_guard(_nearest_guard_within(pos, 0), damage)
+		else:
+			struck = false
+		if struck:
+			continue
+
+		var target_pos: int = -1
+		var target_distance: int = GRID_COLUMNS + 1
+		if can_see_hero:
+			target_pos = _hero_pos_index
+			target_distance = _distance(pos, _hero_pos_index)
+		if _is_bear_alive() and _distance(pos, _bear["pos_index"]) < target_distance:
+			target_pos = int(_bear["pos_index"])
+			target_distance = _distance(pos, target_pos)
+		for ally in _guards:
+			if _distance(pos, ally["pos_index"]) < target_distance:
+				target_pos = int(ally["pos_index"])
+				target_distance = _distance(pos, target_pos)
+		if target_pos == -1:
+			continue
+		var direction: int = _step_toward(pos, target_pos)
+		if direction == 0:
+			continue
+		_move_guard(guard, clampi(pos + direction, 0, GRID_COLUMNS - 1), direction)
+	_relayout_guards()
 
 
-## Ends the rival's Mirror Image, despawning every surviving illusion -
-## called both when its duration runs out (_tick_enemy_mirror_image())
-## and defensively at the top of _cast_enemy_mirror_image() so a recast
+## The swing animation of one of the rival's guards - the blow itself is
+## resolved by _enemy_guards_turn().
+func _enemy_guard_swing(guard: Dictionary) -> void:
+	var animator := CreatureAnimator.of(guard["node"])
+	if animator != null:
+		animator.play_attack(float(guard.get("facing", 1)))
+
+
+## Ends the rival's Imperial Guard, despawning every surviving guard -
+## called both when its duration runs out (_tick_enemy_imperial_guard())
+## and defensively at the top of _cast_enemy_imperial_guard() so a recast
 ## mid-duration never leaks the old set's nodes, and from
 ## _reset_enemy_hero_state() so a set from a PREVIOUS hero fight never
 ## lingers into a new one.
-func _end_enemy_mirror_image() -> void:
-	for illusion in _enemy_illusions:
-		if is_instance_valid(illusion.get("node")):
-			illusion["node"].queue_free()
-	_enemy_illusions.clear()
-	_enemy_illusion_damage_pct = 0.0
-	_enemy_illusion_hit_chance_pct = 0.0
-	_enemy_illusions_turns_remaining = 0
-	_enemy_illusions_duration_pending_start = false
+func _end_enemy_imperial_guard() -> void:
+	for guard in _enemy_guards:
+		if is_instance_valid(guard.get("node")):
+			guard["node"].queue_free()
+		if is_instance_valid(guard.get("hp_label")):
+			guard["hp_label"].queue_free()
+	_enemy_guards.clear()
+	_enemy_guard_damage_pct = 0.0
+	_enemy_guards_turns_remaining = 0
+	_enemy_guards_duration_pending_start = false
 
 
-## Applies `amount` of already-mitigated damage to `illusion` - the
-## rival-side equivalent of the player's own _deal_damage_to_illusion(),
-## just against _enemy_illusions instead of _illusions. Called from
-## _deal_fixed_damage_to_enemy() whenever a hit redirects onto an
-## illusion instead of the boss itself.
-func _deal_damage_to_enemy_illusion(illusion: Dictionary, amount: float, is_critical: bool = false) -> void:
-	illusion["current_hp"] = float(illusion.get("current_hp", 0.0)) - amount
-	if is_instance_valid(illusion.get("node")):
-		_show_damage_number(illusion["node"], amount, is_critical)
-	if illusion["current_hp"] <= 0:
-		_kill_enemy_illusion(illusion)
+## Applies `amount` of already-mitigated damage to `guard` - the
+## rival-side equivalent of the player's own _deal_damage_to_guard(), just
+## against _enemy_guards instead of _guards. Called when the player's
+## guards or a melee Attack strike one, and from every player AoE that
+## sweeps over one. The guard flinches, unless a projectile is still
+## flying toward it (see _deferred_hit_node).
+func _deal_damage_to_enemy_guard(guard: Dictionary, amount: float, is_critical: bool = false) -> void:
+	guard["current_hp"] = float(guard.get("current_hp", 0.0)) - amount
+	var node: Variant = guard.get("node")
+	if is_instance_valid(node):
+		_show_damage_number(node, amount, is_critical)
+		var animator := CreatureAnimator.of(node)
+		if animator != null and node != _deferred_hit_node:
+			animator.play_hit()
+	if guard["current_hp"] <= 0:
+		_kill_enemy_guard(guard)
 
 
-## Removes one illusion that's died in combat - the rival-side mirror of
-## the player's own _kill_illusion(). Doesn't end Mirror Image outright
-## even if this was the last one; _tick_enemy_mirror_image()'s own
-## early-empty check just makes every remaining tick a no-op until the
-## duration itself finally runs out.
-func _kill_enemy_illusion(illusion: Dictionary) -> void:
-	if is_instance_valid(illusion.get("node")):
-		illusion["node"].queue_free()
-	_enemy_illusions.erase(illusion)
+## Removes one guard that's died in combat, its body dissolving the way a
+## creep's does - the rival-side mirror of the player's own _kill_guard().
+## Doesn't end Imperial Guard outright even if this was the last one;
+## _tick_enemy_imperial_guard()'s own early-empty check just makes every
+## remaining tick a no-op until the duration itself finally runs out.
+func _kill_enemy_guard(guard: Dictionary) -> void:
+	if is_instance_valid(guard.get("node")):
+		CreatureAnimator.spawn_death_ghost(guard["node"], _fx_layer)
+		guard["node"].queue_free()
+	if is_instance_valid(guard.get("hp_label")):
+		guard["hp_label"].queue_free()
+	_enemy_guards.erase(guard)
+	_relayout_guards()
 
 
 ## The boss's own effective armor for mitigating a hit onto one of its
-## illusions - base armor plus its own borrowed bonuses (Kindled
+## guards - base armor plus its own borrowed bonuses (Kindled
 ## Resolve's stack, Leeching Hunger, etc., via _enemy_hero_bonus_armor())
 ## minus Three Cheers's own shred, same three terms
 ## _deal_fixed_damage_to_enemy()'s own redirect branch already reads.
-## An illusion is a copy of the boss, not a separate combatant with its
+## A guard is a copy of the boss, not a separate combatant with its
 ## own defense stat, so it mitigates exactly as if the boss had taken
 ## the hit itself.
 func _enemy_hero_effective_armor(boss: Dictionary) -> float:
@@ -16826,18 +16808,18 @@ func _enemy_hero_effective_armor(boss: Dictionary) -> float:
 
 
 ## Any player AoE skill that damages the boss over an area should ALSO
-## independently hit every surviving enemy illusion within that same
-## area - the mirror of _deal_aoe_damage_to_illusions() for the rival's
-## own Mirror Image. `amount` is the RAW, pre-mitigation damage the AoE
-## would deal to the boss - each illusion mitigates it separately via
+## independently hit every surviving enemy guard within that same
+## area - the mirror of _deal_aoe_damage_to_guards() for the rival's
+## own Imperial Guard. `amount` is the RAW, pre-mitigation damage the AoE
+## would deal to the boss - each guard mitigates it separately via
 ## the boss's own effective armor (_enemy_hero_effective_armor()). A
-## no-op while no enemy illusions are up or there's no boss to read
+## no-op while no enemy guards are up or there's no boss to read
 ## armor from (i.e. outside a hero fight).
 ## `flash_hits` gives each one hit the same red hit-flash as Moon
 ## Glaives' bounce (_flash_bounce_hit()) - off by default, opted into by
 ## Abyssal Spasm.
-func _deal_aoe_damage_to_enemy_illusions(center_pos_index: int, radius: int, amount: float, flash_hits: bool = false) -> void:
-	if _enemy_illusions.is_empty() or amount <= 0.0:
+func _deal_aoe_damage_to_enemy_guards(center_pos_index: int, radius: int, amount: float, flash_hits: bool = false) -> void:
+	if _enemy_guards.is_empty() or amount <= 0.0:
 		return
 
 	var boss: Dictionary = _get_hero_fight_boss()
@@ -16845,22 +16827,22 @@ func _deal_aoe_damage_to_enemy_illusions(center_pos_index: int, radius: int, amo
 		return
 
 	var mitigated: float = _apply_armor_reduction(amount, _enemy_hero_effective_armor(boss))
-	for illusion in _enemy_illusions.duplicate():
-		if _distance(illusion["pos_index"], center_pos_index) <= radius:
-			_deal_damage_to_enemy_illusion(illusion, mitigated)
-			if flash_hits and is_instance_valid(illusion.get("node")):
-				_flash_bounce_hit(illusion["node"])
+	for guard in _enemy_guards.duplicate():
+		if _distance(guard["pos_index"], center_pos_index) <= radius:
+			_deal_damage_to_enemy_guard(guard, mitigated)
+			if flash_hits and is_instance_valid(guard.get("node")):
+				_flash_bounce_hit(guard["node"])
 
 
-## The line-shaped equivalent of _deal_aoe_damage_to_enemy_illusions()
+## The line-shaped equivalent of _deal_aoe_damage_to_enemy_guards()
 ## above - for The Sunken One's/Chainfire's own "every column between the
 ## caster and the target, inclusive of both ends" line. Same "amount is
-## raw, each illusion mitigates it separately via the boss's own
+## raw, each guard mitigates it separately via the boss's own
 ## effective armor" contract.
 ## `flash_hits` gives each one hit the standard splash hit-flash
 ## (_flash_bounce_hit()) - off by default, opted into by Chainfire.
-func _deal_line_aoe_damage_to_enemy_illusions(start_pos_index: int, end_pos_index: int, amount: float, flash_hits: bool = false) -> void:
-	if _enemy_illusions.is_empty() or amount <= 0.0:
+func _deal_line_aoe_damage_to_enemy_guards(start_pos_index: int, end_pos_index: int, amount: float, flash_hits: bool = false) -> void:
+	if _enemy_guards.is_empty() or amount <= 0.0:
 		return
 
 	var boss: Dictionary = _get_hero_fight_boss()
@@ -16870,20 +16852,20 @@ func _deal_line_aoe_damage_to_enemy_illusions(start_pos_index: int, end_pos_inde
 	var start_col: int = mini(start_pos_index, end_pos_index)
 	var end_col: int = maxi(start_pos_index, end_pos_index)
 	var mitigated: float = _apply_armor_reduction(amount, _enemy_hero_effective_armor(boss))
-	for illusion in _enemy_illusions.duplicate():
-		var pos: int = illusion["pos_index"]
+	for guard in _enemy_guards.duplicate():
+		var pos: int = guard["pos_index"]
 		if pos >= start_col and pos <= end_col:
-			_deal_damage_to_enemy_illusion(illusion, mitigated)
-			if flash_hits and is_instance_valid(illusion.get("node")):
-				_flash_bounce_hit(illusion["node"])
+			_deal_damage_to_enemy_guard(guard, mitigated)
+			if flash_hits and is_instance_valid(guard.get("node")):
+				_flash_bounce_hit(guard["node"])
 
 
 ## The directional-cone equivalent of the two AoE-shape helpers above -
 ## for the player's own Double Trouble facing-based cone. Same "amount is
-## raw, each illusion mitigates it separately via the boss's own
+## raw, each guard mitigates it separately via the boss's own
 ## effective armor" contract.
-func _deal_directional_aoe_damage_to_enemy_illusions(origin_pos_index: int, direction: int, range_columns: int, amount: float) -> void:
-	if _enemy_illusions.is_empty() or amount <= 0.0:
+func _deal_directional_aoe_damage_to_enemy_guards(origin_pos_index: int, direction: int, range_columns: int, amount: float) -> void:
+	if _enemy_guards.is_empty() or amount <= 0.0:
 		return
 
 	var boss: Dictionary = _get_hero_fight_boss()
@@ -16891,38 +16873,39 @@ func _deal_directional_aoe_damage_to_enemy_illusions(origin_pos_index: int, dire
 		return
 
 	var mitigated: float = _apply_armor_reduction(amount, _enemy_hero_effective_armor(boss))
-	for illusion in _enemy_illusions.duplicate():
-		var ahead: int = (illusion["pos_index"] - origin_pos_index) * direction
+	for guard in _enemy_guards.duplicate():
+		var ahead: int = (guard["pos_index"] - origin_pos_index) * direction
 		if ahead >= 0 and ahead <= range_columns:
-			_deal_damage_to_enemy_illusion(illusion, mitigated)
+			_deal_damage_to_enemy_guard(guard, mitigated)
 
 
 # ------------------------------------------------------------------
-# The Last Empress's Ensnare, cast by the rival on the player - mirrors the
-# player's own _resolve_ensnare_cast(): this level's own `damage`
+# The Last Empress's Shackles, cast by the rival on the player - mirrors the
+# player's own _resolve_shackles_cast(): this level's own `damage`
 # (through normal armor mitigation, via apply_damage()) plus a root for
 # `root_turns` of the player's own turns (_player_root_turns_left, the
 # same shared field Thornbind's/Mother's Grasp's own root already use) -
 # unlike Thornbind, no silence/DoT fields are touched at all, so (per the
-# design doc's own explicit "Ensnare is not a stun" instruction) the
+# design doc's own explicit "Shackles is not a stun" instruction) the
 # player can still attack/cast skills while rooted, just not move. Only
 # roots if the hit actually left the player alive.
 # ------------------------------------------------------------------
 
-func _cast_enemy_ensnare(level_data: Dictionary) -> void:
+func _cast_enemy_shackles(level_data: Dictionary) -> void:
 	if _enemy_skill_on_bear:
-		_cast_enemy_ensnare_on_bear(level_data)
+		_cast_enemy_shackles_on_bear(level_data)
 		return
-	_play_net_throw(_get_hero_fight_boss().get("node"), hero_image)
 	apply_damage(float(level_data.get("damage", 0)))
 	if _recruited.get("current_hp", 0) > 0:
 		_player_root_turns_left = int(level_data.get("root_turns", 0))
-	_show_message_over_hero("Ensnare!")
+		_player_shackled = true
+		_refresh_shackles()
+	_show_message_over_hero("Shackles!")
 
 
 # ------------------------------------------------------------------
-# The Last Empress's ultimate, Song of the Siren, cast by the rival - mirrors
-# the player's own _cast_song_of_the_siren(): stuns (_player_stun_turns_
+# The Last Empress's ultimate, Luring Gaze, cast by the rival - mirrors
+# the player's own _cast_luring_gaze(): stuns (_player_stun_turns_
 # left, the same shared field Barbed Lunge's/Drowned Surge's/Blast Hopper's own
 # stun already use) and shreds the armor (_player_armor_reduction/
 # _player_armor_reduction_turns_left, the same per-instance runtime
@@ -16933,17 +16916,25 @@ func _cast_enemy_ensnare(level_data: Dictionary) -> void:
 # this collapses to a single conditional hit rather than a loop over
 # multiple enemies, same simplification every other rival AoE cast
 # already uses. Purely offensive - no damage of its own, and nothing
-# about the rival itself changes (it and its illusions can still move/
+# about the rival itself changes (it and its guards can still move/
 # attack normally the whole time).
 # ------------------------------------------------------------------
 
-func _cast_enemy_song_of_the_siren(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_luring_gaze(enemy: Dictionary, level_data: Dictionary) -> void:
 	var radius: int = int(level_data.get("radius", 0))
+	# Whoever the gaze actually catches: the thread runs to each of them.
+	var gazed: Array = []
+	var player_gazed: bool = false
 	if _distance(enemy["pos_index"], _hero_pos_index) <= radius:
 		_player_stun_turns_left = int(level_data.get("stun_turns", 0))
 		_player_armor_reduction += float(level_data.get("armor_reduction", 0))
-		_player_armor_reduction_turns_left = int(level_data.get("stun_turns", 0))
-		_player_siren_song_asleep = true
+		# +1: ticks at the start of the player's turn, which comes before the
+		# stunned turn's enemy phase, so it must outlast the last stunned turn.
+		_player_armor_reduction_turns_left = int(level_data.get("stun_turns", 0)) + 1
+		_player_luring_gaze_entranced = true
+		_player_venom_paralyzed = false
+		gazed.append(hero_image)
+		player_gazed = true
 	# The player's own Elderwild Companion within the same radius falls asleep
 	# too - same stun and armor shred, the armor's turns refreshed (not
 	# added to) the same way the player's own are.
@@ -16951,19 +16942,21 @@ func _cast_enemy_song_of_the_siren(enemy: Dictionary, level_data: Dictionary) ->
 		_stun_bear(int(level_data.get("stun_turns", 0)))
 		if _is_bear_alive():
 			_bear["armor_reduction"] = float(_bear.get("armor_reduction", 0.0)) + float(level_data.get("armor_reduction", 0))
-			_bear["armor_reduction_turns_left"] = int(level_data.get("stun_turns", 0))
+			_bear["armor_reduction_turns_left"] = int(level_data.get("stun_turns", 0)) + 1
 			# Set after _stun_bear(), which clears it for any other stun.
-			_bear["siren_song_asleep"] = true
+			_bear["luring_gaze_entranced"] = true
+			gazed.append(_bear.get("node"))
 
-	_play_siren_song_wave(enemy.get("node"), radius)
-	_refresh_siren_lullabies()
-	_show_message_over_hero("Song of the Siren!")
+	# Heavier vignette when it's the player himself being gazed at.
+	_play_luring_gaze(enemy.get("node"), gazed, player_gazed)
+	_refresh_luring_gaze_trances()
+	_show_message_over_hero("Luring Gaze!")
 
 
 # ------------------------------------------------------------------
-# Slardar's Guardian Sprint, cast by the rival - mirrors the player's own
-# _activate_guardian_sprint()/_guardian_sprint_move_target()/_tick_
-# guardian_sprint()/_end_guardian_sprint(). Arms the buff exactly the
+# Dreadlure's Hunting Instinct, cast by the rival - mirrors the player's own
+# _activate_hunting_instinct()/_hunting_instinct_move_target()/_tick_
+# hunting_instinct()/_end_hunting_instinct(). Arms the buff exactly the
 # same way (doesn't move the rival itself when cast); only its own
 # fallback movement (_enemy_hero_turn()'s own "not hero_hidden and not
 # rooted" tail, once no skill/attack is available) actually reads it,
@@ -16971,21 +16964,21 @@ func _cast_enemy_song_of_the_siren(enemy: Dictionary, level_data: Dictionary) ->
 # has in _hero_move().
 # ------------------------------------------------------------------
 
-func _cast_enemy_guardian_sprint(level_data: Dictionary) -> void:
-	_enemy_guardian_sprint_bonus_movement = int(level_data.get("bonus_movement", 0))
-	_enemy_guardian_sprint_charge_damage_pct = float(level_data.get("charge_damage_pct", 0.0))
-	_enemy_guardian_sprint_turns_remaining = int(level_data.get("duration", 0))
+func _cast_enemy_hunting_instinct(level_data: Dictionary) -> void:
+	_enemy_hunting_instinct_bonus_movement = int(level_data.get("bonus_movement", 0))
+	_enemy_hunting_instinct_charge_damage_pct = float(level_data.get("charge_damage_pct", 0.0))
+	_enemy_hunting_instinct_turns_remaining = int(level_data.get("duration", 0))
 	# The casting turn itself doesn't count - duration only starts
-	# ticking from the turn after (see _tick_enemy_guardian_sprint()),
+	# ticking from the turn after (see _tick_enemy_hunting_instinct()),
 	# same as every other duration-based buff. The bonus itself is
 	# already live the instant this returns.
-	_enemy_guardian_sprint_duration_pending_start = true
+	_enemy_hunting_instinct_duration_pending_start = true
 
-	_show_message_over_hero("Guardian Sprint!")
+	_show_message_over_hero("Hunting Instinct!")
 
 
-## Guardian Sprint's own movement rule, on the rival's side - mirrors the
-## player's own _guardian_sprint_move_target() exactly, just stopping on
+## Hunting Instinct's own movement rule, on the rival's side - mirrors the
+## player's own _hunting_instinct_move_target() exactly, just stopping on
 ## the PLAYER's own column instead of searching _enemies for one (there's
 ## only ever the one possible "enemy" to stop on in a hero fight - see
 ## this section's own header comment). Walks up to `distance` columns
@@ -16995,8 +16988,8 @@ func _cast_enemy_guardian_sprint(level_data: Dictionary) -> void:
 ## other rival gap-closer (Blast Hopper's hop, Chainfire's pull)
 ## already follows. Returns both the landing column and whether it
 ## actually stopped on the player, for the caller to deal Guardian
-## Sprint's own charge_damage to.
-func _enemy_guardian_sprint_move_target(start: int, direction: int, distance: int) -> Dictionary:
+## Instinct's own charge_damage to.
+func _enemy_hunting_instinct_move_target(start: int, direction: int, distance: int) -> Dictionary:
 	var pos: int = start
 	var hit_player: bool = false
 
@@ -17015,31 +17008,31 @@ func _enemy_guardian_sprint_move_target(start: int, direction: int, distance: in
 	return {"pos": pos, "hit_player": hit_player}
 
 
-func _tick_enemy_guardian_sprint() -> void:
-	if _enemy_guardian_sprint_turns_remaining <= 0:
+func _tick_enemy_hunting_instinct() -> void:
+	if _enemy_hunting_instinct_turns_remaining <= 0:
 		return
 
-	if _enemy_guardian_sprint_duration_pending_start:
-		_enemy_guardian_sprint_duration_pending_start = false
+	if _enemy_hunting_instinct_duration_pending_start:
+		_enemy_hunting_instinct_duration_pending_start = false
 		return
 
-	_enemy_guardian_sprint_turns_remaining -= 1
-	if _enemy_guardian_sprint_turns_remaining <= 0:
-		_end_enemy_guardian_sprint()
+	_enemy_hunting_instinct_turns_remaining -= 1
+	if _enemy_hunting_instinct_turns_remaining <= 0:
+		_end_enemy_hunting_instinct()
 
 
-func _end_enemy_guardian_sprint() -> void:
-	_enemy_guardian_sprint_turns_remaining = 0
-	_enemy_guardian_sprint_bonus_movement = 0
-	_enemy_guardian_sprint_charge_damage_pct = 0.0
-	_enemy_guardian_sprint_duration_pending_start = false
+func _end_enemy_hunting_instinct() -> void:
+	_enemy_hunting_instinct_turns_remaining = 0
+	_enemy_hunting_instinct_bonus_movement = 0
+	_enemy_hunting_instinct_charge_damage_pct = 0.0
+	_enemy_hunting_instinct_duration_pending_start = false
 
 
 # ------------------------------------------------------------------
-# Slardar's Slithereen Crush, cast by the rival - mirrors the player's
-# own _cast_slithereen_crush(): this level's own `damage` (through normal
+# Dreadlure's Paralytic Venom, cast by the rival - mirrors the player's
+# own _cast_paralytic_venom(): this level's own `damage` (through normal
 # armor mitigation, via apply_damage()) plus a stun (_player_stun_turns_
-# left, the same shared field Barbed Lunge's/Drowned Surge's/Song of the Siren's own
+# left, the same shared field Barbed Lunge's/Drowned Surge's/Luring Gaze's own
 # stun already use) for `stun_turns` of the player's own turns, if
 # they're within `radius` columns of the rival's CURRENT position -
 # there's only one possible target in a hero fight, so this collapses to
@@ -17047,15 +17040,15 @@ func _end_enemy_guardian_sprint() -> void:
 # simplification every other self-centered rival AoE cast already uses
 # (see _cast_enemy_mothers_grasp()'s own docstring). Only stuns if the hit
 # actually left the player alive. Centered on the caster's own column,
-# same as the check above - an illusion/the player's own Elderwild Companion can
+# same as the check above - a guard/the player's own Elderwild Companion can
 # be in range independently of whether the player himself currently is,
 # same "one-time hit for whatever's caught in the burst" reasoning
-# _cast_enemy_sweep()'s own copy already follows (illusions have
+# _cast_enemy_sweep()'s own copy already follows (guards have
 # no stun of their own to carry, same as they have no root/DoT in
 # Mother's Grasp's own copy).
 # ------------------------------------------------------------------
 
-func _cast_enemy_slithereen_crush(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_paralytic_venom(enemy: Dictionary, level_data: Dictionary) -> void:
 	var radius: int = int(level_data.get("radius", 0))
 	var damage: float = float(level_data.get("damage", 0))
 	# Everyone the wave will hit, captured (and the slam played) before
@@ -17063,62 +17056,66 @@ func _cast_enemy_slithereen_crush(enemy: Dictionary, level_data: Dictionary) -> 
 	var hit_nodes: Array = []
 	if _distance(enemy["pos_index"], _hero_pos_index) <= radius:
 		hit_nodes.append(hero_image)
-	for illusion in _illusions:
-		if _distance(illusion["pos_index"], enemy["pos_index"]) <= radius:
-			hit_nodes.append(illusion.get("node"))
+	for guard in _guards:
+		if _distance(guard["pos_index"], enemy["pos_index"]) <= radius:
+			hit_nodes.append(guard.get("node"))
 	if _is_bear_alive() and _distance(_bear["pos_index"], enemy["pos_index"]) <= radius:
 		hit_nodes.append(_bear.get("node"))
-	_play_slithereen_crush(enemy.get("node"), radius, hit_nodes)
+	_play_paralytic_venom(enemy.get("node"), radius, hit_nodes)
 
 	if _distance(enemy["pos_index"], _hero_pos_index) <= radius:
 		apply_damage(damage)
 		if _recruited.get("current_hp", 0) > 0:
 			_player_stun_turns_left = int(level_data.get("stun_turns", 0))
-	_deal_aoe_damage_to_illusions(enemy["pos_index"], radius, damage)
+			_player_venom_paralyzed = _player_stun_turns_left > 0
+			_player_luring_gaze_entranced = false
+	_deal_aoe_damage_to_guards(enemy["pos_index"], radius, damage)
 	# The player's own Elderwild Companion caught in it is stunned too, if it
 	# survived the hit - same "only a hit that left it alive" rule as
 	# the player's own stun above (_stun_bear() is a no-op on a dead bear).
-	var bear_in_crush: bool = _is_bear_alive() and _distance(_bear["pos_index"], enemy["pos_index"]) <= radius
+	var bear_in_venom: bool = _is_bear_alive() and _distance(_bear["pos_index"], enemy["pos_index"]) <= radius
 	_deal_aoe_damage_to_bear(enemy["pos_index"], radius, damage)
-	if bear_in_crush:
+	if bear_in_venom:
 		_stun_bear(int(level_data.get("stun_turns", 0)))
+		if _is_bear_alive():
+			_bear["venom_paralyzed"] = true
 
-	_show_message_over_hero("Slithereen Crush!")
+	_show_message_over_hero("Paralytic Venom!")
 
 
 # ------------------------------------------------------------------
-# Slardar's passive, Bash of the Deep, on the rival - mirrors the
-# player's own _get_bash_of_the_deep_level_data()/_maybe_consume_bash_of_
-# the_deep_stack()/_apply_bash_of_the_deep_knockback(). Never a scored
+# Dreadlure's passive, Might of the Deep, on the rival - mirrors the
+# player's own _get_might_of_the_deep_level_data()/_maybe_consume_might_of_
+# the_deep_stack()/_apply_might_of_the_deep_knockback(). Never a scored
 # candidate of its own (see EnemySkillAI's own header comment) - its
-# progression only ever reaches Guardian Sprint/Slithereen Crush/
-# Corrosive Haze/a plain Attack through _build_enemy_ai_context()'s own
-# "bash_*" fields, and its actual bonus damage/knockback only ever land
+# progression only ever reaches Hunting Instinct/Paralytic Venom/
+# Deathlight Lure/a plain Attack through _build_enemy_ai_context()'s own
+# "might_*" fields, and its actual bonus damage/knockback only ever land
 # through _resolve_enemy_hero_attack()'s own plain-Attack path, same
 # "only a real Attack builds/consumes the stack" rule the player's own
 # copy follows.
 # ------------------------------------------------------------------
 
-func _get_enemy_bash_of_the_deep_level_data() -> Dictionary:
-	var level: int = PlayerManager.get_npc_skill_level(_enemy_hero_id, "bash_of_the_deep")
+func _get_enemy_might_of_the_deep_level_data() -> Dictionary:
+	var level: int = PlayerManager.get_npc_skill_level(_enemy_hero_id, "might_of_the_deep")
 	if level <= 0:
 		return {}
-	var skill: Dictionary = _find_enemy_skill("bash_of_the_deep")
+	var skill: Dictionary = _find_enemy_skill("might_of_the_deep")
 	if skill.is_empty():
 		return {}
 	return GameManager.get_skill_level_data(skill, level)
 
 
-func _maybe_consume_enemy_bash_of_the_deep_stack() -> Dictionary:
-	var level_data: Dictionary = _get_enemy_bash_of_the_deep_level_data()
+func _maybe_consume_enemy_might_of_the_deep_stack() -> Dictionary:
+	var level_data: Dictionary = _get_enemy_might_of_the_deep_level_data()
 	if level_data.is_empty():
 		return {}
 
-	_enemy_bash_of_the_deep_attack_count += 1
-	if _enemy_bash_of_the_deep_attack_count < int(level_data.get("attacks_required", 1)):
+	_enemy_might_of_the_deep_attack_count += 1
+	if _enemy_might_of_the_deep_attack_count < int(level_data.get("attacks_required", 1)):
 		return {}
 
-	_enemy_bash_of_the_deep_attack_count = 0
+	_enemy_might_of_the_deep_attack_count = 0
 	return level_data
 
 
@@ -17129,7 +17126,7 @@ func _maybe_consume_enemy_bash_of_the_deep_stack() -> Dictionary:
 ## early at the board edge or a player-cast Frostbound Rupture wall. Repositions
 ## instantly via _hero_pos_index/_update_hero_position(), the same path
 ## every other player-repositioning effect in this file uses.
-func _apply_enemy_bash_of_the_deep_knockback(enemy: Dictionary, level_data: Dictionary) -> void:
+func _apply_enemy_might_of_the_deep_knockback(enemy: Dictionary, level_data: Dictionary) -> void:
 	var knockback_columns: int = int(level_data.get("knockback", 0))
 	var direction: int = _step_toward(enemy["pos_index"], _hero_pos_index)
 	if direction == 0:
@@ -17150,13 +17147,13 @@ func _apply_enemy_bash_of_the_deep_knockback(enemy: Dictionary, level_data: Dict
 
 
 # ------------------------------------------------------------------
-# Slardar's ultimate, Corrosive Haze, cast by the rival on the player -
-# mirrors the player's own _resolve_corrosive_haze_cast(): reduces the
+# Dreadlure's ultimate, Deathlight Lure, cast by the rival on the player -
+# mirrors the player's own _resolve_deathlight_lure_cast(): reduces the
 # player's own armor by this level's own `armor_reduction`
 # (_player_armor_reduction, the same shared runtime field Three Cheers's
-# own shred/Song of the Siren's own shred already use - stacking
+# own shred/Luring Gaze's own shred already use - stacking
 # additively with any already there) and marks him with `bonus_damage_
-# pct` (_player_corrosive_haze_bonus_pct, read by apply_damage() to boost
+# pct` (_player_deathlight_lure_bonus_pct, read by apply_damage() to boost
 # every hit he takes from the rival's own attacks/skills - overwritten
 # outright on recast, not stacked). Both share _player_armor_reduction_
 # turns_left as their own turns-left counter, same "share the shred's own
@@ -17167,17 +17164,18 @@ func _apply_enemy_bash_of_the_deep_knockback(enemy: Dictionary, level_data: Dict
 # copies already use. Deals no damage of its own - a pure debuff.
 # ------------------------------------------------------------------
 
-func _cast_enemy_corrosive_haze(level_data: Dictionary) -> void:
+func _cast_enemy_deathlight_lure(level_data: Dictionary) -> void:
 	if _enemy_skill_on_bear:
-		_cast_enemy_corrosive_haze_on_bear(level_data)
+		_cast_enemy_deathlight_lure_on_bear(level_data)
 		return
 	_player_armor_reduction += float(level_data.get("armor_reduction", 0))
-	_player_corrosive_haze_bonus_pct = float(level_data.get("bonus_damage_pct", 0.0))
+	_player_deathlight_lure_bonus_pct = float(level_data.get("bonus_damage_pct", 0.0))
 	_player_armor_reduction_turns_left = int(level_data.get("duration", 0))
+	_reveal_player_hero()
 
-	_play_corrosive_haze_glob(_get_hero_fight_boss().get("node"), hero_image)
-	_refresh_corrosive_haze()
-	_show_message_over_hero("Corrosive Haze!")
+	_play_deathlight_lure(_get_hero_fight_boss().get("node"), hero_image)
+	_refresh_deathlight_lure()
+	_show_message_over_hero("Deathlight Lure!")
 
 
 # ------------------------------------------------------------------
@@ -17190,7 +17188,7 @@ func _cast_enemy_corrosive_haze(level_data: Dictionary) -> void:
 # other self-centered rival AoE cast already uses (see
 # _cast_enemy_mothers_grasp()'s own docstring). No stun of its own - purely
 # a damage nuke, same as the player-side copy. Centered on the caster's
-# own column, same as the check above - an illusion/the player's own
+# own column, same as the check above - a guard/the player's own
 # Elderwild Companion can be in range independently of whether the player himself
 # currently is, same "one-time hit for whatever's caught in the burst"
 # reasoning _cast_enemy_sweep()'s own copy already follows.
@@ -17204,16 +17202,16 @@ func _cast_enemy_starstorm(enemy: Dictionary, level_data: Dictionary) -> void:
 	var star_nodes: Array = []
 	if _distance(enemy["pos_index"], _hero_pos_index) <= radius:
 		star_nodes.append(hero_image)
-	for illusion in _illusions:
-		if _distance(illusion["pos_index"], enemy["pos_index"]) <= radius:
-			star_nodes.append(illusion.get("node"))
+	for guard in _guards:
+		if _distance(guard["pos_index"], enemy["pos_index"]) <= radius:
+			star_nodes.append(guard.get("node"))
 	if _is_bear_alive() and _distance(_bear["pos_index"], enemy["pos_index"]) <= radius:
 		star_nodes.append(_bear.get("node"))
 	_play_starfall(star_nodes)
 
 	if _distance(enemy["pos_index"], _hero_pos_index) <= radius:
 		apply_damage(damage)
-	_deal_aoe_damage_to_illusions(enemy["pos_index"], radius, damage)
+	_deal_aoe_damage_to_guards(enemy["pos_index"], radius, damage)
 	_deal_aoe_damage_to_bear(enemy["pos_index"], radius, damage)
 
 	_show_message_over_hero("Starstorm!")
@@ -17225,7 +17223,7 @@ func _cast_enemy_starstorm(enemy: Dictionary, level_data: Dictionary) -> void:
 # plus bonus_per_column for every column between the rival and the
 # player at the moment it's cast (through normal armor mitigation, via
 # apply_damage()), then stuns the player (_player_stun_turns_left, the
-# same shared field Barbed Lunge's/Drowned Surge's/Song of the Siren's own stun
+# same shared field Barbed Lunge's/Drowned Surge's/Luring Gaze's own stun
 # already use) for this level's own stun_turns, only if the hit left him
 # alive. There's only one possible target in a hero fight, so - unlike
 # the player's own copy, which needs a separate targeting click - this
@@ -17344,7 +17342,7 @@ func _end_enemy_moonlight_shadow() -> void:
 # bounces(), simplified for the one real difference a hero fight has:
 # there's no second real _enemies-style target the rival's own Attack
 # could bounce onto besides the player himself (already the primary
-# hit) - only the player's own illusions/Elderwild Companion are real, separate
+# hit) - only the player's own guards/Elderwild Companion are real, separate
 # occupants of their own columns near him, so those are the only actual
 # bounce targets here, hit exactly the same "unconditional collateral,
 # never counted toward the bounce cap" way the player-side copy already
@@ -17375,7 +17373,7 @@ func _apply_enemy_moon_glaives_bounces(attack_damage: float) -> void:
 		return
 
 	var radius: int = int(level_data.get("bounce_range", 0))
-	_deal_aoe_damage_to_illusions(_hero_pos_index, radius, bounce_damage)
+	_deal_aoe_damage_to_guards(_hero_pos_index, radius, bounce_damage)
 	_deal_aoe_damage_to_bear(_hero_pos_index, radius, bounce_damage)
 
 
@@ -17453,10 +17451,10 @@ func _cast_enemy_eclipse(level_data: Dictionary) -> void:
 ## Each beam independently rolls ONE random living, targetable candidate
 ## from the player himself (if within `radius` columns of the rival's
 ## CURRENT position, re-checked fresh here, not fixed at cast time), any
-## of the player's own illusions within that same radius of the rival,
+## of the player's own guards within that same radius of the rival,
 ## and the player's own Elderwild Companion if it's alive and in range too - the
 ## enemy-side mirror of the player-side copy's own "boss, or one of its
-## illusions" pool, extended with the bear since (unlike the boss's own
+## guards" pool, extended with the bear since (unlike the boss's own
 ## Elderwild Companion, a genuine _enemies entry the player-side pool already
 ## reaches for free) the player's own bear is a separate structure with
 ## no equivalent array to fall into automatically. A beam with nothing in
@@ -17483,9 +17481,9 @@ func _tick_enemy_eclipse() -> void:
 		var candidates: Array = []
 		if _distance(_hero_pos_index, boss["pos_index"]) <= _enemy_eclipse_radius:
 			candidates.append({"kind": "player"})
-		for illusion in _illusions:
-			if _distance(illusion["pos_index"], boss["pos_index"]) <= _enemy_eclipse_radius:
-				candidates.append({"kind": "illusion", "ref": illusion})
+		for guard in _guards:
+			if _distance(guard["pos_index"], boss["pos_index"]) <= _enemy_eclipse_radius:
+				candidates.append({"kind": "guard", "ref": guard})
 		if _is_bear_alive() and _distance(_bear["pos_index"], boss["pos_index"]) <= _enemy_eclipse_radius:
 			candidates.append({"kind": "bear"})
 
@@ -17499,9 +17497,9 @@ func _tick_enemy_eclipse() -> void:
 				"player":
 					apply_damage(_enemy_eclipse_damage_per_beam)
 					_play_lucent_beam_impact(hero_image)
-				"illusion":
-					var illusion_damage: float = _apply_armor_reduction(_enemy_eclipse_damage_per_beam, _hero_armor())
-					_deal_damage_to_illusion(picked["ref"], illusion_damage)
+				"guard":
+					var guard_damage: float = _apply_armor_reduction(_enemy_eclipse_damage_per_beam, _hero_armor())
+					_deal_damage_to_guard(picked["ref"], guard_damage)
 					_play_lucent_beam_impact(picked["ref"].get("node"))
 				"bear":
 					_deal_damage_to_bear(_enemy_eclipse_damage_per_beam)
@@ -17564,7 +17562,7 @@ func _fire_enemy_kiss_the_wastes_shot(impact_delay: float = 0.0) -> void:
 		_player_kiss_burn_dot_turns_left = burn_duration
 
 	# The splash itself isn't simplified away like every other rival
-	# AoE's "no cleave" note above - illusions and the Elderwild Companion are
+	# AoE's "no cleave" note above - guards and the Elderwild Companion are
 	# real occupants of their own columns, and (unlike the enemy-side
 	# skill functions elsewhere, which are always centered on some
 	# OTHER point) the impact here is always the player's own position,
@@ -17573,15 +17571,15 @@ func _fire_enemy_kiss_the_wastes_shot(impact_delay: float = 0.0) -> void:
 	# impact column takes main_damage, one column either side takes
 	# splash_damage - same split _fire_kiss_the_wastes_shot()'s own
 	# regular-enemy checks use for the player's copy, rather than the
-	# single flat radius _deal_aoe_damage_to_illusions()/_deal_aoe_
+	# single flat radius _deal_aoe_damage_to_guards()/_deal_aoe_
 	# damage_to_bear() would give (which can't tell the two apart).
 	var splash_damage: float = float(level_data.get("splash_damage", 0))
-	for illusion in _illusions.duplicate():
-		var illusion_dist: int = _distance(illusion["pos_index"], _hero_pos_index)
-		if illusion_dist == 0:
-			_deal_damage_to_illusion(illusion, _apply_armor_reduction(main_damage, _hero_armor()))
-		elif illusion_dist == 1:
-			_deal_damage_to_illusion(illusion, _apply_armor_reduction(splash_damage, _hero_armor()))
+	for guard in _guards.duplicate():
+		var guard_dist: int = _distance(guard["pos_index"], _hero_pos_index)
+		if guard_dist == 0:
+			_deal_damage_to_guard(guard, _apply_armor_reduction(main_damage, _hero_armor()))
+		elif guard_dist == 1:
+			_deal_damage_to_guard(guard, _apply_armor_reduction(splash_damage, _hero_armor()))
 	if _is_bear_alive():
 		var bear_dist: int = _distance(_bear["pos_index"], _hero_pos_index)
 		if bear_dist == 0:
@@ -17695,6 +17693,10 @@ const REAR_VINE_STYLE := "rear_vine"
 ## fast round (see RifleShotFX and _fire_enemy_rifle_shot()).
 const RIFLE_BULLET_STYLE := "rifle_bullet"
 
+## A creep whose "projectile" is this fires a harpoon gun: a burst of brine
+## and one heavy barbed bolt trailing its line (see HarpoonBoltFX).
+const HARPOON_BOLT_STYLE := "harpoon_bolt"
+
 
 ## A ranged enemy's attack projectile - only for enemies whose
 ## GameManager definition names one ("projectile": a ProjectileFX style
@@ -17716,6 +17718,9 @@ func _fire_enemy_projectile(enemy: Dictionary, target_node: Control) -> void:
 		return
 	if style_id == REAR_VINE_STYLE:
 		_fire_enemy_rear_vine(enemy, target_node)
+		return
+	if style_id == HARPOON_BOLT_STYLE:
+		_fire_enemy_harpoon_bolt(enemy, target_node)
 		return
 
 	var native_faces_right: bool = enemy["static"].get("is_hero_fight", false)
@@ -17755,6 +17760,31 @@ func _fire_enemy_rifle_shot(enemy: Dictionary, target_node: Control) -> void:
 		if not is_instance_valid(_fx_layer):
 			return
 		RifleShotFX.play(_fx_layer, from, to, func() -> void:
+			var animator := CreatureAnimator.of(target_node)
+			if animator != null:
+				animator.play_hit(signf(from.x - to.x))
+		)
+	)
+
+
+## The Drowned Empire harpooner's attack: a spray off the harpoon gun and one
+## barbed bolt trailing its line to the target (see HarpoonBoltFX). Same
+## deferred-hit contract as _fire_enemy_projectile().
+func _fire_enemy_harpoon_bolt(enemy: Dictionary, target_node: Control) -> void:
+	var node: Control = enemy.get("node")
+	var native_faces_right: bool = enemy["static"].get("is_hero_fight", false)
+	var facing_left: bool = node.flip_h if native_faces_right else not node.flip_h
+	var muzzle: Vector2 = HarpoonBoltFX.MUZZLE_FACING_LEFT
+	if not facing_left:
+		muzzle.x = 1.0 - muzzle.x
+	var from: Vector2 = node.global_position + node.size * muzzle
+	var to: Vector2 = target_node.global_position + target_node.size * Vector2(0.5, 0.45)
+
+	_deferred_hit_node = target_node
+	get_tree().create_timer(PROJECTILE_RELEASE_DELAY).timeout.connect(func() -> void:
+		if not is_instance_valid(_fx_layer):
+			return
+		HarpoonBoltFX.play(_fx_layer, from, to, func() -> void:
 			var animator := CreatureAnimator.of(target_node)
 			if animator != null:
 				animator.play_hit(signf(from.x - to.x))
@@ -18480,11 +18510,11 @@ func _choose_enemy_skill_on_bear(enemy: Dictionary, skill_id: String) -> bool:
 ## Roughly how much damage `skill_id`'s own immediate hit would do to
 ## the bear after its armor - only used to judge whether a cast would
 ## finish it off. DoT-only skills (Thornbind/Mark of Stillness/The Hollow Cold/
-## Winter's Grip/Sanguine Bloom/Corrosive Haze/The Hunger Calls) return 0.
+## Winter's Grip/Sanguine Bloom/Deathlight Lure/The Hunger Calls) return 0.
 func _estimate_enemy_skill_hit_on_bear(enemy: Dictionary, skill_id: String, level_data: Dictionary) -> float:
 	var raw: float = 0.0
 	match skill_id:
-		"whisper_of_the_veil", "drowned_surge", "ensnare", "lucent_beam", "return_to_the_void", "maddening_roar", "charge":
+		"whisper_of_the_veil", "drowned_surge", "shackles", "lucent_beam", "return_to_the_void", "maddening_roar", "charge":
 			raw = float(level_data.get("damage", 0))
 		"sacred_arrow":
 			var distance: int = _distance(enemy["pos_index"], _bear["pos_index"])
@@ -18498,7 +18528,7 @@ func _estimate_enemy_skill_hit_on_bear(enemy: Dictionary, skill_id: String, leve
 	if raw <= 0.0:
 		return 0.0
 	var bear_armor: float = float(_bear.get("armor", 0)) - float(_bear.get("armor_reduction", 0.0))
-	return _apply_armor_reduction(raw * (1.0 + float(_bear.get("corrosive_haze_bonus_pct", 0.0))), bear_armor)
+	return _apply_armor_reduction(raw * (1.0 + float(_bear.get("deathlight_lure_bonus_pct", 0.0))), bear_armor)
 
 
 ## Floating text over the bear (e.g. "Stunned!") - the bear-side
@@ -18567,7 +18597,7 @@ func _tick_bear_turn_start_effects() -> void:
 		_bear["armor_reduction_turns_left"] -= 1
 		if int(_bear.get("armor_reduction_turns_left", 0)) <= 0:
 			_bear["armor_reduction"] = 0.0
-			_bear["corrosive_haze_bonus_pct"] = 0.0
+			_bear["deathlight_lure_bonus_pct"] = 0.0
 
 
 ## Stuns the bear for `turns` of its own turns (see _bear_turn()) - only
@@ -18576,11 +18606,12 @@ func _stun_bear(turns: int) -> void:
 	if _is_bear_alive() and turns > 0:
 		_bear["stun_turns_left"] = turns
 		# A fresh stun from anything else replaces The Hunger Calls's
-		# freeze / Song of the Siren's sleep - _cast_enemy_the_hunger_calls_
-		# on_bear()/_cast_enemy_song_of_the_siren() set theirs back right
+		# freeze / Luring Gaze's sleep - _cast_enemy_the_hunger_calls_
+		# on_bear()/_cast_enemy_luring_gaze() set theirs back right
 		# after calling here.
 		_bear["the_hunger_calls_active"] = false
-		_bear["siren_song_asleep"] = false
+		_bear["luring_gaze_entranced"] = false
+		_bear["venom_paralyzed"] = false
 		_show_message_over_bear("Stunned!")
 
 
@@ -18611,24 +18642,24 @@ func _cast_enemy_drowned_surge_on_bear(level_data: Dictionary) -> void:
 	var radius: int = int(level_data.get("radius", 0))
 	var bear_pos: int = _bear["pos_index"]
 	_play_drowned_surge_splash(_bear["node"])
-	# The splash is centered on the bear - the hero and his illusions
+	# The splash is centered on the bear - the hero and his guards
 	# standing close enough get caught too.
 	if _is_hero_in_bear_aoe(radius):
 		_play_drowned_surge_splash(hero_image)
 		apply_damage(damage)
-	_play_drowned_surge_splash_on_illusions(_illusions, bear_pos, radius)
-	_deal_aoe_damage_to_illusions(bear_pos, radius, damage)
+	_play_drowned_surge_splash_on_guards(_guards, bear_pos, radius)
+	_deal_aoe_damage_to_guards(bear_pos, radius, damage)
 	_deal_damage_to_bear(damage)
 	_stun_bear(int(level_data.get("stun_turns", 1)))
 
 
-func _cast_enemy_corrosive_haze_on_bear(level_data: Dictionary) -> void:
+func _cast_enemy_deathlight_lure_on_bear(level_data: Dictionary) -> void:
 	_bear["armor_reduction"] = float(_bear.get("armor_reduction", 0.0)) + float(level_data.get("armor_reduction", 0))
-	_bear["corrosive_haze_bonus_pct"] = float(level_data.get("bonus_damage_pct", 0.0))
+	_bear["deathlight_lure_bonus_pct"] = float(level_data.get("bonus_damage_pct", 0.0))
 	_bear["armor_reduction_turns_left"] = int(level_data.get("duration", 0))
-	_play_corrosive_haze_glob(_get_hero_fight_boss().get("node"), _bear["node"])
-	_refresh_corrosive_haze()
-	_show_message_over_bear("Corrosive Haze!")
+	_play_deathlight_lure(_get_hero_fight_boss().get("node"), _bear["node"])
+	_refresh_deathlight_lure()
+	_show_message_over_bear("Deathlight Lure!")
 
 
 func _cast_enemy_sacred_arrow_on_bear(enemy: Dictionary, level_data: Dictionary) -> void:
@@ -18648,12 +18679,13 @@ func _cast_enemy_lucent_beam_on_bear(level_data: Dictionary) -> void:
 	_stun_bear(int(level_data.get("stun_turns", 0)))
 
 
-func _cast_enemy_ensnare_on_bear(level_data: Dictionary) -> void:
-	_play_net_throw(_get_hero_fight_boss().get("node"), _bear["node"])
-	_show_message_over_bear("Ensnare!")
+func _cast_enemy_shackles_on_bear(level_data: Dictionary) -> void:
+	_show_message_over_bear("Shackles!")
 	_deal_damage_to_bear(float(level_data.get("damage", 0)))
 	if _is_bear_alive():
 		_bear["root_turns_left"] = int(level_data.get("root_turns", 0))
+		_bear["shackled"] = true
+		_refresh_shackles()
 
 
 func _cast_enemy_mark_of_stillness_on_bear(level_data: Dictionary) -> void:
@@ -18676,13 +18708,13 @@ func _cast_enemy_the_hollow_cold_on_bear(level_data: Dictionary) -> void:
 	_flash_bounce_hit(_bear["node"], MARK_OF_STILLNESS_FLASH_COLOR)
 	_show_message_over_bear("The Hollow Cold!")
 
-	# Centered on the bear - the hero and his illusions nearby are
+	# Centered on the bear - the hero and his guards nearby are
 	# caught in it as well.
 	if _is_hero_in_bear_aoe(radius):
 		_player_the_hollow_cold_dot_damage = damage
 		_player_the_hollow_cold_dot_turns_left = duration
 		_flash_bounce_hit(hero_image, MARK_OF_STILLNESS_FLASH_COLOR)
-	_mark_illusions_the_hollow_cold(_illusions, bear_pos, radius, damage, duration)
+	_mark_guards_the_hollow_cold(_guards, bear_pos, radius, damage, duration)
 
 	_play_the_hollow_cold_swirl(_bear["node"], radius)
 	_open_hollow_cold_tear(_bear["node"], bear_pos, radius, duration, true)
@@ -18709,9 +18741,9 @@ func _cast_enemy_return_to_the_void_on_bear(level_data: Dictionary) -> void:
 	var struck: Array = [_bear.get("node")]
 	if _is_hero_in_bear_aoe(radius):
 		struck.append(hero_image)
-	for illusion in _illusions:
-		if _distance(illusion["pos_index"], bear_pos) <= radius:
-			struck.append(illusion.get("node"))
+	for guard in _guards:
+		if _distance(guard["pos_index"], bear_pos) <= radius:
+			struck.append(guard.get("node"))
 	_show_message_over_bear("Return to the Void!")
 	_rival_fx_in_flight = true
 	_update_action_buttons()
@@ -18722,12 +18754,12 @@ func _cast_enemy_return_to_the_void_on_bear(level_data: Dictionary) -> void:
 			_update_action_buttons()
 			return
 		# The blast's radius is centered on the bear - the hero and his
-		# illusions nearby take its damage too (the DoT/execute/stun stay on
+		# guards nearby take its damage too (the DoT/execute/stun stay on
 		# the bear, the one it was aimed at - same as the player-aimed copy
 		# only arming them on the player).
 		if _is_hero_in_bear_aoe(radius):
 			apply_damage(damage)
-		_deal_aoe_damage_to_illusions(bear_pos, radius, damage)
+		_deal_aoe_damage_to_guards(bear_pos, radius, damage)
 		_deal_damage_to_bear(damage)
 		if _is_bear_alive():
 			_bear["return_to_the_void_dot_damage"] = float(level_data.get("dot_damage", 0))
@@ -18751,9 +18783,9 @@ func _cast_enemy_maddening_roar_on_bear(level_data: Dictionary) -> void:
 	var shatter_nodes: Array = []
 	if _is_hero_in_bear_aoe(shatter_range):
 		shatter_nodes.append(hero_image)
-	for illusion in _illusions:
-		if _distance(illusion["pos_index"], bear_pos) <= shatter_range:
-			shatter_nodes.append(illusion.get("node"))
+	for guard in _guards:
+		if _distance(guard["pos_index"], bear_pos) <= shatter_range:
+			shatter_nodes.append(guard.get("node"))
 	_rival_fx_in_flight = true
 	_update_action_buttons()
 	var generation_before: int = _stage_generation
@@ -18761,7 +18793,7 @@ func _cast_enemy_maddening_roar_on_bear(level_data: Dictionary) -> void:
 		if _battle_over or _stage_generation != generation_before:
 			return
 		_deal_damage_to_bear(damage)
-	# The rings spread out from the bear - the hero and his illusions
+	# The rings spread out from the bear - the hero and his guards
 	# nearby take the shatter damage.
 	var on_shatter := func() -> void:
 		_rival_fx_in_flight = false
@@ -18770,7 +18802,7 @@ func _cast_enemy_maddening_roar_on_bear(level_data: Dictionary) -> void:
 			return
 		if _is_hero_in_bear_aoe(shatter_range):
 			apply_damage(shatter_damage)
-		_deal_aoe_damage_to_illusions(bear_pos, shatter_range, shatter_damage)
+		_deal_aoe_damage_to_guards(bear_pos, shatter_range, shatter_damage)
 		_refresh_bars()
 		if _recruited.get("current_hp", 0) <= 0:
 			_handle_defeat()

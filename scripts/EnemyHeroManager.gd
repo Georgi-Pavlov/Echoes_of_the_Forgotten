@@ -367,40 +367,40 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 	"rootveil", "sanguine_bloom", "woven_flesh", "mother's_grasp",
 	"sweep", "chainfire", "cinderbomb",
 	"double_trouble", "blast_hopper", "three_cheers", "kiss_the_wastes",
-	"mirror_image", "ensnare", "song_of_the_siren",
-	"guardian_sprint", "slithereen_crush", "corrosive_haze",
+	"imperial_guard", "shackles", "luring_gaze",
+	"hunting_instinct", "paralytic_venom", "deathlight_lure",
 	"starstorm", "sacred_arrow", "moonlight_shadow",
 	"lucent_beam", "eclipse",
 ]
 
-# Slardar, the thirteenth hero with simulated skill logic. Guardian
-# Sprint's whole "close distance, charge damage if it lands on an enemy"
+# Dreadlure, the thirteenth hero with simulated skill logic. Guardian
+# Instinct's whole "close distance, charge damage if it lands on an enemy"
 # concept has no columns to close distance ACROSS here (see this file's
 # own header comment) - same "no real destination to walk out" honesty
 # Glacier Breaker's own sim copy already follows for its knockback - so it
 # falls back to a flat charge_damage_pct hit on whichever enemy the hero
 # would attack anyway, same "no columns, always hit the lowest-HP enemy"
-# simplification Frostbound Rupture'/Whisper of the Veil's own sim copies use. Slithereen
-# Crush is a self-centered AoE with nothing to center it on here, so -
-# like Return to the Void/Mother's Grasp/Song of the Siren above - it stuns and damages
-# every living enemy at once. Corrosive Haze marks whichever enemy the
-# hero would attack anyway (a new "corrosive_haze_bonus_pct" per-enemy
+# simplification Frostbound Rupture'/Whisper of the Veil's own sim copies use. Paralytic
+# Venom is a self-centered AoE with nothing to center it on here, so -
+# like Return to the Void/Mother's Grasp/Luring Gaze above - it stuns and damages
+# every living enemy at once. Deathlight Lure marks whichever enemy the
+# hero would attack anyway (a new "deathlight_lure_bonus_pct" per-enemy
 # field, read by _apply_damage_to_enemy() to boost every hit THAT enemy
 # takes from the hero's own attacks/skills, mirroring battle.gd's own
 # "is_hero_action" gate - every call site of _apply_damage_to_enemy() IS
 # already the hero's own action, so no extra gate is needed here), sharing
 # armor_reduction_turns_left as its own turns-left counter the same way
-# Three Cheers's own shred does. Bash of the Deep, her passive, is never
+# Three Cheers's own shred does. Might of the Deep, her passive, is never
 # in this list at all - see KNOWN_ACTIVE_SKILL_IDS's own comment above for
 # Kindled Resolve's identical reasoning; its progression only ever reaches
-# Guardian Sprint/Slithereen Crush/Corrosive Haze/a plain Attack through
-# _build_npc_ai_context()'s own "bash_*" fields, and its own bonus damage
+# Hunting Instinct/Paralytic Venom/Deathlight Lure/a plain Attack through
+# _build_npc_ai_context()'s own "might_*" fields, and its own bonus damage
 # only ever lands through the hero's own basic-attack branch in
 # _run_stage_fight() (mirroring Pull of the Abyss's own stack there) - its
 # knockback has nothing to act on here either, same reasoning Glacier
 # Breaker's own collision bonus is dropped for.
 # Mirana's Starstorm is a self-centered AoE with nothing to center it on
-# here, so - like Return to the Void/Mother's Grasp/Song of the Siren above - it hits
+# here, so - like Return to the Void/Mother's Grasp/Luring Gaze above - it hits
 # every living enemy at once. Sacred Arrow has no columns to travel
 # across here, so (same "no columns" honesty EnemySkillAI's own _mirana_
 # sacred_arrow_expected_damage() already follows) its sim copy deals only
@@ -415,7 +415,7 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # file's "depthsveil" cases below and in _npc_skill_worth_casting()/
 # the retaliation-loop guard) - invisibility skips enemy retaliation for
 # the turn, and its own bonus_damage_pct folds into the hero's next
-# Attack as a PERCENTAGE of the roll (mirroring Bash of the Deep's own
+# Attack as a PERCENTAGE of the roll (mirroring Might of the Deep's own
 # post-roll percentage), ending the moment that Attack lands.
 # Luna's Lucent Beam is single-target with its own flat damage, same
 # shape as Mark of Stillness's/Drowned Surge's own sim copies - stunning whichever
@@ -423,32 +423,32 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # TURN beams per turn, each independently picking ONE random living
 # enemy from `living` with NO cap on how many beams the same one can
 # take (see _run_stage_fight()'s own "Eclipse" block for where the
-# actual firing happens, mirroring the Mirror Image illusion-attack
+# actual firing happens, mirroring the Imperial Guard attack
 # block's own shape rather than a simple per-turn tick, since a beam can
 # kill its target mid-loop and change who's left to pick from for the
 # NEXT beam that same turn).
 
-# The Last Empress, the twelfth hero with simulated skill logic. Mirror Image
+# The Last Empress, the twelfth hero with simulated skill logic. Imperial Guard
 # has nothing to spawn actual decoy UNITS onto here (no positions/columns
 # to place them in - see this file's own header comment), so it's
 # simulated as a pure extra periodic damage source instead, same "no
 # columns, hit the lowest-HP enemy" simplification the Elderwild Companion's own
 # sim copy already uses (see state["bear"]/_run_stage_fight()'s own bear
-# block) - see this file's own "mirror_image" state in _new_npc_combat_
-# state()/_tick_npc_mirror_image(). Ensnare roots (state-lessly - see
-# this match's own "ensnare" case, which just writes root_turns_left the
+# block) - see this file's own "imperial_guard" state in _new_npc_combat_
+# state()/_tick_npc_imperial_guard(). Shackles roots (state-lessly - see
+# this match's own "shackles" case, which just writes root_turns_left the
 # same way Mother's Grasp's own sim copy does) whichever enemy the hero would
-# attack anyway. Song of the Siren, her ultimate, has no columns to
+# attack anyway. Luring Gaze, her ultimate, has no columns to
 # center an AoE stun on either, so - like Return to the Void/Maddening Roar/
 # Mother's Grasp above - it falls back to stunning and shredding the armor of
 # every living enemy at once, reusing the same armor_reduction/armor_
 # reduction_turns_left fields (and their own already-existing _tick_npc_
 # armor_reduction_effects() tick) Three Cheers's own sim copy already
-# established. Rip Tide, her passive, is never in this list at all - see
+# established. Empress's Will, her passive, is never in this list at all - see
 # KNOWN_ACTIVE_SKILL_IDS's own comment above for Kindled Resolve's
-# identical reasoning; its bonuses only ever reach Mirror Image/Song of
-# the Siren/a plain Attack through _build_npc_ai_context()'s own
-# "rip_tide_*" fields.
+# identical reasoning; its bonuses only ever reach Imperial Guard/Luring
+# Gaze/a plain Attack through _build_npc_ai_context()'s own
+# "empress_will_*" fields.
 
 # How many full turns a target can go without being hit by the hero's
 # Attack before its un-activated Mark of the Mist stacks are lost (see
@@ -945,7 +945,7 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		_tick_npc_frost_tempest(state["the_frost_tempest"], enemies)
 		_tick_npc_mothers_grasp_effects(enemies)
 		_tick_npc_cinderbomb(state["cinderbomb"], enemies)
-		_tick_npc_mirror_image(state["mirror_image"])
+		_tick_npc_imperial_guard(state["imperial_guard"])
 		_tick_npc_armor_reduction_effects(enemies)
 		_tick_npc_kiss_burn_effects(enemies)
 		var kills: Dictionary = _collect_npc_kills(enemies, counted_dead)
@@ -1031,17 +1031,17 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 				var attacking_from_rootveil: bool = state["rootveil"]["active"]
 				var pull_of_the_abyss_level_data: Dictionary = _maybe_consume_npc_pull_of_the_abyss_stack(hero_id, hero_static, state)
 				var pull_of_the_abyss_bonus: float = float(pull_of_the_abyss_level_data.get("bonus_damage", 0.0))
-				# Bash of the Deep counts this Attack toward its own
+				# Might of the Deep counts this Attack toward its own
 				# threshold too, same idea as Pull of the Abyss's stack just
 				# above - once reached, this hit's own damage is boosted
 				# by a PERCENTAGE of itself (folded in after the roll,
 				# unlike Pull of the Abyss's flat pre-roll bonus). No knockback
 				# to apply here - see KNOWN_ACTIVE_SKILL_IDS's own comment
 				# above.
-				var bash_level_data: Dictionary = _maybe_consume_npc_bash_of_the_deep_stack(hero_id, hero_static, state)
+				var might_level_data: Dictionary = _maybe_consume_npc_might_of_the_deep_stack(hero_id, hero_static, state)
 				# Mirana's own Moonlight Shadow pays off the same way, just
 				# as a PERCENTAGE of the roll (folded in below, before
-				# Bash's own - order doesn't matter mathematically since
+				# Might's own - order doesn't matter mathematically since
 				# both are only ever learned by different heroes, never
 				# both active at once).
 				var moonlight_active: bool = state["moonlight_shadow"]["active"]
@@ -1049,8 +1049,8 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 				var dmg: float = _npc_roll_damage(damage_range, state, shadow_bonus + pull_of_the_abyss_bonus)
 				if moonlight_active:
 					dmg += dmg * moonlight_bonus_pct
-				if not bash_level_data.is_empty():
-					dmg += dmg * float(bash_level_data.get("bonus_damage_pct", 0.0))
+				if not might_level_data.is_empty():
+					dmg += dmg * float(might_level_data.get("bonus_damage_pct", 0.0))
 				var mitigated: float = _apply_damage_to_enemy(target, dmg)
 				_apply_npc_leeching_hunger_steal(target, state["leeching_hunger"], hero_static)
 				_apply_npc_mark_of_the_mist_stack(hero_id, hero_static, target, turn_index)
@@ -1125,18 +1125,18 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 				result = "win"
 				break
 
-		# --- The Last Empress's Mirror Image (if active and past its own
-		# casting turn - see _tick_npc_mirror_image()'s own "duration_
+		# --- The Last Empress's Imperial Guard (if active and past its own
+		# casting turn - see _tick_npc_imperial_guard()'s own "duration_
 		# pending_start" skip) also acts automatically, same shape as the
 		# Elderwild Companion's own block just above: with no columns/positions
-		# here, the whole illusion squad always swings together at the
+		# here, the whole guard squad always swings together at the
 		# lowest-HP living enemy, for one freshly-rolled hero-damage hit
 		# each (_npc_roll_damage()) scaled by the level's own damage_pct
-		# (plus Rip Tide's own bonus - see _activate_npc_mirror_image()). ---
-		if state["mirror_image"]["active"] and not state["mirror_image"]["duration_pending_start"] and state["mirror_image"]["illusion_count"] > 0:
-			var illusion_target: Dictionary = _lowest_hp_enemy(living)
-			var illusion_damage: float = _npc_roll_damage(damage_range, state) * state["mirror_image"]["damage_pct"] * float(state["mirror_image"]["illusion_count"])
-			_apply_damage_to_enemy(illusion_target, illusion_damage)
+		# (plus Empress's Will's own bonus - see _activate_npc_imperial_guard()). ---
+		if state["imperial_guard"]["active"] and not state["imperial_guard"]["duration_pending_start"] and state["imperial_guard"]["guard_count"] > 0:
+			var guard_target: Dictionary = _lowest_hp_enemy(living)
+			var guard_damage: float = _npc_roll_damage(damage_range, state) * state["imperial_guard"]["damage_pct"] * float(state["imperial_guard"]["guard_count"])
+			_apply_damage_to_enemy(guard_target, guard_damage)
 
 			kills = _collect_npc_kills(enemies, counted_dead)
 			xp_gained += kills["xp"]
@@ -1157,7 +1157,7 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		# above for why this lives inline here rather than in a simple
 		# per-turn tick function: a beam can kill its target mid-loop,
 		# changing who's left to pick from for the NEXT beam this same
-		# turn, the same reasoning the Mirror Image block just above
+		# turn, the same reasoning the Imperial Guard block just above
 		# already follows). A beam with nothing left to hit still counts
 		# against the total, same as the real fight's own copy. ---
 		if state["eclipse"]["active"] and not state["eclipse"]["duration_pending_start"]:
@@ -1285,8 +1285,8 @@ func _new_npc_combat_state() -> Dictionary:
 		"cinderbomb": {"active": false, "damage_per_turn": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"kindled_resolve": {"stack_turns": []},
 		"kiss_the_wastes": {"active": false, "turns_remaining": 0, "level_data": {}},
-		"mirror_image": {"active": false, "illusion_count": 0, "damage_pct": 0.0, "turns_remaining": 0, "duration_pending_start": false},
-		"bash_of_the_deep_attack_count": 0,
+		"imperial_guard": {"active": false, "guard_count": 0, "damage_pct": 0.0, "turns_remaining": 0, "duration_pending_start": false},
+		"might_of_the_deep_attack_count": 0,
 		"moonlight_shadow": {"active": false, "bonus_damage_pct": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"eclipse": {"active": false, "damage_per_beam": 0.0, "beams_remaining": 0, "duration_pending_start": false},
 		"lunar_blessing_bonus_pct": 0.0,
@@ -1570,14 +1570,14 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 			state["kiss_the_wastes"]["active"] = true
 			state["kiss_the_wastes"]["turns_remaining"] = int(level_data.get("hits", 1)) - 1
 			_fire_npc_kiss_the_wastes_shot(level_data, living)
-		"mirror_image":
-			_activate_npc_mirror_image(state["mirror_image"], level_data, _get_npc_rip_tide_level_data(hero_id, hero_static))
-		"ensnare":
-			var ensnare_target: Dictionary = _lowest_hp_enemy(living)
-			_apply_damage_to_enemy(ensnare_target, float(level_data.get("damage", 0)))
-			if ensnare_target["current_hp"] > 0:
-				ensnare_target["root_turns_left"] = int(level_data.get("root_turns", 0))
-		"song_of_the_siren":
+		"imperial_guard":
+			_activate_npc_imperial_guard(state["imperial_guard"], level_data, _get_npc_empress_will_level_data(hero_id, hero_static))
+		"shackles":
+			var shackles_target: Dictionary = _lowest_hp_enemy(living)
+			_apply_damage_to_enemy(shackles_target, float(level_data.get("damage", 0)))
+			if shackles_target["current_hp"] > 0:
+				shackles_target["root_turns_left"] = int(level_data.get("root_turns", 0))
+		"luring_gaze":
 			# No columns to center an AoE stun on here - same "no columns,
 			# hit everyone" fallback Return to the Void's/Maddening Roar's/
 			# Mother's Grasp's own sim copies already use (see KNOWN_ACTIVE_
@@ -1592,40 +1592,40 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 				enemy["stun_turns_left"] = song_stun_turns
 				enemy["armor_reduction"] = float(enemy.get("armor_reduction", 0.0)) + song_armor_reduction
 				enemy["armor_reduction_turns_left"] = song_stun_turns
-		"guardian_sprint":
+		"hunting_instinct":
 			# No columns to close distance across here - same "no real
 			# destination to walk out" honesty Glacier Breaker's own sim copy
 			# already follows (see KNOWN_ACTIVE_SKILL_IDS's own comment
 			# above), so only the charge damage half lands, on whichever
 			# enemy the hero would attack anyway.
-			var sprint_target: Dictionary = _lowest_hp_enemy(living)
-			var sprint_charge_damage: float = _npc_roll_damage(damage_range, state) * float(level_data.get("charge_damage_pct", 0.0))
-			_apply_damage_to_enemy(sprint_target, sprint_charge_damage)
-		"slithereen_crush":
+			var instinct_target: Dictionary = _lowest_hp_enemy(living)
+			var instinct_charge_damage: float = _npc_roll_damage(damage_range, state) * float(level_data.get("charge_damage_pct", 0.0))
+			_apply_damage_to_enemy(instinct_target, instinct_charge_damage)
+		"paralytic_venom":
 			# Self-centered AoE with nothing to center it on here - same
-			# "no columns, hit everyone" fallback Song of the Siren's own
+			# "no columns, hit everyone" fallback Luring Gaze's own
 			# case just above already uses.
-			var crush_damage: float = float(level_data.get("damage", 0))
-			var crush_stun_turns: int = int(level_data.get("stun_turns", 0))
+			var venom_damage: float = float(level_data.get("damage", 0))
+			var venom_stun_turns: int = int(level_data.get("stun_turns", 0))
 			for enemy in living:
-				_apply_damage_to_enemy(enemy, crush_damage)
+				_apply_damage_to_enemy(enemy, venom_damage)
 				if enemy.get("current_hp", 0) > 0:
-					enemy["stun_turns_left"] = crush_stun_turns
-		"corrosive_haze":
+					enemy["stun_turns_left"] = venom_stun_turns
+		"deathlight_lure":
 			# Marks whichever enemy the hero would attack anyway - the
 			# armor half reuses armor_reduction/armor_reduction_turns_left
 			# (Three Cheers's own shared fields), the amplification half
-			# is a new corrosive_haze_bonus_pct field read by
+			# is a new deathlight_lure_bonus_pct field read by
 			# _apply_damage_to_enemy() (see this file's own header comment
 			# on why no extra "is this the hero's own action" gate is
 			# needed there).
-			var haze_target: Dictionary = _lowest_hp_enemy(living)
-			haze_target["armor_reduction"] = float(haze_target.get("armor_reduction", 0.0)) + float(level_data.get("armor_reduction", 0))
-			haze_target["corrosive_haze_bonus_pct"] = float(level_data.get("bonus_damage_pct", 0.0))
-			haze_target["armor_reduction_turns_left"] = int(level_data.get("duration", 0))
+			var lure_target: Dictionary = _lowest_hp_enemy(living)
+			lure_target["armor_reduction"] = float(lure_target.get("armor_reduction", 0.0)) + float(level_data.get("armor_reduction", 0))
+			lure_target["deathlight_lure_bonus_pct"] = float(level_data.get("bonus_damage_pct", 0.0))
+			lure_target["armor_reduction_turns_left"] = int(level_data.get("duration", 0))
 		"starstorm":
 			# Self-centered AoE with nothing to center it on here - same
-			# "no columns, hit everyone" fallback Song of the Siren's own
+			# "no columns, hit everyone" fallback Luring Gaze's own
 			# case above already uses.
 			var storm_damage: float = float(level_data.get("damage", 0))
 			for enemy in living:
@@ -1812,24 +1812,24 @@ func _pick_ready_skill(hero_id: String, hero_static: Dictionary, cooldowns: Dict
 ##     redirects all of them, not just ones "in range" - there are no
 ##     columns to check a curse_range against), and their average damage
 ##     stat, for estimating the bonus damage the curse would generate.
-##   - illusions_active/illusion_count/illusion_turns_remaining/illusion_
-##     total_damage_per_turn: The Last Empress's own Mirror Image, live off
-##     state["mirror_image"] - mirrors battle.gd's own identically-named
+##   - guards_active/guard_count/guard_turns_remaining/guard_
+##     total_damage_per_turn: The Last Empress's own Imperial Guard, live off
+##     state["imperial_guard"] - mirrors battle.gd's own identically-named
 ##     fields (see that file's own _build_enemy_ai_context() docstring).
-##   - rip_tide_illusion_damage_bonus_pct/rip_tide_extra_illusion/rip_
-##     tide_illusion_duration_bonus/rip_tide_aoe_damage_pct: The Last Empress's
-##     own Rip Tide, read fresh off _get_npc_rip_tide_level_data() - same
+##   - empress_will_guardians_damage_bonus_pct/empress_will_extra_guard/
+##     empress_will_guard_duration_bonus/empress_will_aoe_damage_pct: The Last Empress's
+##     own Empress's Will, read fresh off _get_npc_empress_will_level_data() - same
 ##     reasoning as battle.gd's own identically-named fields.
-##   - hero_move_distance/sprint_bonus_movement/sprint_charge_damage_pct/
-##     bash_attacks_required/bash_current_progress/bash_bonus_damage_pct/
-##     bash_knockback/crush_radius/crush_damage/target_marked_bonus_pct:
-##     Slardar's own Guardian Sprint/Bash of the Deep/Slithereen Crush/
-##     Corrosive Haze - mirrors battle.gd's own identically-named fields
+##   - hero_move_distance/instinct_bonus_movement/instinct_charge_damage_pct/
+##     might_attacks_required/might_current_progress/might_bonus_damage_pct/
+##     might_knockback/venom_radius/venom_damage/target_marked_bonus_pct:
+##     Dreadlure's own Hunting Instinct/Might of the Deep/Paralytic Venom/
+##     Deathlight Lure - mirrors battle.gd's own identically-named fields
 ##     (see that file's own _build_enemy_ai_context() docstring).
 ##     hero_move_distance is a flat 1, same as battle.gd's own (no real
 ##     speed stat in this sim either); target_marked_bonus_pct reads
 ##     whichever enemy the hero would attack anyway's own
-##     "corrosive_haze_bonus_pct" field instead of a battle-local var,
+##     "deathlight_lure_bonus_pct" field instead of a battle-local var,
 ##     since there's no single fixed "the player" to hold one on here.
 ##   - hero_attack_range/starstorm_radius/sacred_arrow_range/sacred_
 ##     arrow_base_damage/sacred_arrow_bonus_per_column/moonlight_shadow_
@@ -1911,24 +1911,24 @@ func _build_npc_ai_context(hero_id: String, hero_static: Dictionary, current_hp:
 		"kindled_resolve_max_stacks": int(_get_npc_kindled_resolve_level_data(hero_id, hero_static).get("max_stacks", 0)),
 		"target_is_hero": false,
 		"target_armor": (float(target.get("static", {}).get("armor", 0.0)) - float(target.get("armor_reduction", 0.0))) if not target.is_empty() else 0.0,
-		"illusions_active": state["mirror_image"]["active"],
-		"illusion_count": state["mirror_image"]["illusion_count"],
-		"illusion_turns_remaining": state["mirror_image"]["turns_remaining"],
-		"illusion_total_damage_per_turn": _npc_estimate_damage(damage_range, state) * state["mirror_image"]["damage_pct"] * float(state["mirror_image"]["illusion_count"]),
-		"rip_tide_illusion_damage_bonus_pct": float(_get_npc_rip_tide_level_data(hero_id, hero_static).get("illusion_damage_bonus_pct", 0.0)),
-		"rip_tide_extra_illusion": int(_get_npc_rip_tide_level_data(hero_id, hero_static).get("extra_illusion", 0)),
-		"rip_tide_illusion_duration_bonus": int(_get_npc_rip_tide_level_data(hero_id, hero_static).get("illusion_duration_bonus", 0)),
-		"rip_tide_aoe_damage_pct": float(_get_npc_rip_tide_level_data(hero_id, hero_static).get("aoe_damage_pct", 0.0)),
+		"guards_active": state["imperial_guard"]["active"],
+		"guard_count": state["imperial_guard"]["guard_count"],
+		"guard_turns_remaining": state["imperial_guard"]["turns_remaining"],
+		"guard_total_damage_per_turn": _npc_estimate_damage(damage_range, state) * state["imperial_guard"]["damage_pct"] * float(state["imperial_guard"]["guard_count"]),
+		"empress_will_guardians_damage_bonus_pct": float(_get_npc_empress_will_level_data(hero_id, hero_static).get("guardians_damage_bonus_pct", 0.0)),
+		"empress_will_extra_guard": int(_get_npc_empress_will_level_data(hero_id, hero_static).get("extra_guard", 0)),
+		"empress_will_guard_duration_bonus": int(_get_npc_empress_will_level_data(hero_id, hero_static).get("guard_duration_bonus", 0)),
+		"empress_will_aoe_damage_pct": float(_get_npc_empress_will_level_data(hero_id, hero_static).get("aoe_damage_pct", 0.0)),
 		"hero_move_distance": 1,
-		"sprint_bonus_movement": int(_get_npc_skill_level_data(hero_id, hero_static, "guardian_sprint").get("bonus_movement", 0)),
-		"sprint_charge_damage_pct": float(_get_npc_skill_level_data(hero_id, hero_static, "guardian_sprint").get("charge_damage_pct", 0.0)),
-		"bash_attacks_required": int(_get_npc_bash_of_the_deep_level_data(hero_id, hero_static).get("attacks_required", 0)),
-		"bash_current_progress": int(state.get("bash_of_the_deep_attack_count", 0)),
-		"bash_bonus_damage_pct": float(_get_npc_bash_of_the_deep_level_data(hero_id, hero_static).get("bonus_damage_pct", 0.0)),
-		"bash_knockback": int(_get_npc_bash_of_the_deep_level_data(hero_id, hero_static).get("knockback", 0)),
-		"crush_radius": int(_get_npc_skill_level_data(hero_id, hero_static, "slithereen_crush").get("radius", 0)),
-		"crush_damage": float(_get_npc_skill_level_data(hero_id, hero_static, "slithereen_crush").get("damage", 0.0)),
-		"target_marked_bonus_pct": float(target.get("corrosive_haze_bonus_pct", 0.0)) if not target.is_empty() else 0.0,
+		"instinct_bonus_movement": int(_get_npc_skill_level_data(hero_id, hero_static, "hunting_instinct").get("bonus_movement", 0)),
+		"instinct_charge_damage_pct": float(_get_npc_skill_level_data(hero_id, hero_static, "hunting_instinct").get("charge_damage_pct", 0.0)),
+		"might_attacks_required": int(_get_npc_might_of_the_deep_level_data(hero_id, hero_static).get("attacks_required", 0)),
+		"might_current_progress": int(state.get("might_of_the_deep_attack_count", 0)),
+		"might_bonus_damage_pct": float(_get_npc_might_of_the_deep_level_data(hero_id, hero_static).get("bonus_damage_pct", 0.0)),
+		"might_knockback": int(_get_npc_might_of_the_deep_level_data(hero_id, hero_static).get("knockback", 0)),
+		"venom_radius": int(_get_npc_skill_level_data(hero_id, hero_static, "paralytic_venom").get("radius", 0)),
+		"venom_damage": float(_get_npc_skill_level_data(hero_id, hero_static, "paralytic_venom").get("damage", 0.0)),
+		"target_marked_bonus_pct": float(target.get("deathlight_lure_bonus_pct", 0.0)) if not target.is_empty() else 0.0,
 		"hero_attack_range": 3,
 		"starstorm_radius": int(_get_npc_skill_level_data(hero_id, hero_static, "starstorm").get("radius", 0)),
 		"sacred_arrow_range": int(_get_npc_skill_level_data(hero_id, hero_static, "sacred_arrow").get("range", 0)),
@@ -2110,7 +2110,7 @@ func _end_npc_depthsveil(sd: Dictionary) -> void:
 # retaliation-loop guard) - invisibility skips enemy retaliation for the
 # turn, same as being hidden there already does; the one real difference
 # is the bonus itself, a PERCENTAGE of the next Attack's own roll (folded
-# in by _run_stage_fight()'s own basic-attack branch, mirroring Bash of
+# in by _run_stage_fight()'s own basic-attack branch, mirroring Might of
 # the Deep's own post-roll percentage there) rather than Depthsveil's
 # flat pre-roll bonus_damage.
 # ------------------------------------------------------------------
@@ -2144,8 +2144,8 @@ func _end_npc_moonlight_shadow(ms: Dictionary) -> void:
 # Luna's ultimate, Eclipse - mirrors battle.gd's own _activate_eclipse()/
 # _tick_eclipse(). Only the "casting turn doesn't count" gate lives here;
 # the actual beam-firing happens inline in _run_stage_fight() (see that
-# function's own "Eclipse" block), same shape as the Mirror Image
-# illusion-attack block rather than a simple per-turn tick, since a beam
+# function's own "Eclipse" block), same shape as the Imperial Guard
+# guard-attack block rather than a simple per-turn tick, since a beam
 # can kill its target mid-loop and change who's left for the NEXT beam
 # that same turn - a plain tick function taking only `ec` has no way to
 # report kills/gold back up, and every other kill-crediting block in this
@@ -2727,43 +2727,43 @@ func _npc_kindled_resolve_bonus_armor(hero_id: String, hero_static: Dictionary, 
 
 
 # ------------------------------------------------------------------
-# The Last Empress's passive, Rip Tide - mirrors battle.gd's own
-# _get_enemy_rip_tide_level_data(). Never a scored candidate of its own
+# The Last Empress's passive, Empress's Will - mirrors battle.gd's own
+# _get_enemy_empress_will_level_data(). Never a scored candidate of its own
 # (see KNOWN_ACTIVE_SKILL_IDS's own comment above) - its bonuses only
-# ever reach Mirror Image/Song of the Siren/a plain Attack through
-# _build_npc_ai_context()'s own "rip_tide_*" fields.
+# ever reach Imperial Guard/Luring Gaze/a plain Attack through
+# _build_npc_ai_context()'s own "empress_will_*" fields.
 # ------------------------------------------------------------------
 
-func _get_npc_rip_tide_level_data(hero_id: String, hero_static: Dictionary) -> Dictionary:
-	var level: int = PlayerManager.get_npc_skill_level(hero_id, "rip_tide")
+func _get_npc_empress_will_level_data(hero_id: String, hero_static: Dictionary) -> Dictionary:
+	var level: int = PlayerManager.get_npc_skill_level(hero_id, "empress's_will")
 	if level <= 0:
 		return {}
-	var skill: Dictionary = _find_skill(hero_static, "rip_tide")
+	var skill: Dictionary = _find_skill(hero_static, "empress's_will")
 	if skill.is_empty():
 		return {}
 	return GameManager.get_skill_level_data(skill, level)
 
 
 # ------------------------------------------------------------------
-# The Last Empress's Mirror Image - simulated as a pure extra periodic damage
+# The Last Empress's Imperial Guard - simulated as a pure extra periodic damage
 # source rather than real decoy units (see KNOWN_ACTIVE_SKILL_IDS's own
 # comment above for why), mirroring the Elderwild Companion's own "no columns,
-# always hit the lowest-HP enemy" sim copy. `damage_pct`/`illusion_count`
+# always hit the lowest-HP enemy" sim copy. `damage_pct`/`guard_count`
 # are stored rather than a pre-multiplied damage figure so the actual hit
 # can still be freshly rolled (_npc_roll_damage()) each time it fires,
 # same "own roll per hit, never a cached number" idiom the rest of this
 # file's own damage sources already follow.
 # ------------------------------------------------------------------
 
-func _activate_npc_mirror_image(mi: Dictionary, level_data: Dictionary, rip_tide_level_data: Dictionary) -> void:
+func _activate_npc_imperial_guard(mi: Dictionary, level_data: Dictionary, empress_will_level_data: Dictionary) -> void:
 	mi["active"] = true
-	mi["illusion_count"] = int(level_data.get("illusions", 0)) + int(rip_tide_level_data.get("extra_illusion", 0))
-	mi["damage_pct"] = float(level_data.get("damage_pct", 0.0)) + float(rip_tide_level_data.get("illusion_damage_bonus_pct", 0.0))
-	mi["turns_remaining"] = int(level_data.get("duration", 0)) + int(rip_tide_level_data.get("illusion_duration_bonus", 0))
+	mi["guard_count"] = int(level_data.get("guards", 0)) + int(empress_will_level_data.get("extra_guard", 0))
+	mi["damage_pct"] = float(level_data.get("damage_pct", 0.0)) + float(empress_will_level_data.get("guardians_damage_bonus_pct", 0.0))
+	mi["turns_remaining"] = int(level_data.get("duration", 0)) + int(empress_will_level_data.get("guard_duration_bonus", 0))
 	mi["duration_pending_start"] = true
 
 
-func _tick_npc_mirror_image(mi: Dictionary) -> void:
+func _tick_npc_imperial_guard(mi: Dictionary) -> void:
 	if not mi["active"]:
 		return
 	if mi["duration_pending_start"]:
@@ -2771,12 +2771,12 @@ func _tick_npc_mirror_image(mi: Dictionary) -> void:
 		return
 	mi["turns_remaining"] -= 1
 	if mi["turns_remaining"] <= 0:
-		_end_npc_mirror_image(mi)
+		_end_npc_imperial_guard(mi)
 
 
-func _end_npc_mirror_image(mi: Dictionary) -> void:
+func _end_npc_imperial_guard(mi: Dictionary) -> void:
 	mi["active"] = false
-	mi["illusion_count"] = 0
+	mi["guard_count"] = 0
 	mi["damage_pct"] = 0.0
 	mi["turns_remaining"] = 0
 	mi["duration_pending_start"] = false
@@ -2837,7 +2837,7 @@ func _tick_npc_armor_reduction_effects(enemies: Array) -> void:
 			enemy["armor_reduction_turns_left"] -= 1
 			if enemy.get("armor_reduction_turns_left", 0) <= 0:
 				enemy["armor_reduction"] = 0.0
-				enemy["corrosive_haze_bonus_pct"] = 0.0
+				enemy["deathlight_lure_bonus_pct"] = 0.0
 
 
 # ------------------------------------------------------------------
@@ -3157,7 +3157,7 @@ func _maybe_consume_npc_pull_of_the_abyss_stack(hero_id: String, hero_static: Di
 
 
 # ------------------------------------------------------------------
-# Slardar's passive, Bash of the Deep - same "count plain Attacks toward
+# Dreadlure's passive, Might of the Deep - same "count plain Attacks toward
 # a threshold, consume them all once reached" idiom as Pull of the Abyss's own
 # stack just above. Its knockback has nothing to act on in this
 # positionless sim (see KNOWN_ACTIVE_SKILL_IDS's own comment above) -
@@ -3165,26 +3165,26 @@ func _maybe_consume_npc_pull_of_the_abyss_stack(hero_id: String, hero_static: Di
 # branch in _run_stage_fight(), mirroring Pull of the Abyss's own bonus there.
 # ------------------------------------------------------------------
 
-func _get_npc_bash_of_the_deep_level_data(hero_id: String, hero_static: Dictionary) -> Dictionary:
-	var level: int = PlayerManager.get_npc_skill_level(hero_id, "bash_of_the_deep")
+func _get_npc_might_of_the_deep_level_data(hero_id: String, hero_static: Dictionary) -> Dictionary:
+	var level: int = PlayerManager.get_npc_skill_level(hero_id, "might_of_the_deep")
 	if level <= 0:
 		return {}
-	var skill: Dictionary = _find_skill(hero_static, "bash_of_the_deep")
+	var skill: Dictionary = _find_skill(hero_static, "might_of_the_deep")
 	if skill.is_empty():
 		return {}
 	return GameManager.get_skill_level_data(skill, level)
 
 
-func _maybe_consume_npc_bash_of_the_deep_stack(hero_id: String, hero_static: Dictionary, state: Dictionary) -> Dictionary:
-	var level_data: Dictionary = _get_npc_bash_of_the_deep_level_data(hero_id, hero_static)
+func _maybe_consume_npc_might_of_the_deep_stack(hero_id: String, hero_static: Dictionary, state: Dictionary) -> Dictionary:
+	var level_data: Dictionary = _get_npc_might_of_the_deep_level_data(hero_id, hero_static)
 	if level_data.is_empty():
 		return {}
 
-	state["bash_of_the_deep_attack_count"] += 1
-	if state["bash_of_the_deep_attack_count"] < int(level_data.get("attacks_required", 1)):
+	state["might_of_the_deep_attack_count"] += 1
+	if state["might_of_the_deep_attack_count"] < int(level_data.get("attacks_required", 1)):
 		return {}
 
-	state["bash_of_the_deep_attack_count"] = 0
+	state["might_of_the_deep_attack_count"] = 0
 	return level_data
 
 
@@ -3392,7 +3392,7 @@ func _lowest_hp_enemy(living_enemies: Array) -> Dictionary:
 ## (Wildbond's lifesteal, via the hero's basic-attack branch) don't
 ## have to re-derive it - mirrors battle.gd's _deal_fixed_damage_to_enemy().
 func _apply_damage_to_enemy(enemy: Dictionary, amount: float) -> float:
-	# Slardar's Corrosive Haze boosts every hit THIS specific marked enemy
+	# Dreadlure's Deathlight Lure boosts every hit THIS specific marked enemy
 	# takes from the hero's own attacks/skills, mirroring battle.gd's own
 	# _deal_fixed_damage_to_enemy() "is_hero_action" check - every call
 	# site of this function already IS the hero's own action (a plain
@@ -3401,7 +3401,7 @@ func _apply_damage_to_enemy(enemy: Dictionary, amount: float) -> float:
 	# path (_apply_reduced_damage_to_npc()), never this one, so no extra
 	# gate is needed here. 0.0 (a no-op) for every enemy nothing has
 	# marked.
-	var vulnerability_pct: float = float(enemy.get("corrosive_haze_bonus_pct", 0.0))
+	var vulnerability_pct: float = float(enemy.get("deathlight_lure_bonus_pct", 0.0))
 	if vulnerability_pct > 0.0:
 		amount *= (1.0 + vulnerability_pct)
 

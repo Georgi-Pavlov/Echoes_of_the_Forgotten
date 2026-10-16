@@ -140,6 +140,7 @@ const SCORCHLANDS_FX := preload("res://scripts/ScorchlandsAtmosphere.gd")
 const LAST_EMPRESS_BG := "res://assets/zones/drowned_empire_the_last_empress.jpg"
 # The Last Empress's Drowned Empire runs in its own child too - see LastEmpressAtmosphere.gd.
 const LAST_EMPRESS_FX := preload("res://scripts/LastEmpressAtmosphere.gd")
+const DREADLURE_BG := "res://assets/zones/drowned_empire_dreadlure.jpg"
 const UNKNOWN_BG := "res://assets/zones/empty_zone.jpg"
 const UNKNOWN_FX := preload("res://scripts/UnknownZoneAtmosphere.gd")
 
@@ -260,7 +261,7 @@ func _ready() -> void:
 ## Called by zone.gd after it has set the background for the shown hero.
 func show_for_background(path: String) -> void:
 	_clear()
-	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG, EVERFROST_BG, EVERFROST_SKARN_BG, ROOTMOTHER_BG, CINDER_BG, SCORCHLANDS_BG, LAST_EMPRESS_BG, UNKNOWN_BG]:
+	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG, EVERFROST_BG, EVERFROST_SKARN_BG, ROOTMOTHER_BG, CINDER_BG, SCORCHLANDS_BG, LAST_EMPRESS_BG, DREADLURE_BG, UNKNOWN_BG]:
 		return
 	# Guards against a hero switch landing during the await below.
 	_build_id += 1
@@ -292,7 +293,9 @@ func show_for_background(path: String) -> void:
 	elif path == SCORCHLANDS_BG:
 		_build_scorchlands()
 	elif path == LAST_EMPRESS_BG:
-		_build_last_empress()
+		_build_last_empress("last_empress")
+	elif path == DREADLURE_BG:
+		_build_last_empress("dreadlure")
 	else:
 		_build_elderwild()
 
@@ -1045,10 +1048,10 @@ func _build_scorchlands() -> void:
 
 # --- The Drowned Empire ---------------------------------------------
 
-func _build_last_empress() -> void:
+func _build_last_empress(hero: String) -> void:
 	var fx: Control = LAST_EMPRESS_FX.new()
 	add_child(fx)
-	fx.build(self, _background)
+	fx.build(self, _background, hero)
 	_zone = "last_empress"
 
 
