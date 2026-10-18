@@ -24,6 +24,7 @@ const LAND := 2
 const SLUG_TIME := 0.09
 
 var _kind := LAUNCH
+var _silent := false
 var _at := Vector2.ZERO       # feet (launch/land) or target (slam)
 var _from := Vector2.ZERO     # muzzle (slam)
 var _direction := 1
@@ -44,11 +45,13 @@ static func slam(host: Node, muzzle: Vector2, target: Vector2, radius: float, on
 	_spawn(host, SLAM, target, muzzle, 1, radius, on_hit)
 
 
-static func land(host: Node, feet: Vector2) -> void:
-	_spawn(host, LAND, feet, Vector2.ZERO, 1, 0.0, Callable())
+## `silent`: dust only, no landing thud (Withering Pursuit uses the footstep
+## sound instead).
+static func land(host: Node, feet: Vector2, silent: bool = false) -> void:
+	_spawn(host, LAND, feet, Vector2.ZERO, 1, 0.0, Callable(), silent)
 
 
-static func _spawn(host: Node, kind: int, at: Vector2, from: Vector2, direction: int, radius: float, on_hit: Callable) -> void:
+static func _spawn(host: Node, kind: int, at: Vector2, from: Vector2, direction: int, radius: float, on_hit: Callable, silent: bool = false) -> void:
 	var fx := BlastHopperFX.new()
 	fx._kind = kind
 	fx._at = at
@@ -56,6 +59,7 @@ static func _spawn(host: Node, kind: int, at: Vector2, from: Vector2, direction:
 	fx._direction = direction
 	fx._radius = maxf(radius, 80.0)
 	fx._on_hit = on_hit
+	fx._silent = silent
 	host.add_child(fx)
 	fx.global_position = Vector2.ZERO
 
@@ -70,7 +74,8 @@ func _ready() -> void:
 			AudioManager.play_event("raze_shoot", 2.0)
 			_build_muzzle()
 		LAND:
-			AudioManager.play_event("land_thud")
+			if not _silent:
+				AudioManager.play_event("land_thud")
 			_burst_dust(14, 0.6, 1.0)
 
 

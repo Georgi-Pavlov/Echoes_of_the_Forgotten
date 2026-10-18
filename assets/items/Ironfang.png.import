@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cypcjbvsv53g"
-path="res://.godot/imported/the_blackbloom_luna.png-75874e816310f5f177610ad13d24ba8a.ctex"
+uid="uid://cejah8bshihmi"
+path="res://.godot/imported/Ironfang.png-780dd0cc3948c33240b0b938b7fa8c7c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/zones/the_blackbloom_luna.png"
-dest_files=["res://.godot/imported/the_blackbloom_luna.png-75874e816310f5f177610ad13d24ba8a.ctex"]
+source_file="res://assets/items/Ironfang.png"
+dest_files=["res://.godot/imported/Ironfang.png-780dd0cc3948c33240b0b938b7fa8c7c.ctex"]
 
 [params]
 

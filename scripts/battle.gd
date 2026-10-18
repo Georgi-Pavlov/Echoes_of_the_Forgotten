@@ -84,6 +84,8 @@ const ANIMATED_CREATURE_PROFILES := {
 	"the_everfrost_range": "everfrost_range",
 	"the_rootmother": "the_rootmother",
 	"cinder": "cinder",
+	"lunara": "lunara",
+	"solara": "solara",
 	"raze": "raze",
 	# Scorchlands has its own creep art (the Verdant Scar ones above are separate).
 	"the_verdant_scar_melee": "verdant_scar_melee",
@@ -92,6 +94,9 @@ const ANIMATED_CREATURE_PROFILES := {
 	"scorchlands_melee": "scorchlands_melee",
 	"scorchlands_melee_2": "scorchlands_melee",
 	"scorchlands_range": "scorchlands_range",
+	"the_blackbloom_melee": "blackbloom_melee",
+	"the_blackbloom_melee_2": "blackbloom_melee",
+	"the_blackbloom_range": "blackbloom_range",
 	"the_last_empress": "the_last_empress",
 	"dreadlure": "dreadlure",
 	"drowned_empire_melee": "drowned_empire_melee",
@@ -147,7 +152,7 @@ const PULL_OF_THE_ABYSS_TEXT_OUTLINE_COLOR := Color(0.85, 0.93, 1, 1)
 const TARGET_HIGHLIGHT_COLOR := Color(1.5, 1.2, 0.3, 1)
 const TARGET_HIGHLIGHT_PULSE_COLOR := Color(1.9, 1.7, 0.7, 1)
 
-# Moon Glaives' own bounce-hit flash (_flash_bounce_hit()) - same
+# Lunar Ricochet' own bounce-hit flash (_flash_bounce_hit()) - same
 # "overbright modulate" trick as TARGET_HIGHLIGHT_COLOR/
 # _pulse_caster_sprite() above, just pushed toward red instead of gold
 # or plain white brightness, so a bounced enemy visibly reads as "just
@@ -291,48 +296,47 @@ const CHARGE_TRAVEL_PER_COLUMN := 0.07
 const CHARGE_DIM_ALPHA := 0.62
 const CHARGE_LOCK_COLOR := Color(1.0, 0.25, 0.2)
 
-# Luna's Lucent Beam (see _play_lucent_beam_impact()) has no dedicated
+# Lunara's Moonfall Lance (see _play_moonfall_lance_impact()) has no dedicated
 # art asset, unlike the skills above - drawn instead as a plain pale
 # moonlight-colored ColorRect that grows downward from above the target
 # onto it, purely cosmetic and played alongside the instant,
-# already-resolved damage (_resolve_lucent_beam_cast()) rather than
+# already-resolved damage (_resolve_moonfall_lance_cast()) rather than
 # gating it, same split as The Sunken One's/Charge's own animation above.
-const LUCENT_BEAM_COLOR := Color(1.5, 1.6, 2.0, 0.85)
-const LUCENT_BEAM_WIDTH := 14.0
-const LUCENT_BEAM_FALL_HEIGHT := 220.0
-const LUCENT_BEAM_FALL_DURATION := 0.16
+const MOONFALL_LANCE_COLOR := Color(1.5, 1.6, 2.0, 0.85)
+const MOONFALL_LANCE_WIDTH := 14.0
+const MOONFALL_LANCE_FALL_HEIGHT := 220.0
+const MOONFALL_LANCE_FALL_DURATION := 0.16
 
-# Mirana's Sacred Arrow (see _play_sacred_arrow_flight()) - no
+# Solara's Hope of the Fallen (see _play_hope_of_the_fallen_flight()) - no
 # dedicated art asset, so the arrow is drawn from plain shapes (a
 # glowing shaft, a pointed head, two fletching feathers) played
 # alongside the already-resolved instant damage. Deliberately varied
-# from Lucent Beam's "grows down out of the sky" drop: it FLIES
+# from Moonfall Lance's "grows down out of the sky" drop: it FLIES
 # HORIZONTALLY in from the caster, trailing blue sparks, with a flight
-# time that scales with the shot's own distance (SACRED_ARROW_BASE_
-# DURATION + SACRED_ARROW_DURATION_PER_COLUMN per column travelled) -
+# time that scales with the shot's own distance (HOPE_OF_THE_FALLEN_BASE_
+# DURATION + HOPE_OF_THE_FALLEN_DURATION_PER_COLUMN per column travelled) -
 # echoing the skill's own "more damage the further it travels" identity
-# - instead of Lucent Beam's fixed fall duration.
-const SACRED_ARROW_COLOR := Color(0.65, 1.3, 1.9, 0.9)
-const SACRED_ARROW_HEAD_COLOR := Color(0.9, 1.4, 2.0, 1.0)
-const SACRED_ARROW_FLETCH_COLOR := Color(0.45, 0.85, 1.6, 0.95)
-const SACRED_ARROW_SHAFT_WIDTH := 4.0
-const SACRED_ARROW_LENGTH := 64.0
-const SACRED_ARROW_BASE_DURATION := 0.12
+# - instead of Moonfall Lance's fixed fall duration.
+const HOPE_OF_THE_FALLEN_COLOR := Color(0.65, 1.3, 1.9, 0.9)
+const HOPE_OF_THE_FALLEN_HEAD_COLOR := Color(0.9, 1.4, 2.0, 1.0)
+const HOPE_OF_THE_FALLEN_FLETCH_COLOR := Color(0.45, 0.85, 1.6, 0.95)
+const HOPE_OF_THE_FALLEN_SHAFT_WIDTH := 4.0
+const HOPE_OF_THE_FALLEN_LENGTH := 64.0
+const HOPE_OF_THE_FALLEN_BASE_DURATION := 0.12
+# How long Solara's charge (the glow flowing from her to her bow) lasts before
+# the arrow is loosed.
+const HOPE_OF_THE_FALLEN_CHARGE_TIME := 0.6
 
-# Mirana's Starstorm (see _play_starfall()): how many stars fall on each
-# unit hit, their outer radius in px, their core/glow/trail color, and
-# how far above (and off to the side of) the target they start.
-const STARSTORM_STARS_PER_TARGET := 2
-const STARSTORM_STAR_RADIUS := 13.0
-const STARSTORM_STAR_COLOR := Color(1.0, 0.95, 0.6, 1.0)
-const STARSTORM_GLOW_COLOR := Color(1.0, 0.8, 0.3, 0.35)
-const STARSTORM_DROP_HEIGHT := 360.0
-const STARSTORM_DROP_SIDEWAYS := 180.0
+# Solara's Fallen Grace (see _play_arrow_volley()): where the arrows leave
+# her bow (fraction of her art, facing right - mirrored when she faces left),
+# (the timing lives in ArrowRainFX). How many arrows fall
+# on each target is the "grace_arrow" style's own "count" (ProjectileFX).
+const SOLARA_BOW_TIP := Vector2(0.99, 0.23)
 
 # Dreadlure's Paralytic Venom (see _play_paralytic_venom()): how long the
 # toxin cloud takes to reach full size.
 const PARALYTIC_VENOM_WAVE_SECONDS := 0.5
-const SACRED_ARROW_DURATION_PER_COLUMN := 0.025
+const HOPE_OF_THE_FALLEN_DURATION_PER_COLUMN := 0.025
 
 # Skarn's Glacier Breaker (see _resolve_glacier_breaker_cast()) deliberately
 # flips Charge's/The Sunken One's own "instant, already-resolved outcome,
@@ -437,7 +441,7 @@ var _rootveil_turns_remaining: int = 0
 var _rootveil_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
-# Mirana's ultimate, Moonlight Shadow: functionally the same
+# Solara's ultimate, Ambush Strike: functionally the same
 # invisibility as Veyrik's own Depthsveil - folded into the very same
 # _is_hero_hidden() check, so every "enemies can't target or chase a
 # hidden hero" rule in _enemy_turn() already applies here for free, and
@@ -451,10 +455,10 @@ var _rootveil_duration_pending_start: bool = false
 # already follows). Casting any OTHER skill still just ends it early
 # with no bonus damage, same as Depthsveil's own rule for that case.
 # ------------------------------------------------------------------
-var _moonlight_shadow_active: bool = false
-var _moonlight_shadow_bonus_damage_pct: float = 0.0
-var _moonlight_shadow_turns_remaining: int = 0
-var _moonlight_shadow_duration_pending_start: bool = false
+var _ambush_strike_active: bool = false
+var _ambush_strike_bonus_damage_pct: float = 0.0
+var _ambush_strike_turns_remaining: int = 0
+var _ambush_strike_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
 # The Rootmother's Woven Flesh: a self-cast that adds a flat
@@ -632,21 +636,21 @@ var _frost_tempest_turns_remaining: int = 0
 var _frost_tempest_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
-# Luna's ultimate, Eclipse: a self-cast that, at the start of every turn
-# for as long as beams remain, fires ECLIPSE_BEAMS_PER_TURN beams (or
+# Lunara's ultimate, Eternal Eclipse: a self-cast that, at the start of every turn
+# for as long as beams remain, fires ETERNAL_ECLIPSE_BEAMS_PER_TURN beams (or
 # however many are left, if fewer) at random living, targetable enemies
 # within radius columns of the hero's CURRENT position (re-checked
 # fresh every tick, same as The Frost Tempest's own radius above - so it
 # follows her if she moves), each for this level's own damage. Ends the
 # instant every beam has landed, rather than running a fixed number of
 # turns like The Frost Tempest's own duration does. Same "casting turn
-# doesn't count" pattern as every other buff (see _tick_eclipse()).
+# doesn't count" pattern as every other buff (see _tick_eternal_eclipse()).
 # ------------------------------------------------------------------
-var _eclipse_active: bool = false
-var _eclipse_damage_per_beam: float = 0.0
-var _eclipse_radius: int = 0
-var _eclipse_beams_remaining: int = 0
-var _eclipse_duration_pending_start: bool = false
+var _eternal_eclipse_active: bool = false
+var _eternal_eclipse_damage_per_beam: float = 0.0
+var _eternal_eclipse_radius: int = 0
+var _eternal_eclipse_beams_remaining: int = 0
+var _eternal_eclipse_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
 # Cinder's ultimate, Cinderbomb: a targeted cast that deals this
@@ -738,8 +742,8 @@ var _bear: Dictionary = {}
 # not targeted at all; those still reach the bear through their own
 # AoE collateral, same as before.
 const ENEMY_BEAR_TARGETABLE_SKILLS: Array[String] = [
-	"thornbind", "whisper_of_the_veil", "drowned_surge", "deathlight_lure", "sacred_arrow",
-	"lucent_beam", "shackles", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold",
+	"thornbind", "whisper_of_the_veil", "drowned_surge", "deathlight_lure", "hope_of_the_fallen",
+	"moonfall_lance", "shackles", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold",
 	"return_to_the_void", "maddening_roar", "the_hunger_calls", "winters_grip", "charge",
 	"glacier_breaker", "sanguine_bloom", "three_cheers",
 ]
@@ -911,7 +915,7 @@ var _enemy_current_mana: float = 0.0
 # the new count straight back to PlayerManager too, so a rival that
 # survives the duel - by winning it (_handle_defeat()) or by the player
 # fleeing it (_on_flee_pressed()) - keeps whatever it didn't use, and
-# EnemyHeroManager.restock_npc_potions() tops it back up (gold
+# EnemyHeroManager.npc_shop() tops it back up (gold
 # permitting) before the next encounter, exactly mirroring how the
 # simulation restocks after every fight of its own.
 var _enemy_potion_health_count: int = 0
@@ -1019,7 +1023,7 @@ var _enemy_hunting_instinct_charge_damage_pct: float = 0.0
 var _enemy_hunting_instinct_turns_remaining: int = 0
 var _enemy_hunting_instinct_duration_pending_start: bool = false
 
-# Mirana's ultimate, Moonlight Shadow, cast by the rival - mirrors Shadow
+# Solara's ultimate, Ambush Strike, cast by the rival - mirrors Shadow
 # Dance's own shape above: while active the boss can't be targeted by any
 # of the player's attacks or targeted skills (see _is_target_hidden()/
 # _update_enemy_hero_visibility(), both extended to also read this flag),
@@ -1030,26 +1034,26 @@ var _enemy_hunting_instinct_duration_pending_start: bool = false
 # that empowered Attack actually lands, whether or not it kills the
 # player - same "one guaranteed hit, then the invisibility is spent"
 # rule the player-side copy follows in _apply_hero_attack().
-var _enemy_moonlight_shadow_active: bool = false
-var _enemy_moonlight_shadow_bonus_damage_pct: float = 0.0
-var _enemy_moonlight_shadow_turns_remaining: int = 0
-var _enemy_moonlight_shadow_duration_pending_start: bool = false
+var _enemy_ambush_strike_active: bool = false
+var _enemy_ambush_strike_bonus_damage_pct: float = 0.0
+var _enemy_ambush_strike_turns_remaining: int = 0
+var _enemy_ambush_strike_duration_pending_start: bool = false
 
-# Luna's ultimate, Eclipse, cast by the rival - mirrors the player's own
-# _eclipse_active/_eclipse_damage_per_beam/_eclipse_radius/_eclipse_
-# beams_remaining/_eclipse_duration_pending_start fields exactly: fires
-# ECLIPSE_BEAMS_PER_TURN beams per End Turn (see _tick_enemy_eclipse()),
+# Lunara's ultimate, Eternal Eclipse, cast by the rival - mirrors the player's own
+# _eternal_eclipse_active/_eternal_eclipse_damage_per_beam/_eternal_eclipse_radius/_eternal_eclipse_
+# beams_remaining/_eternal_eclipse_duration_pending_start fields exactly: fires
+# ETERNAL_ECLIPSE_BEAMS_PER_TURN beams per End Turn (see _tick_enemy_eternal_eclipse()),
 # each independently picking ONE random living, targetable candidate from
 # everything within radius columns of the rival's CURRENT position - the
 # player, one of his own guards, or his own Elderwild Companion, all equally
-# likely (see _tick_enemy_eclipse()'s own docstring) - with NO cap on how
+# likely (see _tick_enemy_eternal_eclipse()'s own docstring) - with NO cap on how
 # many beams the same candidate can take. Doesn't lock the rival's own
 # actions while it's ticking, same as the player-side copy.
-var _enemy_eclipse_active: bool = false
-var _enemy_eclipse_damage_per_beam: float = 0.0
-var _enemy_eclipse_radius: int = 0
-var _enemy_eclipse_beams_remaining: int = 0
-var _enemy_eclipse_duration_pending_start: bool = false
+var _enemy_eternal_eclipse_active: bool = false
+var _enemy_eternal_eclipse_damage_per_beam: float = 0.0
+var _enemy_eternal_eclipse_radius: int = 0
+var _enemy_eternal_eclipse_beams_remaining: int = 0
+var _enemy_eternal_eclipse_duration_pending_start: bool = false
 
 # Kaelen Varr's Undertow, on the rival - unlike the player's own
 # copy, the target is always the player (the only other participant in
@@ -1465,17 +1469,17 @@ var _pending_shackles_level_data: Dictionary = {}
 # clicked (_resolve_deathlight_lure_cast()).
 var _pending_deathlight_lure_level_data: Dictionary = {}
 
-# Mirana's Sacred Arrow, held the same way as every other targeted
+# Solara's Hope of the Fallen, held the same way as every other targeted
 # skill's own pending level data above, from the moment _start_
-# sacred_arrow_targeting() opens targeting until a target is actually
-# clicked (_resolve_sacred_arrow_cast()).
-var _pending_sacred_arrow_level_data: Dictionary = {}
+# hope_of_the_fallen_targeting() opens targeting until a target is actually
+# clicked (_resolve_hope_of_the_fallen_cast()).
+var _pending_hope_of_the_fallen_level_data: Dictionary = {}
 
-# Luna's Lucent Beam, held the same way as every other targeted skill's
-# own pending level data above, from the moment _start_lucent_beam_
+# Lunara's Moonfall Lance, held the same way as every other targeted skill's
+# own pending level data above, from the moment _start_moonfall_lance_
 # targeting() opens targeting until a target is actually clicked
-# (_resolve_lucent_beam_cast()).
-var _pending_lucent_beam_level_data: Dictionary = {}
+# (_resolve_moonfall_lance_cast()).
+var _pending_moonfall_lance_level_data: Dictionary = {}
 
 # Nhal's Mark of Stillness, held the same way as every other
 # targeted skill's own pending level data above, from the moment
@@ -1596,8 +1600,8 @@ const ENEMY_KNOWN_SKILL_IDS: Array[String] = [
 	"double_trouble", "blast_hopper", "three_cheers", "kiss_the_wastes",
 	"imperial_guard", "shackles", "luring_gaze",
 	"hunting_instinct", "paralytic_venom", "deathlight_lure",
-	"starstorm", "sacred_arrow", "leap", "moonlight_shadow",
-	"lucent_beam", "eclipse",
+	"fallen_grace", "hope_of_the_fallen", "withering_pursuit", "ambush_strike",
+	"moonfall_lance", "eternal_eclipse",
 ]
 
 # Reinforcements: if the hero hasn't cleared every enemy within
@@ -1616,10 +1620,13 @@ const ENEMY_KNOWN_SKILL_IDS: Array[String] = [
 # _start_hero_fight() - and stop mattering entirely once the stage
 # clears or the player flees, since there's no more fight for them to
 # fire into.
-const REINFORCEMENT_INTERVAL := 13
-const REINFORCEMENT_REPEAT_INTERVAL := 10
+# (Stage waves: see GameManager.get_reinforcement_interval()/_repeat().)
+# A hero fight (duel with a rival) gives the player more room: its first wave
+# comes later and the repeats are spaced further apart.
+const HERO_FIGHT_REINFORCEMENT_INTERVAL := 15
+const HERO_FIGHT_REINFORCEMENT_REPEAT_INTERVAL := 10
 var _turn_count: int = 0
-var _next_reinforcement_turn: int = REINFORCEMENT_INTERVAL
+var _next_reinforcement_turn: int = GameManager.get_reinforcement_interval(1)
 
 # Which of the zone's up-to-GameManager.MAX_ZONE_STAGE waves this
 # battle is currently on. Starts at whatever PlayerManager.
@@ -1711,6 +1718,7 @@ func _ready() -> void:
 	# directly.
 	if TutorialManager.is_active and (TutorialManager.current_stage == 2 or TutorialManager.current_stage == 3):
 		_current_stage = 3
+	_next_reinforcement_turn = GameManager.get_reinforcement_interval(_current_stage)
 
 	# Every player battle attempt (not just full zone clears - fleeing
 	# after a partial clear still counts) also ticks the background
@@ -1751,8 +1759,59 @@ func _load_battle_background() -> void:
 		atmosphere.name = "BattleAtmosphere"
 		background.add_sibling(atmosphere)
 		atmosphere.setup(GameManager.selected_zone)
+		_fit_hud_to_plate(battle_bg_path)
 	else:
 		print("No battle_background set for the current zone - using fallback color.")
+
+
+# Every battle area's art has the HUD plate baked in at a slightly
+# different spot (and the 3:2 images get their top/bottom cropped by the
+# cover-fit Background). Per image: [width, height, x0, y0, x1, y1] - the
+# dark inner area of the plate in image pixels.
+const BATTLE_PLATE_RECTS := {
+	"the_iron_abyss_area.png": [1536, 1024, 60, 755, 1475, 980],
+	"Elderwild_area.png": [1536, 1024, 80, 765, 1460, 980],
+	"kingdom_of_morvain_area.jpg": [1672, 941, 85, 760, 1610, 905],
+	"the_ironbound_isles_area.png": [1536, 1024, 80, 765, 1460, 985],
+	"frostspire_area.jpg": [1536, 1024, 55, 795, 1480, 995],
+	"the_everfrost_area.jpg": [1536, 1024, 65, 745, 1475, 985],
+	"the_verdant_scar_area.jpg": [1670, 941, 55, 690, 1615, 885],
+	"drowned_empire_area.png": [1536, 1024, 80, 765, 1460, 980],
+	"the_blackbloom_area.jpg": [1672, 941, 100, 720, 1580, 895],
+	"scorchlands_area.jpg": [1670, 941, 55, 685, 1615, 870],
+}
+
+
+## Places the skills, items and actions panels inside this area's baked-in
+## HUD plate, mapping the plate's image rect through the Background's
+## cover-fit scaling (centered crop) into screen space.
+func _fit_hud_to_plate(battle_bg_path: String) -> void:
+	var plate: Array = BATTLE_PLATE_RECTS.get(battle_bg_path.get_file(), [])
+	if plate.is_empty():
+		return
+	var view: Vector2 = get_viewport_rect().size
+	var image_scale: float = maxf(view.x / float(plate[0]), view.y / float(plate[1]))
+	var origin := Vector2(view.x - plate[0] * image_scale, view.y - plate[1] * image_scale) * 0.5
+	var left: float = origin.x + plate[2] * image_scale
+	var right: float = origin.x + plate[4] * image_scale
+	var top: float = maxf(origin.y + plate[3] * image_scale, 0.0) + 4.0
+	var bottom: float = minf(origin.y + plate[5] * image_scale, view.y) - 6.0
+	var width: float = right - left
+
+	_place_hud_panel($SkillsPanel, left + width * 0.02, top, left + width * 0.59, bottom)
+	_place_hud_panel($ItemsPanel, left + width * 0.615, top, left + width * 0.865, bottom)
+	_place_hud_panel($ActionsPanel, left + width * 0.88, top, left + width * 0.985, bottom)
+
+
+func _place_hud_panel(panel: Control, x0: float, y0: float, x1: float, y1: float) -> void:
+	panel.anchor_left = 0.0
+	panel.anchor_top = 0.0
+	panel.anchor_right = 0.0
+	panel.anchor_bottom = 0.0
+	panel.offset_left = x0
+	panel.offset_top = y0
+	panel.offset_right = x1
+	panel.offset_bottom = y1
 
 
 func _grid_unit() -> float:
@@ -1996,12 +2055,13 @@ func _load_enemies() -> void:
 	_spawn_stage_enemies(range_templates, int(counts.get("range", 0)))
 
 
-func _spawn_stage_enemies(templates: Array, count: int) -> void:
+func _spawn_stage_enemies(templates: Array, count: int, stage: int = -1) -> void:
 	if templates.is_empty():
 		return
+	var wave_stage: int = _current_stage if stage < 0 else stage
 	for i in range(count):
 		var template: Dictionary = templates[i % templates.size()]
-		_spawn_enemy(_build_stage_enemy_def(template, _current_stage))
+		_spawn_enemy(GameManager.scale_creep_for_level(_build_stage_enemy_def(template, wave_stage), PlayerManager.get_level()))
 
 
 ## Returns a copy of `base_def` with this stage's hp/damage/gold
@@ -2326,12 +2386,13 @@ func _spawn_reinforcements() -> void:
 		else:
 			melee_templates.append(enemy_def)
 
-	var counts: Dictionary = GameManager.get_stage_enemy_counts(_current_stage) if _in_hero_fight else GameManager.get_reinforcement_enemy_counts(_current_stage)
+	var wave_stage: int = GameManager.HERO_FIGHT_REINFORCEMENT_STAGE if _in_hero_fight else _current_stage
+	var counts: Dictionary = GameManager.get_stage_enemy_counts(wave_stage) if _in_hero_fight else GameManager.get_reinforcement_enemy_counts(_current_stage)
 	var melee_count: int = int(counts.get("melee", 0))
 	var range_count: int = int(counts.get("range", 0))
 
-	_spawn_stage_enemies(melee_templates, melee_count)
-	_spawn_stage_enemies(range_templates, range_count)
+	_spawn_stage_enemies(melee_templates, melee_count, wave_stage)
+	_spawn_stage_enemies(range_templates, range_count, wave_stage)
 
 	if (not melee_templates.is_empty() and melee_count > 0) or (not range_templates.is_empty() and range_count > 0):
 		_show_message_over_hero("Reinforcements arrived!")
@@ -2341,13 +2402,13 @@ func _spawn_reinforcements() -> void:
 
 ## Only items that are actually consumed by use (heal/mana potions)
 ## show up as clickable battle actions - equipment-type items ("stat"
-## effect, like Blades of Attack or Gauntlets of Strength) apply their
+## effect, like Grimfangs or Iron Grips) apply their
 ## bonus passively just by being in the inventory (see PlayerManager.
 ## get_inventory_stat_bonus) and are managed from the Shop instead.
 ## Shows every occupied inventory slot (PlayerManager caps this at 6,
 ## matching the panel's 3x2 grid, so nothing is ever hidden). Only
 ## consumables (heal/mana effect) are clickable battle actions -
-## equipment ("stat" effect, like Blades of Attack) is shown so it's
+## equipment ("stat" effect, like Grimfangs) is shown so it's
 ## visible in the inventory, but stays disabled since it applies its
 ## bonus passively just by being held (see PlayerManager.
 ## get_inventory_stat_bonus) rather than being "used".
@@ -2798,32 +2859,32 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 			if not _cast_paralytic_venom(level_data):
 				# No enemies in range - same as above, no-op.
 				return
-		"starstorm":
-			if not _cast_starstorm(level_data):
+		"fallen_grace":
+			if not _cast_fallen_grace(level_data):
 				# No enemies in range - same as above, no-op.
 				return
-		"sacred_arrow":
-			if not _start_sacred_arrow_targeting(level_data):
+		"hope_of_the_fallen":
+			if not _start_hope_of_the_fallen_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_sacred_arrow_cast), not here.
+			# click resolves (_resolve_hope_of_the_fallen_cast), not here.
 			return
-		"lucent_beam":
-			if not _start_lucent_beam_targeting(level_data):
+		"moonfall_lance":
+			if not _start_moonfall_lance_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
 				return
 			# Same deferred-spend pattern as every other targeted skill
 			# above - the mana/cooldown/turn spend happens once the
-			# click resolves (_resolve_lucent_beam_cast), not here.
+			# click resolves (_resolve_moonfall_lance_cast), not here.
 			return
-		"eclipse":
-			_activate_eclipse(level_data)
-		"leap":
-			_activate_leap(level_data)
-		"moonlight_shadow":
-			_activate_moonlight_shadow(level_data)
+		"eternal_eclipse":
+			_activate_eternal_eclipse(level_data)
+		"withering_pursuit":
+			_activate_withering_pursuit(level_data)
+		"ambush_strike":
+			_activate_ambush_strike(level_data)
 		"deathlight_lure":
 			if not _start_deathlight_lure_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
@@ -3041,19 +3102,19 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 			# confirms the wiring works end to end.
 			print("Used skill: ", skill.get("name", ""))
 
-	# Depthsveil/Rootveil/Moonlight Shadow only break from
+	# Depthsveil/Rootveil/Ambush Strike only break from
 	# attacking or casting ANOTHER skill - not from the cast that just
 	# activated them in the first place, and not from items/potions
 	# (those never reach this function at all). Only one of the three
 	# could ever be active in a given battle (different heroes' own
 	# kits), so this just ends whichever one actually is.
-	if _is_hero_hidden() and skill_id != "depthsveil" and skill_id != "rootveil" and skill_id != "moonlight_shadow":
+	if _is_hero_hidden() and skill_id != "depthsveil" and skill_id != "rootveil" and skill_id != "ambush_strike":
 		if _depthsveil_active:
 			_end_depthsveil()
 		elif _rootveil_active:
 			_end_rootveil()
-		elif _moonlight_shadow_active:
-			_end_moonlight_shadow()
+		elif _ambush_strike_active:
+			_end_ambush_strike()
 
 	spend_mana(mana_cost)
 	_skill_cooldowns[skill_id] = int(level_data.get("cooldown", 0))
@@ -3156,7 +3217,7 @@ func _cast_abyssal_spasm(level_data: Dictionary) -> bool:
 	var pact_damage: float = _roll_hero_damage() * multiplier
 	for enemy in targets:
 		_deal_fixed_damage_to_enemy(enemy, pact_damage)
-		# Same red hit-flash as Moon Glaives' bounce, so every enemy
+		# Same red hit-flash as Lunar Ricochet' bounce, so every enemy
 		# caught in the burst visibly reacts, not just via damage numbers.
 		if is_instance_valid(enemy.get("node")):
 			_flash_bounce_hit(enemy["node"])
@@ -3261,13 +3322,13 @@ func _cast_paralytic_venom(level_data: Dictionary) -> bool:
 	return true
 
 
-## Mirana's Starstorm: deals `level_data.damage` (a flat amount, not a
+## Solara's Fallen Grace: deals `level_data.damage` (a flat amount, not a
 ## roll off the hero's own attack) to every enemy within
-## `level_data.radius` columns of Mirana - same shape as
+## `level_data.radius` columns of Solara - same shape as
 ## _cast_sweep()/_cast_paralytic_venom() above, just with no
 ## stun/CC folded in. Returns false (no mana/turn/cooldown spent) if
 ## nothing is in range.
-func _cast_starstorm(level_data: Dictionary) -> bool:
+func _cast_fallen_grace(level_data: Dictionary) -> bool:
 	var radius: int = int(level_data.get("radius", 0))
 	var targets: Array = []
 	for enemy in _enemies:
@@ -3280,8 +3341,8 @@ func _cast_starstorm(level_data: Dictionary) -> bool:
 		_show_message_over_hero("No enemies in range")
 		return false
 
-	var starstorm_damage: float = float(level_data.get("damage", 0))
-	# Stars on every unit about to be hit - launched before any damage
+	var fallen_grace_damage: float = float(level_data.get("damage", 0))
+	# Arrows at every unit about to be hit - launched before any damage
 	# lands, since a kill frees its node.
 	var star_nodes: Array = []
 	for enemy in targets:
@@ -3289,17 +3350,17 @@ func _cast_starstorm(level_data: Dictionary) -> bool:
 	for guard in _enemy_guards:
 		if _distance(guard["pos_index"], _hero_pos_index) <= radius:
 			star_nodes.append(guard.get("node"))
-	_play_starfall(star_nodes)
+	_play_arrow_volley(hero_image, star_nodes)
 
 	for enemy in targets:
-		_deal_fixed_damage_to_enemy(enemy, starstorm_damage)
+		_deal_fixed_damage_to_enemy(enemy, fallen_grace_damage)
 	# Self-centered on the hero, same as the check above - a rival's own
 	# guard (The Last Empress's Imperial Guard) can be in range independently
 	# of whether the boss itself currently is. The rival's own Spirit
 	# Bear needs no equivalent call - it's a genuine _enemies entry
 	# (see _summon_enemy_elderwild_companion()), so the `targets` loop above
 	# already caught it.
-	_deal_aoe_damage_to_enemy_guards(_hero_pos_index, radius, starstorm_damage)
+	_deal_aoe_damage_to_enemy_guards(_hero_pos_index, radius, fallen_grace_damage)
 
 	return true
 
@@ -3502,21 +3563,159 @@ func _activate_blast_hopper(level_data: Dictionary) -> void:
 	_deal_aoe_damage_to_enemy_guards(_hero_pos_index, radius, damage)
 
 
-## Mirana's Leap: hops level_data.jump_distance columns in whatever
-## direction she's currently facing (hero_image.flip_h, same convention
-## Double Trouble/Blast Hopper already read) - unlike Blast Hopper's
-## own hop, this ALWAYS sails clean over any enemy in the way regardless
-## of range_type (the unobstructed "walk straight through" rule
-## _ranged_move_target() already uses for a ranged hero, applied here
-## even for a melee one), stopping only at the board edge or a rival's
-## Frostbound Rupture wall. No damage, no target required - always "succeeds",
+## Withering Pursuit's pacing: how long each column of the RUN takes (a dash
+## is much quicker), and the jump's base time, extra time per column, and
+## height (as a fraction of the screen's height) - taller for a longer jump.
+const WITHERING_PURSUIT_RUN_PER_COLUMN := 0.17
+const WITHERING_PURSUIT_DASH_PER_COLUMN := 0.07
+const WITHERING_PURSUIT_JUMP_BASE := 0.4
+const WITHERING_PURSUIT_JUMP_PER_COLUMN := 0.1
+const WITHERING_PURSUIT_HEIGHT_BASE := 0.12
+const WITHERING_PURSUIT_HEIGHT_PER_COLUMN := 0.025
+
+
+## Purely cosmetic: Withering Pursuit, from either side - a RUN (a fast
+## DASH, with a blur of afterimages streaming behind, at the higher levels)
+## of `move_cols` columns along the ground, then a JUMP of `jump_cols`
+## columns up and over. `node` has already been moved to its landing column
+## (it stood at `old_x`); `direction` is +1/-1. Dust kicks up at each step
+## and at the takeoff and landing. The move itself has already resolved -
+## none of this gates it.
+func _play_withering_pursuit_effect(node: TextureRect, old_x: float, direction: int, move_cols: int, jump_cols: int, dash: bool) -> void:
+	if not is_instance_valid(node):
+		return
+	var unit: float = _grid_unit()
+	var run_dx: float = float(direction * move_cols) * unit
+	var run_time: float = float(move_cols) * (WITHERING_PURSUIT_DASH_PER_COLUMN if dash else WITHERING_PURSUIT_RUN_PER_COLUMN)
+	var jump_time: float = WITHERING_PURSUIT_JUMP_BASE + WITHERING_PURSUIT_JUMP_PER_COLUMN * float(jump_cols)
+	var height: float = get_viewport_rect().size.y * (WITHERING_PURSUIT_HEIGHT_BASE + WITHERING_PURSUIT_HEIGHT_PER_COLUMN * float(jump_cols))
+	var start_x: float = old_x - node.position.x
+	var feet_new: Vector2 = node.global_position + Vector2(node.size.x * 0.5, node.size.y - 4.0)
+	var feet_old: Vector2 = feet_new + Vector2(start_x, 0.0)
+	var feet_takeoff: Vector2 = feet_old + Vector2(run_dx, 0.0)
+
+	var animator := CreatureAnimator.of(node)
+	if animator != null:
+		animator.play_run_leap(start_x, run_dx, float(direction), height, run_time, jump_time, dash)
+
+	# The footsteps of the run (the steps sound, cut to the length of the run
+	# so a dash is a quick patter), then dust at the start and kicked up
+	# behind her at every column she runs.
+	if move_cols > 0:
+		AudioManager.play_event_for("steps", run_time, 0.05)
+	BlastHopperFX.land(_fx_layer, feet_old, true)
+	for i in range(1, move_cols + 1):
+		var at := feet_old + Vector2(float(direction * i) * unit, 0.0)
+		get_tree().create_timer(run_time * float(i) / float(move_cols)).timeout.connect(func() -> void:
+			if not _battle_over and is_instance_valid(_fx_layer):
+				BlastHopperFX.land(_fx_layer, at, true))
+	# The jump: dust at takeoff (if she ran at all - the run's last puff is it
+	# otherwise) and at the landing.
+	get_tree().create_timer(run_time + jump_time).timeout.connect(func() -> void:
+		if not _battle_over and is_instance_valid(_fx_layer):
+			BlastHopperFX.land(_fx_layer, feet_new, true)
+			AudioManager.play_event_for("steps", 0.22, 0.08))
+
+	# A trail of golden dust riding her body through the jump.
+	var trail := CPUParticles2D.new()
+	trail.local_coords = false
+	trail.amount = 40
+	trail.lifetime = 0.4
+	trail.texture = VoidReachFX._dot()
+	trail.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	trail.emission_sphere_radius = node.size.x * 0.12
+	trail.spread = 180.0
+	trail.gravity = Vector2(0.0, 30.0)
+	trail.initial_velocity_min = 6.0
+	trail.initial_velocity_max = 28.0
+	trail.scale_amount_min = 0.8
+	trail.scale_amount_max = 2.0
+	var ramp := Gradient.new()
+	ramp.offsets = PackedFloat32Array([0.0, 0.3, 1.0])
+	ramp.colors = PackedColorArray([Color(1.0, 0.9, 0.6, 0.0), Color(1.0, 0.75, 0.35, 0.7), Color(0.7, 0.35, 0.15, 0.0)])
+	trail.color_ramp = ramp
+	var additive := CanvasItemMaterial.new()
+	additive.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	trail.material = additive
+	trail.emitting = false
+	_fx_layer.add_child(trail)
+	var body_offset := Vector2(0.0, -node.size.y * 0.45)
+	var tween := trail.create_tween()
+	tween.tween_interval(run_time)
+	tween.tween_callback(func() -> void: trail.emitting = true)
+	tween.tween_method(func(p: float) -> void:
+		trail.global_position = feet_takeoff.lerp(feet_new, p) + body_offset - Vector2(0.0, height * 4.0 * p * (1.0 - p)), 0.0, 1.0, jump_time)
+	tween.tween_callback(func() -> void: trail.emitting = false)
+	tween.tween_interval(trail.lifetime + 0.1)
+	tween.tween_callback(trail.queue_free)
+
+	# The dash's blur: afterimages shed behind her, fading fast.
+	if dash and animator != null:
+		var blur_for: float = run_time + jump_time
+		var spawned: Array = [0.0]
+		var blur := trail.create_tween().set_loops()
+		blur.tween_callback(func() -> void:
+			if not is_instance_valid(node) or spawned[0] >= blur_for:
+				return
+			_spawn_pursuit_afterimage(node, animator, direction))
+		blur.tween_callback(func() -> void: spawned[0] += 0.03)
+		blur.tween_interval(0.03)
+
+
+## One afterimage of `node` where the animation currently has it drawn:
+## a golden-tinted copy of its sprite just BEHIND it, fading and shrinking
+## away in a fraction of a second - strung together they read as a blur.
+func _spawn_pursuit_afterimage(node: TextureRect, animator: CreatureAnimator, direction: int) -> void:
+	var parent := node.get_parent()
+	if parent == null:
+		return
+	var ghost := TextureRect.new()
+	ghost.texture = node.texture
+	ghost.expand_mode = node.expand_mode
+	ghost.stretch_mode = node.stretch_mode
+	ghost.flip_h = node.flip_h
+	ghost.size = node.size
+	ghost.pivot_offset = node.pivot_offset
+	ghost.scale = node.scale
+	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ghost.modulate = Color(1.0, 0.82, 0.5, 0.42)
+	parent.add_child(ghost)
+	parent.move_child(ghost, node.get_index())
+	var offset := animator.current_offset()
+	ghost.global_position = node.global_position + offset
+	var tween := ghost.create_tween()
+	tween.tween_property(ghost, "global_position:x", ghost.global_position.x - float(direction) * 28.0, 0.22)
+	tween.parallel().tween_property(ghost, "modulate:a", 0.0, 0.22)
+	tween.tween_callback(ghost.queue_free)
+
+
+## Solara's Withering Pursuit: a RUN of level_data.move_distance columns
+## (a fast dash at the higher levels - level_data.dash) followed by a JUMP
+## of level_data.jump_distance columns, all in whatever direction she's
+## currently facing (hero_image.flip_h, same convention Double
+## Trouble/Blast Hopper already read) - so she covers move_distance +
+## jump_distance columns in all. Unlike Blast Hopper's own hop, this
+## ALWAYS sails clean over any enemy in the way regardless of range_type
+## (the unobstructed "walk straight through" rule _ranged_move_target()
+## already uses for a ranged hero, applied here even for a melee one),
+## stopping only at the board edge or a rival's Frostbound Rupture wall -
+## and if it is cut short, the run is what keeps its length and the jump
+## is what shortens. No damage, no target required - always "succeeds",
 ## same as every other self-cast buff.
-func _activate_leap(level_data: Dictionary) -> void:
+func _activate_withering_pursuit(level_data: Dictionary) -> void:
+	var move_distance: int = int(level_data.get("move_distance", 0))
 	var jump_distance: int = int(level_data.get("jump_distance", 0))
 	var direction: int = -1 if hero_image.flip_h else 1
+	var old_x: float = hero_image.position.x
+	var old_index: int = _hero_pos_index
 
-	_hero_pos_index = _ranged_move_target(_hero_pos_index, direction, jump_distance)
+	_hero_pos_index = _ranged_move_target(_hero_pos_index, direction, move_distance + jump_distance)
+	CreatureAnimator.silent_moves = true
 	_update_hero_position()
+	CreatureAnimator.silent_moves = false
+	var moved: int = absi(_hero_pos_index - old_index)
+	var run_columns: int = mini(move_distance, moved)
+	_play_withering_pursuit_effect(hero_image, old_x, direction, run_columns, moved - run_columns, bool(level_data.get("dash", false)))
 
 
 ## Resolves an Shackles cast on `target`: `level_data.damage` (mitigated
@@ -3591,20 +3790,20 @@ func _resolve_deathlight_lure_cast(target: Dictionary, level_data: Dictionary) -
 	_mark_turn_used()
 
 
-## Resolves a Sacred Arrow cast on `target`: deals this level's own
-## base_damage plus bonus_per_column for every column between Mirana
+## Resolves a Hope of the Fallen cast on `target`: deals this level's own
+## base_damage plus bonus_per_column for every column between Solara
 ## and `target` at the moment it was clicked (mitigated by the target's
 ## own armor via _deal_fixed_damage_to_enemy(), same helper Abyssal Spasm/
 ## Drowned Surge/The Sunken One use) - since `target` was only ever a valid click
 ## within this level's own `range` in the first place (see
-## _start_sacred_arrow_targeting()), the farthest it can ever reach is
+## _start_hope_of_the_fallen_targeting()), the farthest it can ever reach is
 ## exactly the table's own "Max Damage" column, reached at max range.
 ## Then stuns it (target["stun_turns_left"], same shared field Barbed Lunge's/
 ## Drowned Surge's own stun use) for this level's own stun_turns, only if the
-## hit left it alive. _play_sacred_arrow_flight() plays the actual
+## hit left it alive. _play_hope_of_the_fallen_flight() plays the actual
 ## flight alongside this already-resolved damage, same "cosmetic only,
-## never gates the outcome" split Lucent Beam's own impact uses.
-func _resolve_sacred_arrow_cast(target: Dictionary, level_data: Dictionary) -> void:
+## never gates the outcome" split Moonfall Lance's own impact uses.
+func _resolve_hope_of_the_fallen_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	var target_node: TextureRect = target.get("node")
@@ -3613,12 +3812,12 @@ func _resolve_sacred_arrow_cast(target: Dictionary, level_data: Dictionary) -> v
 	_deal_fixed_damage_to_enemy(target, damage)
 	if target.get("current_hp", 0) > 0:
 		target["stun_turns_left"] = int(level_data.get("stun_turns", 0))
-	_play_sacred_arrow_flight(hero_image, target_node, distance)
+	_play_hope_of_the_fallen_flight(hero_image, target_node, distance)
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["sacred_arrow"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("sacred_arrow", _skill_cooldowns["sacred_arrow"])
+	_skill_cooldowns["hope_of_the_fallen"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("hope_of_the_fallen", _skill_cooldowns["hope_of_the_fallen"])
 	_refresh_skill_cooldown_labels()
 
 	if _battle_over or _stage_generation != generation_before:
@@ -3627,13 +3826,13 @@ func _resolve_sacred_arrow_cast(target: Dictionary, level_data: Dictionary) -> v
 	_mark_turn_used()
 
 
-## Resolves a Lucent Beam cast on `target`: deals this level's own flat
+## Resolves a Moonfall Lance cast on `target`: deals this level's own flat
 ## `damage` (mitigated by the target's own armor via
-## _deal_fixed_damage_to_enemy(), same helper Sacred Arrow uses above),
+## _deal_fixed_damage_to_enemy(), same helper Hope of the Fallen uses above),
 ## then stuns it (target["stun_turns_left"], same shared field Sacred
 ## Arrow's/Barbed Lunge's/Drowned Surge's own stun use) for this level's own
 ## stun_turns, only if the hit left it alive.
-func _resolve_lucent_beam_cast(target: Dictionary, level_data: Dictionary) -> void:
+func _resolve_moonfall_lance_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	var target_node: TextureRect = target.get("node")
@@ -3641,12 +3840,12 @@ func _resolve_lucent_beam_cast(target: Dictionary, level_data: Dictionary) -> vo
 	_deal_fixed_damage_to_enemy(target, damage)
 	if target.get("current_hp", 0) > 0:
 		target["stun_turns_left"] = int(level_data.get("stun_turns", 0))
-	_play_lucent_beam_impact(target_node)
+	_play_moonfall_lance_impact(target_node)
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
-	_skill_cooldowns["lucent_beam"] = int(level_data.get("cooldown", 0))
-	PlayerManager.set_skill_cooldown("lucent_beam", _skill_cooldowns["lucent_beam"])
+	_skill_cooldowns["moonfall_lance"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("moonfall_lance", _skill_cooldowns["moonfall_lance"])
 	_refresh_skill_cooldown_labels()
 
 	if _battle_over or _stage_generation != generation_before:
@@ -4197,7 +4396,7 @@ func _despawn_cinderbomb() -> void:
 	_cinderbomb = {}
 
 
-## Purely cosmetic: drops a thin beam of moonlight (LUCENT_BEAM_COLOR)
+## Purely cosmetic: drops a thin beam of moonlight (MOONFALL_LANCE_COLOR)
 ## from above straight down onto `target_node`'s own position, growing
 ## into place top-down rather than flying in from the side - the damage
 ## has already been resolved; this only draws it. Once the beam
@@ -4206,17 +4405,17 @@ func _despawn_cinderbomb() -> void:
 ## (_pulse_caster_sprite()), so the hit itself reads as a clear impact,
 ## then fades the beam out and frees it. No-op if the target's node is
 ## already gone (e.g. the hit killed it) by the time this runs.
-func _play_lucent_beam_impact(target_node: TextureRect) -> void:
+func _play_moonfall_lance_impact(target_node: TextureRect) -> void:
 	if not is_instance_valid(target_node):
 		return
 
 	var beam := ColorRect.new()
-	beam.color = LUCENT_BEAM_COLOR
+	beam.color = MOONFALL_LANCE_COLOR
 	beam.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	beam.size = Vector2(LUCENT_BEAM_WIDTH, 0.0)
+	beam.size = Vector2(MOONFALL_LANCE_WIDTH, 0.0)
 	beam.position = Vector2(
-		target_node.position.x + target_node.size.x / 2.0 - LUCENT_BEAM_WIDTH / 2.0,
-		target_node.position.y - LUCENT_BEAM_FALL_HEIGHT
+		target_node.position.x + target_node.size.x / 2.0 - MOONFALL_LANCE_WIDTH / 2.0,
+		target_node.position.y - MOONFALL_LANCE_FALL_HEIGHT
 	)
 	add_child(beam)
 	# Same reasoning as _elderwild_companion()'s own move_child() call -
@@ -4224,7 +4423,7 @@ func _play_lucent_beam_impact(target_node: TextureRect) -> void:
 	move_child(beam, enemies_layer.get_index() + 1)
 
 	var tween := create_tween()
-	tween.tween_property(beam, "size:y", LUCENT_BEAM_FALL_HEIGHT, LUCENT_BEAM_FALL_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_property(beam, "size:y", MOONFALL_LANCE_FALL_HEIGHT, MOONFALL_LANCE_FALL_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tween.tween_callback(func() -> void:
 		if is_instance_valid(target_node):
 			_pulse_caster_sprite(target_node, false)
@@ -4233,62 +4432,123 @@ func _play_lucent_beam_impact(target_node: TextureRect) -> void:
 	tween.tween_callback(beam.queue_free)
 
 
-## Purely cosmetic: Mirana's Sacred Arrow - an arrow drawn from plain
-## shapes (a glowing SACRED_ARROW_COLOR shaft, a pointed head, two
-## fletching feathers at the tail - see _build_sacred_arrow()) that
+## Purely cosmetic: Solara's Hope of the Fallen - an arrow drawn from plain
+## shapes (a glowing HOPE_OF_THE_FALLEN_COLOR shaft, a pointed head, two
+## fletching feathers at the tail - see _build_hope_of_the_fallen()) that
 ## flies horizontally from `caster_node`'s own position to
 ## `target_node`'s, pointing whichever way it travels (the player's own
 ## hero_image shooting an enemy, or a rival's own node shooting the
 ## player's hero_image or bear), trailing blue sparks. `distance`
-## (already known to the caller - see _resolve_sacred_arrow_cast()/
-## _cast_enemy_sacred_arrow()) stretches the flight time for a longer
+## (already known to the caller - see _resolve_hope_of_the_fallen_cast()/
+## _cast_enemy_hope_of_the_fallen()) stretches the flight time for a longer
 ## shot, same value the damage itself already scales off. On arrival it
 ## bursts in blue sparks, pulses the struck sprite, and fades. No-op if
 ## either node is already gone by the time this runs.
-func _play_sacred_arrow_flight(caster_node: Control, target_node: TextureRect, distance: int, palette: Dictionary = {}) -> void:
+func _play_hope_of_the_fallen_flight(caster_node: Control, target_node: TextureRect, distance: int, palette: Dictionary = {}) -> void:
 	if not is_instance_valid(caster_node) or not is_instance_valid(target_node):
 		return
-	var trail_color: Color = palette.get("shaft", SACRED_ARROW_COLOR)
+	var trail_color: Color = palette.get("shaft", HOPE_OF_THE_FALLEN_COLOR)
 
-	var start_x: float = caster_node.position.x + caster_node.size.x / 2.0
-	var end_x: float = target_node.position.x + target_node.size.x / 2.0
-	var center_y: float = target_node.position.y + target_node.size.y / 2.0
-	var direction: float = 1.0 if end_x >= start_x else -1.0
+	# Where the arrow leaves and where it lands (global), captured up front so
+	# a target killed by the hit still takes its arrow. It leaves from the
+	# middle of the caster, at the target's height - or, for Solara's own cast
+	# (no recolor), from the tip of her bow.
+	var end := target_node.global_position + target_node.size * 0.5
+	var start := Vector2(caster_node.global_position.x + caster_node.size.x / 2.0, end.y)
 
-	var arrow: Node2D = _build_sacred_arrow(palette)
-	# Drawn pointing right - mirrored for a shot flying left.
-	arrow.scale = Vector2(direction, 1.0)
-	arrow.position = Vector2(start_x, center_y)
+	# Solara's own cast is charged first: a faint golden glow flows from her
+	# body to her bow, and the arrow is loosed from the bow once it is full.
+	var hold := 0.0
+	if palette.is_empty() and caster_node is TextureRect:
+		hold = HOPE_OF_THE_FALLEN_CHARGE_TIME
+		var shooter: TextureRect = caster_node
+		var tip := SOLARA_BOW_TIP
+		var body := Vector2(0.5, 0.42)
+		if shooter.flip_h:
+			tip.x = 1.0 - tip.x
+			body.x = 1.0 - body.x
+		start = shooter.global_position + shooter.size * tip
+		HopeChargeFX.play(_fx_layer, shooter.global_position + shooter.size * body, start, hold)
+
+	var launch := func() -> void:
+		if _battle_over:
+			return
+		_launch_hope_of_the_fallen_arrow(start, end, distance, palette, trail_color, target_node)
+	if hold > 0.0:
+		get_tree().create_timer(hold).timeout.connect(launch)
+	else:
+		launch.call()
+
+
+## The arrow of Hope of the Fallen, loosed (see _play_hope_of_the_fallen_flight()):
+## it flies from `start` (global) straight at the target `end`, wrapped in a soft
+## glow of its own that pulses as it goes, trailing sparks, and bursts on
+## the target.
+func _launch_hope_of_the_fallen_arrow(start: Vector2, end: Vector2, distance: int, palette: Dictionary, trail_color: Color, target_node: TextureRect) -> void:
+	var arrow: Node2D = _build_hope_of_the_fallen(palette)
+	# Drawn pointing right - turned to point along its flight.
+	var aim: Vector2 = (end - start).normalized()
+	arrow.rotation = aim.angle()
 	add_child(arrow)
+	arrow.global_position = start
 	# Same reasoning as _elderwild_companion()'s own move_child() call -
 	# render at the hero/enemy layer, not on top of every UI panel.
 	move_child(arrow, enemies_layer.get_index() + 1)
 
+	# The arrow's own glow: a soft additive halo riding it, brighter at the
+	# head, and pulsing.
+	var halo_tex := GradientTexture2D.new()
+	var halo_ramp := Gradient.new()
+	halo_ramp.offsets = PackedFloat32Array([0.0, 0.25, 0.6, 1.0])
+	halo_ramp.colors = PackedColorArray([Color(1, 1, 1, 0.9), Color(1, 1, 1, 0.5), Color(1, 1, 1, 0.15), Color(1, 1, 1, 0.0)])
+	halo_tex.gradient = halo_ramp
+	halo_tex.fill = GradientTexture2D.FILL_RADIAL
+	halo_tex.fill_from = Vector2(0.5, 0.5)
+	halo_tex.fill_to = Vector2(1.0, 0.5)
+	halo_tex.width = 96
+	halo_tex.height = 96
+	var additive := CanvasItemMaterial.new()
+	additive.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	var halo_color := Color(trail_color.r, trail_color.g, trail_color.b, 1.0).lightened(0.15)
+	for layer in [[HOPE_OF_THE_FALLEN_LENGTH * 2.6, 0.38, 0.0], [HOPE_OF_THE_FALLEN_LENGTH * 1.1, 0.7, HOPE_OF_THE_FALLEN_LENGTH * 0.28]]:
+		var halo := TextureRect.new()
+		halo.texture = halo_tex
+		halo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		halo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		halo.size = Vector2(layer[0], layer[0] * 0.55)
+		halo.position = Vector2(float(layer[2]) - halo.size.x * 0.5, -halo.size.y * 0.5)
+		halo.material = additive
+		halo.self_modulate = Color(halo_color, float(layer[1]))
+		arrow.add_child(halo)
+		var pulse := halo.create_tween().set_loops()
+		pulse.tween_property(halo, "modulate:a", 0.6, 0.12)
+		pulse.tween_property(halo, "modulate:a", 1.0, 0.12)
+
 	var trail := CPUParticles2D.new()
 	trail.local_coords = false
-	trail.position = Vector2(-SACRED_ARROW_LENGTH / 2.0, 0.0)
-	trail.amount = 36
-	trail.lifetime = 0.3
+	trail.position = Vector2(-HOPE_OF_THE_FALLEN_LENGTH / 2.0, 0.0)
+	trail.amount = 48
+	trail.lifetime = 0.34
 	trail.spread = 25.0
 	trail.direction = Vector2(-1, 0)
 	trail.gravity = Vector2.ZERO
 	trail.initial_velocity_min = 10.0
 	trail.initial_velocity_max = 40.0
 	trail.scale_amount_min = 1.5
-	trail.scale_amount_max = 3.5
+	trail.scale_amount_max = 3.8
 	trail.color = trail_color
 	arrow.add_child(trail)
 	trail.emitting = true
 
-	var flight_duration: float = SACRED_ARROW_BASE_DURATION + SACRED_ARROW_DURATION_PER_COLUMN * float(distance)
+	var flight_duration: float = HOPE_OF_THE_FALLEN_BASE_DURATION + HOPE_OF_THE_FALLEN_DURATION_PER_COLUMN * float(distance)
 	# Lands with its head in the target's middle.
-	var land_x: float = end_x - direction * SACRED_ARROW_LENGTH * 0.3
+	var land: Vector2 = end - aim * HOPE_OF_THE_FALLEN_LENGTH * 0.3
 
 	var tween := create_tween()
-	tween.tween_property(arrow, "position:x", land_x, flight_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(arrow, "global_position", land, flight_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tween.tween_callback(func() -> void:
 		trail.emitting = false
-		_play_orb_impact(Vector2(end_x, center_y), trail_color, 0.8)
+		_play_orb_impact(end, trail_color, 0.8)
 		if is_instance_valid(target_node):
 			_pulse_caster_sprite(target_node, false)
 	)
@@ -4478,98 +4738,55 @@ func _on_shackles_snapped(node: Variant) -> void:
 		_pulse_caster_sprite(node, false)
 
 
-## Purely cosmetic: Starstorm's meteors - STARSTORM_STARS_PER_TARGET
-## glowing golden stars streaking down onto each node in `nodes` (every
-## unit the cast hits). Each starts high above and off to one side of
-## its target, falls diagonally onto a random spot on it while spinning
-## and shedding a sparkle trail, then bursts into gold sparks
-## (_play_orb_impact()). Staggered so they rain in one after another.
-## Landing spots are captured up front, so a unit killed by the hit
-## still gets its stars. Same layering as _play_double_trouble_effect().
-func _play_starfall(nodes: Array) -> void:
-	var star_index: int = 0
+## Purely cosmetic: Fallen Grace's arrow rain (see ArrowRainFX) - the
+## caster looses a volley of arrows straight up from the tip of its bow,
+## and they come back down on each node in `nodes` (every unit the cast
+## hits), several on each, one target after another. Each struck sprite
+## pulses as its first arrow lands. Landing spots are captured up front,
+## so a unit killed by the hit still takes its arrows. `caster` is the
+## TextureRect the arrows leave (the player's hero_image, or the rival's own
+## node); the bow tip is Solara's (SOLARA_BOW_TIP).
+func _play_arrow_volley(caster: Variant, nodes: Array) -> void:
+	if caster == null or not is_instance_valid(caster) or not (caster is TextureRect):
+		return
+	var shooter: TextureRect = caster
+	var tip := SOLARA_BOW_TIP
+	if shooter.flip_h:
+		tip.x = 1.0 - tip.x
+	var from: Vector2 = shooter.global_position + shooter.size * tip
+
+	var shots: Array = []
 	for node in nodes:
-		if not is_instance_valid(node) or not (node is Control):
+		if not is_instance_valid(node) or not (node is TextureRect):
 			continue
-		var center: Vector2 = node.position + node.size / 2.0
-
-		for i in STARSTORM_STARS_PER_TARGET:
-			var star: Node2D = _build_star(STARSTORM_STAR_RADIUS * randf_range(0.8, 1.15))
-			var land: Vector2 = center + Vector2(randf_range(-0.25, 0.25) * node.size.x, randf_range(-0.3, 0.15) * node.size.y)
-			# Every star comes in from the same side, like one shower.
-			var start: Vector2 = land + Vector2(-STARSTORM_DROP_SIDEWAYS * randf_range(0.8, 1.2), -STARSTORM_DROP_HEIGHT)
-			star.position = start
-			star.modulate.a = 0.0
-			add_child(star)
-			move_child(star, enemies_layer.get_index() + 1)
-
-			var trail := CPUParticles2D.new()
-			trail.local_coords = false
-			trail.amount = 30
-			trail.lifetime = 0.35
-			trail.spread = 180.0
-			trail.gravity = Vector2.ZERO
-			trail.initial_velocity_min = 5.0
-			trail.initial_velocity_max = 25.0
-			trail.scale_amount_min = 1.5
-			trail.scale_amount_max = 4.0
-			trail.color = STARSTORM_STAR_COLOR
-			star.add_child(trail)
-			trail.emitting = true
-
-			var fall_time: float = randf_range(0.4, 0.5)
-			var tween: Tween = star.create_tween()
-			tween.tween_interval(star_index * 0.08 + i * 0.1)
-			tween.tween_property(star, "modulate:a", 1.0, 0.05)
-			tween.tween_property(star, "position", land, fall_time).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-			tween.parallel().tween_property(star, "rotation", randf_range(2.0, 4.0) * TAU * (1.0 if i % 2 == 0 else -1.0), fall_time)
-			tween.tween_callback(func() -> void:
-				trail.emitting = false
-				_play_orb_impact(land, STARSTORM_STAR_COLOR, 1.3)
-			)
-			tween.tween_property(star, "scale", Vector2(1.6, 1.6), 0.08)
-			tween.parallel().tween_property(star, "modulate:a", 0.0, 0.12)
-			# Let the trail's last sparkles finish before freeing.
-			tween.tween_interval(trail.lifetime)
-			tween.tween_callback(star.queue_free)
-		star_index += 1
+		var target: TextureRect = node
+		shots.append({
+			"land": target.global_position + target.size * Vector2(0.5, 0.5),
+			"on_hit": func() -> void:
+				if is_instance_valid(target):
+					_pulse_caster_sprite(target, false),
+		})
+	if shots.is_empty():
+		return
+	ArrowRainFX.play(_fx_layer, from, shots, -1.0 if shooter.flip_h else 1.0)
 
 
-## A five-pointed star of `radius` px (outer point), centered on its own
-## origin - a bright STARSTORM_STAR_COLOR core over a larger soft
-## STARSTORM_GLOW_COLOR halo. Built from plain Polygon2D shapes, same
-## "no art asset" approach as _build_sacred_arrow().
-func _build_star(radius: float) -> Node2D:
-	var star := Node2D.new()
-	for layer in [[radius * 1.7, STARSTORM_GLOW_COLOR], [radius, STARSTORM_STAR_COLOR]]:
-		var outer: float = layer[0]
-		var inner: float = outer * 0.45
-		var points := PackedVector2Array()
-		for k in range(10):
-			var r: float = outer if k % 2 == 0 else inner
-			var angle: float = -PI / 2.0 + k * PI / 5.0
-			points.append(Vector2(cos(angle), sin(angle)) * r)
-		var shape := Polygon2D.new()
-		shape.polygon = points
-		shape.color = layer[1]
-		star.add_child(shape)
-	return star
 
 
-## Builds Sacred Arrow's arrow out of plain Polygon2D shapes (or, with a
+## Builds Hope of the Fallen's arrow out of plain Polygon2D shapes (or, with a
 ## `palette` of "shaft"/"head"/"fletch" colors, the same arrow recolored
 ## - Hunter's Bow's split shot), pointing
 ## right (+x) and centered on its own origin: a thin shaft with a soft
 ## glow around it, a pointed head at the front, and two swept-back
 ## fletching feathers at the tail. The caller mirrors it (scale.x = -1)
 ## for a shot flying left.
-func _build_sacred_arrow(palette: Dictionary = {}) -> Node2D:
-	var shaft_color: Color = palette.get("shaft", SACRED_ARROW_COLOR)
-	var head_color: Color = palette.get("head", SACRED_ARROW_HEAD_COLOR)
-	var fletch_color: Color = palette.get("fletch", SACRED_ARROW_FLETCH_COLOR)
+func _build_hope_of_the_fallen(palette: Dictionary = {}) -> Node2D:
+	var shaft_color: Color = palette.get("shaft", HOPE_OF_THE_FALLEN_COLOR)
+	var head_color: Color = palette.get("head", HOPE_OF_THE_FALLEN_HEAD_COLOR)
+	var fletch_color: Color = palette.get("fletch", HOPE_OF_THE_FALLEN_FLETCH_COLOR)
 	var arrow := Node2D.new()
-	var half_len: float = SACRED_ARROW_LENGTH / 2.0
-	var shaft_half: float = SACRED_ARROW_SHAFT_WIDTH / 2.0
+	var half_len: float = HOPE_OF_THE_FALLEN_LENGTH / 2.0
+	var shaft_half: float = HOPE_OF_THE_FALLEN_SHAFT_WIDTH / 2.0
 	var head_len: float = 14.0
 	var head_half: float = 7.0
 
@@ -5469,8 +5686,8 @@ func _kill_guard(guard: Dictionary) -> void:
 ## damage()'s own redirect roll does, since a guard is a copy of
 ## him, not a separate combatant with its own defense stat. A no-op
 ## while no guards are up.
-## `flash_hits` gives each one hit the same red hit-flash as Moon
-## Glaives' bounce (_flash_bounce_hit()) - off by default, opted into by
+## `flash_hits` gives each one hit the same red hit-flash as Lunar
+## Ricochet's bounce (_flash_bounce_hit()) - off by default, opted into by
 ## Abyssal Spasm.
 func _deal_aoe_damage_to_guards(center_pos_index: int, radius: int, amount: float, flash_hits: bool = false) -> void:
 	if _guards.is_empty() or amount <= 0.0:
@@ -5978,7 +6195,7 @@ const CLEAVER_RANGE := 1
 # HUNTERS_BOW_ATTACKS_PER_SPLIT-th plain Attack from a ranged hero also
 # hits one more enemy within HUNTERS_BOW_RANGE columns of the target,
 # for HUNTERS_BOW_DAMAGE_PCT of the Attack's damage. The split arrow is
-# drawn with the Sacred Arrow's shape, in these gold colors.
+# drawn with the Hope of the Fallen's shape, in these gold colors.
 const HUNTERS_BOW_ATTACKS_PER_SPLIT := 3
 const HUNTERS_BOW_RANGE := 2
 const HUNTERS_BOW_DAMAGE_PCT := 1.0
@@ -6032,7 +6249,7 @@ func _apply_cleaver_cleave(target: Dictionary, attack_damage: float) -> void:
 ## also takes HUNTERS_BOW_DAMAGE_PCT of `attack_damage` (the Attack's
 ## raw, pre-mitigation roll), mitigated by its own armor, with a gold
 ## arrow peeling off to it and the standard red splash flash. Damage
-## only - no on-hit effects (lifesteal, Leeching Hunger, Moon Glaives...)
+## only - no on-hit effects (lifesteal, Leeching Hunger, Lunar Ricochet...)
 ## for the second target, same as Cleaver's splash. A full charge with
 ## no second enemy in range stays full for the next Attack instead of
 ## being spent. Rival guards aren't eligible - they only ever take
@@ -6049,7 +6266,7 @@ func _apply_hunters_bow_split(target: Dictionary, attack_damage: float) -> void:
 		var second: Dictionary = _find_hunters_bow_second_target(target)
 		if not second.is_empty():
 			_hunters_bow_charge = 0
-			_play_sacred_arrow_flight(target.get("node"), second.get("node"), _distance(target["pos_index"], second["pos_index"]), HUNTERS_BOW_ARROW_PALETTE)
+			_play_hope_of_the_fallen_flight(target.get("node"), second.get("node"), _distance(target["pos_index"], second["pos_index"]), HUNTERS_BOW_ARROW_PALETTE)
 			if is_instance_valid(second.get("node")):
 				_flash_bounce_hit(second["node"])
 			_show_rising_message_over(hero_image, "Split Shot!", Color(1.0, 0.8, 0.3, 1.0))
@@ -6122,10 +6339,10 @@ func _apply_empress_will_cleave(target: Dictionary, attack_damage: float) -> voi
 ## targetable enemy within `radius` columns of `target`'s own column
 ## takes `splash_damage` - raw and pre-mitigation, each still mitigated
 ## by ITS OWN armor via _deal_fixed_damage_to_enemy() - and gets
-## _flash_bounce_hit()'s red flash, the same one Moon Glaives' bounces
+## _flash_bounce_hit()'s red flash, the same one Lunar Ricochet' bounces
 ## use, so a splashed enemy visibly reads as hit. Every enemy guard
 ## within that same radius is hit (and flashed) too - guards are
-## unconditional collateral on any AoE splash, same rule Moon Glaives
+## unconditional collateral on any AoE splash, same rule Lunar Ricochet
 ## follows. The boss's own Elderwild Companion needs nothing extra: it's a
 ## regular _enemies entry, so the loop reaches it like any other enemy.
 ##
@@ -6153,28 +6370,28 @@ func _apply_splash_damage(target: Dictionary, splash_damage: float, radius: int)
 
 
 # ------------------------------------------------------------------
-# Luna's Moon Glaives - a passive, so unlike every cast skill above
+# Lunara's Lunar Ricochet - a passive, so unlike every cast skill above
 # there's no button/cast/mana/cooldown for it. Unlike Pull of the Abyss's/
 # Cleaver's/Empress's Will's cleave above (every OTHER enemy within radius,
 # uncapped), this caps at this level's own `bounces` count - see
-# _apply_moon_glaives_bounces()'s own comment.
+# _apply_lunar_ricochet_bounces()'s own comment.
 # ------------------------------------------------------------------
 
-## Moon Glaives' level data for whatever level the player has it at
+## Lunar Ricochet' level data for whatever level the player has it at
 ## right now - {} if it isn't learned at all (level 0), same "empty
 ## means locked" convention every other auto-triggered skill's own
 ## _get_*_level_data() helper uses.
-func _get_moon_glaives_level_data() -> Dictionary:
-	var level: int = PlayerManager.get_skill_level("moon_glaives")
+func _get_lunar_ricochet_level_data() -> Dictionary:
+	var level: int = PlayerManager.get_skill_level("lunar_ricochet")
 	if level <= 0:
 		return {}
 	for skill in _hero_static.get("skills", []):
-		if skill.get("id", "") == "moon_glaives":
+		if skill.get("id", "") == "lunar_ricochet":
 			return GameManager.get_skill_level_data(skill, level)
 	return {}
 
 
-## Moon Glaives' own bounce: the nearest `bounces` other living,
+## Lunar Ricochet' own bounce: the nearest `bounces` other living,
 ## targetable enemies within `bounce_range` columns of `target`'s own
 ## column each take `bounce_damage_pct` of `attack_damage` - the same
 ## raw, pre-mitigation roll `target` was just hit with - still mitigated
@@ -6192,8 +6409,8 @@ func _get_moon_glaives_level_data() -> Dictionary:
 ## own quick scale/red-flash, so a bounce reads as a distinct hit
 ## instead of a damage number appearing on an enemy that was never
 ## targeted. A no-op while the skill isn't learned.
-func _apply_moon_glaives_bounces(target: Dictionary, attack_damage: float) -> void:
-	var level_data: Dictionary = _get_moon_glaives_level_data()
+func _apply_lunar_ricochet_bounces(target: Dictionary, attack_damage: float) -> void:
+	var level_data: Dictionary = _get_lunar_ricochet_level_data()
 	if level_data.is_empty():
 		return
 
@@ -6219,31 +6436,43 @@ func _apply_moon_glaives_bounces(target: Dictionary, attack_damage: float) -> vo
 
 	candidates.sort_custom(func(a, b): return _distance(a["pos_index"], target_pos) < _distance(b["pos_index"], target_pos))
 
+	# The attack's own chakram (see ChakramFX) glances off the target and cuts
+	# from enemy to enemy; each bounce is flashed as it bites in, not the
+	# instant the damage lands. Without one in flight, flash at once.
+	var chakram := ChakramFX.latest()
 	for i in range(mini(bounces, candidates.size())):
 		var bounced_enemy: Dictionary = candidates[i]
+		var bounced_node: Variant = bounced_enemy.get("node")
+		var chest := Vector2.ZERO
+		if chakram != null and is_instance_valid(bounced_node):
+			chest = bounced_node.global_position + bounced_node.size * Vector2(0.5, 0.45)
 		_deal_fixed_damage_to_enemy(bounced_enemy, bounce_damage)
-		if is_instance_valid(bounced_enemy.get("node")):
-			_flash_bounce_hit(bounced_enemy["node"])
+		if chakram != null and chest != Vector2.ZERO:
+			chakram.add_bounce(chest, func() -> void:
+				if is_instance_valid(bounced_node):
+					_flash_bounce_hit(bounced_node))
+		elif is_instance_valid(bounced_node):
+			_flash_bounce_hit(bounced_node)
 
 
 # ------------------------------------------------------------------
-# Luna's Lunar Blessing - a passive, so unlike every cast skill above
+# Lunara's Moonbound Might - a passive, so unlike every cast skill above
 # there's no button/cast/mana/cooldown for it. Just a permanent %
 # increase to the hero's own Attack damage, read fresh off this level's
 # own bonus_damage_pct by _roll_hero_damage() itself (see that
 # function's own comment) rather than anything ticked or tracked here.
 # ------------------------------------------------------------------
 
-## Lunar Blessing's level data for whatever level the player has it at
+## Moonbound Might's level data for whatever level the player has it at
 ## right now - {} if it isn't learned at all (level 0), same "empty
 ## means locked" convention every other auto-triggered skill's own
 ## _get_*_level_data() helper uses.
-func _get_lunar_blessing_level_data() -> Dictionary:
-	var level: int = PlayerManager.get_skill_level("lunar_blessing")
+func _get_moonbound_might_level_data() -> Dictionary:
+	var level: int = PlayerManager.get_skill_level("moonbound_might")
 	if level <= 0:
 		return {}
 	for skill in _hero_static.get("skills", []):
-		if skill.get("id", "") == "lunar_blessing":
+		if skill.get("id", "") == "moonbound_might":
 			return GameManager.get_skill_level_data(skill, level)
 	return {}
 
@@ -6440,35 +6669,83 @@ func _end_frost_tempest() -> void:
 
 
 # ------------------------------------------------------------------
-# Luna's ultimate, Eclipse.
+# Lunara's ultimate, Eternal Eclipse.
 # ------------------------------------------------------------------
+# The black sun of Eternal Eclipse (see EclipseSkyFX), up while either side's
+# Eternal Eclipse lasts.
+var _eclipse_sky: EclipseSkyFX
 
-# How many beams _tick_eclipse() fires per End Turn while Eclipse is
+
+## Raises the eclipse over the battlefield, under the fighters. No-op if
+## it is already up.
+func _begin_eclipse_sky() -> void:
+	if is_instance_valid(_eclipse_sky):
+		return
+	var below: int = mini(hero_image.get_index(), enemies_layer.get_index())
+	_eclipse_sky = EclipseSkyFX.begin(self, below)
+
+
+## Lowers the eclipse - fades it out.
+func _end_eclipse_sky() -> void:
+	if is_instance_valid(_eclipse_sky):
+		_eclipse_sky.end()
+	_eclipse_sky = null
+
+
+## Keeps the eclipse sky in step with the ultimates: down once neither
+## side's Eternal Eclipse is active any more.
+func _refresh_eclipse_sky() -> void:
+	if not _eternal_eclipse_active and not _enemy_eternal_eclipse_active:
+		_end_eclipse_sky()
+
+
+## Purely cosmetic: one Eternal Eclipse beam drops from the black sun onto
+## `target_node` (see EclipseBeamFX), the sun's corona flaring as it fires,
+## and the struck sprite pulses as it lands. No-op if the node is gone.
+func _play_eclipse_strike(target_node: Variant) -> void:
+	if target_node == null or not is_instance_valid(target_node) or not (target_node is TextureRect):
+		return
+	var node: TextureRect = target_node
+	var chest: Vector2 = node.global_position + node.size * Vector2(0.5, 0.45)
+	var ground_y: float = node.global_position.y + node.size.y * 0.97
+	var from: Vector2 = chest + Vector2(0.0, -420.0)
+	if is_instance_valid(_eclipse_sky):
+		from = _eclipse_sky.rim_toward(chest)
+		_eclipse_sky.flare()
+	EclipseBeamFX.strike(_fx_layer, from, chest, ground_y)
+	get_tree().create_timer(EclipseBeamFX.DROP_TIME).timeout.connect(func() -> void:
+		if is_instance_valid(node):
+			_pulse_caster_sprite(node, false))
+
+
+
+# How many beams _tick_eternal_eclipse() fires per End Turn while Eternal Eclipse is
 # active - a flat rule, not a per-level number (only the total beam
 # count, damage, and radius scale with level - see GameManager's own
-# "eclipse" skill data).
-const ECLIPSE_BEAMS_PER_TURN := 2
+# "eternal_eclipse" skill data).
+const ETERNAL_ECLIPSE_BEAMS_PER_TURN := 2
 
 
-## Activates Eclipse: arms this level's own damage/radius/beams. Always
+## Activates Eternal Eclipse: arms this level's own damage/radius/beams. Always
 ## "succeeds" - cast on the hero himself, no target or range
 ## requirement, same as every other self-cast buff.
-func _activate_eclipse(level_data: Dictionary) -> void:
-	_eclipse_active = true
-	_eclipse_damage_per_beam = float(level_data.get("damage", 0))
-	_eclipse_radius = int(level_data.get("radius", 0))
-	_eclipse_beams_remaining = int(level_data.get("beams", 0))
+func _activate_eternal_eclipse(level_data: Dictionary) -> void:
+	_eternal_eclipse_active = true
+	_eternal_eclipse_damage_per_beam = float(level_data.get("damage", 0))
+	_eternal_eclipse_radius = int(level_data.get("radius", 0))
+	_eternal_eclipse_beams_remaining = int(level_data.get("beams", 0))
 	# The casting turn itself doesn't count - beams only start landing
-	# from the turn after (see _tick_eclipse()), same as every other
+	# from the turn after (see _tick_eternal_eclipse()), same as every other
 	# duration-based buff.
-	_eclipse_duration_pending_start = true
+	_eternal_eclipse_duration_pending_start = true
 
-	_show_message_over_hero("Eclipse!")
+	_begin_eclipse_sky()
+	_show_message_over_hero("Eternal Eclipse!")
 
 
-## Ticks Eclipse once per End Turn, same timing (and same "the casting
+## Ticks Eternal Eclipse once per End Turn, same timing (and same "the casting
 ## turn doesn't count" skip) as every other duration-based buff: fires
-## up to ECLIPSE_BEAMS_PER_TURN beams (or however many are left, if
+## up to ETERNAL_ECLIPSE_BEAMS_PER_TURN beams (or however many are left, if
 ## fewer) this turn. Each beam independently rolls ONE random living,
 ## targetable candidate from everything within radius columns of the
 ## hero's CURRENT position (re-checked fresh here, not fixed at cast
@@ -6476,66 +6753,67 @@ func _activate_eclipse(level_data: Dictionary) -> void:
 ## the rival has Imperial Guard up, one of its guards, both equally
 ## likely since a guard is a real occupant of its own column same as
 ## the boss's own Elderwild Companion already is (it's a regular _enemies entry,
-## same reasoning as Moon Glaives' own bounce - see
-## _apply_moon_glaives_bounces()'s own comment). A beam with nothing in
-## range still counts against the total, same as a Dota Eclipse beam
-## that finds no target. Every beam that does land also plays Lucent
-## Beam's own falling-moonlight visual (_play_lucent_beam_impact()) on
+## same reasoning as Lunar Ricochet' own bounce - see
+## _apply_lunar_ricochet_bounces()'s own comment). A beam with nothing in
+## range still counts against the total, same as a Dota Eternal Eclipse beam
+## that finds no target. Every beam that does land also plays Moonfall
+## Lance's own falling-moonlight visual (_play_moonfall_lance_impact()) on
 ## whatever it struck. Ends the instant every beam has landed.
-func _tick_eclipse() -> void:
-	if not _eclipse_active:
+func _tick_eternal_eclipse() -> void:
+	if not _eternal_eclipse_active:
 		return
 
-	if _eclipse_duration_pending_start:
-		_eclipse_duration_pending_start = false
+	if _eternal_eclipse_duration_pending_start:
+		_eternal_eclipse_duration_pending_start = false
 		return
 
 	var boss: Dictionary = _get_hero_fight_boss()
 
-	for i in range(ECLIPSE_BEAMS_PER_TURN):
-		if _eclipse_beams_remaining <= 0:
+	for i in range(ETERNAL_ECLIPSE_BEAMS_PER_TURN):
+		if _eternal_eclipse_beams_remaining <= 0:
 			break
-		_eclipse_beams_remaining -= 1
+		_eternal_eclipse_beams_remaining -= 1
 
 		var candidates: Array = []
 		for enemy in _enemies:
 			if _is_target_hidden(enemy):
 				continue
-			if _distance(enemy["pos_index"], _hero_pos_index) <= _eclipse_radius:
+			if _distance(enemy["pos_index"], _hero_pos_index) <= _eternal_eclipse_radius:
 				candidates.append(enemy)
 		if not boss.is_empty():
 			for guard in _enemy_guards:
-				if _distance(guard["pos_index"], _hero_pos_index) <= _eclipse_radius:
+				if _distance(guard["pos_index"], _hero_pos_index) <= _eternal_eclipse_radius:
 					candidates.append(guard)
 
 		if not candidates.is_empty():
 			var picked: Dictionary = candidates[randi() % candidates.size()]
 			if picked.has("static"):
-				_deal_fixed_damage_to_enemy(picked, _eclipse_damage_per_beam)
+				_deal_fixed_damage_to_enemy(picked, _eternal_eclipse_damage_per_beam)
 			else:
-				var mitigated: float = _apply_armor_reduction(_eclipse_damage_per_beam, _enemy_hero_effective_armor(boss))
+				var mitigated: float = _apply_armor_reduction(_eternal_eclipse_damage_per_beam, _enemy_hero_effective_armor(boss))
 				_deal_damage_to_enemy_guard(picked, mitigated)
-			# Same falling moonlight beam Lucent Beam lands with (see
-			# _play_lucent_beam_impact()'s own comment) - purely cosmetic,
+			# Same falling moonlight beam Moonfall Lance lands with (see
+			# _play_moonfall_lance_impact()'s own comment) - purely cosmetic,
 			# played alongside the damage above rather than gating it.
-			_play_lucent_beam_impact(picked.get("node"))
+			_play_eclipse_strike(picked.get("node"))
 
 		if _battle_over:
 			return
 
-	if _eclipse_beams_remaining <= 0:
-		_end_eclipse()
+	if _eternal_eclipse_beams_remaining <= 0:
+		_end_eternal_eclipse()
 
 
-## Ends Eclipse once every beam has landed.
-func _end_eclipse() -> void:
-	_eclipse_active = false
-	_eclipse_damage_per_beam = 0.0
-	_eclipse_radius = 0
-	_eclipse_beams_remaining = 0
-	_eclipse_duration_pending_start = false
+## Ends Eternal Eclipse once every beam has landed.
+func _end_eternal_eclipse() -> void:
+	_eternal_eclipse_active = false
+	_eternal_eclipse_damage_per_beam = 0.0
+	_eternal_eclipse_radius = 0
+	_eternal_eclipse_beams_remaining = 0
+	_eternal_eclipse_duration_pending_start = false
 
-	_show_message_over_hero("Eclipse fades")
+	_refresh_eclipse_sky()
+	_show_message_over_hero("Eternal Eclipse fades")
 
 
 # ------------------------------------------------------------------
@@ -6809,7 +7087,7 @@ func _play_ice_spike(feet: Vector2, unit_width: float) -> void:
 ## of FROSTBOUND_RUPTURE_CRYSTALS_PER_BLOCK jagged crystals of varied height and
 ## lean, the tallest in the middle, each a translucent icy body with a
 ## lighter facet down one side and a darker outline. Same "no art asset"
-## approach as _build_star().
+## approach as _build_hope_of_the_fallen().
 func _build_ice_block(width: float, height: float) -> Node2D:
 	var block := Node2D.new()
 	var count: int = FROSTBOUND_RUPTURE_CRYSTALS_PER_BLOCK
@@ -8065,8 +8343,8 @@ func _dispel_all_hero_effects() -> void:
 		_end_leeching_hunger()
 	if _depthsveil_active:
 		_end_depthsveil()
-	if _moonlight_shadow_active:
-		_end_moonlight_shadow()
+	if _ambush_strike_active:
+		_end_ambush_strike()
 	if _wildbond_active:
 		_end_wildbond()
 	if _beast_of_the_elderwild_active:
@@ -8158,11 +8436,11 @@ func _end_the_test_of_time() -> void:
 ## could ever be active in a given battle. Enemy attacks check this in
 ## _enemy_turn() and simply don't land while it's true.
 func _is_hero_hidden() -> bool:
-	return _depthsveil_active or _rootveil_active or _moonlight_shadow_active
+	return _depthsveil_active or _rootveil_active or _ambush_strike_active
 
 
 ## Whether the rival can currently see (and therefore attack, chase, or
-## otherwise target) the player, despite Depthsveil's/Rootveil's/Moonlight Shadow's own stealth - true sight from a rival
+## otherwise target) the player, despite Depthsveil's/Rootveil's/Ambush Strike's own stealth - true sight from a rival
 ## Dreadlure's own Deathlight Lure (_player_deathlight_lure_bonus_pct > 0,
 ## the same field _cast_enemy_deathlight_lure() writes and apply_damage()
 ## reads for its own damage bonus, both sharing _player_armor_reduction_
@@ -8265,48 +8543,48 @@ func _end_rootveil() -> void:
 
 
 # ------------------------------------------------------------------
-# Mirana's ultimate, Moonlight Shadow.
+# Solara's ultimate, Ambush Strike.
 # ------------------------------------------------------------------
 
-## Activates Moonlight Shadow: hides Mirana for `level_data.duration`
+## Activates Ambush Strike: hides Solara for `level_data.duration`
 ## turns (not counting the casting turn itself - see
-## _moonlight_shadow_duration_pending_start) and arms
+## _ambush_strike_duration_pending_start) and arms
 ## `level_data.bonus_damage_pct` for whichever comes first, her next
 ## Attack or the duration running out - same overall shape as Shadow
 ## Dance's own _activate_depthsveil(), just a percentage bonus
 ## instead of a flat one (see the field comment above
-## _moonlight_shadow_active).
-func _activate_moonlight_shadow(level_data: Dictionary) -> void:
-	_moonlight_shadow_active = true
-	_moonlight_shadow_bonus_damage_pct = float(level_data.get("bonus_damage_pct", 0.0))
-	_moonlight_shadow_turns_remaining = int(level_data.get("duration", 0))
-	_moonlight_shadow_duration_pending_start = true
+## _ambush_strike_active).
+func _activate_ambush_strike(level_data: Dictionary) -> void:
+	_ambush_strike_active = true
+	_ambush_strike_bonus_damage_pct = float(level_data.get("bonus_damage_pct", 0.0))
+	_ambush_strike_turns_remaining = int(level_data.get("duration", 0))
+	_ambush_strike_duration_pending_start = true
 	_update_hero_visibility()
 
 
-## Ticks Moonlight Shadow's duration down once per End Turn, same
+## Ticks Ambush Strike's duration down once per End Turn, same
 ## timing and same "casting turn doesn't count" rule as Depthsveil
 ## (see _tick_depthsveil()).
-func _tick_moonlight_shadow() -> void:
-	if not _moonlight_shadow_active:
+func _tick_ambush_strike() -> void:
+	if not _ambush_strike_active:
 		return
 
-	if _moonlight_shadow_duration_pending_start:
-		_moonlight_shadow_duration_pending_start = false
+	if _ambush_strike_duration_pending_start:
+		_ambush_strike_duration_pending_start = false
 		return
 
-	_moonlight_shadow_turns_remaining -= 1
-	if _moonlight_shadow_turns_remaining <= 0:
-		_end_moonlight_shadow()
+	_ambush_strike_turns_remaining -= 1
+	if _ambush_strike_turns_remaining <= 0:
+		_end_ambush_strike()
 
 
-## Ends Moonlight Shadow, whether from its duration running out, Mirana
+## Ends Ambush Strike, whether from its duration running out, Solara
 ## attacking while hidden, or casting another skill while hidden.
-func _end_moonlight_shadow() -> void:
-	_moonlight_shadow_active = false
-	_moonlight_shadow_bonus_damage_pct = 0.0
-	_moonlight_shadow_turns_remaining = 0
-	_moonlight_shadow_duration_pending_start = false
+func _end_ambush_strike() -> void:
+	_ambush_strike_active = false
+	_ambush_strike_bonus_damage_pct = 0.0
+	_ambush_strike_turns_remaining = 0
+	_ambush_strike_duration_pending_start = false
 	_update_hero_visibility()
 
 
@@ -8317,12 +8595,12 @@ func _reveal_player_hero() -> void:
 		return
 	_end_depthsveil()
 	_end_rootveil()
-	_end_moonlight_shadow()
+	_end_ambush_strike()
 
 
 ## Slight fade to represent invisibility - fully opaque and visible
 ## otherwise. Called whenever Depthsveil, Rootveil, or
-## Moonlight Shadow starts or ends.
+## Ambush Strike starts or ends.
 func _update_hero_visibility() -> void:
 	hero_image.modulate = Color(1, 1, 1, 0.4) if _is_hero_hidden() else Color(1, 1, 1, 1)
 
@@ -8406,7 +8684,7 @@ func _apply_wildbond_lifesteal(mitigated_attack_damage: float, target: Dictionar
 	_play_lifesteal_effect(target.get("node"), hero_image)
 
 
-const MORBID_MASK_LIFESTEAL_PCT := 0.10
+const MORBID_MASK_LIFESTEAL_PCT := GameManager.MORBID_MASK_LIFESTEAL_PCT
 
 
 ## The Morbid Mask item's own passive: identical shape to Spirit
@@ -8648,8 +8926,8 @@ func _deal_damage_to_bear(amount: float) -> void:
 ## has its own armor stat (set at summon time), not the hero's, and
 ## that function already mitigates with it internally. A no-op while no
 ## bear is out.
-## `flash_hits` gives each one hit the same red hit-flash as Moon
-## Glaives' bounce (_flash_bounce_hit()) - off by default, opted into by
+## `flash_hits` gives each one hit the same red hit-flash as Lunar
+## Ricochet's bounce (_flash_bounce_hit()) - off by default, opted into by
 ## Abyssal Spasm.
 func _deal_aoe_damage_to_bear(center_pos_index: int, radius: int, amount: float, flash_hits: bool = false) -> void:
 	if not _is_bear_alive() or amount <= 0.0:
@@ -8737,7 +9015,7 @@ func _bear_turn() -> void:
 	if not _is_bear_alive() or _enemies.is_empty():
 		return
 
-	# A rival's stun (Drowned Surge/Sacred Arrow/Lucent Beam/Return to the Void/
+	# A rival's stun (Drowned Surge/Hope of the Fallen/Moonfall Lance/Return to the Void/
 	# Winter's Grip/The Hunger Calls/Charge/Glacier Breaker aimed at the bear)
 	# costs it this whole turn; a root (Thornbind/Shackles) still lets it
 	# attack what's already on its column, just not walk. Both are
@@ -8844,11 +9122,11 @@ func _tick_skill_cooldowns() -> void:
 	_tick_leeching_hunger()
 	_tick_depthsveil()
 	_tick_rootveil()
-	_tick_moonlight_shadow()
+	_tick_ambush_strike()
 	_tick_frostbound_fangs()
 	_tick_the_test_of_time()
 	_tick_frost_tempest()
-	_tick_eclipse()
+	_tick_eternal_eclipse()
 	_tick_frostbound_rupture()
 	_tick_bestial_rage()
 	_tick_woven_flesh()
@@ -8886,8 +9164,8 @@ func _tick_skill_cooldowns() -> void:
 		_tick_enemy_cinderbomb()
 		_tick_enemy_imperial_guard()
 		_tick_enemy_hunting_instinct()
-		_tick_enemy_moonlight_shadow()
-		_tick_enemy_eclipse()
+		_tick_enemy_ambush_strike()
+		_tick_enemy_eternal_eclipse()
 
 
 # ------------------------------------------------------------------
@@ -8906,9 +9184,9 @@ func _tick_skill_cooldowns() -> void:
 # ------------------------------------------------------------------
 
 const PASSIVE_HP_REGEN_BASE := 2.0
-const PASSIVE_HP_REGEN_PER_STRENGTH := 0.10
+const PASSIVE_HP_REGEN_PER_STRENGTH := 0.25
 const PASSIVE_MANA_REGEN_BASE := 1.0
-const PASSIVE_MANA_REGEN_PER_INT := 0.05
+const PASSIVE_MANA_REGEN_PER_INT := 0.1
 
 
 ## The player hero's own passive regen. Reads strength/intelligence
@@ -8922,8 +9200,8 @@ func _apply_passive_hero_regen() -> void:
 	var strength: float = float(stats.get("strength", 0))
 	var intelligence: float = float(stats.get("intelligence", 0))
 
-	heal(PASSIVE_HP_REGEN_BASE + strength * PASSIVE_HP_REGEN_PER_STRENGTH)
-	restore_mana(PASSIVE_MANA_REGEN_BASE + intelligence * PASSIVE_MANA_REGEN_PER_INT)
+	heal(PASSIVE_HP_REGEN_BASE + strength * PASSIVE_HP_REGEN_PER_STRENGTH + PlayerManager.get_inventory_stat_bonus("hp_regen"))
+	restore_mana(PASSIVE_MANA_REGEN_BASE + intelligence * PASSIVE_MANA_REGEN_PER_INT + PlayerManager.get_inventory_stat_bonus("mana_regen"))
 
 
 ## The enemy-side mirror, for every living entry in _enemies at once -
@@ -8953,13 +9231,13 @@ func _tick_enemy_passive_regen() -> void:
 		elif enemy_static.get("main_stat", "") == "strength":
 			strength = float(enemy.get("current_main_stat_value", 0))
 
-		var hp_regen: float = PASSIVE_HP_REGEN_BASE + strength * PASSIVE_HP_REGEN_PER_STRENGTH
+		var hp_regen: float = PASSIVE_HP_REGEN_BASE + strength * PASSIVE_HP_REGEN_PER_STRENGTH + (PlayerManager.get_npc_item_bonus(_enemy_hero_id, "hp_regen") if is_boss else 0.0)
 		var max_hp: float = _enemy_hero_effective_max_hp(enemy) if is_boss else float(enemy_static.get("hp", 1))
 		enemy["current_hp"] = minf(max_hp, enemy["current_hp"] + hp_regen)
 
 		if is_boss:
 			var intelligence: float = float(_enemy_hero_static.get("stats", {}).get("intelligence", 0))
-			var mana_regen: float = PASSIVE_MANA_REGEN_BASE + intelligence * PASSIVE_MANA_REGEN_PER_INT
+			var mana_regen: float = PASSIVE_MANA_REGEN_BASE + intelligence * PASSIVE_MANA_REGEN_PER_INT + PlayerManager.get_npc_item_bonus(_enemy_hero_id, "mana_regen")
 			var max_mana: float = _enemy_max_mana + _enemy_leeching_hunger_bonus.get("mana", 0.0)
 			_enemy_current_mana = minf(max_mana, _enemy_current_mana + mana_regen)
 
@@ -10050,14 +10328,14 @@ func _hero_move(direction: int) -> void:
 ## loss, was never going to be caught by _handle_defeat()'s own
 ## restock - so it needs its own copy of that same "the rival gets a
 ## chance to restock before the player can meet them again" step (see
-## EnemyHeroManager.restock_npc_potions()) or a fled fight would let
+## EnemyHeroManager.npc_shop()) or a fled fight would let
 ## the player whittle a rival's potions down for free, over and over,
 ## with no gold cost ever attached the way losing to them does. Only
 ## fires during an actual hero fight - fleeing a normal creep stage has
 ## no rival hero to restock.
 func _on_flee_pressed() -> void:
 	if _in_hero_fight:
-		EnemyHeroManager.restock_npc_potions(_enemy_hero_id)
+		EnemyHeroManager.npc_shop(_enemy_hero_id)
 	get_tree().change_scene_to_file("res://scenes/Map.tscn")
 
 
@@ -10296,14 +10574,14 @@ func _start_deathlight_lure_targeting(level_data: Dictionary) -> bool:
 	return true
 
 
-## Mirana's Sacred Arrow target picking: same column-range/highlight
+## Solara's Hope of the Fallen target picking: same column-range/highlight
 ## mechanism as every other targeted skill above, using this level's
 ## own `range` field (4-7 columns, growing with level) - the same
 ## distance the damage formula scales off of (see
-## _resolve_sacred_arrow_cast()), so a target at the very edge of range
+## _resolve_hope_of_the_fallen_cast()), so a target at the very edge of range
 ## is exactly where the "Max Damage" table column comes from. Returns
 ## false (and shows a message) if nothing is in range.
-func _start_sacred_arrow_targeting(level_data: Dictionary) -> bool:
+func _start_hope_of_the_fallen_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = int(level_data.get("range", 4))
@@ -10318,17 +10596,17 @@ func _start_sacred_arrow_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "sacred_arrow"
-	_pending_sacred_arrow_level_data = level_data
+	_targeting_purpose = "hope_of_the_fallen"
+	_pending_hope_of_the_fallen_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
 
-## Luna's Lucent Beam target picking: same column-range/highlight
+## Lunara's Moonfall Lance target picking: same column-range/highlight
 ## mechanism as every other targeted skill above, using this level's own
 ## `range` field (4-7 columns, growing with level). Returns false (and
 ## shows a message) if nothing is in range.
-func _start_lucent_beam_targeting(level_data: Dictionary) -> bool:
+func _start_moonfall_lance_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	var col_range: int = int(level_data.get("range", 4))
@@ -10343,8 +10621,8 @@ func _start_lucent_beam_targeting(level_data: Dictionary) -> bool:
 		return false
 
 	_targeting_mode = true
-	_targeting_purpose = "lucent_beam"
-	_pending_lucent_beam_level_data = level_data
+	_targeting_purpose = "moonfall_lance"
+	_pending_moonfall_lance_level_data = level_data
 	_highlight_valid_targets()
 	return true
 
@@ -10933,8 +11211,8 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 	var drowned_surge_level_data: Dictionary = _pending_drowned_surge_level_data
 	var undertow_level_data: Dictionary = _pending_undertow_level_data
 	var deathlight_lure_level_data: Dictionary = _pending_deathlight_lure_level_data
-	var sacred_arrow_level_data: Dictionary = _pending_sacred_arrow_level_data
-	var lucent_beam_level_data: Dictionary = _pending_lucent_beam_level_data
+	var hope_of_the_fallen_level_data: Dictionary = _pending_hope_of_the_fallen_level_data
+	var moonfall_lance_level_data: Dictionary = _pending_moonfall_lance_level_data
 	var shackles_level_data: Dictionary = _pending_shackles_level_data
 	var chainfire_level_data: Dictionary = _pending_chainfire_level_data
 	var cinderbomb_level_data: Dictionary = _pending_cinderbomb_level_data
@@ -10964,10 +11242,10 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 		_resolve_undertow_cast(enemy, undertow_level_data)
 	elif purpose == "deathlight_lure":
 		_resolve_deathlight_lure_cast(enemy, deathlight_lure_level_data)
-	elif purpose == "sacred_arrow":
-		_resolve_sacred_arrow_cast(enemy, sacred_arrow_level_data)
-	elif purpose == "lucent_beam":
-		_resolve_lucent_beam_cast(enemy, lucent_beam_level_data)
+	elif purpose == "hope_of_the_fallen":
+		_resolve_hope_of_the_fallen_cast(enemy, hope_of_the_fallen_level_data)
+	elif purpose == "moonfall_lance":
+		_resolve_moonfall_lance_cast(enemy, moonfall_lance_level_data)
 	elif purpose == "shackles":
 		_resolve_shackles_cast(enemy, shackles_level_data)
 	elif purpose == "chainfire":
@@ -11052,14 +11330,14 @@ func _apply_hero_attack(target: Dictionary) -> void:
 	# the rest of the hit - see _roll_hero_damage()) and ends the
 	# invisibility right here, whether or not the hit kills the target.
 	var depthsveil_bonus: float = _depthsveil_bonus_damage if _depthsveil_active else 0.0
-	# Mirana's own Moonlight Shadow pays off the same way, just as a
+	# Solara's own Ambush Strike pays off the same way, just as a
 	# PERCENTAGE of the attack's own rolled damage (folded in AFTER the
 	# roll, below - same "post-roll percentage" shape Might of the
 	# Deep's own bonus uses) rather than Depthsveil's flat pre-roll
 	# bonus. Only one of the two could ever be active in a given battle
 	# (different heroes' own kits), so this never double-counts either
 	# way.
-	var moonlight_shadow_active_bonus_pct: float = _moonlight_shadow_bonus_damage_pct if _moonlight_shadow_active else 0.0
+	var ambush_strike_active_bonus_pct: float = _ambush_strike_bonus_damage_pct if _ambush_strike_active else 0.0
 	# Same idea for Rootveil, just with a root on the target
 	# instead of bonus damage - captured now, before the attack (and
 	# possibly _end_rootveil()) below can change what _rootveil_active reads.
@@ -11081,8 +11359,8 @@ func _apply_hero_attack(target: Dictionary) -> void:
 	var might_level_data: Dictionary = _maybe_consume_might_of_the_deep_stack()
 
 	var attack_damage: float = _roll_hero_damage(depthsveil_bonus + pull_of_the_abyss_bonus)
-	if moonlight_shadow_active_bonus_pct > 0.0:
-		attack_damage += attack_damage * moonlight_shadow_active_bonus_pct
+	if ambush_strike_active_bonus_pct > 0.0:
+		attack_damage += attack_damage * ambush_strike_active_bonus_pct
 	if not might_level_data.is_empty():
 		attack_damage += attack_damage * float(might_level_data.get("bonus_damage_pct", 0.0))
 	var mitigated_damage: float = _deal_fixed_damage_to_enemy(target, attack_damage)
@@ -11122,10 +11400,10 @@ func _apply_hero_attack(target: Dictionary) -> void:
 	# stacks with Pull of the Abyss's/Cleaver's above.
 	_apply_empress_will_cleave(target, attack_damage)
 
-	# Moon Glaives' own bounce - a no-op unless the skill is learned
-	# (see _apply_moon_glaives_bounces()'s own gate). Independent of and
+	# Lunar Ricochet' own bounce - a no-op unless the skill is learned
+	# (see _apply_lunar_ricochet_bounces()'s own gate). Independent of and
 	# stacks with Pull of the Abyss's/Cleaver's/Empress's Will's above.
-	_apply_moon_glaives_bounces(target, attack_damage)
+	_apply_lunar_ricochet_bounces(target, attack_damage)
 
 	# Might of the Deep's own knockback - after every cleave above that
 	# reads target["pos_index"] as ITS OWN splash center, so none of
@@ -11140,8 +11418,8 @@ func _apply_hero_attack(target: Dictionary) -> void:
 
 	if depthsveil_bonus > 0.0:
 		_end_depthsveil()
-	elif moonlight_shadow_active_bonus_pct > 0.0:
-		_end_moonlight_shadow()
+	elif ambush_strike_active_bonus_pct > 0.0:
+		_end_ambush_strike()
 
 	if attacking_from_rootveil:
 		if target.get("current_hp", 0) > 0:
@@ -11321,14 +11599,14 @@ func _get_enemy_at(pos_index: int) -> Dictionary:
 func _is_target_hidden(target: Dictionary) -> bool:
 	if float(target.get("deathlight_lure_bonus_pct", 0.0)) > 0.0:
 		return false
-	return target["static"].get("is_hero_fight_boss", false) and (_enemy_depthsveil_active or _enemy_rootveil_active or _enemy_moonlight_shadow_active)
+	return target["static"].get("is_hero_fight_boss", false) and (_enemy_depthsveil_active or _enemy_rootveil_active or _enemy_ambush_strike_active)
 
 
 ## Rolls a hero attack's damage, adding Leeching Hunger's ongoing
 ## borrowed damage, Beast of the Elderwild's bonus damage, The Primordial Hunger's Frostbound
 ## Fangs bonus damage, and Skarn's Bestial Rage bonus damage (while each is
 ## active) plus (for the single hit that triggers it) Depthsveil's
-## one-shot `extra_bonus`, before mitigation. Luna's Lunar Blessing then
+## one-shot `extra_bonus`, before mitigation. Lunara's Moonbound Might then
 ## scales the resulting total by its own bonus_damage_pct, same as a
 ## permanent stat-derived damage bonus would.
 func _roll_hero_damage(extra_bonus: float = 0.0) -> float:
@@ -11348,16 +11626,16 @@ func _roll_hero_damage(extra_bonus: float = 0.0) -> float:
 	min_dmg += bonus_damage
 	max_dmg += bonus_damage
 
-	# Lunar Blessing - read fresh off the player's current level every
-	# roll (see _get_lunar_blessing_level_data()) rather than tracked in
+	# Moonbound Might - read fresh off the player's current level every
+	# roll (see _get_moonbound_might_level_data()) rather than tracked in
 	# a field, since it's never toggled on/off like Depthsveil/Frostbound
 	# Fangs/Bestial Rage above, just always-on once learned. Applied last so
 	# it scales the whole roll (base weapon damage plus every flat bonus
 	# above), not just the hero's own base stat.
-	var lunar_blessing_bonus_pct: float = float(_get_lunar_blessing_level_data().get("bonus_damage_pct", 0.0))
-	if lunar_blessing_bonus_pct > 0.0:
-		min_dmg += min_dmg * lunar_blessing_bonus_pct
-		max_dmg += max_dmg * lunar_blessing_bonus_pct
+	var moonbound_might_bonus_pct: float = float(_get_moonbound_might_level_data().get("bonus_damage_pct", 0.0))
+	if moonbound_might_bonus_pct > 0.0:
+		min_dmg += min_dmg * moonbound_might_bonus_pct
+		max_dmg += max_dmg * moonbound_might_bonus_pct
 
 	return randi_range(int(min_dmg), int(max_dmg))
 
@@ -11607,6 +11885,12 @@ func _on_echo_popup_ok_pressed() -> void:
 func _on_hero_echo_collected() -> void:
 	_hero_echo = null
 	_in_hero_fight = false
+	# The Echo is absorbed into the hero's attributes (see
+	# PlayerManager.apply_echo_bonus()); a moment to read what it gave.
+	var gained: Dictionary = PlayerManager.apply_echo_bonus(_hero_static)
+	if not gained.is_empty():
+		_show_message_over_hero("Echo absorbed!  +%.1f Strength  +%.1f Agility  +%.1f Intelligence" % [gained.get("strength", 0.0), gained.get("agility", 0.0), gained.get("intelligence", 0.0)])
+		await get_tree().create_timer(1.6).timeout
 	_finish_zone_victory()
 
 
@@ -11649,7 +11933,7 @@ func _advance_to_next_stage() -> void:
 	_reset_guards_to_hero_column()
 
 	_turn_count = 0
-	_next_reinforcement_turn = REINFORCEMENT_INTERVAL
+	_next_reinforcement_turn = GameManager.get_reinforcement_interval(_current_stage)
 	_has_acted_this_turn = false
 
 	_load_enemies()
@@ -11715,6 +11999,9 @@ func _get_eligible_hero_fight_heroes() -> Array:
 ## reset as advancing a stage (position, turn count, action lock), but
 ## _current_stage itself doesn't change - see _in_hero_fight.
 func _start_hero_fight(hero_static: Dictionary) -> void:
+	# The rival fights with the stats it has levelled up to and the
+	# equipment it has bought (see EnemyHeroManager.npc_shop()).
+	hero_static = EnemyHeroManager.apply_npc_progress(hero_static)
 	_in_hero_fight = true
 	_hero_fight_target_id = hero_static.get("id", "")
 	_stage_generation += 1
@@ -11731,7 +12018,7 @@ func _start_hero_fight(hero_static: Dictionary) -> void:
 	_reset_guards_to_hero_column()
 
 	_turn_count = 0
-	_next_reinforcement_turn = REINFORCEMENT_INTERVAL
+	_next_reinforcement_turn = HERO_FIGHT_REINFORCEMENT_INTERVAL
 	_has_acted_this_turn = false
 
 	for child in enemies_layer.get_children():
@@ -11741,6 +12028,14 @@ func _start_hero_fight(hero_static: Dictionary) -> void:
 	_reset_enemy_hero_state(hero_static)
 	_spawn_enemy(GameManager.build_hero_fight_enemy_def(hero_static))
 	_attach_hero_attack_prop(hero_static, _get_hero_fight_boss().get("node"))
+
+	# The player's skills come into the boss fight fresh - no cooldown left
+	# over from the stages before it (the rival starts with all of its own
+	# ready, see _reset_enemy_hero_state()).
+	for skill_id in _skill_cooldowns.keys():
+		_skill_cooldowns[skill_id] = 0
+		PlayerManager.set_skill_cooldown(skill_id, 0)
+	_refresh_skill_cooldown_labels()
 
 	_update_action_buttons()
 
@@ -11894,8 +12189,8 @@ func _reset_enemy_hero_state(hero_static: Dictionary) -> void:
 
 	_end_enemy_hunting_instinct()
 	_enemy_might_of_the_deep_attack_count = 0
-	_end_enemy_moonlight_shadow()
-	_end_enemy_eclipse()
+	_end_enemy_ambush_strike()
+	_end_enemy_eternal_eclipse()
 
 
 func _update_stage_label() -> void:
@@ -11965,7 +12260,7 @@ func _end_turn() -> void:
 		_try_collect_hero_echo(_hero_pos_index, _hero_pos_index)
 	elif _turn_count >= _next_reinforcement_turn:
 		_spawn_reinforcements()
-		_next_reinforcement_turn += REINFORCEMENT_REPEAT_INTERVAL
+		_next_reinforcement_turn += HERO_FIGHT_REINFORCEMENT_REPEAT_INTERVAL if _in_hero_fight else GameManager.get_reinforcement_repeat(_current_stage)
 
 	_tick_skill_cooldowns()
 
@@ -12588,16 +12883,16 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 	# _apply_enemy_might_of_the_deep_knockback(), called once apply_
 	# damage() has already resolved).
 	var might_level_data: Dictionary = _maybe_consume_enemy_might_of_the_deep_stack()
-	# Mirana's own Moonlight Shadow pays off the same way, just as a
+	# Solara's own Ambush Strike pays off the same way, just as a
 	# PERCENTAGE of the attack's own rolled damage (folded in AFTER the
 	# roll, below), same "post-roll percentage" shape Might of the Deep's
-	# own bonus uses. Only one of Depthsveil/Moonlight Shadow could
+	# own bonus uses. Only one of Depthsveil/Ambush Strike could
 	# ever be active in a given fight (different heroes' own kits), so
 	# this never double-counts either way.
-	var moonlight_shadow_active_bonus_pct: float = _enemy_moonlight_shadow_bonus_damage_pct if _enemy_moonlight_shadow_active else 0.0
+	var ambush_strike_active_bonus_pct: float = _enemy_ambush_strike_bonus_damage_pct if _enemy_ambush_strike_active else 0.0
 	var attack_damage: float = _roll_enemy_hero_damage(enemy, shadow_bonus + pull_of_the_abyss_bonus)
-	if moonlight_shadow_active_bonus_pct > 0.0:
-		attack_damage += attack_damage * moonlight_shadow_active_bonus_pct
+	if ambush_strike_active_bonus_pct > 0.0:
+		attack_damage += attack_damage * ambush_strike_active_bonus_pct
 	if not might_level_data.is_empty():
 		attack_damage += attack_damage * float(might_level_data.get("bonus_damage_pct", 0.0))
 	_play_hero_attack_effect(_enemy_hero_static, enemy.get("node"), hero_image, _enemy_beast_of_the_elderwild_active)
@@ -12619,10 +12914,10 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 		_show_rising_message_over(hero_image, "Pull of the Abyss!", PULL_OF_THE_ABYSS_TEXT_COLOR)
 		_apply_enemy_pull_of_the_abyss_cleave(attack_damage, pull_of_the_abyss_level_data)
 
-	# Moon Glaives' own bounce - a no-op unless the skill is learned (see
-	# _apply_enemy_moon_glaives_bounces()'s own gate). Independent of
+	# Lunar Ricochet' own bounce - a no-op unless the skill is learned (see
+	# _apply_enemy_lunar_ricochet_bounces()'s own gate). Independent of
 	# Pull of the Abyss's above.
-	_apply_enemy_moon_glaives_bounces(attack_damage)
+	_apply_enemy_lunar_ricochet_bounces(attack_damage)
 
 	# Might of the Deep's own knockback - after leeching hunger/lifesteal/
 	# Mark of the Mist above, same "resolve every OTHER effect of the hit
@@ -12640,8 +12935,8 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 
 	if _enemy_depthsveil_active and shadow_bonus > 0.0:
 		_end_enemy_depthsveil()
-	elif moonlight_shadow_active_bonus_pct > 0.0:
-		_end_enemy_moonlight_shadow()
+	elif ambush_strike_active_bonus_pct > 0.0:
+		_end_enemy_ambush_strike()
 
 	if attacking_from_enemy_rootveil:
 		if _recruited.get("current_hp", 0) > 0:
@@ -12661,17 +12956,17 @@ func _roll_enemy_hero_damage(enemy: Dictionary, extra_bonus: float = 0.0) -> flo
 	var bonus: float = _enemy_leeching_hunger_bonus.get("damage", 0.0) + _enemy_beast_of_the_elderwild_bonus_damage + _enemy_frostbound_fangs_bonus_damage + _enemy_bestial_rage_bonus_damage + extra_bonus
 	var total: float = maxf(0.0, base_damage + bonus)
 
-	# Luna's Lunar Blessing - read fresh off the rival's current level
-	# every roll (see _get_enemy_lunar_blessing_level_data()) rather than
+	# Lunara's Moonbound Might - read fresh off the rival's current level
+	# every roll (see _get_enemy_moonbound_might_level_data()) rather than
 	# tracked in a field, since it's never toggled on/off, just always-on
 	# once learned. Applied last so it scales the whole roll, mirroring
 	# the player's own _roll_hero_damage() exactly - this is the ONE
 	# place it's ever folded in, so every caller of this function (a
 	# plain Attack, Hunting Instinct's own charge damage, etc.) already has
 	# it baked into whatever it reads back, with nothing further to add.
-	var lunar_blessing_bonus_pct: float = float(_get_enemy_lunar_blessing_level_data().get("bonus_damage_pct", 0.0))
-	if lunar_blessing_bonus_pct > 0.0:
-		total += total * lunar_blessing_bonus_pct
+	var moonbound_might_bonus_pct: float = float(_get_enemy_moonbound_might_level_data().get("bonus_damage_pct", 0.0))
+	if moonbound_might_bonus_pct > 0.0:
+		total += total * moonbound_might_bonus_pct
 
 	return total
 
@@ -12728,10 +13023,10 @@ func _enemy_skill_worth_casting(skill_id: String) -> bool:
 			return not _enemy_leeching_hunger_active
 		"depthsveil":
 			return not _enemy_depthsveil_active
-		"moonlight_shadow":
-			return not _enemy_moonlight_shadow_active
-		"eclipse":
-			return not _enemy_eclipse_active
+		"ambush_strike":
+			return not _enemy_ambush_strike_active
+		"eternal_eclipse":
+			return not _enemy_eternal_eclipse_active
 		"wildbond":
 			return not _enemy_wildbond_active
 		"beast_of_the_elderwild":
@@ -13048,45 +13343,45 @@ func _enemy_has_unaffordable_ready_skill(enemy_type: String, hero_distance: int,
 ##     Lure-marked, and by how much (_player_deathlight_lure_bonus_pct) -
 ##     for a plain Attack's own synergy bonus.
 ##   - hero_attack_range: the rival's own basic-attack reach for its type
-##     (base_attack_range, already computed below) - for Mirana's own
-##     Leap/Moonlight Shadow, which both need to compare a real distance
+##     (base_attack_range, already computed below) - for Solara's own
+##     Withering Pursuit/Ambush Strike, which both need to compare a real distance
 ##     against attack range rather than just the boolean "in_attack_
 ##     range_now" every other hero's own fields already cover.
-##   - starstorm_radius/sacred_arrow_range/sacred_arrow_base_damage/
-##     sacred_arrow_bonus_per_column: Mirana's OTHER skills' CURRENT
+##   - fallen_grace_radius/hope_of_the_fallen_range/hope_of_the_fallen_base_damage/
+##     hope_of_the_fallen_bonus_per_column: Solara's OTHER skills' CURRENT
 ##     levels, read fresh off _get_enemy_skill_level_data() - each of her
 ##     skills is only ever scored as a candidate on the turn it's itself
-##     being cast, so Leap's/Moonlight Shadow's own combo bonuses need
+##     being cast, so Withering Pursuit's/Ambush Strike's own combo bonuses need
 ##     these independently, same reasoning Dreadlure's own "venom_radius"/
 ##     "venom_damage" fields already established.
-##   - moonlight_shadow_active/moonlight_shadow_bonus_damage_pct:
-##     Mirana's own current stealth state - for a plain Attack's own
-##     substantial bonus while it's up (see EnemySkillAI's own _mirana_
+##   - ambush_strike_active/ambush_strike_bonus_damage_pct:
+##     Solara's own current stealth state - for a plain Attack's own
+##     substantial bonus while it's up (see EnemySkillAI's own _solara_
 ##     basic_attack_modifier()).
 ##   - target_stunned: whether the player currently has a stun on him
-##     (_player_stun_turns_left > 0) - for Sacred Arrow's own follow-up-
-##     Attack synergy (see EnemySkillAI's own _mirana_basic_attack_
+##     (_player_stun_turns_left > 0) - for Hope of the Fallen's own follow-up-
+##     Attack synergy (see EnemySkillAI's own _solara_basic_attack_
 ##     modifier()'s "target_stunned" case).
-##   - moon_glaives_bounces/moon_glaives_bounce_damage_pct/moon_glaives_
-##     bounce_range: Luna's own Moon Glaives, CURRENT level, read fresh
-##     off _get_enemy_moon_glaives_level_data() - 0/0.0 while unlearned.
-##   - moon_glaives_valid_bounce_targets/moon_glaives_bounce_target_hps:
+##   - lunar_ricochet_bounces/lunar_ricochet_bounce_damage_pct/lunar_ricochet_
+##     bounce_range: Lunara's own Lunar Ricochet, CURRENT level, read fresh
+##     off _get_enemy_lunar_ricochet_level_data() - 0/0.0 while unlearned.
+##   - lunar_ricochet_valid_bounce_targets/lunar_ricochet_bounce_target_hps:
 ##     the ACTUAL bounce targets right now - every one of the player's
 ##     own guards, plus his own Elderwild Companion, within bounce_range of
 ##     his own column (the only column a rival Attack could ever bounce
-##     from - see _apply_enemy_moon_glaives_bounces()'s own docstring for
+##     from - see _apply_enemy_lunar_ricochet_bounces()'s own docstring for
 ##     why there's no second real _enemies-style target here) - never the
 ##     skill's own maximum bounce count.
-##   - lunar_blessing_bonus_pct: Luna's own Lunar Blessing, CURRENT
+##   - moonbound_might_bonus_pct: Lunara's own Moonbound Might, CURRENT
 ##     level - exposed for transparency only; "hero_damage" itself
 ##     already has it folded in (see _roll_enemy_hero_damage()'s own
 ##     docstring), so nothing reads this to re-derive the damage number.
-##   - eclipse_candidate_count/eclipse_candidate_hps/eclipse_candidate_
-##     max_hps: every REAL beam candidate within Luna's own Eclipse
+##   - eternal_eclipse_candidate_count/eternal_eclipse_candidate_hps/eternal_eclipse_candidate_
+##     max_hps: every REAL beam candidate within Lunara's own Eternal Eclipse
 ##     radius right now - the player (if in range), each of his own
 ##     guards in range, and his own Elderwild Companion if in range - mirrors
-##     _tick_enemy_eclipse()'s own candidate pool exactly (see
-##     EnemySkillAI's own _luna_eclipse_modifier()/_luna_eclipse_
+##     _tick_enemy_eternal_eclipse()'s own candidate pool exactly (see
+##     EnemySkillAI's own _lunara_eternal_eclipse_modifier()/_lunara_eternal_eclipse_
 ##     expected_damage() for how this drives the ultimate's own scoring).
 func _build_enemy_ai_context(enemy: Dictionary, enemy_type: String, hero_distance: int) -> Dictionary:
 	var max_hp: float = _enemy_hero_effective_max_hp(enemy)
@@ -13098,38 +13393,38 @@ func _build_enemy_ai_context(enemy: Dictionary, enemy_type: String, hero_distanc
 
 	var base_attack_range: int = _enemy_attack_range(enemy) if enemy_type == "range" else 0
 
-	# Luna's Moon Glaives: the ACTUAL bounce targets right now - every one
+	# Lunara's Lunar Ricochet: the ACTUAL bounce targets right now - every one
 	# of the player's own guards, plus his own Elderwild Companion, within
-	# bounce_range of his own column (see _apply_enemy_moon_glaives_
+	# bounce_range of his own column (see _apply_enemy_lunar_ricochet_
 	# bounces()'s own docstring for why that's the only column a rival
 	# Attack could ever bounce from in a hero fight).
-	var moon_glaives_level_data: Dictionary = _get_enemy_skill_level_data("moon_glaives")
-	var moon_glaives_bounce_range: int = int(moon_glaives_level_data.get("bounce_range", 0))
-	var moon_glaives_bounce_target_hps: Array = []
+	var lunar_ricochet_level_data: Dictionary = _get_enemy_skill_level_data("lunar_ricochet")
+	var lunar_ricochet_bounce_range: int = int(lunar_ricochet_level_data.get("bounce_range", 0))
+	var lunar_ricochet_bounce_target_hps: Array = []
 	for guard in _guards:
-		if _distance(guard["pos_index"], _hero_pos_index) <= moon_glaives_bounce_range:
-			moon_glaives_bounce_target_hps.append(float(guard.get("current_hp", 0.0)))
-	if _is_bear_alive() and _distance(_bear["pos_index"], _hero_pos_index) <= moon_glaives_bounce_range:
-		moon_glaives_bounce_target_hps.append(float(_bear.get("current_hp", 0.0)))
+		if _distance(guard["pos_index"], _hero_pos_index) <= lunar_ricochet_bounce_range:
+			lunar_ricochet_bounce_target_hps.append(float(guard.get("current_hp", 0.0)))
+	if _is_bear_alive() and _distance(_bear["pos_index"], _hero_pos_index) <= lunar_ricochet_bounce_range:
+		lunar_ricochet_bounce_target_hps.append(float(_bear.get("current_hp", 0.0)))
 
-	# Luna's Eclipse: every REAL beam candidate within radius of the
+	# Lunara's Eternal Eclipse: every REAL beam candidate within radius of the
 	# rival's OWN current position right now - the player himself, each
 	# of his own guards, and his own Elderwild Companion - mirrors
-	# _tick_enemy_eclipse()'s own candidate pool exactly.
-	var eclipse_level_data: Dictionary = _get_enemy_skill_level_data("eclipse")
-	var eclipse_radius: int = int(eclipse_level_data.get("radius", 0))
-	var eclipse_candidate_hps: Array = []
-	var eclipse_candidate_max_hps: Array = []
-	if hero_distance <= eclipse_radius:
-		eclipse_candidate_hps.append(float(_recruited.get("current_hp", 0)))
-		eclipse_candidate_max_hps.append(_hero_max_hp())
+	# _tick_enemy_eternal_eclipse()'s own candidate pool exactly.
+	var eternal_eclipse_level_data: Dictionary = _get_enemy_skill_level_data("eternal_eclipse")
+	var eternal_eclipse_radius: int = int(eternal_eclipse_level_data.get("radius", 0))
+	var eternal_eclipse_candidate_hps: Array = []
+	var eternal_eclipse_candidate_max_hps: Array = []
+	if hero_distance <= eternal_eclipse_radius:
+		eternal_eclipse_candidate_hps.append(float(_recruited.get("current_hp", 0)))
+		eternal_eclipse_candidate_max_hps.append(_hero_max_hp())
 	for guard in _guards:
-		if _distance(guard["pos_index"], enemy["pos_index"]) <= eclipse_radius:
-			eclipse_candidate_hps.append(float(guard.get("current_hp", 0.0)))
-			eclipse_candidate_max_hps.append(float(guard.get("max_hp", 0.0)))
-	if _is_bear_alive() and _distance(_bear["pos_index"], enemy["pos_index"]) <= eclipse_radius:
-		eclipse_candidate_hps.append(float(_bear.get("current_hp", 0.0)))
-		eclipse_candidate_max_hps.append(float(_bear.get("hp", _bear.get("current_hp", 0.0))))
+		if _distance(guard["pos_index"], enemy["pos_index"]) <= eternal_eclipse_radius:
+			eternal_eclipse_candidate_hps.append(float(guard.get("current_hp", 0.0)))
+			eternal_eclipse_candidate_max_hps.append(float(guard.get("max_hp", 0.0)))
+	if _is_bear_alive() and _distance(_bear["pos_index"], enemy["pos_index"]) <= eternal_eclipse_radius:
+		eternal_eclipse_candidate_hps.append(float(_bear.get("current_hp", 0.0)))
+		eternal_eclipse_candidate_max_hps.append(float(_bear.get("hp", _bear.get("current_hp", 0.0))))
 
 	return {
 		"game_mode": "battle",
@@ -13185,22 +13480,22 @@ func _build_enemy_ai_context(enemy: Dictionary, enemy_type: String, hero_distanc
 		"venom_damage": float(_get_enemy_skill_level_data("paralytic_venom").get("damage", 0.0)),
 		"target_marked_bonus_pct": _player_deathlight_lure_bonus_pct,
 		"hero_attack_range": base_attack_range,
-		"starstorm_radius": int(_get_enemy_skill_level_data("starstorm").get("radius", 0)),
-		"sacred_arrow_range": int(_get_enemy_skill_level_data("sacred_arrow").get("range", 0)),
-		"sacred_arrow_base_damage": float(_get_enemy_skill_level_data("sacred_arrow").get("base_damage", 0.0)),
-		"sacred_arrow_bonus_per_column": float(_get_enemy_skill_level_data("sacred_arrow").get("bonus_per_column", 0.0)),
-		"moonlight_shadow_active": _enemy_moonlight_shadow_active,
-		"moonlight_shadow_bonus_damage_pct": _enemy_moonlight_shadow_bonus_damage_pct,
+		"fallen_grace_radius": int(_get_enemy_skill_level_data("fallen_grace").get("radius", 0)),
+		"hope_of_the_fallen_range": int(_get_enemy_skill_level_data("hope_of_the_fallen").get("range", 0)),
+		"hope_of_the_fallen_base_damage": float(_get_enemy_skill_level_data("hope_of_the_fallen").get("base_damage", 0.0)),
+		"hope_of_the_fallen_bonus_per_column": float(_get_enemy_skill_level_data("hope_of_the_fallen").get("bonus_per_column", 0.0)),
+		"ambush_strike_active": _enemy_ambush_strike_active,
+		"ambush_strike_bonus_damage_pct": _enemy_ambush_strike_bonus_damage_pct,
 		"target_stunned": _player_stun_turns_left > 0,
-		"moon_glaives_bounces": int(moon_glaives_level_data.get("bounces", 0)),
-		"moon_glaives_bounce_damage_pct": float(moon_glaives_level_data.get("bounce_damage_pct", 0.0)),
-		"moon_glaives_bounce_range": moon_glaives_bounce_range,
-		"moon_glaives_valid_bounce_targets": moon_glaives_bounce_target_hps.size(),
-		"moon_glaives_bounce_target_hps": moon_glaives_bounce_target_hps,
-		"lunar_blessing_bonus_pct": float(_get_enemy_lunar_blessing_level_data().get("bonus_damage_pct", 0.0)),
-		"eclipse_candidate_count": eclipse_candidate_hps.size(),
-		"eclipse_candidate_hps": eclipse_candidate_hps,
-		"eclipse_candidate_max_hps": eclipse_candidate_max_hps,
+		"lunar_ricochet_bounces": int(lunar_ricochet_level_data.get("bounces", 0)),
+		"lunar_ricochet_bounce_damage_pct": float(lunar_ricochet_level_data.get("bounce_damage_pct", 0.0)),
+		"lunar_ricochet_bounce_range": lunar_ricochet_bounce_range,
+		"lunar_ricochet_valid_bounce_targets": lunar_ricochet_bounce_target_hps.size(),
+		"lunar_ricochet_bounce_target_hps": lunar_ricochet_bounce_target_hps,
+		"moonbound_might_bonus_pct": float(_get_enemy_moonbound_might_level_data().get("bonus_damage_pct", 0.0)),
+		"eternal_eclipse_candidate_count": eternal_eclipse_candidate_hps.size(),
+		"eternal_eclipse_candidate_hps": eternal_eclipse_candidate_hps,
+		"eternal_eclipse_candidate_max_hps": eternal_eclipse_candidate_max_hps,
 	}
 
 
@@ -13237,6 +13532,13 @@ func _enemy_has_harmful_debuff(enemy: Dictionary) -> bool:
 ## check below ignores it entirely, same as EnemySkillRange.is_in_range()
 ## itself.
 func _enemy_skill_in_range(skill_id: String, enemy_type: String, hero_distance: int, enemy: Dictionary) -> bool:
+	# Self-cast skills (Frost Tempest, Leeching Hunger, ...) have no
+	# targeting range, but are only worth casting when the player is within
+	# reach this turn or after the rival's next step.
+	if EnemySkillRange.requires_engagement_check(skill_id):
+		var engage_data: Dictionary = _get_enemy_skill_level_data(skill_id)
+		var engage_attack_range: int = _enemy_attack_range(enemy) if enemy_type == "range" else 0
+		return EnemySkillRange.is_engagement_ready(skill_id, hero_distance, int(engage_data.get("radius", 0)), engage_attack_range)
 	if not EnemySkillRange.requires_range_check(skill_id):
 		return true
 
@@ -13393,18 +13695,18 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 			_cast_enemy_paralytic_venom(enemy, level_data)
 		"deathlight_lure":
 			_cast_enemy_deathlight_lure(level_data)
-		"starstorm":
-			_cast_enemy_starstorm(enemy, level_data)
-		"sacred_arrow":
-			_cast_enemy_sacred_arrow(enemy, level_data)
-		"leap":
-			_cast_enemy_leap(enemy, level_data)
-		"moonlight_shadow":
-			_cast_enemy_moonlight_shadow(level_data)
-		"lucent_beam":
-			_cast_enemy_lucent_beam(level_data)
-		"eclipse":
-			_cast_enemy_eclipse(level_data)
+		"fallen_grace":
+			_cast_enemy_fallen_grace(enemy, level_data)
+		"hope_of_the_fallen":
+			_cast_enemy_hope_of_the_fallen(enemy, level_data)
+		"withering_pursuit":
+			_cast_enemy_withering_pursuit(enemy, level_data)
+		"ambush_strike":
+			_cast_enemy_ambush_strike(level_data)
+		"moonfall_lance":
+			_cast_enemy_moonfall_lance(level_data)
+		"eternal_eclipse":
+			_cast_enemy_eternal_eclipse(level_data)
 
 	# Depthsveil/Rootveil only break from casting ANOTHER skill
 	# (or attacking, handled separately in _resolve_enemy_hero_attack()),
@@ -13419,14 +13721,14 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 		_end_enemy_depthsveil()
 	if _enemy_rootveil_active and skill_id != "rootveil":
 		_end_enemy_rootveil()
-	# Sacred Arrow is deliberately exempt - mirrors the player's own
+	# Hope of the Fallen is deliberately exempt - mirrors the player's own
 	# _on_skill_pressed(), where a TARGETED skill's deferred-spend path
-	# (_resolve_sacred_arrow_cast()) never reaches the equivalent check at
-	# all, so firing Sacred Arrow from stealth never breaks it there
-	# either (see EnemySkillAI's own _mirana_moonlight_shadow_modifier()'s
+	# (_resolve_hope_of_the_fallen_cast()) never reaches the equivalent check at
+	# all, so firing Hope of the Fallen from stealth never breaks it there
+	# either (see EnemySkillAI's own _solara_ambush_strike_modifier()'s
 	# docstring for why this matters to scoring, not just execution).
-	if _enemy_moonlight_shadow_active and skill_id != "moonlight_shadow" and skill_id != "sacred_arrow":
-		_end_enemy_moonlight_shadow()
+	if _enemy_ambush_strike_active and skill_id != "ambush_strike" and skill_id != "hope_of_the_fallen":
+		_end_enemy_ambush_strike()
 
 	# After Depthsveil's own break above, so the caster's modulate is
 	# already back to opaque before the flash reads/writes it.
@@ -13520,7 +13822,7 @@ func _sprite_flash(node: TextureRect, peak_scale: float, flash_modulate: Color) 
 ## Same quick scale-up + flash shape as _pulse_caster_sprite() above, but
 ## tinted red (BOUNCE_HIT_FLASH_COLOR) instead of brightened white -
 ## reads as "this sprite just got hit" rather than "this sprite just did
-## something." Used by Moon Glaives' own bounce (_apply_moon_glaives_
+## something." Used by Lunar Ricochet' own bounce (_apply_lunar_ricochet_
 ## bounces()) so a bounced enemy visibly flashes red instead of only a
 ## damage number appearing on an enemy that was never the main target.
 ##
@@ -14291,7 +14593,7 @@ func _end_enemy_depthsveil() -> void:
 
 ## Whether the rival hero is currently invisible (any of its veils).
 func _is_enemy_hero_invisible() -> bool:
-	return _enemy_depthsveil_active or _enemy_rootveil_active or _enemy_moonlight_shadow_active
+	return _enemy_depthsveil_active or _enemy_rootveil_active or _enemy_ambush_strike_active
 
 
 ## An invisible rival hero genuinely vanishes: its sprite, HP and status
@@ -14326,7 +14628,7 @@ func _reveal_enemy_hero() -> void:
 		return
 	_end_enemy_depthsveil()
 	_end_enemy_rootveil()
-	_end_enemy_moonlight_shadow()
+	_end_enemy_ambush_strike()
 
 
 # ------------------------------------------------------------------
@@ -14446,9 +14748,16 @@ func _end_enemy_wildbond() -> void:
 ## Thornbind's DoT) never triggers this. Heals the boss directly,
 ## clamped to their current effective max hp.
 func _apply_enemy_wildbond_lifesteal(enemy: Dictionary, mitigated_attack_damage: float) -> void:
-	if not _enemy_wildbond_active or mitigated_attack_damage <= 0.0:
+	if mitigated_attack_damage <= 0.0:
 		return
-	var heal_amount: float = mitigated_attack_damage * _enemy_wildbond_lifesteal_pct
+	# A Morbid Mask the rival has bought stacks with Wildbond, same as the
+	# player's own (see _apply_morbid_mask_lifesteal()).
+	var lifesteal_pct: float = _enemy_wildbond_lifesteal_pct if _enemy_wildbond_active else 0.0
+	if PlayerManager.get_npc_items(_enemy_hero_id).get("morbid_mask", 0) > 0:
+		lifesteal_pct += MORBID_MASK_LIFESTEAL_PCT
+	if lifesteal_pct <= 0.0:
+		return
+	var heal_amount: float = mitigated_attack_damage * lifesteal_pct
 	var max_hp: float = _enemy_hero_effective_max_hp(enemy)
 	enemy["current_hp"] = minf(max_hp, enemy["current_hp"] + heal_amount)
 	_play_lifesteal_effect(hero_image, enemy.get("node"))
@@ -16815,8 +17124,8 @@ func _enemy_hero_effective_armor(boss: Dictionary) -> float:
 ## the boss's own effective armor (_enemy_hero_effective_armor()). A
 ## no-op while no enemy guards are up or there's no boss to read
 ## armor from (i.e. outside a hero fight).
-## `flash_hits` gives each one hit the same red hit-flash as Moon
-## Glaives' bounce (_flash_bounce_hit()) - off by default, opted into by
+## `flash_hits` gives each one hit the same red hit-flash as Lunar
+## Ricochet's bounce (_flash_bounce_hit()) - off by default, opted into by
 ## Abyssal Spasm.
 func _deal_aoe_damage_to_enemy_guards(center_pos_index: int, radius: int, amount: float, flash_hits: bool = false) -> void:
 	if _enemy_guards.is_empty() or amount <= 0.0:
@@ -17179,8 +17488,8 @@ func _cast_enemy_deathlight_lure(level_data: Dictionary) -> void:
 
 
 # ------------------------------------------------------------------
-# Mirana's Starstorm, cast by the rival - mirrors the player's own
-# _cast_starstorm(): this level's own `damage` (through normal armor
+# Solara's Fallen Grace, cast by the rival - mirrors the player's own
+# _cast_fallen_grace(): this level's own `damage` (through normal armor
 # mitigation, via apply_damage()) if the player is within `radius`
 # columns of the rival's CURRENT position - there's only one possible
 # target in a hero fight, so this collapses to a single conditional hit
@@ -17194,10 +17503,10 @@ func _cast_enemy_deathlight_lure(level_data: Dictionary) -> void:
 # reasoning _cast_enemy_sweep()'s own copy already follows.
 # ------------------------------------------------------------------
 
-func _cast_enemy_starstorm(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_fallen_grace(enemy: Dictionary, level_data: Dictionary) -> void:
 	var radius: int = int(level_data.get("radius", 0))
 	var damage: float = float(level_data.get("damage", 0))
-	# Stars on every unit about to be hit, launched before the damage
+	# Arrows at every unit about to be hit, launched before the damage
 	# lands (a kill frees its node).
 	var star_nodes: Array = []
 	if _distance(enemy["pos_index"], _hero_pos_index) <= radius:
@@ -17207,19 +17516,19 @@ func _cast_enemy_starstorm(enemy: Dictionary, level_data: Dictionary) -> void:
 			star_nodes.append(guard.get("node"))
 	if _is_bear_alive() and _distance(_bear["pos_index"], enemy["pos_index"]) <= radius:
 		star_nodes.append(_bear.get("node"))
-	_play_starfall(star_nodes)
+	_play_arrow_volley(enemy.get("node"), star_nodes)
 
 	if _distance(enemy["pos_index"], _hero_pos_index) <= radius:
 		apply_damage(damage)
 	_deal_aoe_damage_to_guards(enemy["pos_index"], radius, damage)
 	_deal_aoe_damage_to_bear(enemy["pos_index"], radius, damage)
 
-	_show_message_over_hero("Starstorm!")
+	_show_message_over_hero("Fallen Grace!")
 
 
 # ------------------------------------------------------------------
-# Mirana's Sacred Arrow, cast by the rival on the player - mirrors the
-# player's own _resolve_sacred_arrow_cast(): this level's own base_damage
+# Solara's Hope of the Fallen, cast by the rival on the player - mirrors the
+# player's own _resolve_hope_of_the_fallen_cast(): this level's own base_damage
 # plus bonus_per_column for every column between the rival and the
 # player at the moment it's cast (through normal armor mitigation, via
 # apply_damage()), then stuns the player (_player_stun_turns_left, the
@@ -17231,9 +17540,9 @@ func _cast_enemy_starstorm(enemy: Dictionary, level_data: Dictionary) -> void:
 # Drowned Surge's own enemy-side copies already use.
 # ------------------------------------------------------------------
 
-func _cast_enemy_sacred_arrow(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_hope_of_the_fallen(enemy: Dictionary, level_data: Dictionary) -> void:
 	if _enemy_skill_on_bear:
-		_cast_enemy_sacred_arrow_on_bear(enemy, level_data)
+		_cast_enemy_hope_of_the_fallen_on_bear(enemy, level_data)
 		return
 	var distance: int = _distance(enemy["pos_index"], _hero_pos_index)
 	var damage: float = float(level_data.get("base_damage", 0)) + float(level_data.get("bonus_per_column", 0)) * distance
@@ -17241,30 +17550,31 @@ func _cast_enemy_sacred_arrow(enemy: Dictionary, level_data: Dictionary) -> void
 	if _recruited.get("current_hp", 0) > 0:
 		_player_stun_turns_left = int(level_data.get("stun_turns", 0))
 	# Same light-blue flight the player's own cast gets (see
-	# _play_sacred_arrow_flight()'s own comment), just flying the other
+	# _play_hope_of_the_fallen_flight()'s own comment), just flying the other
 	# way - from the rival's own node to hero_image.
-	_play_sacred_arrow_flight(enemy["node"], hero_image, distance)
+	_play_hope_of_the_fallen_flight(enemy["node"], hero_image, distance)
 
-	_show_message_over_hero("Sacred Arrow!")
+	_show_message_over_hero("Hope of the Fallen!")
 
 
 # ------------------------------------------------------------------
-# Mirana's Leap, cast by the rival - mirrors the player's own
-# _activate_leap(): hops `jump_distance` columns, always sailing clean
+# Solara's Withering Pursuit, cast by the rival - mirrors the player's own
+# _activate_withering_pursuit(): hops `jump_distance` columns, always sailing clean
 # over the player regardless of range_type (the unobstructed "walk
 # straight through" rule _ranged_move_target() already uses), stopping
 # only at the board edge or a player-cast Frostbound Rupture wall. No damage, no
 # target required - always "succeeds". Unlike a gap-closer that always
 # steps toward the nearest enemy, the direction here is CHOSEN by the
 # rival's own current danger, mirroring the exact hp_ratio threshold
-# EnemySkillAI's own _mirana_leap_modifier() scores both directions
+# EnemySkillAI's own _solara_withering_pursuit_modifier() scores both directions
 # against (see that function's own docstring for why the two must stay
 # in lockstep): away from the player while genuinely threatened, toward
 # the player otherwise (closing distance is the dominant, offensive use
 # per the design doc's own framing).
 # ------------------------------------------------------------------
 
-func _cast_enemy_leap(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_withering_pursuit(enemy: Dictionary, level_data: Dictionary) -> void:
+	var move_distance: int = int(level_data.get("move_distance", 0))
 	var jump_distance: int = int(level_data.get("jump_distance", 0))
 
 	var effective_max_hp: float = _enemy_hero_effective_max_hp(enemy)
@@ -17278,7 +17588,7 @@ func _cast_enemy_leap(enemy: Dictionary, level_data: Dictionary) -> void:
 		direction = -1 if bool(enemy["node"].flip_h) else 1
 
 	var pos: int = enemy["pos_index"]
-	for i in range(jump_distance):
+	for i in range(move_distance + jump_distance):
 		var next_pos: int = pos + direction
 		if next_pos < 0 or next_pos >= GRID_COLUMNS:
 			break
@@ -17286,14 +17596,19 @@ func _cast_enemy_leap(enemy: Dictionary, level_data: Dictionary) -> void:
 			break
 		pos = next_pos
 
+	var old_x: float = enemy["node"].position.x
+	var moved: int = absi(pos - int(enemy["pos_index"]))
+	CreatureAnimator.silent_moves = true
 	_move_enemy(enemy, pos)
-	_show_message_over_hero("Leap!")
+	CreatureAnimator.silent_moves = false
+	_play_withering_pursuit_effect(enemy["node"], old_x, direction, mini(move_distance, moved), moved - mini(move_distance, moved), bool(level_data.get("dash", false)))
+	_show_message_over_hero("Withering Pursuit!")
 
 
 # ------------------------------------------------------------------
-# Mirana's ultimate, Moonlight Shadow, cast by the rival - mirrors the
-# player's own _activate_moonlight_shadow()/_tick_moonlight_shadow()/
-# _end_moonlight_shadow(). Arms the buff exactly the same way; its own
+# Solara's ultimate, Ambush Strike, cast by the rival - mirrors the
+# player's own _activate_ambush_strike()/_tick_ambush_strike()/
+# _end_ambush_strike(). Arms the buff exactly the same way; its own
 # targeting/visibility effects are enforced elsewhere (_is_target_
 # hidden()/_update_enemy_hero_visibility(), both already extended to read
 # this flag) and its own Attack bonus is folded into
@@ -17301,44 +17616,44 @@ func _cast_enemy_leap(enemy: Dictionary, level_data: Dictionary) -> void:
 # pays off" shape the player-side copy has in _apply_hero_attack().
 # ------------------------------------------------------------------
 
-func _cast_enemy_moonlight_shadow(level_data: Dictionary) -> void:
-	_enemy_moonlight_shadow_active = true
-	_enemy_moonlight_shadow_bonus_damage_pct = float(level_data.get("bonus_damage_pct", 0.0))
-	_enemy_moonlight_shadow_turns_remaining = int(level_data.get("duration", 0))
-	_enemy_moonlight_shadow_duration_pending_start = true
+func _cast_enemy_ambush_strike(level_data: Dictionary) -> void:
+	_enemy_ambush_strike_active = true
+	_enemy_ambush_strike_bonus_damage_pct = float(level_data.get("bonus_damage_pct", 0.0))
+	_enemy_ambush_strike_turns_remaining = int(level_data.get("duration", 0))
+	_enemy_ambush_strike_duration_pending_start = true
 
-	_show_message_over_hero("Moonlight Shadow!")
+	_show_message_over_hero("Ambush Strike!")
 	_update_enemy_hero_visibility()
 
 
-func _tick_enemy_moonlight_shadow() -> void:
-	if not _enemy_moonlight_shadow_active:
+func _tick_enemy_ambush_strike() -> void:
+	if not _enemy_ambush_strike_active:
 		return
 
-	if _enemy_moonlight_shadow_duration_pending_start:
-		_enemy_moonlight_shadow_duration_pending_start = false
+	if _enemy_ambush_strike_duration_pending_start:
+		_enemy_ambush_strike_duration_pending_start = false
 		return
 
-	_enemy_moonlight_shadow_turns_remaining -= 1
-	if _enemy_moonlight_shadow_turns_remaining <= 0:
-		_end_enemy_moonlight_shadow()
+	_enemy_ambush_strike_turns_remaining -= 1
+	if _enemy_ambush_strike_turns_remaining <= 0:
+		_end_enemy_ambush_strike()
 
 
-func _end_enemy_moonlight_shadow() -> void:
-	var was_active: bool = _enemy_moonlight_shadow_active
-	_enemy_moonlight_shadow_active = false
-	_enemy_moonlight_shadow_bonus_damage_pct = 0.0
-	_enemy_moonlight_shadow_turns_remaining = 0
-	_enemy_moonlight_shadow_duration_pending_start = false
+func _end_enemy_ambush_strike() -> void:
+	var was_active: bool = _enemy_ambush_strike_active
+	_enemy_ambush_strike_active = false
+	_enemy_ambush_strike_bonus_damage_pct = 0.0
+	_enemy_ambush_strike_turns_remaining = 0
+	_enemy_ambush_strike_duration_pending_start = false
 
 	if was_active:
 		_update_enemy_hero_visibility()
 
 
 # ------------------------------------------------------------------
-# Luna's Moon Glaives, on the rival - a passive, so unlike every cast
+# Lunara's Lunar Ricochet, on the rival - a passive, so unlike every cast
 # skill above there's no button/cast/mana/cooldown for it. Mirrors the
-# player's own _get_moon_glaives_level_data()/_apply_moon_glaives_
+# player's own _get_lunar_ricochet_level_data()/_apply_lunar_ricochet_
 # bounces(), simplified for the one real difference a hero fight has:
 # there's no second real _enemies-style target the rival's own Attack
 # could bounce onto besides the player himself (already the primary
@@ -17349,22 +17664,22 @@ func _end_enemy_moonlight_shadow() -> void:
 # treats them (see that function's own comment).
 # ------------------------------------------------------------------
 
-func _get_enemy_moon_glaives_level_data() -> Dictionary:
-	var level: int = PlayerManager.get_npc_skill_level(_enemy_hero_id, "moon_glaives")
+func _get_enemy_lunar_ricochet_level_data() -> Dictionary:
+	var level: int = PlayerManager.get_npc_skill_level(_enemy_hero_id, "lunar_ricochet")
 	if level <= 0:
 		return {}
-	var skill: Dictionary = _find_enemy_skill("moon_glaives")
+	var skill: Dictionary = _find_enemy_skill("lunar_ricochet")
 	if skill.is_empty():
 		return {}
 	return GameManager.get_skill_level_data(skill, level)
 
 
 ## `attack_damage` is the rival's own already-rolled Attack damage
-## (already including Lunar Blessing - see _roll_enemy_hero_damage()'s
+## (already including Moonbound Might - see _roll_enemy_hero_damage()'s
 ## own docstring), same raw, pre-mitigation figure the player-side copy
 ## bounces off of. A no-op while the skill isn't learned.
-func _apply_enemy_moon_glaives_bounces(attack_damage: float) -> void:
-	var level_data: Dictionary = _get_enemy_moon_glaives_level_data()
+func _apply_enemy_lunar_ricochet_bounces(attack_damage: float) -> void:
+	var level_data: Dictionary = _get_enemy_lunar_ricochet_level_data()
 	if level_data.is_empty():
 		return
 
@@ -17378,7 +17693,7 @@ func _apply_enemy_moon_glaives_bounces(attack_damage: float) -> void:
 
 
 # ------------------------------------------------------------------
-# Luna's Lunar Blessing, on the rival - a passive, so unlike every cast
+# Lunara's Moonbound Might, on the rival - a passive, so unlike every cast
 # skill above there's no button/cast/mana/cooldown for it. Just a
 # permanent % increase to the rival's own Attack damage, read fresh off
 # this level's own bonus_damage_pct by _roll_enemy_hero_damage() itself
@@ -17386,68 +17701,69 @@ func _apply_enemy_moon_glaives_bounces(attack_damage: float) -> void:
 # tracked here.
 # ------------------------------------------------------------------
 
-func _get_enemy_lunar_blessing_level_data() -> Dictionary:
-	var level: int = PlayerManager.get_npc_skill_level(_enemy_hero_id, "lunar_blessing")
+func _get_enemy_moonbound_might_level_data() -> Dictionary:
+	var level: int = PlayerManager.get_npc_skill_level(_enemy_hero_id, "moonbound_might")
 	if level <= 0:
 		return {}
-	var skill: Dictionary = _find_enemy_skill("lunar_blessing")
+	var skill: Dictionary = _find_enemy_skill("moonbound_might")
 	if skill.is_empty():
 		return {}
 	return GameManager.get_skill_level_data(skill, level)
 
 
 # ------------------------------------------------------------------
-# Luna's Lucent Beam, cast by the rival on the player - mirrors the
-# player's own _resolve_lucent_beam_cast(): this level's own flat
+# Lunara's Moonfall Lance, cast by the rival on the player - mirrors the
+# player's own _resolve_moonfall_lance_cast(): this level's own flat
 # `damage` (through normal armor mitigation, via apply_damage()), then
 # stuns the player (_player_stun_turns_left, the same shared field
-# Barbed Lunge's/Drowned Surge's/Sacred Arrow's own stun already use) for this
+# Barbed Lunge's/Drowned Surge's/Hope of the Fallen's own stun already use) for this
 # level's own stun_turns, only if the hit left him alive. There's only
 # one possible target in a hero fight, so - unlike the player's own copy,
 # which needs a separate targeting click - this needs no separate
 # targeting step at all, same simplification Thornbind's/Drowned Surge's own
-# enemy-side copies already use. No Moon Glaives bounce here - the
-# player-side copy never applies it to Lucent Beam either (only a plain
+# enemy-side copies already use. No Lunar Ricochet bounce here - the
+# player-side copy never applies it to Moonfall Lance either (only a plain
 # Attack triggers it - see _apply_hero_attack()'s own call site).
 # ------------------------------------------------------------------
 
-func _cast_enemy_lucent_beam(level_data: Dictionary) -> void:
+func _cast_enemy_moonfall_lance(level_data: Dictionary) -> void:
 	if _enemy_skill_on_bear:
-		_cast_enemy_lucent_beam_on_bear(level_data)
+		_cast_enemy_moonfall_lance_on_bear(level_data)
 		return
 	apply_damage(float(level_data.get("damage", 0)))
 	if _recruited.get("current_hp", 0) > 0:
 		_player_stun_turns_left = int(level_data.get("stun_turns", 0))
 	# Same falling-moonlight visual the player's own cast gets (see
-	# _play_lucent_beam_impact()'s own comment) - hero_image is a
+	# _play_moonfall_lance_impact()'s own comment) - hero_image is a
 	# TextureRect just like an enemy's own node, so it drops onto him
 	# exactly the same way.
-	_play_lucent_beam_impact(hero_image)
+	_play_moonfall_lance_impact(hero_image)
 
-	_show_message_over_hero("Lucent Beam!")
+	_show_message_over_hero("Moonfall Lance!")
 
 
 # ------------------------------------------------------------------
-# Luna's ultimate, Eclipse, cast by the rival - mirrors the player's own
-# _activate_eclipse()/_tick_eclipse()/_end_eclipse().
+# Lunara's ultimate, Eternal Eclipse, cast by the rival - mirrors the player's own
+# _activate_eternal_eclipse()/_tick_eternal_eclipse()/_end_eternal_eclipse().
 # ------------------------------------------------------------------
 
-func _cast_enemy_eclipse(level_data: Dictionary) -> void:
-	_enemy_eclipse_active = true
-	_enemy_eclipse_damage_per_beam = float(level_data.get("damage", 0))
-	_enemy_eclipse_radius = int(level_data.get("radius", 0))
-	_enemy_eclipse_beams_remaining = int(level_data.get("beams", 0))
+func _cast_enemy_eternal_eclipse(level_data: Dictionary) -> void:
+	_enemy_eternal_eclipse_active = true
+	_enemy_eternal_eclipse_damage_per_beam = float(level_data.get("damage", 0))
+	_enemy_eternal_eclipse_radius = int(level_data.get("radius", 0))
+	_enemy_eternal_eclipse_beams_remaining = int(level_data.get("beams", 0))
 	# The casting turn itself doesn't count - beams only start landing
-	# from the turn after (see _tick_enemy_eclipse()), same as every
+	# from the turn after (see _tick_enemy_eternal_eclipse()), same as every
 	# other duration-based buff.
-	_enemy_eclipse_duration_pending_start = true
+	_enemy_eternal_eclipse_duration_pending_start = true
 
-	_show_message_over_hero("Eclipse!")
+	_begin_eclipse_sky()
+	_show_message_over_hero("Eternal Eclipse!")
 
 
-## Ticks Eclipse once per End Turn, same timing (and same "the casting
+## Ticks Eternal Eclipse once per End Turn, same timing (and same "the casting
 ## turn doesn't count" skip) as the player-side copy - fires up to
-## ECLIPSE_BEAMS_PER_TURN beams (or however many are left) this turn.
+## ETERNAL_ECLIPSE_BEAMS_PER_TURN beams (or however many are left) this turn.
 ## Each beam independently rolls ONE random living, targetable candidate
 ## from the player himself (if within `radius` columns of the rival's
 ## CURRENT position, re-checked fresh here, not fixed at cast time), any
@@ -17460,64 +17776,65 @@ func _cast_enemy_eclipse(level_data: Dictionary) -> void:
 ## no equivalent array to fall into automatically. A beam with nothing in
 ## range still counts against the total, same as the player-side copy.
 ## Ends the instant every beam has landed.
-func _tick_enemy_eclipse() -> void:
-	if not _enemy_eclipse_active:
+func _tick_enemy_eternal_eclipse() -> void:
+	if not _enemy_eternal_eclipse_active:
 		return
 
-	if _enemy_eclipse_duration_pending_start:
-		_enemy_eclipse_duration_pending_start = false
+	if _enemy_eternal_eclipse_duration_pending_start:
+		_enemy_eternal_eclipse_duration_pending_start = false
 		return
 
 	var boss: Dictionary = _get_hero_fight_boss()
 	if boss.is_empty():
-		_end_enemy_eclipse()
+		_end_enemy_eternal_eclipse()
 		return
 
-	for i in range(ECLIPSE_BEAMS_PER_TURN):
-		if _enemy_eclipse_beams_remaining <= 0:
+	for i in range(ETERNAL_ECLIPSE_BEAMS_PER_TURN):
+		if _enemy_eternal_eclipse_beams_remaining <= 0:
 			break
-		_enemy_eclipse_beams_remaining -= 1
+		_enemy_eternal_eclipse_beams_remaining -= 1
 
 		var candidates: Array = []
-		if _distance(_hero_pos_index, boss["pos_index"]) <= _enemy_eclipse_radius:
+		if _distance(_hero_pos_index, boss["pos_index"]) <= _enemy_eternal_eclipse_radius:
 			candidates.append({"kind": "player"})
 		for guard in _guards:
-			if _distance(guard["pos_index"], boss["pos_index"]) <= _enemy_eclipse_radius:
+			if _distance(guard["pos_index"], boss["pos_index"]) <= _enemy_eternal_eclipse_radius:
 				candidates.append({"kind": "guard", "ref": guard})
-		if _is_bear_alive() and _distance(_bear["pos_index"], boss["pos_index"]) <= _enemy_eclipse_radius:
+		if _is_bear_alive() and _distance(_bear["pos_index"], boss["pos_index"]) <= _enemy_eternal_eclipse_radius:
 			candidates.append({"kind": "bear"})
 
 		if not candidates.is_empty():
 			var picked: Dictionary = candidates[randi() % candidates.size()]
 			# Same falling-moonlight visual the player-side copy's own
-			# beams land with (see _tick_eclipse()'s own comment/
-			# _play_lucent_beam_impact()) - each Dictionary branch just
+			# beams land with (see _tick_eternal_eclipse()'s own comment/
+			# _play_eclipse_strike()) - each Dictionary branch just
 			# needs whichever TextureRect that beam actually struck.
 			match picked["kind"]:
 				"player":
-					apply_damage(_enemy_eclipse_damage_per_beam)
-					_play_lucent_beam_impact(hero_image)
+					apply_damage(_enemy_eternal_eclipse_damage_per_beam)
+					_play_eclipse_strike(hero_image)
 				"guard":
-					var guard_damage: float = _apply_armor_reduction(_enemy_eclipse_damage_per_beam, _hero_armor())
+					var guard_damage: float = _apply_armor_reduction(_enemy_eternal_eclipse_damage_per_beam, _hero_armor())
 					_deal_damage_to_guard(picked["ref"], guard_damage)
-					_play_lucent_beam_impact(picked["ref"].get("node"))
+					_play_eclipse_strike(picked["ref"].get("node"))
 				"bear":
-					_deal_damage_to_bear(_enemy_eclipse_damage_per_beam)
-					_play_lucent_beam_impact(_bear.get("node"))
+					_deal_damage_to_bear(_enemy_eternal_eclipse_damage_per_beam)
+					_play_eclipse_strike(_bear.get("node"))
 
 		if _battle_over:
 			return
 
-	if _enemy_eclipse_beams_remaining <= 0:
-		_end_enemy_eclipse()
+	if _enemy_eternal_eclipse_beams_remaining <= 0:
+		_end_enemy_eternal_eclipse()
 
 
-func _end_enemy_eclipse() -> void:
-	_enemy_eclipse_active = false
-	_enemy_eclipse_damage_per_beam = 0.0
-	_enemy_eclipse_radius = 0
-	_enemy_eclipse_beams_remaining = 0
-	_enemy_eclipse_duration_pending_start = false
+func _end_enemy_eternal_eclipse() -> void:
+	_enemy_eternal_eclipse_active = false
+	_enemy_eternal_eclipse_damage_per_beam = 0.0
+	_enemy_eternal_eclipse_radius = 0
+	_enemy_eternal_eclipse_beams_remaining = 0
+	_enemy_eternal_eclipse_duration_pending_start = false
+	_refresh_eclipse_sky()
 
 
 # ------------------------------------------------------------------
@@ -17613,6 +17930,10 @@ func _move_enemy(enemy: Dictionary, new_pos: int) -> void:
 	var animator := CreatureAnimator.of(enemy["node"])
 	if animator != null and not is_equal_approx(old_x, enemy["node"].position.x):
 		animator.play_move(old_x - enemy["node"].position.x)
+	# A creep with no animation of its own (the Blackbloom's, so far) has no
+	# animator to make its footsteps - it steps here instead.
+	elif animator == null and not is_equal_approx(old_x, enemy["node"].position.x):
+		AudioManager.play_event("steps", 0.0, 0.1)
 
 	var direction: int = enemy["pos_index"] - old_pos
 	if direction != 0:
@@ -17651,6 +17972,10 @@ func _play_enemy_attack_lunge(enemy: Dictionary, target_pos: int = -1) -> void:
 	var node: Control = enemy.get("node")
 	if node == null:
 		return
+
+	# A melee creep roars as it strikes - one of its two roars, at random.
+	if enemy["static"].get("type", "") == "melee" and not enemy["static"].get("is_hero_fight", false):
+		AudioManager.play_event_random(["melee_creep_roar", "melee_creep_roar_2"])
 
 	if target_pos >= 0:
 		_face_enemy_toward(enemy, target_pos)
@@ -17853,6 +18178,14 @@ func _play_hero_attack_effect(hero_static: Dictionary, caster: TextureRect, targ
 		"vine_lash":
 			_deferred_hit_node = target_node
 			VineLashFX.play(_fx_layer, from, to, on_hit)
+		"projectile":
+			# A projectile from ProjectileFX named by the hero's own
+			# "attack_projectile" (Solara's arrow).
+			_deferred_hit_node = target_node
+			ProjectileFX.fire(_fx_layer, hero_static.get("attack_projectile", "arrow"), from, to, on_hit)
+		"chakram":
+			_deferred_hit_node = target_node
+			ChakramFX.play(_fx_layer, from, to, on_hit)
 		"shotgun_blast":
 			_deferred_hit_node = target_node
 			ShotgunBlastFX.play(_fx_layer, from, to, on_hit)
@@ -18417,11 +18750,11 @@ func _handle_defeat() -> void:
 
 	# A rival hero that just won a duel restocks the potions it spent
 	# surviving it, same as EnemyHeroManager's own simulated fights do
-	# right after theirs (see restock_npc_potions()) - otherwise a
+	# right after theirs (see npc_shop()) - otherwise a
 	# player who keeps losing to the same rival would slowly bleed it
 	# dry of potions it can never buy back.
 	if _in_hero_fight:
-		EnemyHeroManager.restock_npc_potions(_enemy_hero_id)
+		EnemyHeroManager.npc_shop(_enemy_hero_id)
 
 	var hero_animator := CreatureAnimator.of(hero_image)
 	if hero_animator != null:
@@ -18514,9 +18847,9 @@ func _choose_enemy_skill_on_bear(enemy: Dictionary, skill_id: String) -> bool:
 func _estimate_enemy_skill_hit_on_bear(enemy: Dictionary, skill_id: String, level_data: Dictionary) -> float:
 	var raw: float = 0.0
 	match skill_id:
-		"whisper_of_the_veil", "drowned_surge", "shackles", "lucent_beam", "return_to_the_void", "maddening_roar", "charge":
+		"whisper_of_the_veil", "drowned_surge", "shackles", "moonfall_lance", "return_to_the_void", "maddening_roar", "charge":
 			raw = float(level_data.get("damage", 0))
-		"sacred_arrow":
+		"hope_of_the_fallen":
 			var distance: int = _distance(enemy["pos_index"], _bear["pos_index"])
 			raw = float(level_data.get("base_damage", 0)) + float(level_data.get("bonus_per_column", 0)) * distance
 		"touch_of_the_first_cold":
@@ -18662,19 +18995,19 @@ func _cast_enemy_deathlight_lure_on_bear(level_data: Dictionary) -> void:
 	_show_message_over_bear("Deathlight Lure!")
 
 
-func _cast_enemy_sacred_arrow_on_bear(enemy: Dictionary, level_data: Dictionary) -> void:
+func _cast_enemy_hope_of_the_fallen_on_bear(enemy: Dictionary, level_data: Dictionary) -> void:
 	var distance: int = _distance(enemy["pos_index"], _bear["pos_index"])
 	var damage: float = float(level_data.get("base_damage", 0)) + float(level_data.get("bonus_per_column", 0)) * distance
 	# Played before the hit, which may kill (and free) the bear.
-	_play_sacred_arrow_flight(enemy["node"], _bear["node"], distance)
-	_show_message_over_bear("Sacred Arrow!")
+	_play_hope_of_the_fallen_flight(enemy["node"], _bear["node"], distance)
+	_show_message_over_bear("Hope of the Fallen!")
 	_deal_damage_to_bear(damage)
 	_stun_bear(int(level_data.get("stun_turns", 0)))
 
 
-func _cast_enemy_lucent_beam_on_bear(level_data: Dictionary) -> void:
-	_play_lucent_beam_impact(_bear["node"])
-	_show_message_over_bear("Lucent Beam!")
+func _cast_enemy_moonfall_lance_on_bear(level_data: Dictionary) -> void:
+	_play_moonfall_lance_impact(_bear["node"])
+	_show_message_over_bear("Moonfall Lance!")
 	_deal_damage_to_bear(float(level_data.get("damage", 0)))
 	_stun_bear(int(level_data.get("stun_turns", 0)))
 

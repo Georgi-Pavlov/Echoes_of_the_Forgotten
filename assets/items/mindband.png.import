@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://5e3nipolhqih"
-path="res://.godot/imported/Mirana.png-a52f07eff2f3ee5b8eace6f321e1d169.ctex"
+uid="uid://bmmi3magqspqd"
+path="res://.godot/imported/mindband.png-a9959949d6abd4fd8666adc367ef917d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/heroes/Mirana.png"
-dest_files=["res://.godot/imported/Mirana.png-a52f07eff2f3ee5b8eace6f321e1d169.ctex"]
+source_file="res://assets/items/mindband.png"
+dest_files=["res://.godot/imported/mindband.png-a9959949d6abd4fd8666adc367ef917d.ctex"]
 
 [params]
 

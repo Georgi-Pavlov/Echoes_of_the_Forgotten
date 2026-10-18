@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bmmi3magqspqd"
-path="res://.godot/imported/circlet.png-cecdc259bd00a605ea060e23d439299e.ctex"
+uid="uid://bsebfsbghg88j"
+path="res://.godot/imported/the_blackbloom_lunara.jpg-07d428a55b0fe699fbe1dee6d2cc7c9a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/items/circlet.png"
-dest_files=["res://.godot/imported/circlet.png-cecdc259bd00a605ea060e23d439299e.ctex"]
+source_file="res://assets/zones/the_blackbloom_lunara.jpg"
+dest_files=["res://.godot/imported/the_blackbloom_lunara.jpg-07d428a55b0fe699fbe1dee6d2cc7c9a.ctex"]
 
 [params]
 

@@ -25,6 +25,7 @@ const EVENTS := {
 	"land_thud": -6.0,
 	"three_cheers_shot": -4.0,
 	"creep_shoot": -6.0,
+	"new_creep_shoot": -6.0,
 	"bullet_impact": -8.0,
 	"kiss": -4.0,
 	"napalm_shot": -3.0,
@@ -40,6 +41,8 @@ const EVENTS := {
 	"raze_shoot": -2.0,
 	"reload": -4.0,
 	"kiss_the_wastes": -2.0,
+	"melee_creep_roar": -2.0,
+	"melee_creep_roar_2": -2.0,
 	"bear_attack": -2.0,
 	"bear_summon": -2.0,
 }

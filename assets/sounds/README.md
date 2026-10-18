@@ -20,6 +20,7 @@ the sound lines up with the visual.
 | `land_thud`             | Blast Hopper's landing                                     |
 | `three_cheers_shot`     | each of Three Cheers' three shots                          |
 | `bullet_impact`         | each Three Cheers shot landing                             |
+| `new_creep_shoot`       | a Scorchlands rifleman firing (falls back to the generated rifle crack `creep_shoot`) |
 | `creep_shoot`           | a Scorchlands rifleman firing (generated rifle crack if no file) |
 | `kiss`                  | the blown kiss that opens Kiss the Wastes                  |
 | `napalm_shot`           | each Kiss the Wastes shell leaving the gun                 |
@@ -34,6 +35,7 @@ the sound lines up with the visual.
 | `reload`                | Raze's normal attack: a reload, then the shot follows at once (the attack waits for it) - file only |
 | `raze_shoot`            | every Raze shot: normal attack, Double Trouble, the shot at the peak of Blast Hopper, each Three Cheers shot |
 | `kiss_the_wastes`       | each Kiss the Wastes shell leaving her gun |
+| `melee_creep_roar`, `melee_creep_roar_2` | a melee creep attacking - one of the two, chosen at random each time - file only |
 | `bear_attack`           | Erynd's bear (and a rival's) attacking - file only        |
 | `bear_summon`           | the bear being summoned - file only; uses `bear_attack` if absent |
 

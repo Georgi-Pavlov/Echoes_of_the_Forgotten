@@ -22,6 +22,7 @@ const MENU_MUSIC := "menu_music"
 const EVENT_FALLBACKS := {
 	"bear_summon": "bear_attack", "button": "ui_click",
 	"raze_shoot": "shotgun", "kiss_the_wastes": "napalm_shot", "reload": "ui_click",
+	"new_creep_shoot": "creep_shoot",
 }
 
 # event name -> AudioStream (file or generated), built on first use.
@@ -190,6 +191,14 @@ func play_event(event: String, volume_db: float = 0.0, pitch_variation: float = 
 	var pitch := 1.0 + randf_range(-pitch_variation, pitch_variation)
 	note_attack_sound(event, stream.get_length() / pitch)
 	play_sfx(stream, level, pitch)
+
+
+## Plays ONE of `events`, picked at random each time - true chance, not a
+## strict alternation (the same one can come up twice in a row).
+func play_event_random(events: Array, volume_db: float = 0.0, pitch_variation: float = 0.05) -> void:
+	if events.is_empty():
+		return
+	play_event(events[randi() % events.size()], volume_db, pitch_variation)
 
 
 ## Plays `event` once, but cuts it off after `seconds` (fading out over

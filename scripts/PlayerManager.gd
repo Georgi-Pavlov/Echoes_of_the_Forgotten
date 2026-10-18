@@ -353,7 +353,7 @@ func get_recruited_hero() -> Dictionary:
 	# intelligence have grown past the hero's base stats, rather than
 	# being stored/grown directly - see GameManager.compute_derived_stats.
 	# Equipment items (anything with a "stat" field still sitting in the
-	# inventory - Blades of Attack, Gauntlets of Strength, Circlet,
+	# inventory - Grimfangs, Iron Grips, Mindband,
 	# Cleaver's damage, etc.) add their bonus on top of the hero's own
 	# stats here, so it
 	# only counts for as long as the item is actually owned.
@@ -368,8 +368,8 @@ func get_recruited_hero() -> Dictionary:
 		stats["intelligence"] = intelligence
 
 		var derived: Dictionary = GameManager.compute_derived_stats(hero_static, strength, agility, intelligence)
-		stats["hp"] = derived["hp"]
-		stats["mana"] = derived["mana"]
+		stats["hp"] = derived["hp"] + get_inventory_stat_bonus("max_hp")
+		stats["mana"] = derived["mana"] + get_inventory_stat_bonus("max_mana")
 		stats["armor"] = derived["armor"] + get_inventory_stat_bonus("armor")
 		stats["damage"] = _add_flat_bonus_to_range(derived["damage"], get_inventory_stat_bonus("damage"))
 
@@ -536,6 +536,36 @@ func _snapshot_display_stats(data: Dictionary, hero_static: Dictionary) -> Dicti
 		"damage": derived["damage"],
 	}
 
+
+# Collecting a fallen rival's Echo makes the hero grow: each attribute gains
+# this share of what ONE level-up gives that hero (its own "level_up"
+# growth), so an Echo is a little under a level's worth of stats and a
+# whole run of them spreads out over the game instead of snowballing early.
+# Rival heroes never get this.
+const ECHO_GROWTH_FACTOR: float = 0.75
+
+
+## Adds an Echo's attribute bonus to the player's hero and returns what was
+## gained as {stat_key: amount}. Max HP/mana are derived from strength/
+## intelligence, so current HP/mana rise by the same amount the max does -
+## exactly like a level-up (see check_level_up()).
+func apply_echo_bonus(hero_static: Dictionary) -> Dictionary:
+	var gained := {}
+	if current_player == "":
+		return gained
+	var data := _read_player_data(current_player)
+	var level_up_growth: Dictionary = hero_static.get("level_up", {})
+	for stat_key in level_up_growth.keys():
+		var gain: float = float(level_up_growth[stat_key]) * ECHO_GROWTH_FACTOR
+		var stat_data_key: String = "hero_stat_" + str(stat_key)
+		data[stat_data_key] = str(float(data.get(stat_data_key, "0")) + gain)
+		gained[stat_key] = gain
+		if stat_key == "strength":
+			data["hero_current_hp"] = str(float(data.get("hero_current_hp", "0")) + gain * GameManager.HP_PER_STRENGTH)
+		elif stat_key == "intelligence":
+			data["hero_current_mana"] = str(float(data.get("hero_current_mana", "0")) + gain * GameManager.MANA_PER_INTELLIGENCE)
+	_write_player_data(current_player, data)
+	return gained
 
 ## Returns the current player's level (defaults to 1 if never set).
 func get_level() -> int:
@@ -854,9 +884,50 @@ func set_npc_skill_points(hero_id: String, points: int) -> void:
 	set_npc_field(hero_id, "skill_points", str(maxi(0, points)))
 
 
-## potion_id is "health" or "mana" - the only items a simulated hero
-## ever holds. Kept at a target of 3 each by EnemyHeroManager's
-## shopping step, not enforced here.
+## Equipment a rival hero owns, as {item_id: count} - stored as one
+## "id:count,id:count" field like the player's inventory, but with no
+## slots/stacking rules of its own (EnemyHeroManager's shopping step caps
+## how many it buys). Potions are tracked separately below.
+func get_npc_items(hero_id: String) -> Dictionary:
+	var items := {}
+	var stored: String = get_npc_field(hero_id, "items", "")
+	for entry in stored.split(","):
+		if entry == "":
+			continue
+		var parts := entry.split(":")
+		items[parts[0]] = items.get(parts[0], 0) + (int(parts[1]) if parts.size() > 1 else 1)
+	return items
+
+
+func _set_npc_items(hero_id: String, items: Dictionary) -> void:
+	var entries: Array = []
+	for item_id in items.keys():
+		if items[item_id] > 0:
+			entries.append("%s:%d" % [item_id, items[item_id]])
+	set_npc_field(hero_id, "items", ",".join(entries))
+
+
+func add_npc_item(hero_id: String, item_id: String) -> void:
+	var items := get_npc_items(hero_id)
+	items[item_id] = items.get(item_id, 0) + 1
+	_set_npc_items(hero_id, items)
+
+
+func remove_npc_item(hero_id: String, item_id: String) -> void:
+	var items := get_npc_items(hero_id)
+	if items.get(item_id, 0) > 0:
+		items[item_id] -= 1
+		_set_npc_items(hero_id, items)
+
+
+## Total bonus to `stat_key` from the equipment a rival hero owns - the
+## NPC counterpart of get_inventory_stat_bonus().
+func get_npc_item_bonus(hero_id: String, stat_key: String) -> float:
+	return GameManager.sum_item_stat_bonus(get_npc_items(hero_id), stat_key)
+
+
+## potion_id is "health" or "mana". The caps on how many a rival carries
+## live in EnemyHeroManager (NPC_MAX_HEALTH_POTIONS/NPC_MAX_MANA_POTIONS).
 func get_npc_potion_count(hero_id: String, potion_id: String) -> int:
 	return int(get_npc_field(hero_id, "potion_" + potion_id, "0"))
 
@@ -1001,6 +1072,10 @@ func _adjust_current_stat(current_key: String, delta: float, stat_type: String) 
 			var intelligence: float = float(data.get("hero_stat_intelligence", "0")) + get_inventory_stat_bonus("intelligence")
 			var derived: Dictionary = GameManager.compute_derived_stats(hero_static, strength, agility, intelligence)
 			max_value = float(derived.get(stat_type, max_value))
+			if stat_type == "hp":
+				max_value += get_inventory_stat_bonus("max_hp")
+			elif stat_type == "mana":
+				max_value += get_inventory_stat_bonus("max_mana")
 
 	var current_value: float = float(data.get(current_key, "0")) + delta
 	current_value = clamp(current_value, 0.0, max_value)
@@ -1021,8 +1096,8 @@ func _adjust_current_stat(current_key: String, delta: float, stat_type: String) 
 # the Battle scene's item panel). Stackable items (health/mana - see
 # GameManager's "stackable" item field) share a single slot no matter
 # how many are held; every other item takes its own individual slot
-# per unit, even if it's identical to one already held (2 Blades of
-# Attack = 2 separate slots).
+# per unit, even if it's identical to one already held (2 Grimfangs
+# = 2 separate slots).
 # ------------------------------------------------------------------
 
 const MAX_INVENTORY_SLOTS: int = 6
@@ -1033,11 +1108,17 @@ const MAX_INVENTORY_SLOTS: int = 6
 ## slot; a non-stackable item's count is always 1, though several
 ## slots can hold the same item_id.
 func get_inventory_slots() -> Array:
+	return _load_slots("inventory")
+
+
+## Parses the "id:count,id:count" line stored under `key` ("inventory"
+## or "backpack") into slots - see get_inventory_slots().
+func _load_slots(key: String) -> Array:
 	if current_player == "":
 		return []
 
 	var data := _read_player_data(current_player)
-	var inventory_str: String = data.get("inventory", "")
+	var inventory_str: String = data.get(key, "")
 	var slots: Array = []
 	if inventory_str == "":
 		return slots
@@ -1066,6 +1147,10 @@ func get_inventory_slots() -> Array:
 
 
 func _save_inventory_slots(slots: Array) -> void:
+	_save_slots("inventory", slots)
+
+
+func _save_slots(key: String, slots: Array) -> void:
 	if current_player == "":
 		return
 	var entries: Array = []
@@ -1074,7 +1159,7 @@ func _save_inventory_slots(slots: Array) -> void:
 		var count: int = slot["count"]
 		entries.append(item_id + ":" + str(count) if count > 1 else item_id)
 	var data := _read_player_data(current_player)
-	data["inventory"] = ",".join(entries)
+	data[key] = ",".join(entries)
 	_write_player_data(current_player, data)
 
 
@@ -1164,40 +1249,110 @@ func use_item(item_id: String) -> bool:
 
 
 # ------------------------------------------------------------------
+# Backpack: a small stash (opened from the Shop) for items the player
+# wants to keep without carrying them. Same slot format as the
+# inventory, but get_inventory_stat_bonus() never reads it, so items
+# in here grant no bonuses.
+# ------------------------------------------------------------------
+
+const MAX_BACKPACK_SLOTS: int = 4
+
+
+func get_backpack_slots() -> Array:
+	return _load_slots("backpack")
+
+
+func get_max_backpack_slots() -> int:
+	return MAX_BACKPACK_SLOTS
+
+
+func has_free_backpack_slot() -> bool:
+	return get_backpack_slots().size() < MAX_BACKPACK_SLOTS
+
+
+## {item_id: total count} across the backpack's slots.
+func get_backpack() -> Dictionary:
+	var grouped := {}
+	for slot in get_backpack_slots():
+		grouped[slot["item_id"]] = grouped.get(slot["item_id"], 0) + slot["count"]
+	return grouped
+
+
+func can_add_to_backpack(item_id: String) -> bool:
+	if current_player == "" or item_id == "":
+		return false
+	if GameManager.get_item(item_id).get("stackable", false):
+		for slot in get_backpack_slots():
+			if slot["item_id"] == item_id:
+				return true
+	return has_free_backpack_slot()
+
+
+## Puts one `item_id` into the backpack. False if there's no room.
+func add_to_backpack(item_id: String) -> bool:
+	if not can_add_to_backpack(item_id):
+		return false
+	var slots: Array = get_backpack_slots()
+	if GameManager.get_item(item_id).get("stackable", false):
+		for slot in slots:
+			if slot["item_id"] == item_id:
+				slot["count"] += 1
+				_save_slots("backpack", slots)
+				return true
+	slots.append({"item_id": item_id, "count": 1})
+	_save_slots("backpack", slots)
+	return true
+
+
+## Removes one `item_id` from the backpack. False if none was there.
+func remove_from_backpack(item_id: String) -> bool:
+	var slots: Array = get_backpack_slots()
+	for i in range(slots.size()):
+		if slots[i]["item_id"] == item_id:
+			slots[i]["count"] -= 1
+			if slots[i]["count"] <= 0:
+				slots.remove_at(i)
+			_save_slots("backpack", slots)
+			return true
+	return false
+
+
+## Inventory -> backpack, one unit. False (nothing moved) if the
+## backpack is full or the item isn't in the inventory.
+func move_to_backpack(item_id: String) -> bool:
+	if not can_add_to_backpack(item_id) or get_inventory().get(item_id, 0) <= 0:
+		return false
+	use_item(item_id)
+	return add_to_backpack(item_id)
+
+
+## Backpack -> inventory, one unit. False (nothing moved) if the
+## inventory is full or the item isn't in the backpack.
+func take_from_backpack(item_id: String) -> bool:
+	if not can_add_item(item_id) or get_backpack().get(item_id, 0) <= 0:
+		return false
+	remove_from_backpack(item_id)
+	return add_item(item_id, 1)
+
+
+# ------------------------------------------------------------------
 # Equipment bonuses: health/mana potions are the only consumables -
-# everything else with effect "stat" (Blades of Attack, Gauntlets of
-# Strength, Circlet, etc.) is passive gear that contributes its bonus
+# everything else with effect "stat" (Grimfangs, Iron Grips,
+# Mindband, etc.) is passive gear that contributes its bonus
 # for as long as it sits in the inventory, and stops the moment it's
 # sold or otherwise removed. So there's nothing to store here - the
 # bonus is just summed fresh from the current inventory every time.
 # ------------------------------------------------------------------
 
 ## Total bonus to `stat_key` from every "stat" item currently in the
-## inventory, each counted once per copy owned (2 Blades of Attack
+## inventory, each counted once per copy owned (2 Grimfangs
 ## gives double the bonus of 1). Items whose "stat" is a list (like
-## Circlet's all-attributes bonus) count toward every stat in that list.
+## Mindband's all-attributes bonus) count toward every stat in that list.
 func get_inventory_stat_bonus(stat_key: String) -> float:
 	if current_player == "" or stat_key == "":
 		return 0.0
 
-	var total: float = 0.0
-	var inventory := get_inventory()
-	for item_id in inventory.keys():
-		var item_data: Dictionary = GameManager.get_item(item_id)
-		# Any item carrying a "stat" field counts - plain "stat" items,
-		# and "passive" items that also grant a flat stat (Cleaver's
-		# damage). Consumables never have one.
-		if not item_data.has("stat"):
-			continue
-
-		var stat_field = item_data.get("stat", "")
-		var grants_this_stat: bool = stat_field.has(stat_key) if stat_field is Array else stat_field == stat_key
-		if not grants_this_stat:
-			continue
-
-		total += float(item_data.get("value", 0)) * inventory[item_id]
-
-	return total
+	return GameManager.sum_item_stat_bonus(get_inventory(), stat_key)
 
 
 ## Adds a flat bonus to both ends of a "min-max" damage string (e.g.
@@ -1332,7 +1487,7 @@ func clear_recruited_hero() -> void:
 	for key in data.keys():
 		if key == "hero" or key == "hero_name" or key == "hero_xp" \
 		or key == "hero_current_hp" or key == "hero_current_mana" \
-		or key == "inventory" or key == "skill_points" or key == "defeated_heroes" \
+		or key == "inventory" or key == "backpack" or key == "skill_points" or key == "defeated_heroes" \
 		or key.begins_with("hero_stat_") or key.begins_with("hero_skill_") \
 		or key.begins_with("skill_cooldown_") or key.begins_with("skill_level_") \
 		or key.begins_with("zone_cleared_") or key.begins_with("npc_") \

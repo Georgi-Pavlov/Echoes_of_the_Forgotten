@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c680vkyqlunxf"
-path="res://.godot/imported/Luna.png-a48f85c78528cab6c5f6769d675df881.ctex"
+uid="uid://dgu7bee27qlfr"
+path="res://.godot/imported/sage_mantle.png-ac6937bfe36fc74ad95f5b0f5047e107.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/heroes/Luna.png"
-dest_files=["res://.godot/imported/Luna.png-a48f85c78528cab6c5f6769d675df881.ctex"]
+source_file="res://assets/items/sage_mantle.png"
+dest_files=["res://.godot/imported/sage_mantle.png-ac6937bfe36fc74ad95f5b0f5047e107.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://biv1epwutalag"
-path="res://.godot/imported/gauntlets_of_strength.png-35fea1e29bb069033f7aa0404b8ee408.ctex"
+uid="uid://c31qdktlf6ukr"
+path="res://.godot/imported/the_blackbloom_solara.jpg-fd9a1faae06b83fa4cdb1e7bd0c8ebdb.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/items/gauntlets_of_strength.png"
-dest_files=["res://.godot/imported/gauntlets_of_strength.png-35fea1e29bb069033f7aa0404b8ee408.ctex"]
+source_file="res://assets/zones/the_blackbloom_solara.jpg"
+dest_files=["res://.godot/imported/the_blackbloom_solara.jpg-fd9a1faae06b83fa4cdb1e7bd0c8ebdb.ctex"]
 
 [params]
 

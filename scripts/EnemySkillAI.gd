@@ -170,42 +170,42 @@ class_name EnemySkillAI
 # damage_pct"/"might_knockback" - see _dreadlure_might_ready()/_dreadlure_might_
 # knockback_value()), never as a scored candidate of its own.
 #
-# Mirana is the fourteenth hero with real AI logic. Starstorm is
+# Solara is the fourteenth hero with real AI logic. Fallen Grace is
 # "offensive", same self-centered-AoE shape as Paralytic Venom/Luring
-# Gaze. Sacred Arrow is also "offensive" - its own damage genuinely
-# scales with the real travel distance (see _mirana_sacred_arrow_
+# Gaze. Hope of the Fallen is also "offensive" - its own damage genuinely
+# scales with the real travel distance (see _solara_hope_of_the_fallen_
 # expected_damage()'s own docstring), never a flat number the way a
-# lesser implementation might read `base_damage` alone. Leap deals no
+# lesser implementation might read `base_damage` alone. Withering Pursuit deals no
 # damage at all (it "sails clean over any enemy in the way" - see
-# battle.gd's own _activate_leap()), so it's "utility" category, same
+# battle.gd's own _activate_withering_pursuit()), so it's "utility" category, same
 # "the modifier IS the whole value" shape Hunting Instinct/Imperial Guard
-# already use - see _mirana_leap_modifier()'s own docstring for how a
+# already use - see _solara_withering_pursuit_modifier()'s own docstring for how a
 # single cast can still end up scored for EITHER direction (toward or
-# away) since Leap always jumps in whichever way Mirana is currently
+# away) since Withering Pursuit always jumps in whichever way Solara is currently
 # facing, never a chosen "toward the enemy" step the way Guardian
-# Instinct's own fallback movement is. Moonlight Shadow is "utility" too -
+# Instinct's own fallback movement is. Ambush Strike is "utility" too -
 # defensive protection, positioning, AND a guaranteed enhanced next
-# Attack all at once (see _mirana_moonlight_shadow_modifier()'s own
+# Attack all at once (see _solara_ambush_strike_modifier()'s own
 # docstring), never scored as a pure escape.
 #
-# Luna is the fifteenth hero with real AI logic. Lucent Beam is
-# "offensive", same single-target-nuke-plus-stun shape as Sacred Arrow/
-# Drowned Surge. Eclipse is "offensive" too, despite dealing spell damage that
-# has nothing to do with Luna's own attack roll - see _luna_eclipse_
-# modifier()'s/_luna_eclipse_expected_damage()'s own docstrings for how
+# Lunara is the fifteenth hero with real AI logic. Moonfall Lance is
+# "offensive", same single-target-nuke-plus-stun shape as Hope of the Fallen/
+# Drowned Surge. Eternal Eclipse is "offensive" too, despite dealing spell damage that
+# has nothing to do with Lunara's own attack roll - see _lunara_eternal_eclipse_
+# modifier()'s/_lunara_eternal_eclipse_expected_damage()'s own docstrings for how
 # its "no cap on hits per enemy" random-beam mechanic is actually
 # evaluated (deterministic at one real candidate, a genuine expected
 # value at more than one - never a naive "beams x damage, guaranteed"
-# reading, and never a "one beam per enemy" assumption). Moon Glaives and
-# Lunar Blessing are both passive and, like Might of the Deep/Empress's Will/
+# reading, and never a "one beam per enemy" assumption). Lunar Ricochet and
+# Moonbound Might are both passive and, like Might of the Deep/Empress's Will/
 # Kindled Resolve/Frostborn, never appear in SKILL_INFO/HERO_TIE_BREAK/
-# _estimate_skill_damage - Lunar Blessing's own bonus is already folded
+# _estimate_skill_damage - Moonbound Might's own bonus is already folded
 # into "hero_damage" itself by _roll_enemy_hero_damage()/
-# _npc_roll_damage() (see each one's own docstring), and Moon Glaives'
+# _npc_roll_damage() (see each one's own docstring), and Lunar Ricochet'
 # own bounce reaches Basic Attack purely through context fields (see
-# _luna_basic_attack_modifier()'s own docstring) - Eclipse's own beams
+# _lunara_basic_attack_modifier()'s own docstring) - Eternal Eclipse's own beams
 # are spell damage, never bounced or boosted by either passive, per the
-# design doc's own explicit "do not assume Moon Glaives causes Eclipse to
+# design doc's own explicit "do not assume Lunar Ricochet causes Eternal Eclipse to
 # bounce" instruction.
 # ============================================================
 
@@ -266,12 +266,12 @@ const SKILL_INFO := {
 	"hunting_instinct": {"category": "utility", "base_score": 45.0},
 	"paralytic_venom": {"category": "offensive", "base_score": 55.0},
 	"deathlight_lure": {"category": "offensive", "base_score": 75.0},
-	"starstorm": {"category": "offensive", "base_score": 50.0},
-	"sacred_arrow": {"category": "offensive", "base_score": 65.0},
-	"leap": {"category": "utility", "base_score": 40.0},
-	"moonlight_shadow": {"category": "utility", "base_score": 70.0},
-	"lucent_beam": {"category": "offensive", "base_score": 55.0},
-	"eclipse": {"category": "offensive", "base_score": 80.0},
+	"fallen_grace": {"category": "offensive", "base_score": 50.0},
+	"hope_of_the_fallen": {"category": "offensive", "base_score": 65.0},
+	"withering_pursuit": {"category": "utility", "base_score": 40.0},
+	"ambush_strike": {"category": "utility", "base_score": 70.0},
+	"moonfall_lance": {"category": "offensive", "base_score": 55.0},
+	"eternal_eclipse": {"category": "offensive", "base_score": 80.0},
 }
 
 # A plain Attack's own pseudo skill id - never a real skill, but scored
@@ -314,8 +314,8 @@ const HERO_TIE_BREAK := {
 	"raze": ["kiss_the_wastes", "blast_hopper", "double_trouble", "three_cheers"],
 	"the_last_empress": ["luring_gaze", "imperial_guard", "shackles"],
 	"dreadlure": ["deathlight_lure", "paralytic_venom", "hunting_instinct"],
-	"mirana": ["moonlight_shadow", "sacred_arrow", "starstorm", "leap"],
-	"luna": ["eclipse", "lucent_beam"],
+	"solara": ["ambush_strike", "hope_of_the_fallen", "fallen_grace", "withering_pursuit"],
+	"lunara": ["eternal_eclipse", "moonfall_lance"],
 }
 
 # Scores within this many points of the top score are treated as
@@ -361,10 +361,10 @@ static func resolve_hero_archetype(hero_static: Dictionary) -> String:
 		return "the_last_empress"
 	if "paralytic_venom" in skill_ids:
 		return "dreadlure"
-	if "sacred_arrow" in skill_ids:
-		return "mirana"
-	if "lucent_beam" in skill_ids:
-		return "luna"
+	if "hope_of_the_fallen" in skill_ids:
+		return "solara"
+	if "moonfall_lance" in skill_ids:
+		return "lunara"
 	return ""
 
 
@@ -430,15 +430,15 @@ static func evaluate_skill(skill_id: String, level_data: Dictionary, context: Di
 ## made especially important by Might of the Deep - a Might-ready Attack
 ## with a real kill on the line can beat spending Deathlight Lure's own
 ## mana/cooldown on a target about to die anyway (see this file's own
-## Scenario C). Mirana opts in too, for the same reason - Moonlight
-## Shadow directly enhances her next Attack, so a plain Attack has to be
+## Scenario C). Solara opts in too, for the same reason - Ambush
+## Strike directly enhances her next Attack, so a plain Attack has to be
 ## a real contender, not just the fallback (see this file's own
-## Scenario E). Luna opts in too - Moon Glaives/Lunar Blessing make her
+## Scenario E). Lunara opts in too - Lunar Ricochet/Moonbound Might make her
 ## own plain Attack a real multi-target, passive-boosted action in its
 ## own right, not just the fallback for "nothing else qualified" (see
-## _luna_basic_attack_modifier()'s own docstring).
+## _lunara_basic_attack_modifier()'s own docstring).
 static func basic_attack_participates(archetype: String) -> bool:
-	return archetype == "kaelen_varr" or archetype == "the_primordial_hunger" or archetype == "frost_daughter" or archetype == "skarn" or archetype == "the_rootmother" or archetype == "cinder" or archetype == "raze" or archetype == "the_last_empress" or archetype == "dreadlure" or archetype == "mirana" or archetype == "luna"
+	return archetype == "kaelen_varr" or archetype == "the_primordial_hunger" or archetype == "frost_daughter" or archetype == "skarn" or archetype == "the_rootmother" or archetype == "cinder" or archetype == "raze" or archetype == "the_last_empress" or archetype == "dreadlure" or archetype == "solara" or archetype == "lunara"
 
 
 ## The score for a plain Attack, for a hero basic_attack_participates()
@@ -645,14 +645,14 @@ static func _estimate_skill_damage(skill_id: String, level_data: Dictionary, con
 			return float(level_data.get("damage", 0.0))
 		"deathlight_lure":
 			return _dreadlure_deathlight_lure_expected_damage(level_data, context)
-		"starstorm":
+		"fallen_grace":
 			return float(level_data.get("damage", 0.0))
-		"sacred_arrow":
-			return _mirana_sacred_arrow_expected_damage(level_data, context)
-		"lucent_beam":
+		"hope_of_the_fallen":
+			return _solara_hope_of_the_fallen_expected_damage(level_data, context)
+		"moonfall_lance":
 			return float(level_data.get("damage", 0.0))
-		"eclipse":
-			return _luna_eclipse_expected_damage(level_data, context)
+		"eternal_eclipse":
+			return _lunara_eternal_eclipse_expected_damage(level_data, context)
 		_:
 			return 0.0
 
@@ -692,10 +692,10 @@ static func _hero_specific_modifier(archetype: String, skill_id: String, level_d
 			return _the_last_empress_modifier(skill_id, level_data, context)
 		"dreadlure":
 			return _dreadlure_modifier(skill_id, level_data, context)
-		"mirana":
-			return _mirana_modifier(skill_id, level_data, context)
-		"luna":
-			return _luna_modifier(skill_id, level_data, context)
+		"solara":
+			return _solara_modifier(skill_id, level_data, context)
+		"lunara":
+			return _lunara_modifier(skill_id, level_data, context)
 		_:
 			return 0.0
 
@@ -3285,46 +3285,46 @@ static func _dreadlure_basic_attack_modifier(context: Dictionary) -> float:
 	return score
 
 
-## Mirana: mobile ranged hunter - hit-and-run, position-aware, kill-
+## Solara: mobile ranged hunter - hit-and-run, position-aware, kill-
 ## focused. Every one of her skills leans on context fields battle.gd's/
 ## EnemyHeroManager's own _build_*_ai_context() compute fresh each turn -
-## "hero_attack_range" (her own basic-attack reach, for Leap's own before/
-## after comparison), "starstorm_radius"/"sacred_arrow_range"/"sacred_
-## arrow_base_damage"/"sacred_arrow_bonus_per_column" (her OTHER skills'
-## current levels, read by Leap's/Moonlight Shadow's own combo bonuses
+## "hero_attack_range" (her own basic-attack reach, for Withering Pursuit's own before/
+## after comparison), "fallen_grace_radius"/"hope_of_the_fallen_range"/"sacred_
+## arrow_base_damage"/"hope_of_the_fallen_bonus_per_column" (her OTHER skills'
+## current levels, read by Withering Pursuit's/Ambush Strike's own combo bonuses
 ## since each is only ever scored as a candidate on the turn it's itself
-## being cast), "moonlight_shadow_active"/"moonlight_shadow_bonus_damage_
+## being cast), "ambush_strike_active"/"ambush_strike_bonus_damage_
 ## pct" (her own current stealth state, for a plain Attack's own
-## substantial bonus), and "target_stunned" (whether her own Sacred Arrow
+## substantial bonus), and "target_stunned" (whether her own Hope of the Fallen
 ## already locked the current target down, for a plain Attack's own
 ## follow-up bonus).
-static func _mirana_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
+static func _solara_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
 	match skill_id:
-		"starstorm":
-			return _mirana_starstorm_modifier(level_data, context)
-		"sacred_arrow":
-			return _mirana_sacred_arrow_modifier(level_data, context)
-		"leap":
-			return _mirana_leap_modifier(level_data, context)
-		"moonlight_shadow":
-			return _mirana_moonlight_shadow_modifier(level_data, context)
+		"fallen_grace":
+			return _solara_fallen_grace_modifier(level_data, context)
+		"hope_of_the_fallen":
+			return _solara_hope_of_the_fallen_modifier(level_data, context)
+		"withering_pursuit":
+			return _solara_withering_pursuit_modifier(level_data, context)
+		"ambush_strike":
+			return _solara_ambush_strike_modifier(level_data, context)
 		BASIC_ATTACK_ID:
-			return _mirana_basic_attack_modifier(context)
+			return _solara_basic_attack_modifier(context)
 		_:
 			return 0.0
 
 
-## Starstorm: real AoE burst, not a single-target nuke that happens to
+## Fallen Grace: real AoE burst, not a single-target nuke that happens to
 ## have a radius - same shape as Paralytic Venom's own modifier (see
 ## _dreadlure_paralytic_venom_modifier()'s own docstring), minus the stun
-## (Starstorm deals damage only - see battle.gd's own _cast_starstorm()).
+## (Fallen Grace deals damage only - see battle.gd's own _cast_fallen_grace()).
 ## The generic offensive scoring above already covers the primary
 ## target's own value/kill potential (fed by this skill's own flat-
 ## damage _estimate_skill_damage() case); this adds the design doc's own
 ## multi-target/high-threat/multi-kill/finish-the-weakened tiers on top,
 ## all computed from the ACTUAL affected positions (`living_target_hps`),
 ## never assumed from "is one enemy nearby" alone.
-static func _mirana_starstorm_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _solara_fallen_grace_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var living_hps: Array = context.get("living_target_hps", [])
 	var hit_count: int = living_hps.size()
 	if hit_count <= 0:
@@ -3362,17 +3362,17 @@ static func _mirana_starstorm_modifier(level_data: Dictionary, context: Dictiona
 
 	# The primary target's own kill is already scored generically (see
 	# _kill_potential_bonus(), fed by _estimate_skill_damage()'s own
-	# "starstorm" case) - this only adds for kills BEYOND that one, same
+	# "fallen_grace" case) - this only adds for kills BEYOND that one, same
 	# split every other multi-target ultimate's own modifier in this file
 	# uses.
 	if extra_kills >= 2:
 		score += 40.0 * float(extra_kills - 1)
 	# "Finish several weakened enemies" - a real bonus for enemies
-	# already low even when Starstorm's own flat damage doesn't quite
+	# already low even when Fallen Grace's own flat damage doesn't quite
 	# finish them outright (a DoT/another attack the same turn might).
 	score += 15.0 * float(finishable_count)
 
-	# --- Defensive value: real when Mirana is actually surrounded/
+	# --- Defensive value: real when Solara is actually surrounded/
 	# threatened, never the DOMINANT reason to cast (per the design
 	# doc's own explicit "do not make this purely defensive" caution -
 	# note this only ever adds on top of the offensive tiers above,
@@ -3385,8 +3385,8 @@ static func _mirana_starstorm_modifier(level_data: Dictionary, context: Dictiona
 	return score
 
 
-## Sacred Arrow: generally Mirana's strongest single-target ability - its
-## damage genuinely scales with how far it traveled (see _mirana_sacred_
+## Hope of the Fallen: generally Solara's strongest single-target ability - its
+## damage genuinely scales with how far it traveled (see _solara_sacred_
 ## arrow_expected_damage()'s own docstring), so a long-range shot against
 ## a valuable target is worth real extra score, never a flat "+X for
 ## using it at range" the way a lesser implementation might. The generic
@@ -3395,7 +3395,7 @@ static func _mirana_starstorm_modifier(level_data: Dictionary, context: Dictiona
 ## doc's own high-threat/stun/follow-up-kill tiers on top, all reading
 ## this level's own actual stun_turns rather than assuming a fixed
 ## duration.
-static func _mirana_sacred_arrow_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _solara_hope_of_the_fallen_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var score: float = 0.0
 
 	var raw_distance: int = int(context.get("target_distance", -1))
@@ -3423,11 +3423,11 @@ static func _mirana_sacred_arrow_modifier(level_data: Dictionary, context: Dicti
 			score += 25.0  # prevents a dangerous enemy's own next action
 		# A stunned single target always creates a safe follow-up here -
 		# there's nothing else for it to do back regardless of who lands
-		# the next hit (see _mirana_basic_attack_modifier()'s own
+		# the next hit (see _solara_basic_attack_modifier()'s own
 		# "target_stunned" bonus for the other half of this synergy).
 		score += 20.0
 
-	var estimated_damage: float = _mirana_sacred_arrow_expected_damage(level_data, context)
+	var estimated_damage: float = _solara_hope_of_the_fallen_expected_damage(level_data, context)
 	if stun_turns >= 1 and target_hp > 0.0 and estimated_damage < target_hp and estimated_damage + float(context.get("hero_damage", 0.0)) >= target_hp:
 		# The stun buys the follow-up Attack that actually finishes it.
 		score += 25.0
@@ -3435,8 +3435,8 @@ static func _mirana_sacred_arrow_modifier(level_data: Dictionary, context: Dicti
 	return score
 
 
-## Shared by both _estimate_skill_damage()'s own "sacred_arrow" case
-## (which feeds the generic kill-potential term) and _mirana_sacred_
+## Shared by both _estimate_skill_damage()'s own "hope_of_the_fallen" case
+## (which feeds the generic kill-potential term) and _solara_sacred_
 ## arrow_modifier() (which needs the same number for its own distance-
 ## value/follow-up-kill math), so the two never drift apart. Reads the
 ## REAL travel distance (`target_distance`, already the actual column
@@ -3445,13 +3445,13 @@ static func _mirana_sacred_arrow_modifier(level_data: Dictionary, context: Dicti
 ## hit - 0 (base damage only) in the simulation, where there are no
 ## positions to travel across at all, same "no columns" honesty every
 ## other position-dependent modifier here already follows.
-static func _mirana_sacred_arrow_expected_damage(level_data: Dictionary, context: Dictionary) -> float:
+static func _solara_hope_of_the_fallen_expected_damage(level_data: Dictionary, context: Dictionary) -> float:
 	var raw_distance: int = int(context.get("target_distance", -1))
 	var distance: float = float(maxi(raw_distance, 0)) if raw_distance >= 0 else 0.0
 	return float(level_data.get("base_damage", 0.0)) + float(level_data.get("bonus_per_column", 0.0)) * distance
 
 
-## Leap: deals no damage of its own - its whole value is the resulting
+## Withering Pursuit: deals no damage of its own - its whole value is the resulting
 ## position, compared explicitly BEFORE and AFTER the jump rather than
 ## scored off its own movement distance alone, per the design doc's own
 ## explicit instruction. `target_distance` is absent in the simulation
@@ -3459,42 +3459,42 @@ static func _mirana_sacred_arrow_expected_damage(level_data: Dictionary, context
 ## rather than guessing, same as every other position-dependent modifier
 ## in this file (see _tp_rootveil_modifier()'s own early-out).
 ##
-## Leap always jumps in whichever direction Mirana is CURRENTLY facing
-## (see battle.gd's own _activate_leap()/_cast_enemy_leap()), so unlike a
+## Withering Pursuit always jumps in whichever direction Solara is CURRENTLY facing
+## (see battle.gd's own _activate_withering_pursuit()/_cast_enemy_withering_pursuit()), so unlike a
 ## gap-closer that always steps toward the nearest enemy, a single cast
 ## could go either toward or away from the target - this function scores
 ## both the offensive "closes distance" case and the defensive "creates
 ## distance" case in the same pass, trusting the actual cast function
-## (_cast_enemy_leap()) to pick whichever direction the SAME hp_ratio
+## (_cast_enemy_withering_pursuit()) to pick whichever direction the SAME hp_ratio
 ## threshold used below would call for, so the two never disagree about
 ## which way she'd actually jump.
-static func _mirana_leap_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _solara_withering_pursuit_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var raw_distance: int = int(context.get("target_distance", -1))
 	if raw_distance < 0:
 		return 0.0
 
-	var jump_distance: int = int(level_data.get("jump_distance", 0))
+	var jump_distance: int = int(level_data.get("move_distance", 0)) + int(level_data.get("jump_distance", 0))   # the whole run-and-jump
 	var attack_range: int = int(context.get("hero_attack_range", 0))
-	var distance_after_leap_toward: int = maxi(raw_distance - jump_distance, 0)
+	var distance_after_pursuit_toward: int = maxi(raw_distance - jump_distance, 0)
 
 	var score: float = 0.0
 	var was_in_range: bool = raw_distance <= attack_range
-	var would_be_in_range: bool = distance_after_leap_toward <= attack_range
+	var would_be_in_range: bool = distance_after_pursuit_toward <= attack_range
 
 	if was_in_range:
 		# Already close enough - leaping only trades a real position for
-		# nothing new, per the design doc's own "do not use Leap without
+		# nothing new, per the design doc's own "do not use Withering Pursuit without
 		# a meaningful positional benefit" instruction.
 		score -= 15.0
 	elif would_be_in_range:
 		score += 20.0
 
-		var starstorm_radius: int = int(context.get("starstorm_radius", 0))
+		var fallen_grace_radius: int = int(context.get("fallen_grace_radius", 0))
 		var living_hps: Array = context.get("living_target_hps", [])
-		if starstorm_radius > 0 and living_hps.size() >= 2:
+		if fallen_grace_radius > 0 and living_hps.size() >= 2:
 			# Setup value: landing here doesn't just enable an Attack, it
-			# also sets up a real multi-target Starstorm next - per the
-			# design doc's own explicit "Leap + Starstorm" instruction.
+			# also sets up a real multi-target Fallen Grace next - per the
+			# design doc's own explicit "Withering Pursuit + Fallen Grace" instruction.
 			score += 25.0
 
 		var hero_damage: float = float(context.get("hero_damage", 0.0))
@@ -3506,21 +3506,21 @@ static func _mirana_leap_modifier(level_data: Dictionary, context: Dictionary) -
 		score -= 10.0
 
 	# --- Arrow positioning: only a real gain if leaping AWAY actually
-	# increases the USABLE travel distance (capped at Sacred Arrow's own
+	# increases the USABLE travel distance (capped at Hope of the Fallen's own
 	# current range) - never rewarded just for moving, per the design
 	# doc's own "do not blindly reward movement if Arrow damage actually
 	# gets worse" instruction. ---
-	var arrow_range: int = int(context.get("sacred_arrow_range", 0))
+	var arrow_range: int = int(context.get("hope_of_the_fallen_range", 0))
 	if arrow_range > 0:
 		var current_arrow_distance: int = mini(raw_distance, arrow_range)
-		var distance_after_leap_away: int = raw_distance + jump_distance
-		var leap_away_arrow_distance: int = mini(distance_after_leap_away, arrow_range)
-		if leap_away_arrow_distance > current_arrow_distance:
-			var bonus_per_column: float = float(context.get("sacred_arrow_bonus_per_column", 0.0))
-			score += float(leap_away_arrow_distance - current_arrow_distance) * bonus_per_column * 0.2
+		var distance_after_pursuit_away: int = raw_distance + jump_distance
+		var pursuit_away_arrow_distance: int = mini(distance_after_pursuit_away, arrow_range)
+		if pursuit_away_arrow_distance > current_arrow_distance:
+			var bonus_per_column: float = float(context.get("hope_of_the_fallen_bonus_per_column", 0.0))
+			score += float(pursuit_away_arrow_distance - current_arrow_distance) * bonus_per_column * 0.2
 
 	# --- Defensive value: only under real danger (per the design doc's
-	# own "do not use Leap defensively if the offensive value of staying
+	# own "do not use Withering Pursuit defensively if the offensive value of staying
 	# is significantly higher" caution - kept small enough that the
 	# offensive branch above still wins outright whenever it applies). ---
 	var hp_ratio: float = float(context.get("hero_hp_ratio", 1.0))
@@ -3534,13 +3534,13 @@ static func _mirana_leap_modifier(level_data: Dictionary, context: Dictionary) -
 	return score
 
 
-## Moonlight Shadow: NOT simply an escape ability - defensive protection,
+## Ambush Strike: NOT simply an escape ability - defensive protection,
 ## positioning, a safe approach, AND a guaranteed enhanced next Attack,
 ## all at once (see the design doc's own explicit framing). "utility"
 ## category (see this file's own header comment) means every point of
 ## value here is hero-specific, same "the modifier IS the whole value"
 ## shape Imperial Guard/Hunting Instinct already use.
-static func _mirana_moonlight_shadow_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _solara_ambush_strike_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var score: float = 0.0
 
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
@@ -3569,8 +3569,8 @@ static func _mirana_moonlight_shadow_modifier(level_data: Dictionary, context: D
 	elif target_hp > 0.0 and hero_damage >= target_hp:
 		# Already killable outright with a plain Attack - the ultimate's
 		# own delayed setup adds nothing here, per the design doc's own
-		# explicit "do not use Moonlight Shadow simply to add bonus
-		# damage if Mirana can already kill the target safely" caution.
+		# explicit "do not use Ambush Strike simply to add bonus
+		# damage if Solara can already kill the target safely" caution.
 		score -= 45.0
 
 	# --- Approach/reposition value: invisibility lets her safely close
@@ -3580,21 +3580,21 @@ static func _mirana_moonlight_shadow_modifier(level_data: Dictionary, context: D
 	if raw_distance > attack_range:
 		score += 15.0
 
-	# --- Starstorm setup: invisibility can carry her safely into the
+	# --- Fallen Grace setup: invisibility can carry her safely into the
 	# middle of a group - real value, but (per the design doc's own
-	# explicit "do not incorrectly apply the bonus damage to Starstorm"
+	# explicit "do not incorrectly apply the bonus damage to Fallen Grace"
 	# instruction) the bonus itself NEVER applies here, only to the next
 	# Attack (see this function's own "offensive value" term above and
 	# battle.gd's own _apply_hero_attack()/_resolve_enemy_hero_attack(),
 	# neither of which ever folds it into a skill cast). ---
-	var starstorm_radius: int = int(context.get("starstorm_radius", 0))
+	var fallen_grace_radius: int = int(context.get("fallen_grace_radius", 0))
 	var living_hps: Array = context.get("living_target_hps", [])
-	if starstorm_radius > 0 and living_hps.size() >= 2:
+	if fallen_grace_radius > 0 and living_hps.size() >= 2:
 		score += 15.0
 
 	# --- Defensive value: significant under real danger, more so while
 	# outnumbered - never the reason to cast at full health (per the
-	# design doc's own explicit "do not use Moonlight Shadow purely
+	# design doc's own explicit "do not use Ambush Strike purely
 	# because it is off cooldown" caution). ---
 	var hp_ratio: float = float(context.get("hero_hp_ratio", 1.0))
 	var enemy_count: int = int(context.get("enemy_count", 1))
@@ -3613,23 +3613,23 @@ static func _mirana_moonlight_shadow_modifier(level_data: Dictionary, context: D
 	return score
 
 
-## A plain Attack is Mirana's single most important candidate whenever
-## Moonlight Shadow is up (it directly consumes and enhances THIS
+## A plain Attack is Solara's single most important candidate whenever
+## Ambush Strike is up (it directly consumes and enhances THIS
 ## action) or the current target is already stunned by her own Sacred
 ## Arrow - never only the fallback for "nothing else qualified" (see
 ## basic_attack_participates()'s own docstring for why she opts in at
 ## all).
-static func _mirana_basic_attack_modifier(context: Dictionary) -> float:
+static func _solara_basic_attack_modifier(context: Dictionary) -> float:
 	var score: float = 0.0
 
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
 	var target_hp: float = float(context.get("target_hp", 0.0))
 
-	var moonlight_active: bool = bool(context.get("moonlight_shadow_active", false))
-	var bonus_pct: float = float(context.get("moonlight_shadow_bonus_damage_pct", 0.0)) if moonlight_active else 0.0
+	var ambush_active: bool = bool(context.get("ambush_strike_active", false))
+	var bonus_pct: float = float(context.get("ambush_strike_bonus_damage_pct", 0.0)) if ambush_active else 0.0
 	var attack_damage: float = hero_damage * (1.0 + bonus_pct)
 
-	if moonlight_active:
+	if ambush_active:
 		# Consumes the guaranteed enhanced Attack right now, before it
 		# risks going to waste - per the design doc's own "should receive
 		# a substantial bonus" instruction.
@@ -3637,11 +3637,11 @@ static func _mirana_basic_attack_modifier(context: Dictionary) -> float:
 
 	if target_hp > 0.0 and attack_damage >= target_hp:
 		score += 50.0
-		if moonlight_active:
+		if ambush_active:
 			score += 25.0
 
 	if bool(context.get("target_stunned", false)):
-		# Sacred Arrow's own follow-up window - see _mirana_sacred_
+		# Hope of the Fallen's own follow-up window - see _solara_sacred_
 		# arrow_modifier()'s own matching bonus for the other half.
 		score += 15.0
 
@@ -3652,36 +3652,36 @@ static func _mirana_basic_attack_modifier(context: Dictionary) -> float:
 	return score
 
 
-## Luna: aggressive ranged carry, AoE-focused, kill-oriented. Every one
+## Lunara: aggressive ranged carry, AoE-focused, kill-oriented. Every one
 ## of her skills leans on context fields battle.gd's/EnemyHeroManager's
-## own _build_*_ai_context() compute fresh each turn - "moon_glaives_
-## bounces"/"moon_glaives_bounce_damage_pct"/"moon_glaives_bounce_range"/
-## "moon_glaives_valid_bounce_targets"/"moon_glaives_bounce_target_hps"
-## (Moon Glaives' own current level PLUS the actual, position-computed
+## own _build_*_ai_context() compute fresh each turn - "lunar_ricochet_
+## bounces"/"lunar_ricochet_bounce_damage_pct"/"lunar_ricochet_bounce_range"/
+## "lunar_ricochet_valid_bounce_targets"/"lunar_ricochet_bounce_target_hps"
+## (Lunar Ricochet' own current level PLUS the actual, position-computed
 ## bounce targets available right now - never the skill's own maximum,
-## per the design doc's own explicit instruction), "lunar_blessing_
+## per the design doc's own explicit instruction), "moonbound_might_
 ## bonus_pct" (read for transparency/synergy flavor only - "hero_damage"
-## itself already has Lunar Blessing folded in by _roll_enemy_hero_
+## itself already has Moonbound Might folded in by _roll_enemy_hero_
 ## damage()/_npc_roll_damage(), so nothing here ever adds it a second
-## time - see _roll_enemy_hero_damage()'s own docstring), and "eclipse_
-## candidate_count"/"eclipse_candidate_hps"/"eclipse_candidate_max_hps"
-## (every real beam candidate within Eclipse's own current radius right
+## time - see _roll_enemy_hero_damage()'s own docstring), and "eternal_eclipse_
+## candidate_count"/"eternal_eclipse_candidate_hps"/"eternal_eclipse_candidate_max_hps"
+## (every real beam candidate within Eternal Eclipse's own current radius right
 ## now - the target, its guards, and its Elderwild Companion all separately,
-## mirroring the actual _tick_enemy_eclipse()/_tick_eclipse() candidate
+## mirroring the actual _tick_enemy_eternal_eclipse()/_tick_eternal_eclipse() candidate
 ## pool exactly, never just a single "target_hp").
-static func _luna_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
+static func _lunara_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
 	match skill_id:
-		"lucent_beam":
-			return _luna_lucent_beam_modifier(level_data, context)
-		"eclipse":
-			return _luna_eclipse_modifier(level_data, context)
+		"moonfall_lance":
+			return _lunara_moonfall_lance_modifier(level_data, context)
+		"eternal_eclipse":
+			return _lunara_eternal_eclipse_modifier(level_data, context)
 		BASIC_ATTACK_ID:
-			return _luna_basic_attack_modifier(context)
+			return _lunara_basic_attack_modifier(context)
 		_:
 			return 0.0
 
 
-## Lucent Beam: Luna's primary single-target active. The generic
+## Moonfall Lance: Lunara's primary single-target active. The generic
 ## offensive scoring above already covers target value/kill potential
 ## (fed by this skill's own flat-damage _estimate_skill_damage() case);
 ## this adds the design doc's own high-threat/stun/follow-up tiers on
@@ -3691,7 +3691,7 @@ static func _luna_modifier(skill_id: String, level_data: Dictionary, context: Di
 ## guarantees that before this is ever scored, and the design doc's own
 ## "do not give a high score merely because a target is in range"
 ## instruction rules out double-counting it here too.
-static func _luna_lucent_beam_modifier(level_data: Dictionary, context: Dictionary) -> float:
+static func _lunara_moonfall_lance_modifier(level_data: Dictionary, context: Dictionary) -> float:
 	var score: float = 0.0
 
 	var target_hp: float = float(context.get("target_hp", 0.0))
@@ -3708,13 +3708,13 @@ static func _luna_lucent_beam_modifier(level_data: Dictionary, context: Dictiona
 		score += float(stun_turns - 1) * 10.0  # a 2-turn stun scales control value significantly
 		# A stunned single target always creates a safe follow-up Basic
 		# Attack here - there's nothing else for it to do back regardless
-		# of who lands the next hit (see _luna_basic_attack_modifier()'s
+		# of who lands the next hit (see _lunara_basic_attack_modifier()'s
 		# own "target_stunned" bonus for the other half of this synergy).
 		score += 20.0
 
-	# --- Lucent Beam + Basic Attack: the stun buys a follow-up hit that
+	# --- Moonfall Lance + Basic Attack: the stun buys a follow-up hit that
 	# can secure a kill the beam alone couldn't - the follow-up's own
-	# damage already includes Moon Glaives/Lunar Blessing via "hero_
+	# damage already includes Lunar Ricochet/Moonbound Might via "hero_
 	# damage" (see this function's own docstring), so no separate combo
 	# math is needed beyond adding it to the beam's own damage. ---
 	var damage: float = float(level_data.get("damage", 0.0))
@@ -3725,21 +3725,21 @@ static func _luna_lucent_beam_modifier(level_data: Dictionary, context: Dictiona
 	return score
 
 
-## Eclipse: AoE burst, random targeting, multi-beam damage - NEVER simply
+## Eternal Eclipse: AoE burst, random targeting, multi-beam damage - NEVER simply
 ## cast whenever available. The current implementation has NO per-enemy
-## hit cap (see battle.gd's own _tick_eclipse()/_tick_enemy_eclipse()) -
+## hit cap (see battle.gd's own _tick_eternal_eclipse()/_tick_enemy_eternal_eclipse()) -
 ## with exactly one real candidate within radius, every one of this
 ## level's own `beams` lands on it, a fully deterministic total; with N
 ## candidates, the expected share per candidate is beams/N, a genuine
 ## EXPECTED value, never treated as a guaranteed kill just because the
 ## raw beams×damage total exceeds someone's HP (per the design doc's own
-## explicit caution). `eclipse_candidate_hps`/`_max_hps` are the REAL
+## explicit caution). `eternal_eclipse_candidate_hps`/`_max_hps` are the REAL
 ## beam candidates within radius right now (the target, its guards,
 ## its Elderwild Companion, each counted separately - see this file's own header
 ## comment), never a synthetic count.
-static func _luna_eclipse_modifier(level_data: Dictionary, context: Dictionary) -> float:
-	var candidate_hps: Array = context.get("eclipse_candidate_hps", [])
-	var candidate_max_hps: Array = context.get("eclipse_candidate_max_hps", candidate_hps)
+static func _lunara_eternal_eclipse_modifier(level_data: Dictionary, context: Dictionary) -> float:
+	var candidate_hps: Array = context.get("eternal_eclipse_candidate_hps", [])
+	var candidate_max_hps: Array = context.get("eternal_eclipse_candidate_max_hps", candidate_hps)
 	var n: int = candidate_hps.size()
 	if n <= 0:
 		# Nothing within radius at all - a wasted cast, same "out of
@@ -3758,7 +3758,7 @@ static func _luna_eclipse_modifier(level_data: Dictionary, context: Dictionary) 
 	# --- Total damage value: real regardless of N, but scaled down
 	# modestly since the generic kill-potential term above already
 	# credits the PRIMARY target's own expected share of it (see
-	# _luna_eclipse_expected_damage()'s own docstring, which feeds that
+	# _lunara_eternal_eclipse_expected_damage()'s own docstring, which feeds that
 	# generic term the exact same per-candidate figure this uses). ---
 	score += total_expected_damage * 0.08
 
@@ -3804,7 +3804,7 @@ static func _luna_eclipse_modifier(level_data: Dictionary, context: Dictionary) 
 	# --- Multi-target field value: real, but deliberately modest next to
 	# the kill-potential terms above - per the design doc's own explicit
 	# "3 enemies at full HP should not automatically be valued higher
-	# than 1 high-value enemy at low HP" instruction (see Eclipse +
+	# than 1 high-value enemy at low HP" instruction (see Eternal Eclipse +
 	# grouped enemies). ---
 	if n >= 3:
 		score += 15.0
@@ -3814,9 +3814,9 @@ static func _luna_eclipse_modifier(level_data: Dictionary, context: Dictionary) 
 	return score
 
 
-## Shared by both _estimate_skill_damage()'s own "eclipse" case (which
+## Shared by both _estimate_skill_damage()'s own "eternal_eclipse" case (which
 ## feeds the generic kill-potential term against the primary reference
-## target) and _luna_eclipse_modifier() (which needs the same per-
+## target) and _lunara_eternal_eclipse_modifier() (which needs the same per-
 ## candidate figure for its own multi-candidate kill-confidence math), so
 ## the two never drift apart. Returns the EXPECTED damage the primary
 ## target's own share of the beam total works out to - beams×damage when
@@ -3825,39 +3825,39 @@ static func _luna_eclipse_modifier(level_data: Dictionary, context: Dictionary) 
 ## candidate (its own guards, its Elderwild Companion) when they're also
 ## present, per the design doc's own explicit "do not assume an even
 ## deterministic distribution" instruction for the multi-target case.
-static func _luna_eclipse_expected_damage(level_data: Dictionary, context: Dictionary) -> float:
+static func _lunara_eternal_eclipse_expected_damage(level_data: Dictionary, context: Dictionary) -> float:
 	var beams: int = int(level_data.get("beams", 0))
 	var damage_per_beam: float = float(level_data.get("damage", 0.0))
-	var n: int = maxi(int(context.get("eclipse_candidate_count", 1)), 1)
+	var n: int = maxi(int(context.get("eternal_eclipse_candidate_count", 1)), 1)
 	return float(beams) * damage_per_beam / float(n)
 
 
-## A plain Attack is one of Luna's most important candidates - Moon
-## Glaives/Lunar Blessing make it a real multi-target, passive-boosted
+## A plain Attack is one of Lunara's most important candidates - Lunar
+## Ricochet/Moonbound Might make it a real multi-target, passive-boosted
 ## action in its own right (see basic_attack_participates()'s own
 ## docstring for why she opts in at all), never only the fallback for
 ## "nothing else qualified".
-static func _luna_basic_attack_modifier(context: Dictionary) -> float:
+static func _lunara_basic_attack_modifier(context: Dictionary) -> float:
 	var score: float = 0.0
 
-	# Lunar Blessing is already folded into this by _roll_enemy_hero_
+	# Moonbound Might is already folded into this by _roll_enemy_hero_
 	# damage()/_npc_roll_damage() themselves (see this function's own
 	# docstring) - never re-added here, per the design doc's own explicit
-	# "do not double-count Lunar Blessing" instruction.
+	# "do not double-count Moonbound Might" instruction.
 	var hero_damage: float = float(context.get("hero_damage", 0.0))
 	var target_hp: float = float(context.get("target_hp", 0.0))
 
 	if target_hp > 0.0 and hero_damage >= target_hp:
 		score += 50.0
 
-	# --- Moon Glaives: the ACTUAL number of valid bounce targets right
+	# --- Lunar Ricochet: the ACTUAL number of valid bounce targets right
 	# now, never the skill's own maximum bounce count - per the design
 	# doc's own explicit "do NOT simply add the maximum number of
 	# bounces" instruction. ---
-	var bounces: int = int(context.get("moon_glaives_bounces", 0))
-	var valid_bounce_targets: int = mini(int(context.get("moon_glaives_valid_bounce_targets", 0)), bounces)
+	var bounces: int = int(context.get("lunar_ricochet_bounces", 0))
+	var valid_bounce_targets: int = mini(int(context.get("lunar_ricochet_valid_bounce_targets", 0)), bounces)
 	if valid_bounce_targets > 0:
-		var bounce_damage_pct: float = float(context.get("moon_glaives_bounce_damage_pct", 0.0))
+		var bounce_damage_pct: float = float(context.get("lunar_ricochet_bounce_damage_pct", 0.0))
 		var bounce_damage: float = hero_damage * bounce_damage_pct
 
 		if valid_bounce_targets >= 3:
@@ -3875,7 +3875,7 @@ static func _luna_basic_attack_modifier(context: Dictionary) -> float:
 		# primary target's own kill - per the design doc's own explicit
 		# "do not ignore secondary kills simply because the primary
 		# target is the selected target" instruction.
-		var bounce_target_hps: Array = context.get("moon_glaives_bounce_target_hps", [])
+		var bounce_target_hps: Array = context.get("lunar_ricochet_bounce_target_hps", [])
 		var secondary_kills: int = 0
 		for hp in bounce_target_hps:
 			if bounce_damage >= float(hp) and float(hp) > 0.0:
@@ -3884,7 +3884,7 @@ static func _luna_basic_attack_modifier(context: Dictionary) -> float:
 			score += 35.0 * float(secondary_kills)
 
 	if bool(context.get("target_stunned", false)):
-		# Lucent Beam's own follow-up window - see _luna_lucent_beam_
+		# Moonfall Lance's own follow-up window - see _lunara_moonfall_lance_
 		# modifier()'s own matching bonus for the other half.
 		score += 15.0
 

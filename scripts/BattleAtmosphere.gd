@@ -36,6 +36,9 @@ const VERDANT_SCAR_FX := preload("res://scripts/VerdantScarBattleAtmosphere.gd")
 # The Scorchlands arena - see ScorchlandsBattleAtmosphere.gd.
 const SCORCHLANDS_AREA := "res://assets/battle_areas/scorchlands_area.jpg"
 const SCORCHLANDS_FX := preload("res://scripts/ScorchlandsBattleAtmosphere.gd")
+# The Blackbloom arena - see BlackbloomBattleAtmosphere.gd.
+const BLACKBLOOM_AREA := "res://assets/battle_areas/the_blackbloom_area.jpg"
+const BLACKBLOOM_FX := preload("res://scripts/BlackbloomBattleAtmosphere.gd")
 # The Drowned Empire arena - see DrownedEmpireBattleAtmosphere.gd. Matched on
 # the arena image, like the two above.
 const DROWNED_EMPIRE_AREA := "res://assets/battle_areas/drowned_empire_area.png"
@@ -93,6 +96,14 @@ func setup(zone_id: String) -> void:
 		var verdant: Control = VERDANT_SCAR_FX.new()
 		add_child(verdant)
 		verdant.build(self, _background)
+		return
+	if _background.texture.resource_path == BLACKBLOOM_AREA:
+		_zone = zone_id
+		# Its positions come from the Background's laid-out size.
+		await get_tree().process_frame
+		var blackbloom: Control = BLACKBLOOM_FX.new()
+		add_child(blackbloom)
+		blackbloom.build(self, _background)
 		return
 	if _background.texture.resource_path == SCORCHLANDS_AREA:
 		_zone = zone_id

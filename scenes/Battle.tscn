@@ -444,37 +444,37 @@ theme_override_constants/v_separation = 6
 columns = 3
 
 [node name="ItemSlot0" type="Button" parent="ItemsPanel/ItemsMargin/ItemsVBox/ItemsGrid" unique_id=1240339002]
-custom_minimum_size = Vector2(64, 44)
+custom_minimum_size = Vector2(64, 40)
 layout_mode = 2
 disabled = true
 expand_icon = true
 
 [node name="ItemSlot1" type="Button" parent="ItemsPanel/ItemsMargin/ItemsVBox/ItemsGrid" unique_id=1210337641]
-custom_minimum_size = Vector2(64, 44)
+custom_minimum_size = Vector2(64, 40)
 layout_mode = 2
 disabled = true
 expand_icon = true
 
 [node name="ItemSlot2" type="Button" parent="ItemsPanel/ItemsMargin/ItemsVBox/ItemsGrid" unique_id=1430728625]
-custom_minimum_size = Vector2(64, 44)
+custom_minimum_size = Vector2(64, 40)
 layout_mode = 2
 disabled = true
 expand_icon = true
 
 [node name="ItemSlot3" type="Button" parent="ItemsPanel/ItemsMargin/ItemsVBox/ItemsGrid" unique_id=457536535]
-custom_minimum_size = Vector2(64, 44)
+custom_minimum_size = Vector2(64, 40)
 layout_mode = 2
 disabled = true
 expand_icon = true
 
 [node name="ItemSlot4" type="Button" parent="ItemsPanel/ItemsMargin/ItemsVBox/ItemsGrid" unique_id=379164556]
-custom_minimum_size = Vector2(64, 44)
+custom_minimum_size = Vector2(64, 40)
 layout_mode = 2
 disabled = true
 expand_icon = true
 
 [node name="ItemSlot5" type="Button" parent="ItemsPanel/ItemsMargin/ItemsVBox/ItemsGrid" unique_id=301761348]
-custom_minimum_size = Vector2(64, 44)
+custom_minimum_size = Vector2(64, 40)
 layout_mode = 2
 disabled = true
 expand_icon = true
@@ -945,7 +945,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.93, 0.8, 1)
 theme_override_font_sizes/font_size = 22
 text = "You felled another Remembered.
-Collect its echo."
+Collect its echo to grow stronger."
 horizontal_alignment = 1
 autowrap_mode = 3
 

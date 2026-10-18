@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://baaeaxoyj0aut"
-path="res://.godot/imported/Blades_of_Attack.png-29062f519a704b2c3ad47e66c12f7086.ctex"
+path="res://.godot/imported/Grimfangs.png-9c3550917a7d77fd9debbafeb2bef2c0.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/items/Blades_of_Attack.png"
-dest_files=["res://.godot/imported/Blades_of_Attack.png-29062f519a704b2c3ad47e66c12f7086.ctex"]
+source_file="res://assets/items/Grimfangs.png"
+dest_files=["res://.godot/imported/Grimfangs.png-9c3550917a7d77fd9debbafeb2bef2c0.ctex"]
 
 [params]
 

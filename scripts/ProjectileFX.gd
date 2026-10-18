@@ -14,7 +14,8 @@ extends RefCounted
 ## falls back to DEFAULT_STYLE.
 const DEFAULT_STYLE := {
 	# "arrow" (shaft, head, fletching), "spike" (a tapering quill), "spear",
-	# "ice_shard" (Nhal's ice crystal), "skull" (a ghostly skull) or
+	# "bone_spear" (a thin barbed bone spear), "ice_shard" (Nhal's ice crystal),
+	# "skull" (a ghostly skull) or
 	# "bubble" (a wobbling water bubble) - for the last two, "length" is
 	# its height.
 	"shape": "arrow",
@@ -29,6 +30,11 @@ const DEFAULT_STYLE := {
 	"spread": 0.0,
 	"length": 54.0,
 	"shaft_width": 3.0,
+	# Arrows: the size of the head (length, half-width) and of the fletching
+	# (how far it flares off the shaft) - slimmer arrows shrink all three.
+	"head_len": 12.0,
+	"head_half": 5.5,
+	"fletch_size": 6.0,
 	"shaft_color": Color(0.55, 0.38, 0.22),
 	"head_color": Color(0.82, 0.84, 0.88),
 	# Arrows: the feathers. Spikes: the base color it fades from.
@@ -129,6 +135,71 @@ const STYLES := {
 		"base_duration": 0.18,
 		"per_100px_duration": 0.05,
 	},
+	# Solara's normal attack: the arrow she has drawn - a dark red shaft
+	# bound in thorn, a gilded head and white-and-red fletching - loosed
+	# flat and fast, trailing amber motes and bursting into gold sparks.
+	"solara_arrow": {
+		"launch": Vector2(0.49, 0.23),
+		"length": 84.0,
+		"shaft_width": 1.8,
+		"head_len": 10.0,
+		"head_half": 3.0,
+		"fletch_size": 3.6,
+		"shaft_color": Color(0.38, 0.1, 0.1),
+		"head_color": Color(0.95, 0.76, 0.35),
+		"fletch_color": Color(0.95, 0.88, 0.8),
+		"glow_color": Color(1.0, 0.7, 0.3, 0.22),
+		"trail_color": Color(1.0, 0.72, 0.35, 0.6),
+		"impact_color": Color(1.0, 0.8, 0.45),
+		"arc": 0.06,
+		"max_arc": 40.0,
+		"base_duration": 0.13,
+		"per_100px_duration": 0.04,
+	},
+	# Solara's Fallen Grace: her golden-headed arrows, loosed skyward and
+	# raining back down - a few on each target, in a scatter (ArrowRainFX;
+	# only "count" and the look are used).
+	"grace_arrow": {
+		"launch": Vector2(0.49, 0.23),
+		"count": 4,
+		"stagger": 0.07,
+		"spread": 38.0,
+		"length": 78.0,
+		"shaft_width": 1.8,
+		"head_len": 10.0,
+		"head_half": 3.0,
+		"fletch_size": 3.6,
+		"shaft_color": Color(0.38, 0.1, 0.1),
+		"head_color": Color(1.0, 0.82, 0.4),
+		"fletch_color": Color(0.95, 0.88, 0.8),
+		"glow_color": Color(1.0, 0.75, 0.3, 0.3),
+		"trail_color": Color(1.0, 0.78, 0.4, 0.7),
+		"impact_color": Color(1.0, 0.85, 0.5),
+		"arc": 0.6,
+		"max_arc": 280.0,
+		"base_duration": 0.42,
+		"per_100px_duration": 0.12,
+	},
+	# Blackbloom range creeps: a thin spear of pale bone, barbed along its
+	# length and laced with crimson, torn from the creature's own spine-tail
+	# and flung flat and fast, trailing a drift of blood-pink motes and
+	# bursting into bone chips.
+	"bone_spear": {
+		"shape": "bone_spear",
+		"launch": Vector2(0.49, 0.03),
+		"length": 170.0,
+		"shaft_width": 4.5,
+		"shaft_color": Color(0.86, 0.8, 0.7),
+		"head_color": Color(0.96, 0.93, 0.86),
+		"fletch_color": Color(0.7, 0.1, 0.25),
+		"glow_color": Color(0.95, 0.3, 0.45, 0.28),
+		"trail_color": Color(0.95, 0.35, 0.5, 0.6),
+		"impact_color": Color(0.95, 0.85, 0.75),
+		"arc": 0.05,
+		"max_arc": 35.0,
+		"base_duration": 0.13,
+		"per_100px_duration": 0.04,
+	},
 	# Frostspire range creeps (the frost wraith): a shard of ice flung from
 	# its outstretched claw - Nhal's own attack projectile
 	# (IceShardProjectile), trailing frost and bursting into ice. Only
@@ -186,6 +257,8 @@ static func _fire_one(host: Node, style: Dictionary, from: Vector2, to: Vector2,
 			projectile = _build_bubble(style)
 		"spear":
 			projectile = _build_spear(style)
+		"bone_spear":
+			projectile = _build_bone_spear(style)
 		_:
 			projectile = _build_arrow(style)
 	host.add_child(projectile)
@@ -429,14 +502,87 @@ static func _build_spear(style: Dictionary) -> Node2D:
 	return spear
 
 
+## A thin spear of bone pointing right (+x), TIP at the origin: a long
+## shaft tapering to a needle point, barbs swept back along it, knuckles of
+## bone and fine crimson veins, with a faint pink glow.
+static func _build_bone_spear(style: Dictionary) -> Node2D:
+	var spear := Node2D.new()
+	var length: float = style["length"]
+	var half: float = float(style["shaft_width"]) / 2.0
+	var bone: Color = style["shaft_color"]
+	var point: Color = style["head_color"]
+	var vein: Color = style["fletch_color"]
+	var outline_color := Color(0.12, 0.05, 0.08, 0.85)
+
+	var glow_color: Color = style["glow_color"]
+	if glow_color.a > 0.0:
+		var glow := Polygon2D.new()
+		glow.color = glow_color
+		glow.polygon = PackedVector2Array([
+			Vector2(-length * 0.7, -half - 5.0), Vector2(6.0, 0.0), Vector2(-length * 0.7, half + 5.0)])
+		spear.add_child(glow)
+
+	# Barbs swept back along the shaft, drawn first so the shaft covers
+	# their roots.
+	for frac in [0.18, 0.34, 0.5, 0.66]:
+		var x: float = -length * float(frac)
+		var size: float = half * (3.4 - 2.2 * float(frac))
+		for side in [-1.0, 1.0]:
+			var barb := Polygon2D.new()
+			barb.color = bone.darkened(0.12)
+			barb.polygon = PackedVector2Array([
+				Vector2(x, side * half * 0.6), Vector2(x - size * 2.2, side * (half + size)),
+				Vector2(x - size * 1.1, side * half * 0.6)])
+			spear.add_child(barb)
+
+	# The shaft: fattest a little behind the point, tapering to a needle.
+	var shaft_poly := PackedVector2Array([
+		Vector2(-length, -half * 0.8), Vector2(-length * 0.15, -half),
+		Vector2(0.0, 0.0), Vector2(-length * 0.15, half), Vector2(-length, half * 0.8)])
+	var edge := Line2D.new()
+	edge.width = 2.6
+	edge.default_color = outline_color
+	edge.closed = true
+	edge.joint_mode = Line2D.LINE_JOINT_SHARP
+	edge.points = shaft_poly
+	spear.add_child(edge)
+	var shaft := Polygon2D.new()
+	shaft.polygon = shaft_poly
+	shaft.vertex_colors = PackedColorArray([bone.darkened(0.35), bone, point, bone.darkened(0.1), bone.darkened(0.4)])
+	spear.add_child(shaft)
+
+	# Fine veins of crimson running down it, and knuckles of bone.
+	for off in [-0.35, 0.35]:
+		var line := Line2D.new()
+		line.width = 1.1
+		line.default_color = Color(vein, 0.75)
+		line.points = PackedVector2Array([Vector2(-length * 0.95, half * float(off)), Vector2(-length * 0.2, half * float(off) * 0.8)])
+		spear.add_child(line)
+	for frac in [0.25, 0.42, 0.6, 0.78]:
+		var knuckle := Polygon2D.new()
+		knuckle.color = bone.lightened(0.12)
+		var kx: float = -length * float(frac)
+		knuckle.polygon = PackedVector2Array([
+			Vector2(kx + 3.0, 0.0), Vector2(kx, -half * 1.35), Vector2(kx - 3.0, 0.0), Vector2(kx, half * 1.35)])
+		spear.add_child(knuckle)
+	# A bright ridge along the top edge, brightest at the point.
+	var ridge := Line2D.new()
+	ridge.width = 1.3
+	ridge.default_color = Color(1.0, 0.97, 0.92, 0.85)
+	ridge.points = PackedVector2Array([Vector2(-length * 0.9, -half * 0.55), Vector2(-2.0, 0.0)])
+	spear.add_child(ridge)
+	return spear
+
+
 ## An arrow pointing right (+x) with its TIP at the origin, so its
 ## position is exactly where it strikes.
 static func _build_arrow(style: Dictionary) -> Node2D:
 	var arrow := Node2D.new()
 	var length: float = style["length"]
 	var shaft_half: float = float(style["shaft_width"]) / 2.0
-	var head_len := 12.0
-	var head_half := 5.5
+	var head_len: float = style["head_len"]
+	var head_half: float = style["head_half"]
+	var fletch_size: float = style["fletch_size"]
 
 	var glow_color: Color = style["glow_color"]
 	if glow_color.a > 0.0:
@@ -470,8 +616,8 @@ static func _build_arrow(style: Dictionary) -> Node2D:
 		fletch.color = style["fletch_color"]
 		fletch.polygon = PackedVector2Array([
 			Vector2(-length + 12.0, side * shaft_half),
-			Vector2(-length + 1.0, side * (shaft_half + 6.0)),
-			Vector2(-length - 3.0, side * (shaft_half + 6.0)),
+			Vector2(-length + 1.0, side * (shaft_half + fletch_size)),
+			Vector2(-length - 3.0, side * (shaft_half + fletch_size)),
 			Vector2(-length + 2.0, side * shaft_half),
 		])
 		arrow.add_child(fletch)

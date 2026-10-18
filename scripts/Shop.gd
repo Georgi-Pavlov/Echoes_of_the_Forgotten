@@ -18,6 +18,12 @@ extends Control
 @onready var sell_items_list: VBoxContainer = $SellPopup/SellMargin/SellVBox/SellItemsList
 @onready var sell_close_button: Button = $SellPopup/SellMargin/SellVBox/SellCloseButton
 
+@onready var backpack_panel: PanelContainer = $BackpackPanel
+@onready var backpack_slots_box: HBoxContainer = $BackpackPanel/BackpackMargin/BackpackVBox/BackpackSlots
+
+# The Take/Sell popup for a clicked Backpack item (null when closed).
+var _backpack_popup: PanelContainer = null
+
 # 3 items per row, 2 rows per page (matches ItemsGrid's column count).
 const ITEMS_PER_PAGE := 6
 
@@ -72,6 +78,7 @@ func _ready() -> void:
 	_refresh_page()
 	_refresh_gold_label()
 	_refresh_details_panel()
+	_refresh_backpack()
 
 	# Back/sell/paging are disabled AFTER _refresh_page() runs, since
 	# _refresh_page() unconditionally recomputes both page buttons'
@@ -344,7 +351,13 @@ func _refresh_details_panel() -> void:
 		details_cost_label.text = "Sold out"
 		details_buy_button.disabled = true
 		details_buy_button.text = "Sold Out"
-	elif not PlayerManager.can_add_item(_selected_item_id):
+	elif not _missing_requirements(_selected_item_id).is_empty():
+		details_buy_button.disabled = true
+		details_buy_button.text = "Missing Components"
+	elif _recipe_item(_selected_item_id) and _recipe_destination(_selected_item_id) == "":
+		details_buy_button.disabled = true
+		details_buy_button.text = "No Room"
+	elif not _recipe_item(_selected_item_id) and not PlayerManager.can_add_item(_selected_item_id):
 		details_buy_button.disabled = true
 		details_buy_button.text = "Inventory Full"
 	else:
@@ -371,12 +384,35 @@ func _on_buy_pressed() -> void:
 		_show_message("Not enough gold")
 		return
 
-	if not PlayerManager.can_add_item(item_id):
+	var missing: Array = _missing_requirements(item_id)
+	if not missing.is_empty():
+		var names: Array = []
+		for missing_id in missing:
+			names.append(GameManager.get_item(missing_id).get("name", missing_id))
+		_show_message("Requires " + ", ".join(names))
+		return
+
+	var destination: String = ""
+	if _recipe_item(item_id):
+		destination = _recipe_destination(item_id)
+		if destination == "":
+			_show_message("No room for " + item_data.get("name", "item"))
+			return
+	elif not PlayerManager.can_add_item(item_id):
 		_show_message("Inventory full")
 		return
 
 	PlayerManager.add_gold(-cost)
-	PlayerManager.add_item(item_id, 1)
+	var placed_in_backpack: bool = false
+	if _recipe_item(item_id):
+		_consume_requirements(item_id)
+		if destination == "backpack":
+			PlayerManager.add_to_backpack(item_id)
+			placed_in_backpack = true
+		else:
+			PlayerManager.add_item(item_id, 1)
+	else:
+		PlayerManager.add_item(item_id, 1)
 	AudioManager.play_event("shop_transaction")
 	if _stock.has(item_id):
 		_stock[item_id] -= 1
@@ -384,8 +420,196 @@ func _on_buy_pressed() -> void:
 	_refresh_gold_label()
 	_refresh_item_card(item_id)
 	_refresh_details_panel()
-	_show_message(item_data.get("name", "Item") + " purchased!")
+	_refresh_backpack()
+	var message: String = item_data.get("name", "Item") + " purchased!"
+	if placed_in_backpack:
+		message += " (sent to Backpack)"
+	_show_message(message)
 	_tutorial_check_progress()
+
+
+## True if `item_id` is bought by combining other items (has "requires").
+func _recipe_item(item_id: String) -> bool:
+	return not GameManager.get_item(item_id).get("requires", []).is_empty()
+
+
+## Ids from `item_id`'s "requires" list the player owns neither in the
+## inventory nor in the Backpack.
+func _missing_requirements(item_id: String) -> Array:
+	var inventory: Dictionary = PlayerManager.get_inventory()
+	var backpack: Dictionary = PlayerManager.get_backpack()
+	var missing: Array = []
+	for required_id in GameManager.get_item(item_id).get("requires", []):
+		if inventory.get(required_id, 0) + backpack.get(required_id, 0) <= 0:
+			missing.append(required_id)
+	return missing
+
+
+## Which components come out of the Backpack (taken from there first) and
+## which out of the inventory, as {"backpack": [ids], "inventory": [ids]}.
+func _requirement_sources(item_id: String) -> Dictionary:
+	var backpack: Dictionary = PlayerManager.get_backpack()
+	var sources := {"backpack": [], "inventory": []}
+	for required_id in GameManager.get_item(item_id).get("requires", []):
+		if backpack.get(required_id, 0) > 0:
+			sources["backpack"].append(required_id)
+		else:
+			sources["inventory"].append(required_id)
+	return sources
+
+
+## Where a combined item lands once its components are consumed: the
+## inventory by default, the Backpack if only that has room, "" if neither
+## does. Slots freed by the consumed components count as free.
+func _recipe_destination(item_id: String) -> String:
+	var sources: Dictionary = _requirement_sources(item_id)
+	var inventory_used: int = PlayerManager.get_inventory_slots().size() - sources["inventory"].size()
+	if inventory_used < PlayerManager.get_max_inventory_slots():
+		return "inventory"
+	var backpack_used: int = PlayerManager.get_backpack_slots().size() - sources["backpack"].size()
+	if backpack_used < PlayerManager.get_max_backpack_slots():
+		return "backpack"
+	return ""
+
+
+func _consume_requirements(item_id: String) -> void:
+	var sources: Dictionary = _requirement_sources(item_id)
+	for required_id in sources["backpack"]:
+		PlayerManager.remove_from_backpack(required_id)
+	for required_id in sources["inventory"]:
+		PlayerManager.use_item(required_id)
+
+
+# ------------------------------------------------------------------
+# Backpack: 4 slots under the shop items. Items in it give no bonuses.
+# Clicking one opens a small popup to Take it into the inventory or
+# Sell it; the Sell Items popup has a "To Backpack" button per row.
+# ------------------------------------------------------------------
+
+func _refresh_backpack() -> void:
+	for child in backpack_slots_box.get_children():
+		child.queue_free()
+
+	var slots: Array = PlayerManager.get_backpack_slots()
+	for i in range(PlayerManager.get_max_backpack_slots()):
+		var slot_button := Button.new()
+		slot_button.custom_minimum_size = Vector2(60, 60)
+		slot_button.expand_icon = true
+		if i < slots.size():
+			var item_id: String = slots[i]["item_id"]
+			var item_data: Dictionary = GameManager.get_item(item_id)
+			var image_path: String = item_data.get("image", "")
+			if image_path != "" and ResourceLoader.exists(image_path):
+				slot_button.icon = load(image_path)
+			slot_button.tooltip_text = item_data.get("name", "")
+			if slots[i]["count"] > 1:
+				slot_button.text = "x%d" % slots[i]["count"]
+			slot_button.pressed.connect(_on_backpack_slot_pressed.bind(item_id))
+		else:
+			slot_button.disabled = true
+		backpack_slots_box.add_child(slot_button)
+
+
+func _on_backpack_slot_pressed(item_id: String) -> void:
+	_close_backpack_popup()
+	var item_data: Dictionary = GameManager.get_item(item_id)
+
+	var popup := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.055, 0.035, 0.028, 0.97)
+	style.set_border_width_all(2)
+	style.border_color = Color(0.55, 0.4, 0.22, 1)
+	style.set_corner_radius_all(3)
+	popup.add_theme_stylebox_override("panel", style)
+
+	var margin := MarginContainer.new()
+	for side in ["left", "top", "right", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 12)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+
+	var name_label := Label.new()
+	name_label.text = item_data.get("name", "")
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.add_theme_color_override("font_color", Color(0.9, 0.74, 0.45, 1))
+	name_label.add_theme_font_size_override("font_size", 16)
+
+	var take_button := Button.new()
+	take_button.text = "Take"
+	take_button.theme_type_variation = &"BloodButton"
+	take_button.custom_minimum_size = Vector2(150, 34)
+	take_button.disabled = not PlayerManager.can_add_item(item_id)
+	if take_button.disabled:
+		take_button.tooltip_text = "Inventory full"
+	take_button.pressed.connect(_on_backpack_take.bind(item_id))
+
+	var sell_price: int = _sell_price_for(item_id)
+	var sell_btn := Button.new()
+	sell_btn.text = "Sell for %d Gold" % sell_price
+	sell_btn.theme_type_variation = &"BloodButton"
+	sell_btn.custom_minimum_size = Vector2(150, 34)
+	sell_btn.pressed.connect(_on_backpack_sell.bind(item_id))
+
+	var close_btn := Button.new()
+	close_btn.text = "Close"
+	close_btn.custom_minimum_size = Vector2(150, 30)
+	close_btn.pressed.connect(_close_backpack_popup)
+
+	vbox.add_child(name_label)
+	vbox.add_child(take_button)
+	vbox.add_child(sell_btn)
+	vbox.add_child(close_btn)
+	margin.add_child(vbox)
+	popup.add_child(margin)
+	add_child(popup)
+	_backpack_popup = popup
+
+	# Centered above the backpack panel once its size is known.
+	popup.reset_size()
+	var panel_rect: Rect2 = backpack_panel.get_global_rect()
+	popup.position = Vector2(
+		panel_rect.position.x + panel_rect.size.x * 0.5 - popup.size.x * 0.5,
+		panel_rect.position.y - popup.size.y - 8.0
+	)
+
+
+func _close_backpack_popup() -> void:
+	if _backpack_popup != null and is_instance_valid(_backpack_popup):
+		_backpack_popup.queue_free()
+	_backpack_popup = null
+
+
+func _on_backpack_take(item_id: String) -> void:
+	_close_backpack_popup()
+	if not PlayerManager.take_from_backpack(item_id):
+		_show_message("Inventory full")
+		return
+	_refresh_backpack()
+	_refresh_details_panel()
+	_show_message("Took %s from the Backpack" % GameManager.get_item(item_id).get("name", "item"))
+
+
+func _on_backpack_sell(item_id: String) -> void:
+	_close_backpack_popup()
+	if not PlayerManager.remove_from_backpack(item_id):
+		return
+	var sell_price: int = _sell_price_for(item_id)
+	PlayerManager.add_gold(sell_price)
+	AudioManager.play_event("shop_transaction")
+	_refresh_gold_label()
+	_refresh_backpack()
+	_refresh_details_panel()
+	_show_message("Sold %s for %d Gold" % [GameManager.get_item(item_id).get("name", "item"), sell_price])
+
+
+func _on_send_to_backpack(item_id: String) -> void:
+	if not PlayerManager.move_to_backpack(item_id):
+		_show_message("Backpack full")
+		return
+	_refresh_backpack()
+	_refresh_sell_popup()
+	_refresh_details_panel()
+	_show_message("Sent %s to the Backpack" % GameManager.get_item(item_id).get("name", "item"))
 
 
 ## Brief fade-in/fade-out status message (purchase confirmation,
@@ -475,8 +699,15 @@ func _build_sell_row(item_id: String, item_data: Dictionary, count: int) -> Cont
 	sell_button.pressed.connect(_on_sell_item_pressed.bind(item_id))
 	sell_button.set_meta(AudioManager.NO_CLICK_META, true)
 
+	var backpack_button := Button.new()
+	backpack_button.text = "To Backpack"
+	backpack_button.custom_minimum_size = Vector2(120, 36)
+	backpack_button.disabled = not PlayerManager.can_add_to_backpack(item_id)
+	backpack_button.pressed.connect(_on_send_to_backpack.bind(item_id))
+
 	hbox.add_child(icon_rect)
 	hbox.add_child(name_label)
+	hbox.add_child(backpack_button)
 	hbox.add_child(sell_button)
 	margin.add_child(hbox)
 	row.add_child(margin)
@@ -502,6 +733,7 @@ func _on_sell_item_pressed(item_id: String) -> void:
 	_refresh_gold_label()
 	_refresh_sell_popup()
 	_refresh_details_panel()
+	_refresh_backpack()
 
 	var item_data: Dictionary = GameManager.get_item(item_id)
 	_show_message("Sold %s for %d Gold" % [item_data.get("name", "item"), sell_price])

@@ -35,7 +35,7 @@ static func play(host: Node, from: Vector2, to: Vector2, on_hit: Callable = Call
 
 func _ready() -> void:
 	material = VoidReachFX._additive()
-	AudioManager.play_event("creep_shoot")
+	AudioManager.play_event("new_creep_shoot")
 	var dir := _to - _from
 	var heading := dir.normalized() if dir.length() > 1.0 else Vector2.LEFT
 

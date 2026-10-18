@@ -22,9 +22,30 @@ extends Node
 # as the player (see PlayerManager.check_level_up).
 const NPC_MAX_BANKED_SKILL_POINTS: int = 1
 
-# Every simulated hero tries to keep exactly this many of each potion
-# on hand - see restock_npc_potions().
-const NPC_TARGET_POTION_COUNT: int = 3
+# Potions a rival always buys before any equipment - see npc_shop().
+# They are capped at NPC_MAX_HEALTH_POTIONS/NPC_MAX_MANA_POTIONS below.
+const NPC_RESERVE_HEALTH: int = 2
+const NPC_RESERVE_MANA: int = 3
+# The most potions a rival can carry of each kind.
+const NPC_MAX_HEALTH_POTIONS: int = 3
+const NPC_MAX_MANA_POTIONS: int = 5
+# Share of its remaining gold a hero not committed to a recipe may spend
+# on spare potions after a shopping trip.
+const NPC_SPARE_POTION_GOLD_SHARE: float = 0.4
+# Equipment a rival can hold at once (the player has 6 inventory slots).
+const NPC_MAX_ITEMS: int = 6
+# Set items (recipes such as Ironfang) are held back: a rival only starts on
+# them at this level, and until then it carries at most
+# NPC_MAX_ITEMS_BEFORE_RECIPES basic items so there is still room for a
+# recipe's components. Early on rivals gear up with basic items only.
+const NPC_RECIPE_MIN_LEVEL: int = 18
+const NPC_MAX_ITEMS_BEFORE_RECIPES: int = 4
+# Items bought per shopping trip, and how many trips a hero must then wait
+# before buying its next item (every stage attempt ends in a trip, so 6
+# trips is about two player battle visits). This paces gear: rivals have
+# the gold long before they should have the items.
+const NPC_MAX_PURCHASES_PER_TRIP: int = 1
+const NPC_ITEM_COOLDOWN_TRIPS: int = 4
 
 # Hero-kill XP bounty: 100 + 13% of the victim's total lifetime XP,
 # applied uniformly whether the player or another NPC did the killing.
@@ -177,25 +198,122 @@ func _spend_npc_skill_point(hero_id: String, hero_static: Dictionary) -> bool:
 # Shopping
 # ------------------------------------------------------------------
 
-## Spends `hero_id`'s gold restocking Health/Mana potions back up to
-## NPC_TARGET_POTION_COUNT each - never buying beyond that target,
-## never buying anything else. Stops early (per potion type) once
-## gold runs out.
-func restock_npc_potions(hero_id: String) -> void:
-	_restock_npc_potion(hero_id, "health")
-	_restock_npc_potion(hero_id, "mana")
+## A rival's shopping trip, run after every fight (and when it flees).
+## Order of business:
+##   1. Survival first: potions up to the reserve (NPC_RESERVE_HEALTH/
+##      NPC_RESERVE_MANA). If it can't even afford that, it stops here.
+##   2. Equipment: works towards one item at a time, picked by
+##      EnemyShopAI from the hero's own main stat/type. A recipe item
+##      (Ironfang/Spellfang/Shadowfang) is a commitment - it's remembered
+##      in the hero's "build_target" field, its components are bought one
+##      by one, and nothing else is bought until it's done.
+##   3. Spare potions: potions are capped (NPC_MAX_*_POTIONS). A hero that couldn't buy any
+##      item this trip still buys at least one potion; a hero that isn't
+##      committed to a recipe may spend up to NPC_SPARE_POTION_GOLD_SHARE
+##      of what's left on more, so it keeps saving for its item instead of
+##      pouring all its gold into potions every time.
+## Equipment is never lost - fleeing or surviving a fight keeps it all.
+func npc_shop(hero_id: String) -> void:
+	_buy_npc_potions_up_to(hero_id, "health", NPC_RESERVE_HEALTH)
+	_buy_npc_potions_up_to(hero_id, "mana", NPC_RESERVE_MANA)
+	if PlayerManager.get_npc_potion_count(hero_id, "health") < NPC_RESERVE_HEALTH \
+			or PlayerManager.get_npc_potion_count(hero_id, "mana") < NPC_RESERVE_MANA:
+		return
+
+	var hero_static: Dictionary = GameManager.get_hero_by_id(hero_id)
+	var bought_item: bool = false
+	var cooldown_left: int = int(PlayerManager.get_npc_field(hero_id, "item_cooldown", "0"))
+	if cooldown_left > 0:
+		PlayerManager.set_npc_field(hero_id, "item_cooldown", str(cooldown_left - 1))
+	if cooldown_left <= 0 and not hero_static.is_empty():
+		for _step in range(NPC_MAX_PURCHASES_PER_TRIP):
+			var next_id: String = _next_npc_purchase(hero_id, hero_static)
+			if next_id == "":
+				break
+			var cost: int = int(GameManager.get_item(next_id).get("cost", 0))
+			if PlayerManager.get_npc_gold(hero_id) < cost:
+				break
+			_buy_npc_item(hero_id, next_id)
+			bought_item = true
+			PlayerManager.set_npc_field(hero_id, "item_cooldown", str(NPC_ITEM_COOLDOWN_TRIPS))
+
+	var committed: bool = PlayerManager.get_npc_field(hero_id, "build_target", "") != ""
+	if not bought_item:
+		_buy_one_npc_potion(hero_id)
+	if not committed:
+		var budget: int = int(PlayerManager.get_npc_gold(hero_id) * NPC_SPARE_POTION_GOLD_SHARE)
+		var spent: int = _buy_one_npc_potion(hero_id, budget)
+		while spent > 0:
+			budget -= spent
+			spent = _buy_one_npc_potion(hero_id, budget)
 
 
-func _restock_npc_potion(hero_id: String, potion_id: String) -> void:
+## The next thing on the hero's shopping list: a component or the item
+## itself for its committed recipe, else a fresh pick ("" if none).
+func _next_npc_purchase(hero_id: String, hero_static: Dictionary) -> String:
+	var owned: Dictionary = PlayerManager.get_npc_items(hero_id)
+	var target: String = PlayerManager.get_npc_field(hero_id, "build_target", "")
+	if target != "" and owned.get(target, 0) > 0:
+		target = ""
+		PlayerManager.set_npc_field(hero_id, "build_target", "")
+
+	if target == "":
+		var recipes_open: bool = PlayerManager.get_npc_level(hero_id) >= NPC_RECIPE_MIN_LEVEL
+		target = EnemyShopAI.pick_target(hero_static, owned, NPC_MAX_ITEMS if recipes_open else NPC_MAX_ITEMS_BEFORE_RECIPES, recipes_open)
+		if target == "":
+			return ""
+		if not GameManager.get_item(target).get("requires", []).is_empty():
+			PlayerManager.set_npc_field(hero_id, "build_target", target)
+
+	for required_id in GameManager.get_item(target).get("requires", []):
+		if owned.get(required_id, 0) <= 0:
+			return required_id
+	return target
+
+
+## Pays for `item_id` and adds it; a recipe item also consumes its
+## components and ends the hero's commitment to it.
+func _buy_npc_item(hero_id: String, item_id: String) -> void:
+	var item: Dictionary = GameManager.get_item(item_id)
+	PlayerManager.add_npc_gold(hero_id, -int(item.get("cost", 0)))
+	for required_id in item.get("requires", []):
+		PlayerManager.remove_npc_item(hero_id, required_id)
+	PlayerManager.add_npc_item(hero_id, item_id)
+	if PlayerManager.get_npc_field(hero_id, "build_target", "") == item_id:
+		PlayerManager.set_npc_field(hero_id, "build_target", "")
+
+
+func _buy_npc_potions_up_to(hero_id: String, potion_id: String, target_count: int) -> void:
 	var cost: int = int(GameManager.get_item(potion_id).get("cost", 0))
 	if cost <= 0:
 		return
-
 	var count: int = PlayerManager.get_npc_potion_count(hero_id, potion_id)
-	while count < NPC_TARGET_POTION_COUNT and PlayerManager.get_npc_gold(hero_id) >= cost:
+	target_count = mini(target_count, NPC_MAX_HEALTH_POTIONS if potion_id == "health" else NPC_MAX_MANA_POTIONS)
+	while count < target_count and PlayerManager.get_npc_gold(hero_id) >= cost:
 		PlayerManager.add_npc_gold(hero_id, -cost)
 		count += 1
 		PlayerManager.set_npc_potion_count(hero_id, potion_id, count)
+
+
+## Buys one potion of whichever kind the hero is proportionally lower
+## on (health on a tie) if it can afford it and `budget` allows (-1 = no
+## budget limit). Returns the gold spent (0 if it bought nothing).
+func _buy_one_npc_potion(hero_id: String, budget: int = -1) -> int:
+	var health_count: int = PlayerManager.get_npc_potion_count(hero_id, "health")
+	var mana_count: int = PlayerManager.get_npc_potion_count(hero_id, "mana")
+	var health_open: bool = health_count < NPC_MAX_HEALTH_POTIONS
+	var mana_open: bool = mana_count < NPC_MAX_MANA_POTIONS
+	if not health_open and not mana_open:
+		return 0
+	var health_ratio: float = float(health_count) / float(NPC_RESERVE_HEALTH)
+	var mana_ratio: float = float(mana_count) / float(NPC_RESERVE_MANA)
+	var potion_id: String = "health" if (health_open and (not mana_open or health_ratio <= mana_ratio)) else "mana"
+	var cost: int = int(GameManager.get_item(potion_id).get("cost", 0))
+	if cost <= 0 or PlayerManager.get_npc_gold(hero_id) < cost or (budget >= 0 and budget < cost):
+		return 0
+	PlayerManager.add_npc_gold(hero_id, -cost)
+	PlayerManager.set_npc_potion_count(hero_id, potion_id, PlayerManager.get_npc_potion_count(hero_id, potion_id) + 1)
+	return cost
 
 
 # ------------------------------------------------------------------
@@ -222,6 +340,26 @@ func _restock_npc_potion(hero_id: String, potion_id: String) -> void:
 # but XP/gold/potions already spent this attempt are kept).
 const MAX_SIMULATED_TURNS: int = 30
 
+# A tick stands for one of the player's Battle-scene visits: the rival keeps
+# going stage after stage (up to GameManager.MAX_ZONE_STAGE) until it fails,
+# flees or clears the zone, like the player does in one visit.
+
+# Rival-vs-rival duels (zone-mates and invasions) only start once the hero has
+# reached this level, and not more often than every NPC_DUEL_COOLDOWN_TICKS
+# ticks - otherwise rivals kill each other long before the player meets them.
+const NPC_DUEL_MIN_LEVEL: int = 6
+const NPC_DUEL_COOLDOWN_TICKS: int = 10
+
+# The sim has no positions, so without this every creep would hit the
+# hero from turn 1. In a real battle creeps spawn at the far end (melee
+# column 7, ranged column 8, the hero at column 1) and have to walk up:
+# melee must reach the hero's column, ranged only within 3 columns. The
+# hero also closes in, so the gap is covered roughly twice as fast - these
+# are the turns before a freshly spawned creep (including every
+# reinforcement wave) can first act.
+const CREEP_ARRIVAL_DELAY_TURNS_MELEE: int = 3
+const CREEP_ARRIVAL_DELAY_TURNS_RANGE: int = 2
+
 # Reinforcements - mirrors battle.gd's own REINFORCEMENT_INTERVAL/
 # REINFORCEMENT_REPEAT_INTERVAL (kept in sync by hand, same as every
 # other simulated number in this file that isn't shared code - see
@@ -229,8 +367,10 @@ const MAX_SIMULATED_TURNS: int = 30
 # due after this many turns, every wave after that after another
 # REINFORCEMENT_REPEAT_INTERVAL on top, for as long as the fight goes
 # on unresolved.
-const REINFORCEMENT_INTERVAL: int = 13
-const REINFORCEMENT_REPEAT_INTERVAL: int = 10
+# Hero-vs-hero duels (allow_flee == false) use battle.gd's slower
+# HERO_FIGHT_REINFORCEMENT_* schedule instead.
+const HERO_FIGHT_REINFORCEMENT_INTERVAL: int = 15
+const HERO_FIGHT_REINFORCEMENT_REPEAT_INTERVAL: int = 10
 
 # Drink a Health Potion once HP falls to (or below) this fraction of
 # max. Should stay ABOVE FLEE_HP_THRESHOLD so a hero gets a real chance
@@ -369,8 +509,8 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 	"double_trouble", "blast_hopper", "three_cheers", "kiss_the_wastes",
 	"imperial_guard", "shackles", "luring_gaze",
 	"hunting_instinct", "paralytic_venom", "deathlight_lure",
-	"starstorm", "sacred_arrow", "moonlight_shadow",
-	"lucent_beam", "eclipse",
+	"fallen_grace", "hope_of_the_fallen", "ambush_strike",
+	"moonfall_lance", "eternal_eclipse",
 ]
 
 # Dreadlure, the thirteenth hero with simulated skill logic. Guardian
@@ -399,30 +539,30 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # _run_stage_fight() (mirroring Pull of the Abyss's own stack there) - its
 # knockback has nothing to act on here either, same reasoning Glacier
 # Breaker's own collision bonus is dropped for.
-# Mirana's Starstorm is a self-centered AoE with nothing to center it on
+# Solara's Fallen Grace is a self-centered AoE with nothing to center it on
 # here, so - like Return to the Void/Mother's Grasp/Luring Gaze above - it hits
-# every living enemy at once. Sacred Arrow has no columns to travel
-# across here, so (same "no columns" honesty EnemySkillAI's own _mirana_
-# sacred_arrow_expected_damage() already follows) its sim copy deals only
+# every living enemy at once. Hope of the Fallen has no columns to travel
+# across here, so (same "no columns" honesty EnemySkillAI's own _solara_
+# hope_of_the_fallen_expected_damage() already follows) its sim copy deals only
 # its own flat base_damage - never the distance-scaled total - to
 # whichever enemy the hero would attack anyway, stunning it the same way
-# Drowned Surge's own sim copy does. Leap is NOT in this list at all - its
+# Drowned Surge's own sim copy does. Withering Pursuit is NOT in this list at all - its
 # entire "close distance/reposition" concept has nothing to act on in a
 # positionless sim, the exact same reasoning Undertow is excluded
-# for (see KNOWN_ACTIVE_SKILL_IDS's own comment above) - a Leap that
+# for (see KNOWN_ACTIVE_SKILL_IDS's own comment above) - a Withering Pursuit that
 # always "succeeds" here would have literally nothing to accomplish.
-# Moonlight Shadow mirrors Depthsveil's own sim copy exactly (see this
+# Ambush Strike mirrors Depthsveil's own sim copy exactly (see this
 # file's "depthsveil" cases below and in _npc_skill_worth_casting()/
 # the retaliation-loop guard) - invisibility skips enemy retaliation for
 # the turn, and its own bonus_damage_pct folds into the hero's next
 # Attack as a PERCENTAGE of the roll (mirroring Might of the Deep's own
 # post-roll percentage), ending the moment that Attack lands.
-# Luna's Lucent Beam is single-target with its own flat damage, same
+# Lunara's Moonfall Lance is single-target with its own flat damage, same
 # shape as Mark of Stillness's/Drowned Surge's own sim copies - stunning whichever
-# enemy the hero would attack anyway. Eclipse fires ECLIPSE_BEAMS_PER_
+# enemy the hero would attack anyway. Eternal Eclipse fires ETERNAL_ECLIPSE_BEAMS_PER_
 # TURN beams per turn, each independently picking ONE random living
 # enemy from `living` with NO cap on how many beams the same one can
-# take (see _run_stage_fight()'s own "Eclipse" block for where the
+# take (see _run_stage_fight()'s own "Eternal Eclipse" block for where the
 # actual firing happens, mirroring the Imperial Guard attack
 # block's own shape rather than a simple per-turn tick, since a beam can
 # kill its target mid-loop and change who's left to pick from for the
@@ -456,11 +596,11 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # MARK_OF_THE_MIST_STACK_DECAY_TURNS.
 const MARK_OF_THE_MIST_STACK_DECAY_TURNS := 3
 
-# How many Eclipse beams fire per simulated turn while it's active -
-# mirrors battle.gd's own ECLIPSE_BEAMS_PER_TURN constant exactly (only
+# How many Eternal Eclipse beams fire per simulated turn while it's active -
+# mirrors battle.gd's own ETERNAL_ECLIPSE_BEAMS_PER_TURN constant exactly (only
 # the total beam count/damage/radius scale with level, see
-# GameManager's own "eclipse" skill data).
-const ECLIPSE_BEAMS_PER_TURN := 2
+# GameManager's own "eternal_eclipse" skill data).
+const ETERNAL_ECLIPSE_BEAMS_PER_TURN := 2
 
 
 ## Runs one simulated attempt for `hero_id` against whichever zone/
@@ -498,12 +638,11 @@ func simulate_npc_stage_attempt(hero_id: String, hero_static: Dictionary) -> Dic
 		starting_hp = PlayerManager.get_npc_current_hp(hero_id)
 		starting_mana = PlayerManager.get_npc_current_mana(hero_id)
 
-	var enemies: Array = _build_simulated_stage_enemies(zone_id, stage)
+	var enemies: Array = _build_simulated_stage_enemies(zone_id, stage, PlayerManager.get_npc_level(hero_id))
 	var fight: Dictionary = _run_stage_fight(hero_id, hero_static, enemies, starting_hp, starting_mana, true, zone_id, stage)
 
 	PlayerManager.set_npc_current_hp(hero_id, fight["ending_hp"])
 	PlayerManager.set_npc_current_mana(hero_id, fight["ending_mana"])
-
 	if fight["xp_gained"] > 0.0:
 		award_npc_xp(hero_id, hero_static, fight["xp_gained"])
 	if fight["gold_gained"] > 0:
@@ -525,7 +664,7 @@ func simulate_npc_stage_attempt(hero_id: String, hero_static: Dictionary) -> Dic
 		# more of that pool than dying to 0 HP does).
 		PlayerManager.set_npc_current_stage(hero_id, 1)
 
-	restock_npc_potions(hero_id)
+	npc_shop(hero_id)
 
 	return fight
 
@@ -547,11 +686,34 @@ func tick_npc_hero(hero_id: String, hero_static: Dictionary) -> void:
 		_tick_freed_npc_hero(hero_id, hero_static)
 		return
 
-	var stage_before: int = PlayerManager.get_npc_current_stage(hero_id)
-	var fight: Dictionary = simulate_npc_stage_attempt(hero_id, hero_static)
+	_tick_npc_duel_cooldown(hero_id)
+	for _stage_attempt in range(GameManager.MAX_ZONE_STAGE):
+		var stage_before: int = PlayerManager.get_npc_current_stage(hero_id)
+		var fight: Dictionary = simulate_npc_stage_attempt(hero_id, hero_static)
+		if fight["result"] != "win":
+			break
+		if stage_before >= GameManager.MAX_ZONE_STAGE:
+			if _npc_duel_ready(hero_id):
+				_try_npc_zone_mate_fight(hero_id, hero_static)
+			break
 
-	if fight["result"] == "win" and stage_before >= GameManager.MAX_ZONE_STAGE:
-		_try_npc_zone_mate_fight(hero_id, hero_static)
+
+## Whether this hero may start a rival-vs-rival duel now (level gate plus
+## cooldown, see NPC_DUEL_MIN_LEVEL/NPC_DUEL_COOLDOWN_TICKS). Returning true
+## starts the cooldown, since the caller is about to duel.
+func _npc_duel_ready(hero_id: String) -> bool:
+	if PlayerManager.get_npc_level(hero_id) < NPC_DUEL_MIN_LEVEL:
+		return false
+	if int(PlayerManager.get_npc_field(hero_id, "duel_cooldown", "0")) > 0:
+		return false
+	PlayerManager.set_npc_field(hero_id, "duel_cooldown", str(NPC_DUEL_COOLDOWN_TICKS))
+	return true
+
+
+func _tick_npc_duel_cooldown(hero_id: String) -> void:
+	var left: int = int(PlayerManager.get_npc_field(hero_id, "duel_cooldown", "0"))
+	if left > 0:
+		PlayerManager.set_npc_field(hero_id, "duel_cooldown", str(left - 1))
 
 
 ## After fully clearing their own home zone's final stage, fights a
@@ -613,7 +775,7 @@ func _try_npc_zone_mate_fight(hero_id: String, hero_static: Dictionary) -> void:
 	# stage was already reset to 1 by simulate_npc_stage_attempt just
 	# before this ran, so the hero re-clears all of its home zone's
 	# stages again before getting another shot at this fight.
-	restock_npc_potions(hero_id)
+	npc_shop(hero_id)
 
 
 # ------------------------------------------------------------------
@@ -644,11 +806,16 @@ func _tick_freed_npc_hero(hero_id: String, hero_static: Dictionary) -> void:
 		PlayerManager.set_npc_current_zone(hero_id, GameManager.get_zone_id_for_hero(target_id))
 		PlayerManager.set_npc_current_stage(hero_id, 1)
 
-	var stage_before: int = PlayerManager.get_npc_current_stage(hero_id)
-	var fight: Dictionary = simulate_npc_stage_attempt(hero_id, hero_static)
-
-	if fight["result"] == "win" and stage_before >= GameManager.MAX_ZONE_STAGE:
-		_try_npc_invasion_duel(hero_id, hero_static, target_id)
+	_tick_npc_duel_cooldown(hero_id)
+	for _stage_attempt in range(GameManager.MAX_ZONE_STAGE):
+		var stage_before: int = PlayerManager.get_npc_current_stage(hero_id)
+		var fight: Dictionary = simulate_npc_stage_attempt(hero_id, hero_static)
+		if fight["result"] != "win":
+			break
+		if stage_before >= GameManager.MAX_ZONE_STAGE:
+			if _npc_duel_ready(hero_id):
+				_try_npc_invasion_duel(hero_id, hero_static, target_id)
+			break
 
 
 ## One random undefeated hero from anywhere in the game, excluding
@@ -717,7 +884,7 @@ func _try_npc_invasion_duel(hero_id: String, hero_static: Dictionary, target_id:
 	# this ran, so the hero re-clears the target's whole zone again
 	# before retrying this same duel - identical to the home-zone-mate
 	# fight's own retry behavior.
-	restock_npc_potions(hero_id)
+	npc_shop(hero_id)
 
 
 ## Every hero in the game except `exclude_hero_id` (the player's own
@@ -753,13 +920,19 @@ func tick_all_npc_heroes(player_hero_id: String) -> void:
 	PlayerManager.flush_player_data()
 
 
+# How much of the player's level-based creep scaling (see
+# GameManager.scale_creep_for_level) rivals meet in the background
+# simulation: 1.0 = the same, 0 = none.
+const NPC_CREEP_SCALING_SHARE: float = 0.3333
+
+
 ## Builds this stage's enemy list the same way battle.gd's
 ## _load_enemies()/_build_stage_enemy_def() do for the real game:
 ## cycling through the zone's own melee/ranged templates per
 ## GameManager.get_stage_enemy_counts(), with this stage's hp/damage/
 ## gold bonuses baked into a duplicated copy of each template (the
 ## zone's template dictionaries themselves are never mutated).
-func _build_simulated_stage_enemies(zone_id: String, stage: int) -> Array:
+func _build_simulated_stage_enemies(zone_id: String, stage: int, creep_level: int = 1) -> Array:
 	var zone_data: Dictionary = GameManager.get_zone(zone_id)
 	var enemy_defs: Array = zone_data.get("enemies", [])
 
@@ -773,18 +946,18 @@ func _build_simulated_stage_enemies(zone_id: String, stage: int) -> Array:
 
 	var counts: Dictionary = GameManager.get_stage_enemy_counts(stage)
 	var enemies: Array = []
-	enemies.append_array(_build_stage_enemy_batch(melee_templates, int(counts.get("melee", 0)), stage))
-	enemies.append_array(_build_stage_enemy_batch(range_templates, int(counts.get("range", 0)), stage))
+	enemies.append_array(_build_stage_enemy_batch(melee_templates, int(counts.get("melee", 0)), stage, 0, creep_level))
+	enemies.append_array(_build_stage_enemy_batch(range_templates, int(counts.get("range", 0)), stage, 0, creep_level))
 	return enemies
 
 
-func _build_stage_enemy_batch(templates: Array, count: int, stage: int) -> Array:
+func _build_stage_enemy_batch(templates: Array, count: int, stage: int, spawn_turn: int = 0, creep_level: int = 1) -> Array:
 	var result: Array = []
 	if templates.is_empty():
 		return result
 	for i in range(count):
 		var template: Dictionary = templates[i % templates.size()]
-		var staged: Dictionary = _apply_stage_bonus(template, stage)
+		var staged: Dictionary = GameManager.scale_creep_for_level(_apply_stage_bonus(template, stage), creep_level, NPC_CREEP_SCALING_SHARE)
 		result.append({
 			"static": staged,
 			"current_hp": float(staged.get("hp", 1)),
@@ -792,6 +965,8 @@ func _build_stage_enemy_batch(templates: Array, count: int, stage: int) -> Array
 			# _apply_npc_leeching_hunger_steal()) - mirrors the field
 			# battle.gd's own _spawn_enemy() seeds every enemy with.
 			"current_main_stat_value": float(staged.get("main_stat_value", 0)),
+			# First turn this creep can act - see CREEP_ARRIVAL_DELAY_TURNS.
+			"arrive_turn": spawn_turn + (CREEP_ARRIVAL_DELAY_TURNS_RANGE if staged.get("type", "") == "range" else CREEP_ARRIVAL_DELAY_TURNS_MELEE),
 		})
 	return result
 
@@ -812,7 +987,7 @@ func _build_stage_enemy_batch(templates: Array, count: int, stage: int) -> Array
 ## _build_stage_enemy_batch(), the same helper _build_simulated_stage_
 ## enemies() uses for a fight's opening wave, so reinforcements come in
 ## scaled to whichever stage they're actually sized at.
-func _spawn_npc_reinforcements(enemies: Array, zone_id: String, stage: int, allow_flee: bool) -> void:
+func _spawn_npc_reinforcements(enemies: Array, zone_id: String, stage: int, allow_flee: bool, spawn_turn: int, creep_level: int = 1) -> void:
 	var zone_data: Dictionary = GameManager.get_zone(zone_id)
 	var enemy_defs: Array = zone_data.get("enemies", [])
 
@@ -824,14 +999,14 @@ func _spawn_npc_reinforcements(enemies: Array, zone_id: String, stage: int, allo
 		else:
 			melee_templates.append(enemy_def)
 
-	var reinforcement_stage: int = stage if allow_flee else GameManager.MAX_ZONE_STAGE
+	var reinforcement_stage: int = stage if allow_flee else GameManager.HERO_FIGHT_REINFORCEMENT_STAGE
 	var counts: Dictionary = (
 		GameManager.get_reinforcement_enemy_counts(reinforcement_stage) if allow_flee
 		else GameManager.get_stage_enemy_counts(reinforcement_stage)
 	)
 
-	enemies.append_array(_build_stage_enemy_batch(melee_templates, int(counts.get("melee", 0)), reinforcement_stage))
-	enemies.append_array(_build_stage_enemy_batch(range_templates, int(counts.get("range", 0)), reinforcement_stage))
+	enemies.append_array(_build_stage_enemy_batch(melee_templates, int(counts.get("melee", 0)), reinforcement_stage, spawn_turn, creep_level))
+	enemies.append_array(_build_stage_enemy_batch(range_templates, int(counts.get("range", 0)), reinforcement_stage, spawn_turn, creep_level))
 
 
 func _apply_stage_bonus(base_def: Dictionary, stage: int) -> Dictionary:
@@ -855,16 +1030,58 @@ func _apply_stage_bonus(base_def: Dictionary, stage: int) -> Dictionary:
 
 ## The hero's own effective combat stats (hp/mana/armor/damage),
 ## derived from their current strength/agility/intelligence exactly
-## like the player's own hero - see GameManager.compute_derived_stats.
-## NPCs never buy equipment (only potions), so there's no equivalent
-## of the player's inventory stat bonus to add on top here.
+## like the player's own hero - see GameManager.compute_derived_stats -
+## plus whatever equipment the hero owns (see npc_shop()), added the same
+## way PlayerManager.get_recruited_hero() folds in the player's items.
 func _get_npc_combat_stats(hero_id: String, hero_static: Dictionary) -> Dictionary:
-	return GameManager.compute_derived_stats(
+	var derived: Dictionary = GameManager.compute_derived_stats(
 		hero_static,
-		PlayerManager.get_npc_stat(hero_id, "strength"),
-		PlayerManager.get_npc_stat(hero_id, "agility"),
-		PlayerManager.get_npc_stat(hero_id, "intelligence")
+		PlayerManager.get_npc_stat(hero_id, "strength") + PlayerManager.get_npc_item_bonus(hero_id, "strength"),
+		PlayerManager.get_npc_stat(hero_id, "agility") + PlayerManager.get_npc_item_bonus(hero_id, "agility"),
+		PlayerManager.get_npc_stat(hero_id, "intelligence") + PlayerManager.get_npc_item_bonus(hero_id, "intelligence")
 	)
+	return _add_npc_item_extras(hero_id, derived)
+
+
+## Adds the item bonuses that don't flow through strength/agility/
+## intelligence (max HP/mana, armor, flat damage) onto `derived` stats.
+func _add_npc_item_extras(hero_id: String, derived: Dictionary) -> Dictionary:
+	var result: Dictionary = derived.duplicate()
+	result["hp"] = float(derived.get("hp", 0)) + PlayerManager.get_npc_item_bonus(hero_id, "max_hp")
+	result["mana"] = float(derived.get("mana", 0)) + PlayerManager.get_npc_item_bonus(hero_id, "max_mana")
+	result["armor"] = float(derived.get("armor", 0)) + PlayerManager.get_npc_item_bonus(hero_id, "armor")
+	result["damage"] = PlayerManager._add_flat_bonus_to_range(str(derived.get("damage", "0-0")), PlayerManager.get_npc_item_bonus(hero_id, "damage"))
+	return result
+
+
+## A copy of a rival's zone definition with the strength/agility/
+## intelligence it has gained from levelling, and the equipment it has
+## bought, folded into its stats - for a real battle against the player,
+## which builds the boss from the definition's stats. Uses the same
+## numbers the background simulation fights with (_get_npc_combat_stats).
+## A hero that hasn't been simulated yet keeps its base stats.
+func apply_npc_progress(hero_static: Dictionary) -> Dictionary:
+	var hero_id: String = hero_static.get("id", "")
+	if not PlayerManager.npc_is_initialized(hero_id):
+		return hero_static
+
+	var strength: float = PlayerManager.get_npc_stat(hero_id, "strength") + PlayerManager.get_npc_item_bonus(hero_id, "strength")
+	var agility: float = PlayerManager.get_npc_stat(hero_id, "agility") + PlayerManager.get_npc_item_bonus(hero_id, "agility")
+	var intelligence: float = PlayerManager.get_npc_stat(hero_id, "intelligence") + PlayerManager.get_npc_item_bonus(hero_id, "intelligence")
+	var derived: Dictionary = _get_npc_combat_stats(hero_id, hero_static)
+
+	var stats: Dictionary = hero_static.get("stats", {}).duplicate()
+	stats["strength"] = strength
+	stats["agility"] = agility
+	stats["intelligence"] = intelligence
+	stats["hp"] = derived["hp"]
+	stats["mana"] = derived["mana"]
+	stats["armor"] = derived["armor"]
+	stats["damage"] = derived["damage"]
+
+	var progressed: Dictionary = hero_static.duplicate()
+	progressed["stats"] = stats
+	return progressed
 
 
 ## Runs the actual turn loop for one stage attempt against `enemies`
@@ -890,6 +1107,7 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 	var max_mana: float = float(combat_stats.get("mana", 0))
 	var base_armor: float = float(combat_stats.get("armor", 0))
 	var damage_range: String = str(combat_stats.get("damage", "0-0"))
+	var mask_lifesteal_pct: float = GameManager.MORBID_MASK_LIFESTEAL_PCT if PlayerManager.get_npc_items(hero_id).get("morbid_mask", 0) > 0 else 0.0
 
 	var current_hp: float = clampf(starting_hp, 0.0, max_hp)
 	var current_mana: float = clampf(starting_mana, 0.0, max_mana)
@@ -905,10 +1123,10 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 	# of this state (in battle.gd) reset every time the Battle scene is
 	# left and re-entered.
 	var state: Dictionary = _new_npc_combat_state()
-	# Luna's Lunar Blessing: computed once here, where hero_id/hero_static
+	# Lunara's Moonbound Might: computed once here, where hero_id/hero_static
 	# are in scope, rather than threaded through every one of _npc_roll_
 	# damage()'s own many call sites - see that function's own docstring.
-	state["lunar_blessing_bonus_pct"] = float(_get_npc_lunar_blessing_level_data(hero_id, hero_static).get("bonus_damage_pct", 0.0))
+	state["moonbound_might_bonus_pct"] = float(_get_npc_moonbound_might_level_data(hero_id, hero_static).get("bonus_damage_pct", 0.0))
 
 	# Reinforcements - mirrors battle.gd's own _turn_count/
 	# _next_reinforcement_turn pair: the first wave is due after
@@ -916,20 +1134,22 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 	# REINFORCEMENT_REPEAT_INTERVAL on top, for as long as this attempt
 	# keeps going. turn_index is 0-based, so "+1" turns it into the same
 	# 1-based turn count battle.gd's own _turn_count tracks.
-	var next_reinforcement_turn: int = REINFORCEMENT_INTERVAL
+	var next_reinforcement_turn: int = GameManager.get_reinforcement_interval(stage) if allow_flee else HERO_FIGHT_REINFORCEMENT_INTERVAL
 
+	var turns_taken: int = 0
 	for turn_index in range(MAX_SIMULATED_TURNS):
+		turns_taken = turn_index + 1
 		if turn_index + 1 >= next_reinforcement_turn:
-			_spawn_npc_reinforcements(enemies, zone_id, stage, allow_flee)
-			next_reinforcement_turn += REINFORCEMENT_REPEAT_INTERVAL
+			_spawn_npc_reinforcements(enemies, zone_id, stage, allow_flee, turn_index, PlayerManager.get_npc_level(hero_id))
+			next_reinforcement_turn += GameManager.get_reinforcement_repeat(stage) if allow_flee else HERO_FIGHT_REINFORCEMENT_REPEAT_INTERVAL
 
 		for skill_id in cooldowns.keys():
 			cooldowns[skill_id] = maxi(0, cooldowns[skill_id] - 1)
 
 		_tick_npc_leeching_hunger(state["leeching_hunger"])
 		_tick_npc_depthsveil(state["depthsveil"])
-		_tick_npc_moonlight_shadow(state["moonlight_shadow"])
-		_tick_npc_eclipse(state["eclipse"])
+		_tick_npc_ambush_strike(state["ambush_strike"])
+		_tick_npc_eternal_eclipse(state["eternal_eclipse"])
 		_tick_npc_wildbond(state["wildbond"])
 		_tick_npc_beast_of_the_elderwild(state["beast_of_the_elderwild"])
 		_tick_npc_veil_of_the_forgotten(state["veil_of_the_forgotten"])
@@ -1039,16 +1259,16 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 				# to apply here - see KNOWN_ACTIVE_SKILL_IDS's own comment
 				# above.
 				var might_level_data: Dictionary = _maybe_consume_npc_might_of_the_deep_stack(hero_id, hero_static, state)
-				# Mirana's own Moonlight Shadow pays off the same way, just
+				# Solara's own Ambush Strike pays off the same way, just
 				# as a PERCENTAGE of the roll (folded in below, before
 				# Might's own - order doesn't matter mathematically since
 				# both are only ever learned by different heroes, never
 				# both active at once).
-				var moonlight_active: bool = state["moonlight_shadow"]["active"]
-				var moonlight_bonus_pct: float = state["moonlight_shadow"]["bonus_damage_pct"] if moonlight_active else 0.0
+				var ambush_active: bool = state["ambush_strike"]["active"]
+				var ambush_bonus_pct: float = state["ambush_strike"]["bonus_damage_pct"] if ambush_active else 0.0
 				var dmg: float = _npc_roll_damage(damage_range, state, shadow_bonus + pull_of_the_abyss_bonus)
-				if moonlight_active:
-					dmg += dmg * moonlight_bonus_pct
+				if ambush_active:
+					dmg += dmg * ambush_bonus_pct
 				if not might_level_data.is_empty():
 					dmg += dmg * float(might_level_data.get("bonus_damage_pct", 0.0))
 				var mitigated: float = _apply_damage_to_enemy(target, dmg)
@@ -1056,19 +1276,19 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 				_apply_npc_mark_of_the_mist_stack(hero_id, hero_static, target, turn_index)
 				if not pull_of_the_abyss_level_data.is_empty():
 					_apply_npc_pull_of_the_abyss_cleave(target, dmg, pull_of_the_abyss_level_data, living)
-				var moon_glaives_level_data: Dictionary = _get_npc_moon_glaives_level_data(hero_id, hero_static)
-				if not moon_glaives_level_data.is_empty():
-					_apply_npc_moon_glaives_bounces(target, dmg, moon_glaives_level_data, living)
+				var lunar_ricochet_level_data: Dictionary = _get_npc_lunar_ricochet_level_data(hero_id, hero_static)
+				if not lunar_ricochet_level_data.is_empty():
+					_apply_npc_lunar_ricochet_bounces(target, dmg, lunar_ricochet_level_data, living)
 				_apply_npc_frostbound_fangs_attack(state["frostbound_fangs"])
-				current_hp = minf(effective_max_hp, current_hp + _npc_wildbond_lifesteal(state["wildbond"], mitigated))
+				current_hp = minf(effective_max_hp, current_hp + _npc_wildbond_lifesteal(state["wildbond"], mitigated) + mitigated * mask_lifesteal_pct)
 				acted_with = "attack"
 
-				if moonlight_active:
+				if ambush_active:
 					# Reveals itself the instant the empowered Attack
 					# actually lands, whether or not it kills the target -
 					# same "one guaranteed hit, then it's spent" rule
 					# battle.gd's own copy follows.
-					_end_npc_moonlight_shadow(state["moonlight_shadow"])
+					_end_npc_ambush_strike(state["ambush_strike"])
 
 				if attacking_from_rootveil:
 					if target.get("current_hp", 0) > 0:
@@ -1088,12 +1308,12 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 			_end_npc_depthsveil(state["depthsveil"])
 		if state["rootveil"]["active"] and acted_with != "" and acted_with != "rootveil":
 			_end_npc_rootveil(state["rootveil"])
-		# Sacred Arrow is deliberately exempt - mirrors battle.gd's own
+		# Hope of the Fallen is deliberately exempt - mirrors battle.gd's own
 		# equivalent guard (see that file's own _cast_enemy_skill()
-		# comment for why firing Sacred Arrow from stealth never breaks
-		# Moonlight Shadow there either).
-		if state["moonlight_shadow"]["active"] and acted_with != "" and acted_with != "moonlight_shadow" and acted_with != "sacred_arrow":
-			_end_npc_moonlight_shadow(state["moonlight_shadow"])
+		# comment for why firing Hope of the Fallen from stealth never breaks
+		# Ambush Strike there either).
+		if state["ambush_strike"]["active"] and acted_with != "" and acted_with != "ambush_strike" and acted_with != "hope_of_the_fallen":
+			_end_npc_ambush_strike(state["ambush_strike"])
 
 		kills = _collect_npc_kills(enemies, counted_dead)
 		xp_gained += kills["xp"]
@@ -1147,31 +1367,31 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 				result = "win"
 				break
 
-		# --- Luna's Eclipse (if active and past its own casting turn -
-		# see _tick_npc_eclipse()'s own "duration_pending_start" skip)
-		# also fires automatically: up to ECLIPSE_BEAMS_PER_TURN beams
+		# --- Lunara's Eternal Eclipse (if active and past its own casting turn -
+		# see _tick_npc_eternal_eclipse()'s own "duration_pending_start" skip)
+		# also fires automatically: up to ETERNAL_ECLIPSE_BEAMS_PER_TURN beams
 		# this turn, each independently picking ONE random living enemy
 		# from `living`, with NO cap on how many beams the same one can
-		# take - mirroring battle.gd's own _tick_eclipse()/_tick_enemy_
-		# eclipse() exactly (see KNOWN_ACTIVE_SKILL_IDS's own comment
+		# take - mirroring battle.gd's own _tick_eternal_eclipse()/_tick_enemy_
+		# eternal_eclipse() exactly (see KNOWN_ACTIVE_SKILL_IDS's own comment
 		# above for why this lives inline here rather than in a simple
 		# per-turn tick function: a beam can kill its target mid-loop,
 		# changing who's left to pick from for the NEXT beam this same
 		# turn, the same reasoning the Imperial Guard block just above
 		# already follows). A beam with nothing left to hit still counts
 		# against the total, same as the real fight's own copy. ---
-		if state["eclipse"]["active"] and not state["eclipse"]["duration_pending_start"]:
-			var eclipse_damage_per_beam: float = float(state["eclipse"]["damage_per_beam"])
-			for i in range(ECLIPSE_BEAMS_PER_TURN):
-				if int(state["eclipse"]["beams_remaining"]) <= 0:
+		if state["eternal_eclipse"]["active"] and not state["eternal_eclipse"]["duration_pending_start"]:
+			var eternal_eclipse_damage_per_beam: float = float(state["eternal_eclipse"]["damage_per_beam"])
+			for i in range(ETERNAL_ECLIPSE_BEAMS_PER_TURN):
+				if int(state["eternal_eclipse"]["beams_remaining"]) <= 0:
 					break
-				state["eclipse"]["beams_remaining"] -= 1
+				state["eternal_eclipse"]["beams_remaining"] -= 1
 
 				if living.is_empty():
 					continue
 
-				var eclipse_target: Dictionary = living[randi() % living.size()]
-				_apply_damage_to_enemy(eclipse_target, eclipse_damage_per_beam)
+				var eternal_eclipse_target: Dictionary = living[randi() % living.size()]
+				_apply_damage_to_enemy(eternal_eclipse_target, eternal_eclipse_damage_per_beam)
 
 				kills = _collect_npc_kills(enemies, counted_dead)
 				xp_gained += kills["xp"]
@@ -1179,8 +1399,8 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 
 				living = _living_enemies(enemies)
 
-			if int(state["eclipse"]["beams_remaining"]) <= 0:
-				_end_npc_eclipse(state["eclipse"])
+			if int(state["eternal_eclipse"]["beams_remaining"]) <= 0:
+				_end_npc_eternal_eclipse(state["eternal_eclipse"])
 
 			if living.is_empty():
 				result = "win"
@@ -1203,7 +1423,7 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		# partway through this same loop once its turn comes up, so
 		# every enemy this pass needs to see the same answer regardless
 		# of iteration order. ---
-		if not state["depthsveil"]["active"] and not state["the_test_of_time"]["active"] and not state["rootveil"]["active"] and not state["moonlight_shadow"]["active"]:
+		if not state["depthsveil"]["active"] and not state["the_test_of_time"]["active"] and not state["rootveil"]["active"] and not state["ambush_strike"]["active"]:
 			# Cinder's Kindled Resolve bonus is added on top of the base
 			# armor here, at the single call site, rather than inside
 			# _npc_effective_armor() itself (which has no hero_id/hero_
@@ -1215,6 +1435,10 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 			var curse_multiplier: float = 1.0 + float(state["the_hunger_calls"].get("bonus_damage_pct", 0.0))
 
 			for enemy in living:
+				# Creeps still walking up to the hero do nothing yet (see
+				# CREEP_ARRIVAL_DELAY_TURNS).
+				if turn_index < int(enemy.get("arrive_turn", 0)):
+					continue
 				var stun_left: int = enemy.get("stun_turns_left", 0)
 				if stun_left > 0:
 					enemy["stun_turns_left"] = stun_left - 1
@@ -1244,9 +1468,18 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 			result = "loss"
 			break
 
+	# Credit every creep that died but hasn't been counted yet - DoT ticks
+	# and other effects after the last in-loop collection would otherwise
+	# be lost when the attempt ends in a flee, loss or stalemate.
+	# counted_dead keeps this from double-counting anything.
+	var final_kills: Dictionary = _collect_npc_kills(enemies, counted_dead)
+	xp_gained += final_kills["xp"]
+	gold_gained += final_kills["gold"]
+
 	return {
 		"result": result,
 		"xp_gained": xp_gained,
+		"turns": turns_taken,
 		"gold_gained": gold_gained,
 		"ending_hp": maxf(current_hp, 0.0),
 		"ending_mana": current_mana,
@@ -1287,9 +1520,9 @@ func _new_npc_combat_state() -> Dictionary:
 		"kiss_the_wastes": {"active": false, "turns_remaining": 0, "level_data": {}},
 		"imperial_guard": {"active": false, "guard_count": 0, "damage_pct": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"might_of_the_deep_attack_count": 0,
-		"moonlight_shadow": {"active": false, "bonus_damage_pct": 0.0, "turns_remaining": 0, "duration_pending_start": false},
-		"eclipse": {"active": false, "damage_per_beam": 0.0, "beams_remaining": 0, "duration_pending_start": false},
-		"lunar_blessing_bonus_pct": 0.0,
+		"ambush_strike": {"active": false, "bonus_damage_pct": 0.0, "turns_remaining": 0, "duration_pending_start": false},
+		"eternal_eclipse": {"active": false, "damage_per_beam": 0.0, "beams_remaining": 0, "duration_pending_start": false},
+		"moonbound_might_bonus_pct": 0.0,
 	}
 
 
@@ -1623,16 +1856,16 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 			lure_target["armor_reduction"] = float(lure_target.get("armor_reduction", 0.0)) + float(level_data.get("armor_reduction", 0))
 			lure_target["deathlight_lure_bonus_pct"] = float(level_data.get("bonus_damage_pct", 0.0))
 			lure_target["armor_reduction_turns_left"] = int(level_data.get("duration", 0))
-		"starstorm":
+		"fallen_grace":
 			# Self-centered AoE with nothing to center it on here - same
 			# "no columns, hit everyone" fallback Luring Gaze's own
 			# case above already uses.
 			var storm_damage: float = float(level_data.get("damage", 0))
 			for enemy in living:
 				_apply_damage_to_enemy(enemy, storm_damage)
-		"sacred_arrow":
+		"hope_of_the_fallen":
 			# No columns to travel across here - same "no columns" honesty
-			# EnemySkillAI's own _mirana_sacred_arrow_expected_damage()
+			# EnemySkillAI's own _solara_hope_of_the_fallen_expected_damage()
 			# already follows, so only the flat base_damage lands, never
 			# the distance-scaled total, on whichever enemy the hero would
 			# attack anyway.
@@ -1640,15 +1873,15 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 			_apply_damage_to_enemy(arrow_target, float(level_data.get("base_damage", 0)))
 			if arrow_target["current_hp"] > 0:
 				arrow_target["stun_turns_left"] = int(level_data.get("stun_turns", 0))
-		"moonlight_shadow":
-			_activate_npc_moonlight_shadow(state["moonlight_shadow"], level_data)
-		"lucent_beam":
+		"ambush_strike":
+			_activate_npc_ambush_strike(state["ambush_strike"], level_data)
+		"moonfall_lance":
 			var beam_target: Dictionary = _lowest_hp_enemy(living)
 			_apply_damage_to_enemy(beam_target, float(level_data.get("damage", 0)))
 			if beam_target["current_hp"] > 0:
 				beam_target["stun_turns_left"] = int(level_data.get("stun_turns", 0))
-		"eclipse":
-			_activate_npc_eclipse(state["eclipse"], level_data)
+		"eternal_eclipse":
+			_activate_npc_eternal_eclipse(state["eternal_eclipse"], level_data)
 
 
 func _get_npc_skill_level_data(hero_id: String, hero_static: Dictionary, skill_id: String) -> Dictionary:
@@ -1679,10 +1912,10 @@ func _npc_skill_worth_casting(skill_id: String, state: Dictionary) -> bool:
 			return not state["leeching_hunger"]["active"]
 		"depthsveil":
 			return not state["depthsveil"]["active"]
-		"moonlight_shadow":
-			return not state["moonlight_shadow"]["active"]
-		"eclipse":
-			return not state["eclipse"]["active"]
+		"ambush_strike":
+			return not state["ambush_strike"]["active"]
+		"eternal_eclipse":
+			return not state["eternal_eclipse"]["active"]
 		"wildbond":
 			return not state["wildbond"]["active"]
 		"beast_of_the_elderwild":
@@ -1831,30 +2064,30 @@ func _pick_ready_skill(hero_id: String, hero_static: Dictionary, cooldowns: Dict
 ##     whichever enemy the hero would attack anyway's own
 ##     "deathlight_lure_bonus_pct" field instead of a battle-local var,
 ##     since there's no single fixed "the player" to hold one on here.
-##   - hero_attack_range/starstorm_radius/sacred_arrow_range/sacred_
-##     arrow_base_damage/sacred_arrow_bonus_per_column/moonlight_shadow_
-##     active/moonlight_shadow_bonus_damage_pct/target_stunned: Mirana's
-##     own Starstorm/Sacred Arrow/Moonlight Shadow - mirrors battle.gd's
+##   - hero_attack_range/fallen_grace_radius/hope_of_the_fallen_range/sacred_
+##     arrow_base_damage/hope_of_the_fallen_bonus_per_column/ambush_strike_
+##     active/ambush_strike_bonus_damage_pct/target_stunned: Solara's
+##     own Fallen Grace/Hope of the Fallen/Ambush Strike - mirrors battle.gd's
 ##     own identically-named fields (see that file's own _build_enemy_ai_
 ##     context() docstring). hero_attack_range is a flat 3 (matching
 ##     battle.gd's own RANGE_ENEMY_ATTACK_RANGE) but effectively inert
-##     here, same as everywhere target_distance is absent - Leap itself
+##     here, same as everywhere target_distance is absent - Withering Pursuit itself
 ##     isn't even a candidate in this sim (see KNOWN_ACTIVE_SKILL_IDS's
 ##     own comment above), so nothing else ever reads it either.
-##   - moon_glaives_bounces/moon_glaives_bounce_damage_pct/moon_glaives_
-##     bounce_range/moon_glaives_valid_bounce_targets/moon_glaives_
-##     bounce_target_hps/lunar_blessing_bonus_pct/eclipse_candidate_
-##     count/eclipse_candidate_hps/eclipse_candidate_max_hps: Luna's own
-##     Moon Glaives/Lunar Blessing/Eclipse - mirrors battle.gd's own
+##   - lunar_ricochet_bounces/lunar_ricochet_bounce_damage_pct/lunar_ricochet_
+##     bounce_range/lunar_ricochet_valid_bounce_targets/lunar_ricochet_
+##     bounce_target_hps/moonbound_might_bonus_pct/eternal_eclipse_candidate_
+##     count/eternal_eclipse_candidate_hps/eternal_eclipse_candidate_max_hps: Lunara's own
+##     Lunar Ricochet/Moonbound Might/Eternal Eclipse - mirrors battle.gd's own
 ##     identically-named fields (see that file's own _build_enemy_ai_
 ##     context() docstring), simplified for this sim's own "no columns"
-##     honesty: moon_glaives_valid_bounce_targets/bounce_target_hps take
+##     honesty: lunar_ricochet_valid_bounce_targets/bounce_target_hps take
 ##     the first `bounces` OTHER living enemies in whatever order `living`
 ##     already has (no real distance to sort "nearest" by), and the
-##     eclipse_candidate_* fields simply reuse living_target_hps/max_hps
+##     eternal_eclipse_candidate_* fields simply reuse living_target_hps/max_hps
 ##     outright - every living enemy is always a valid beam candidate
-##     here, since Eclipse's own radius is inert in a sim with no
-##     positions at all (see this file's own "eclipse" block in
+##     here, since Eternal Eclipse's own radius is inert in a sim with no
+##     positions at all (see this file's own "eternal_eclipse" block in
 ##     _run_stage_fight() for the same reasoning applied to execution).
 func _build_npc_ai_context(hero_id: String, hero_static: Dictionary, current_hp: float, effective_max_hp: float, current_mana: float, max_mana: float, damage_range: String, state: Dictionary, living: Array) -> Dictionary:
 	var target: Dictionary = {} if living.is_empty() else _lowest_hp_enemy(living)
@@ -1868,20 +2101,20 @@ func _build_npc_ai_context(hero_id: String, hero_static: Dictionary, current_hp:
 		total_enemy_damage += float(enemy["static"].get("damage", 0))
 	var avg_enemy_damage: float = total_enemy_damage / float(living.size()) if not living.is_empty() else 0.0
 
-	# Luna's Moon Glaives: no real distance to sort "nearest" by here, so
+	# Lunara's Lunar Ricochet: no real distance to sort "nearest" by here, so
 	# the first `bounces` OTHER living enemies (in whatever order `living`
 	# already has) stand in for the real fight's own nearest-first pick -
 	# see this function's own docstring.
-	var moon_glaives_level_data: Dictionary = _get_npc_moon_glaives_level_data(hero_id, hero_static)
-	var moon_glaives_bounces: int = int(moon_glaives_level_data.get("bounces", 0))
-	var moon_glaives_bounce_target_hps: Array = []
-	if moon_glaives_bounces > 0 and not target.is_empty():
+	var lunar_ricochet_level_data: Dictionary = _get_npc_lunar_ricochet_level_data(hero_id, hero_static)
+	var lunar_ricochet_bounces: int = int(lunar_ricochet_level_data.get("bounces", 0))
+	var lunar_ricochet_bounce_target_hps: Array = []
+	if lunar_ricochet_bounces > 0 and not target.is_empty():
 		for enemy in living:
-			if moon_glaives_bounce_target_hps.size() >= moon_glaives_bounces:
+			if lunar_ricochet_bounce_target_hps.size() >= lunar_ricochet_bounces:
 				break
 			if is_same(enemy, target):
 				continue
-			moon_glaives_bounce_target_hps.append(float(enemy.get("current_hp", 0.0)))
+			lunar_ricochet_bounce_target_hps.append(float(enemy.get("current_hp", 0.0)))
 
 	return {
 		"game_mode": "simulation",
@@ -1930,22 +2163,22 @@ func _build_npc_ai_context(hero_id: String, hero_static: Dictionary, current_hp:
 		"venom_damage": float(_get_npc_skill_level_data(hero_id, hero_static, "paralytic_venom").get("damage", 0.0)),
 		"target_marked_bonus_pct": float(target.get("deathlight_lure_bonus_pct", 0.0)) if not target.is_empty() else 0.0,
 		"hero_attack_range": 3,
-		"starstorm_radius": int(_get_npc_skill_level_data(hero_id, hero_static, "starstorm").get("radius", 0)),
-		"sacred_arrow_range": int(_get_npc_skill_level_data(hero_id, hero_static, "sacred_arrow").get("range", 0)),
-		"sacred_arrow_base_damage": float(_get_npc_skill_level_data(hero_id, hero_static, "sacred_arrow").get("base_damage", 0.0)),
-		"sacred_arrow_bonus_per_column": float(_get_npc_skill_level_data(hero_id, hero_static, "sacred_arrow").get("bonus_per_column", 0.0)),
-		"moonlight_shadow_active": state["moonlight_shadow"]["active"],
-		"moonlight_shadow_bonus_damage_pct": state["moonlight_shadow"]["bonus_damage_pct"],
+		"fallen_grace_radius": int(_get_npc_skill_level_data(hero_id, hero_static, "fallen_grace").get("radius", 0)),
+		"hope_of_the_fallen_range": int(_get_npc_skill_level_data(hero_id, hero_static, "hope_of_the_fallen").get("range", 0)),
+		"hope_of_the_fallen_base_damage": float(_get_npc_skill_level_data(hero_id, hero_static, "hope_of_the_fallen").get("base_damage", 0.0)),
+		"hope_of_the_fallen_bonus_per_column": float(_get_npc_skill_level_data(hero_id, hero_static, "hope_of_the_fallen").get("bonus_per_column", 0.0)),
+		"ambush_strike_active": state["ambush_strike"]["active"],
+		"ambush_strike_bonus_damage_pct": state["ambush_strike"]["bonus_damage_pct"],
 		"target_stunned": int(target.get("stun_turns_left", 0)) > 0 if not target.is_empty() else false,
-		"moon_glaives_bounces": moon_glaives_bounces,
-		"moon_glaives_bounce_damage_pct": float(moon_glaives_level_data.get("bounce_damage_pct", 0.0)),
-		"moon_glaives_bounce_range": int(moon_glaives_level_data.get("bounce_range", 0)),
-		"moon_glaives_valid_bounce_targets": moon_glaives_bounce_target_hps.size(),
-		"moon_glaives_bounce_target_hps": moon_glaives_bounce_target_hps,
-		"lunar_blessing_bonus_pct": float(_get_npc_lunar_blessing_level_data(hero_id, hero_static).get("bonus_damage_pct", 0.0)),
-		"eclipse_candidate_count": living.size(),
-		"eclipse_candidate_hps": living.map(func(e): return float(e.get("current_hp", 0.0))),
-		"eclipse_candidate_max_hps": living.map(func(e): return float(e["static"].get("hp", 1))),
+		"lunar_ricochet_bounces": lunar_ricochet_bounces,
+		"lunar_ricochet_bounce_damage_pct": float(lunar_ricochet_level_data.get("bounce_damage_pct", 0.0)),
+		"lunar_ricochet_bounce_range": int(lunar_ricochet_level_data.get("bounce_range", 0)),
+		"lunar_ricochet_valid_bounce_targets": lunar_ricochet_bounce_target_hps.size(),
+		"lunar_ricochet_bounce_target_hps": lunar_ricochet_bounce_target_hps,
+		"moonbound_might_bonus_pct": float(_get_npc_moonbound_might_level_data(hero_id, hero_static).get("bonus_damage_pct", 0.0)),
+		"eternal_eclipse_candidate_count": living.size(),
+		"eternal_eclipse_candidate_hps": living.map(func(e): return float(e.get("current_hp", 0.0))),
+		"eternal_eclipse_candidate_max_hps": living.map(func(e): return float(e["static"].get("hp", 1))),
 	}
 
 
@@ -1960,13 +2193,13 @@ func _npc_estimate_damage(damage_range: String, state: Dictionary) -> float:
 	var max_dmg: float = float(parts[1]) if parts.size() > 1 else min_dmg
 	var bonus_damage: float = state["leeching_hunger"]["bonus"].get("damage", 0.0) + state["beast_of_the_elderwild"]["bonus_damage"] + state["bestial_rage"]["bonus_damage"]
 	var estimate: float = (min_dmg + max_dmg) / 2.0 + bonus_damage
-	# Luna's Lunar Blessing - see _npc_roll_damage()'s own comment for why
+	# Lunara's Moonbound Might - see _npc_roll_damage()'s own comment for why
 	# this reads state's own cached percentage. Applied last, same order
 	# as every real roll, so the AI's own "hero_damage" context field
 	# never underestimates what a real Attack would actually deal.
-	var lunar_blessing_bonus_pct: float = float(state.get("lunar_blessing_bonus_pct", 0.0))
-	if lunar_blessing_bonus_pct > 0.0:
-		estimate += estimate * lunar_blessing_bonus_pct
+	var moonbound_might_bonus_pct: float = float(state.get("moonbound_might_bonus_pct", 0.0))
+	if moonbound_might_bonus_pct > 0.0:
+		estimate += estimate * moonbound_might_bonus_pct
 	return estimate
 
 
@@ -2105,7 +2338,7 @@ func _end_npc_depthsveil(sd: Dictionary) -> void:
 
 
 # ------------------------------------------------------------------
-# Mirana's ultimate, Moonlight Shadow - mirrors Depthsveil's own shape
+# Solara's ultimate, Ambush Strike - mirrors Depthsveil's own shape
 # exactly (see the "depthsveil" state dict above and this file's own
 # retaliation-loop guard) - invisibility skips enemy retaliation for the
 # turn, same as being hidden there already does; the one real difference
@@ -2115,14 +2348,14 @@ func _end_npc_depthsveil(sd: Dictionary) -> void:
 # flat pre-roll bonus_damage.
 # ------------------------------------------------------------------
 
-func _activate_npc_moonlight_shadow(ms: Dictionary, level_data: Dictionary) -> void:
+func _activate_npc_ambush_strike(ms: Dictionary, level_data: Dictionary) -> void:
 	ms["active"] = true
 	ms["bonus_damage_pct"] = float(level_data.get("bonus_damage_pct", 0.0))
 	ms["turns_remaining"] = int(level_data.get("duration", 0))
 	ms["duration_pending_start"] = true
 
 
-func _tick_npc_moonlight_shadow(ms: Dictionary) -> void:
+func _tick_npc_ambush_strike(ms: Dictionary) -> void:
 	if not ms["active"]:
 		return
 	if ms["duration_pending_start"]:
@@ -2130,10 +2363,10 @@ func _tick_npc_moonlight_shadow(ms: Dictionary) -> void:
 		return
 	ms["turns_remaining"] -= 1
 	if ms["turns_remaining"] <= 0:
-		_end_npc_moonlight_shadow(ms)
+		_end_npc_ambush_strike(ms)
 
 
-func _end_npc_moonlight_shadow(ms: Dictionary) -> void:
+func _end_npc_ambush_strike(ms: Dictionary) -> void:
 	ms["active"] = false
 	ms["bonus_damage_pct"] = 0.0
 	ms["turns_remaining"] = 0
@@ -2141,10 +2374,10 @@ func _end_npc_moonlight_shadow(ms: Dictionary) -> void:
 
 
 # ------------------------------------------------------------------
-# Luna's ultimate, Eclipse - mirrors battle.gd's own _activate_eclipse()/
-# _tick_eclipse(). Only the "casting turn doesn't count" gate lives here;
+# Lunara's ultimate, Eternal Eclipse - mirrors battle.gd's own _activate_eternal_eclipse()/
+# _tick_eternal_eclipse(). Only the "casting turn doesn't count" gate lives here;
 # the actual beam-firing happens inline in _run_stage_fight() (see that
-# function's own "Eclipse" block), same shape as the Imperial Guard
+# function's own "Eternal Eclipse" block), same shape as the Imperial Guard
 # guard-attack block rather than a simple per-turn tick, since a beam
 # can kill its target mid-loop and change who's left for the NEXT beam
 # that same turn - a plain tick function taking only `ec` has no way to
@@ -2152,21 +2385,21 @@ func _end_npc_moonlight_shadow(ms: Dictionary) -> void:
 # file already lives inline for exactly that reason.
 # ------------------------------------------------------------------
 
-func _activate_npc_eclipse(ec: Dictionary, level_data: Dictionary) -> void:
+func _activate_npc_eternal_eclipse(ec: Dictionary, level_data: Dictionary) -> void:
 	ec["active"] = true
 	ec["damage_per_beam"] = float(level_data.get("damage", 0))
 	ec["beams_remaining"] = int(level_data.get("beams", 0))
 	ec["duration_pending_start"] = true
 
 
-func _tick_npc_eclipse(ec: Dictionary) -> void:
+func _tick_npc_eternal_eclipse(ec: Dictionary) -> void:
 	if not ec["active"]:
 		return
 	if ec["duration_pending_start"]:
 		ec["duration_pending_start"] = false
 
 
-func _end_npc_eclipse(ec: Dictionary) -> void:
+func _end_npc_eternal_eclipse(ec: Dictionary) -> void:
 	ec["active"] = false
 	ec["damage_per_beam"] = 0.0
 	ec["beams_remaining"] = 0
@@ -2174,10 +2407,10 @@ func _end_npc_eclipse(ec: Dictionary) -> void:
 
 
 # ------------------------------------------------------------------
-# Luna's Moon Glaives - a passive, so like Mark of the Mist/Pull of the Abyss
+# Lunara's Lunar Ricochet - a passive, so like Mark of the Mist/Pull of the Abyss
 # above it's never "cast"; it just bounces off the hero's own plain
-# Attacks. Mirrors battle.gd's own _get_moon_glaives_level_data()/
-# _apply_moon_glaives_bounces(), simplified for this sim's own "no
+# Attacks. Mirrors battle.gd's own _get_lunar_ricochet_level_data()/
+# _apply_lunar_ricochet_bounces(), simplified for this sim's own "no
 # columns" honesty - the nearest `bounces` other living enemies has no
 # real distance to sort by here, so it just takes the first `bounces` of
 # them in whatever order `living` already has, same "no columns, hit
@@ -2185,17 +2418,17 @@ func _end_npc_eclipse(ec: Dictionary) -> void:
 # sim copy uses.
 # ------------------------------------------------------------------
 
-func _get_npc_moon_glaives_level_data(hero_id: String, hero_static: Dictionary) -> Dictionary:
-	var level: int = PlayerManager.get_npc_skill_level(hero_id, "moon_glaives")
+func _get_npc_lunar_ricochet_level_data(hero_id: String, hero_static: Dictionary) -> Dictionary:
+	var level: int = PlayerManager.get_npc_skill_level(hero_id, "lunar_ricochet")
 	if level <= 0:
 		return {}
-	var skill: Dictionary = _find_skill(hero_static, "moon_glaives")
+	var skill: Dictionary = _find_skill(hero_static, "lunar_ricochet")
 	if skill.is_empty():
 		return {}
 	return GameManager.get_skill_level_data(skill, level)
 
 
-func _apply_npc_moon_glaives_bounces(target: Dictionary, attack_damage: float, level_data: Dictionary, living: Array) -> void:
+func _apply_npc_lunar_ricochet_bounces(target: Dictionary, attack_damage: float, level_data: Dictionary, living: Array) -> void:
 	var bounce_damage: float = attack_damage * float(level_data.get("bounce_damage_pct", 0.0))
 	if bounce_damage <= 0.0:
 		return
@@ -2215,9 +2448,9 @@ func _apply_npc_moon_glaives_bounces(target: Dictionary, attack_damage: float, l
 
 
 # ------------------------------------------------------------------
-# Luna's Lunar Blessing - a passive, so like Moon Glaives above it's
+# Lunara's Moonbound Might - a passive, so like Lunar Ricochet above it's
 # never "cast"; a permanent % increase to the hero's own Attack damage,
-# folded into _npc_roll_damage() itself via state["lunar_blessing_bonus_
+# folded into _npc_roll_damage() itself via state["moonbound_might_bonus_
 # pct"] (set once per attempt in _run_stage_fight(), where hero_id/hero_
 # static are in scope - _npc_roll_damage() itself is called from many
 # places that don't have them), mirroring battle.gd's own _roll_hero_
@@ -2225,11 +2458,11 @@ func _apply_npc_moon_glaives_bounces(target: Dictionary, attack_damage: float, l
 # whole roll).
 # ------------------------------------------------------------------
 
-func _get_npc_lunar_blessing_level_data(hero_id: String, hero_static: Dictionary) -> Dictionary:
-	var level: int = PlayerManager.get_npc_skill_level(hero_id, "lunar_blessing")
+func _get_npc_moonbound_might_level_data(hero_id: String, hero_static: Dictionary) -> Dictionary:
+	var level: int = PlayerManager.get_npc_skill_level(hero_id, "moonbound_might")
 	if level <= 0:
 		return {}
-	var skill: Dictionary = _find_skill(hero_static, "lunar_blessing")
+	var skill: Dictionary = _find_skill(hero_static, "moonbound_might")
 	if skill.is_empty():
 		return {}
 	return GameManager.get_skill_level_data(skill, level)
@@ -3330,15 +3563,15 @@ func _npc_roll_damage(damage_range: String, state: Dictionary, extra_bonus: floa
 	min_dmg += bonus_damage
 	max_dmg += bonus_damage
 
-	# Luna's Lunar Blessing - see this file's own header comment above
-	# _get_npc_lunar_blessing_level_data() for why this reads state's own
+	# Lunara's Moonbound Might - see this file's own header comment above
+	# _get_npc_moonbound_might_level_data() for why this reads state's own
 	# cached percentage instead of taking hero_id/hero_static directly.
 	# Applied last so it scales the whole roll (base damage plus every
 	# flat bonus above), mirroring battle.gd's own _roll_hero_damage().
-	var lunar_blessing_bonus_pct: float = float(state.get("lunar_blessing_bonus_pct", 0.0))
-	if lunar_blessing_bonus_pct > 0.0:
-		min_dmg += min_dmg * lunar_blessing_bonus_pct
-		max_dmg += max_dmg * lunar_blessing_bonus_pct
+	var moonbound_might_bonus_pct: float = float(state.get("moonbound_might_bonus_pct", 0.0))
+	if moonbound_might_bonus_pct > 0.0:
+		min_dmg += min_dmg * moonbound_might_bonus_pct
+		max_dmg += max_dmg * moonbound_might_bonus_pct
 
 	return randi_range(int(min_dmg), int(max_dmg))
 

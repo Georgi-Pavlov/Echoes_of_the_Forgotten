@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dgu7bee27qlfr"
-path="res://.godot/imported/mantle_of_intelligence.png-c1c40288c4e74ef27584e55c9b4b6e03.ctex"
+uid="uid://5e3nipolhqih"
+path="res://.godot/imported/Solara.png-b8c160d3d6a7648d6f309c2f0ffde50b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/items/mantle_of_intelligence.png"
-dest_files=["res://.godot/imported/mantle_of_intelligence.png-c1c40288c4e74ef27584e55c9b4b6e03.ctex"]
+source_file="res://assets/heroes/Solara.png"
+dest_files=["res://.godot/imported/Solara.png-b8c160d3d6a7648d6f309c2f0ffde50b.ctex"]
 
 [params]
 

@@ -132,7 +132,7 @@ func _format_skill_stat_value(raw_value) -> String:
 const HP_PER_STRENGTH: float = 22.0
 const ARMOR_PER_AGILITY: float = 0.167
 const MANA_PER_INTELLIGENCE: float = 12.0
-const DAMAGE_PER_MAIN_STAT: float = 1.0
+const DAMAGE_PER_MAIN_STAT: float = 3.0
 
 # Veyrik's Leeching Hunger (see battle.gd's _apply_leeching_hunger_steal):
 # an enemy's main_stat_value is never drained below this floor, so a
@@ -167,7 +167,10 @@ func compute_derived_stats(hero_static: Dictionary, current_strength: float, cur
 			current_main_value = current_intelligence
 			base_main_value = base_intelligence
 
-	var bonus_damage: float = (current_main_value - base_main_value) * DAMAGE_PER_MAIN_STAT
+	# A hero can carry its own "damage_per_main_stat" to fine-tune how fast its
+	# damage grows without touching its attribute growth (HP, mana, armor).
+	var damage_per_main: float = float(hero_static.get("damage_per_main_stat", DAMAGE_PER_MAIN_STAT))
+	var bonus_damage: float = (current_main_value - base_main_value) * damage_per_main
 
 	var damage_parts: PackedStringArray = str(base_stats.get("damage", "0-0")).split("-")
 	var base_damage_min: float = float(damage_parts[0]) if damage_parts.size() > 0 else 0.0
@@ -217,14 +220,31 @@ const REINFORCEMENT_ENEMY_COUNTS: Dictionary = {
 	3: {"melee": 3, "range": 2},
 }
 
+# A hero fight's reinforcement waves are a full wave of this stage (counts and
+# stat bonuses) - wave 2, not the stage-3 wave the fight itself sits on.
+const HERO_FIGHT_REINFORCEMENT_STAGE: int = 2
+
+# When a stage's first reinforcement wave arrives and how often the next ones
+# follow, in turns. The last stage gives more room before its first wave.
+const STAGE_REINFORCEMENT_INTERVAL: Dictionary = {1: 13, 2: 13, 3: 18}
+const STAGE_REINFORCEMENT_REPEAT: Dictionary = {1: 10, 2: 10, 3: 12}
+
+
+func get_reinforcement_interval(stage: int) -> int:
+	return int(STAGE_REINFORCEMENT_INTERVAL.get(stage, 13))
+
+
+func get_reinforcement_repeat(stage: int) -> int:
+	return int(STAGE_REINFORCEMENT_REPEAT.get(stage, 10))
+
 # hp/damage bonus each stage adds ON TOP OF the enemy's base stats -
 # and, like gold below, it's cumulative: each stage contributes its
 # own increment on top of whatever the previous stage already added
 # (stage 3 = stage 2's +30/+3 plus its own +45/+4 = +75/+7 over base).
 const STAGE_STAT_BONUS_PER_STAGE: Dictionary = {
 	1: {"hp": 0, "damage": 0},
-	2: {"hp": 30, "damage": 3},
-	3: {"hp": 45, "damage": 4},
+	2: {"hp": 45, "damage": 3},
+	3: {"hp": 68, "damage": 4},
 }
 
 # Gold bonus per enemy works the same cumulative way - each stage adds
@@ -236,6 +256,33 @@ const STAGE_GOLD_BONUS_PER_STAGE: Dictionary = {
 	2: 3,
 	3: 4,
 }
+
+
+# Creeps grow with the level of whoever fights them (the player's hero, or a
+# rival hero in the background simulation), so a levelled-up hero with a few
+# items doesn't just roll over every wave. Every CREEP_SCALING_LEVELS_PER_STEP
+# levels (5, 10, 15...) creeps get one step stronger: +hp%, +damage% and flat
+# +armor, up to CREEP_SCALING_MAX_LEVEL. XP and gold are deliberately NOT
+# scaled, so levelling doesn't feed on itself.
+const CREEP_SCALING_LEVELS_PER_STEP: int = 5
+const CREEP_SCALING_MAX_LEVEL: int = 25
+const CREEP_HP_PER_STEP: float = 0.10
+const CREEP_DAMAGE_PER_STEP: float = 0.20
+const CREEP_ARMOR_PER_STEP: float = 0.15
+
+
+## A copy of `creep_def` with its hp/damage/armor scaled for a hero of
+## `level` (the def itself is returned untouched below the first step).
+## `share` scales the whole effect, e.g. 0.33 for a third of it.
+func scale_creep_for_level(creep_def: Dictionary, level: int, share: float = 1.0) -> Dictionary:
+	var steps: float = float(clampi(level, 1, CREEP_SCALING_MAX_LEVEL) / CREEP_SCALING_LEVELS_PER_STEP) * share
+	if steps <= 0.0:
+		return creep_def
+	var scaled: Dictionary = creep_def.duplicate()
+	scaled["hp"] = roundf(float(creep_def.get("hp", 0)) * (1.0 + CREEP_HP_PER_STEP * steps))
+	scaled["damage"] = roundf(float(creep_def.get("damage", 0)) * (1.0 + CREEP_DAMAGE_PER_STEP * steps))
+	scaled["armor"] = float(creep_def.get("armor", 0)) + CREEP_ARMOR_PER_STEP * steps
+	return scaled
 
 
 func get_stage_enemy_counts(stage: int) -> Dictionary:
@@ -301,6 +348,7 @@ var zones: Dictionary = {
 				"background": "res://assets/zones/the_iron_abyss.jpg",
 				"range_type": "Melee",
 				"main_stat": "Agility",
+				"damage_per_main_stat": 5.5,
 				"stats": {
 					"strength": 20,
 					"agility": 21,
@@ -309,7 +357,7 @@ var zones: Dictionary = {
 					"hp": 560,
 					"mana": 260,
 					"armor": 1.5,
-					"damage": "55-61",
+					"damage": "83-92",
 					"speed": 1
 				},
 				"skills": [
@@ -355,9 +403,9 @@ var zones: Dictionary = {
 						"type": "ultimate",
 						"description": "Ultimate: Veyrik slips beneath a veil of unnatural darkness, becoming invisible and untouchable. His next attack while concealed tears into his victim with increased force and ends the veil early. If he does not attack, the effect eventually fades.",
 						"levels": [
-							{"duration": 2, "bonus_damage": 20, "mana_cost": 80, "cooldown": 8},
-							{"duration": 3, "bonus_damage": 35, "mana_cost": 90, "cooldown": 7},
-							{"duration": 4, "bonus_damage": 50, "mana_cost": 100, "cooldown": 6}
+							{"duration": 2, "bonus_damage": 30, "mana_cost": 80, "cooldown": 8},
+							{"duration": 3, "bonus_damage": 52.5, "mana_cost": 90, "cooldown": 7},
+							{"duration": 4, "bonus_damage": 75, "mana_cost": 100, "cooldown": 6}
 						]
 					}
 				],
@@ -376,7 +424,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -391,7 +439,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -406,7 +454,7 @@ var zones: Dictionary = {
 				"type": "range",
 				"main_stat": "agility",
 				"main_stat_value": 10,
-				"hp": 100,
+				"hp": 150,
 				"mana": 50,
 				"damage": 20,
 				"speed": 1,
@@ -434,6 +482,7 @@ var zones: Dictionary = {
 				"background": "res://assets/zones/The Elderwild.jpg",
 				"range_type": "Range",
 				"main_stat": "Agility",
+				"damage_per_main_stat": 4.2,
 				"attack_effect": "vine_lash",
 				"attack_origin": Vector2(0.85, 0.31),
 				"stats": {
@@ -444,7 +493,7 @@ var zones: Dictionary = {
 					"hp": 473,
 					"mana": 169,
 					"armor": 3.4,
-					"damage": "38-42",
+					"damage": "50-55",
 					"speed": 1
 				},
 				"skills": [
@@ -454,10 +503,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Erynd calls upon the ancient spirit of the Elderwild, taking shape as a massive spectral bear that fights at his side until slain. The beast acts on its own each turn, attacking enemies in its column or moving toward the nearest foe when none are within reach. When the companion is slain, the bond tears violently, causing Erynd to lose 20% of his maximum HP, though the backlash can never kill him. Calling the spirit again replaces the existing companion with a new one at the skill's current level.",
 						"levels": [
-							{"hp": 300, "damage_min": 25, "damage_max": 30, "armor": 3.0, "speed": 1, "mana_cost": 80, "cooldown": 8},
-							{"hp": 400, "damage_min": 32, "damage_max": 38, "armor": 4.0, "speed": 1, "mana_cost": 90, "cooldown": 7},
-							{"hp": 525, "damage_min": 40, "damage_max": 47, "armor": 5.5, "speed": 1, "mana_cost": 100, "cooldown": 6},
-							{"hp": 675, "damage_min": 50, "damage_max": 58, "armor": 7.0, "speed": 2, "mana_cost": 110, "cooldown": 5}
+							{"hp": 300, "damage_min": 30, "damage_max": 36, "armor": 3.0, "speed": 1, "mana_cost": 80, "cooldown": 8},
+							{"hp": 400, "damage_min": 38.4, "damage_max": 45.6, "armor": 4.0, "speed": 1, "mana_cost": 90, "cooldown": 7},
+							{"hp": 525, "damage_min": 48, "damage_max": 56.4, "armor": 5.5, "speed": 1, "mana_cost": 100, "cooldown": 6},
+							{"hp": 675, "damage_min": 60, "damage_max": 69.6, "armor": 7.0, "speed": 2, "mana_cost": 110, "cooldown": 5}
 						]
 					},
 					{
@@ -466,10 +515,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Erynd awakens the roots beneath a targeted enemy, binding it to the earth. The victim cannot move and is silenced while bound, though it can still attack if an enemy is within range. Ancient thorns continue to tear into the trapped foe, dealing damage over time for the duration of the binding.",
 						"levels": [
-							{"root_turns": 1, "silence_turns": 1, "dot_damage": 15, "dot_duration": 2, "mana_cost": 50, "cooldown": 3},
-							{"root_turns": 1, "silence_turns": 1, "dot_damage": 25, "dot_duration": 2, "mana_cost": 55, "cooldown": 3},
-							{"root_turns": 2, "silence_turns": 2, "dot_damage": 30, "dot_duration": 3, "mana_cost": 60, "cooldown": 4},
-							{"root_turns": 2, "silence_turns": 2, "dot_damage": 50, "dot_duration": 3, "mana_cost": 65, "cooldown": 4}
+							{"root_turns": 1, "silence_turns": 1, "dot_damage": 18, "dot_duration": 2, "mana_cost": 50, "cooldown": 3},
+							{"root_turns": 1, "silence_turns": 1, "dot_damage": 30, "dot_duration": 2, "mana_cost": 55, "cooldown": 3},
+							{"root_turns": 2, "silence_turns": 2, "dot_damage": 36, "dot_duration": 3, "mana_cost": 60, "cooldown": 4},
+							{"root_turns": 2, "silence_turns": 2, "dot_damage": 60, "dot_duration": 3, "mana_cost": 65, "cooldown": 4}
 						]
 					},
 					{
@@ -502,9 +551,9 @@ var zones: Dictionary = {
 						"type": "ultimate",
 						"description": "Ultimate: Erynd surrenders himself to the ancient spirit bound within his blood, transforming into a monstrous bear-like beast. The transformation grants bonus HP and increased damage, with the additional HP granted immediately and removed when the transformation ends. While transformed, Erynd fights only at melee range, regardless of his normal attack range.",
 						"levels": [
-							{"bonus_hp": 150, "bonus_damage": 15, "duration": 4, "mana_cost": 100, "cooldown": 10},
-							{"bonus_hp": 250, "bonus_damage": 25, "duration": 5, "mana_cost": 110, "cooldown": 9},
-							{"bonus_hp": 350, "bonus_damage": 35, "duration": 6, "mana_cost": 120, "cooldown": 8}
+							{"bonus_hp": 150, "bonus_damage": 18, "duration": 4, "mana_cost": 100, "cooldown": 10},
+							{"bonus_hp": 250, "bonus_damage": 30, "duration": 5, "mana_cost": 110, "cooldown": 9},
+							{"bonus_hp": 350, "bonus_damage": 42, "duration": 6, "mana_cost": 120, "cooldown": 8}
 						]
 					}
 				],
@@ -523,7 +572,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -538,7 +587,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -553,7 +602,7 @@ var zones: Dictionary = {
 				"type": "range",
 				"main_stat": "agility",
 				"main_stat_value": 10,
-				"hp": 100,
+				"hp": 150,
 				"mana": 50,
 				"damage": 20,
 				"speed": 1,
@@ -583,6 +632,7 @@ var zones: Dictionary = {
 				"background": "res://assets/zones/kingdom_of_morvain.jpg",
 				"range_type": "Melee",
 				"main_stat": "Strength",
+				"damage_per_main_stat": 3.4,
 				"stats": {
 					"strength": 22,
 					"agility": 23,
@@ -591,7 +641,7 @@ var zones: Dictionary = {
 					"hp": 604,
 					"mana": 303,
 					"armor": 3.8,
-					"damage": "40-50",
+					"damage": "60-75",
 					"speed": 1
 				},
 				"skills": [
@@ -601,10 +651,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Morvael sends a tendril of living mist toward a target. Against an enemy, the mist tears away at its life force, dealing damage. When directed into Morvael himself (double tap the skill button), the mist consumes a portion of his physical essence before knitting his form back together, costing HP but restoring more in return.",
 						"levels": [
-							{"heal": 80, "damage": 80, "hp_cost": 30, "mana_cost": 35, "cooldown": 3},
-							{"heal": 120, "damage": 120, "hp_cost": 40, "mana_cost": 40, "cooldown": 3},
-							{"heal": 160, "damage": 160, "hp_cost": 50, "mana_cost": 45, "cooldown": 2},
-							{"heal": 200, "damage": 200, "hp_cost": 60, "mana_cost": 50, "cooldown": 2}
+							{"heal": 80, "damage": 120, "hp_cost": 30, "mana_cost": 35, "cooldown": 3},
+							{"heal": 120, "damage": 180, "hp_cost": 40, "mana_cost": 40, "cooldown": 3},
+							{"heal": 160, "damage": 240, "hp_cost": 50, "mana_cost": 45, "cooldown": 2},
+							{"heal": 200, "damage": 300, "hp_cost": 60, "mana_cost": 50, "cooldown": 2}
 						]
 					},
 					{
@@ -613,10 +663,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Morvael surrounds himself with a dense veil of living mist that absorbs incoming damage and strips away all negative effects upon its formation. If the veil is broken by force, the imprisoned mist erupts outward, lashing nearby enemies with the echoes of those lost within Morvain.",
 						"levels": [
-							{"shield_hp": 100, "aoe_damage": 50, "radius": 0, "duration": 3, "mana_cost": 50, "cooldown": 5},
-							{"shield_hp": 150, "aoe_damage": 75, "radius": 0, "duration": 3, "mana_cost": 55, "cooldown": 5},
-							{"shield_hp": 200, "aoe_damage": 100, "radius": 1, "duration": 4, "mana_cost": 60, "cooldown": 4},
-							{"shield_hp": 250, "aoe_damage": 125, "radius": 1, "duration": 4, "mana_cost": 65, "cooldown": 4}
+							{"shield_hp": 100, "aoe_damage": 75, "radius": 0, "duration": 3, "mana_cost": 50, "cooldown": 5},
+							{"shield_hp": 150, "aoe_damage": 112.5, "radius": 0, "duration": 3, "mana_cost": 55, "cooldown": 5},
+							{"shield_hp": 200, "aoe_damage": 150, "radius": 1, "duration": 4, "mana_cost": 60, "cooldown": 4},
+							{"shield_hp": 250, "aoe_damage": 187.5, "radius": 1, "duration": 4, "mana_cost": 65, "cooldown": 4}
 						]
 					},
 					{
@@ -625,10 +675,10 @@ var zones: Dictionary = {
 						"type": "passive",
 						"description": "Passive: every attack leaves a fragment of Morvael's mist clinging to the target. The fragments accumulate with each successive strike. When enough mist has gathered, it consumes the victim's voice and vitality, silencing them and dealing damage over time. The fragments dissipate if the target remains untouched for 3 turns.",
 						"levels": [
-							{"hits_to_activate": 3, "silence_turns": 1, "dot_damage": 15, "dot_duration": 2},
-							{"hits_to_activate": 3, "silence_turns": 1, "dot_damage": 25, "dot_duration": 2},
-							{"hits_to_activate": 2, "silence_turns": 2, "dot_damage": 30, "dot_duration": 3},
-							{"hits_to_activate": 2, "silence_turns": 2, "dot_damage": 35, "dot_duration": 3}
+							{"hits_to_activate": 3, "silence_turns": 1, "dot_damage": 22.5, "dot_duration": 2},
+							{"hits_to_activate": 3, "silence_turns": 1, "dot_damage": 37.5, "dot_duration": 2},
+							{"hits_to_activate": 2, "silence_turns": 2, "dot_damage": 45, "dot_duration": 3},
+							{"hits_to_activate": 2, "silence_turns": 2, "dot_damage": 52.5, "dot_duration": 3}
 						]
 					},
 					{
@@ -659,7 +709,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -674,7 +724,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -689,7 +739,7 @@ var zones: Dictionary = {
 				"type": "range",
 				"main_stat": "agility",
 				"main_stat_value": 10,
-				"hp": 100,
+				"hp": 150,
 				"mana": 50,
 				"damage": 20,
 				"speed": 1,
@@ -718,6 +768,7 @@ var zones: Dictionary = {
 				"background": "res://assets/zones/the_ironbound_isles.jpg",
 				"range_type": "Melee",
 				"main_stat": "Strength",
+				"damage_per_main_stat": 3.2,
 				"stats": {
 					"strength": 24,
 					"agility": 14,
@@ -726,7 +777,7 @@ var zones: Dictionary = {
 					"hp": 648,
 					"mana": 291,
 					"armor": 4.3,
-					"damage": "50-60",
+					"damage": "75-90",
 					"speed": 1
 				},
 				"skills": [
@@ -736,10 +787,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Kaelen calls a violent surge from the depths beneath his target. The water erupts upward without warning, damaging and stunning the enemy. At maximum strength, the surge spills outward and catches nearby enemies as well.",
 						"levels": [
-							{"damage": 60, "stun_turns": 1, "range": 3, "radius": 0, "mana_cost": 50, "cooldown": 5},
-							{"damage": 90, "stun_turns": 1, "range": 3, "radius": 0, "mana_cost": 55, "cooldown": 5},
-							{"damage": 120, "stun_turns": 2, "range": 3, "radius": 0, "mana_cost": 65, "cooldown": 4},
-							{"damage": 150, "stun_turns": 2, "range": 3, "radius": 1, "mana_cost": 75, "cooldown": 4}
+							{"damage": 90, "stun_turns": 1, "range": 3, "radius": 0, "mana_cost": 50, "cooldown": 5},
+							{"damage": 135, "stun_turns": 1, "range": 3, "radius": 0, "mana_cost": 55, "cooldown": 5},
+							{"damage": 180, "stun_turns": 2, "range": 3, "radius": 0, "mana_cost": 65, "cooldown": 4},
+							{"damage": 225, "stun_turns": 2, "range": 3, "radius": 1, "mana_cost": 75, "cooldown": 4}
 						]
 					},
 					{
@@ -748,10 +799,10 @@ var zones: Dictionary = {
 						"type": "passive",
 						"description": "Passive: every few attacks, Kaelen's blade carries the crushing pull of the deep, empowering the strike and tearing through nearby enemies with a portion of its force.",
 						"levels": [
-							{"hits_to_activate": 3, "bonus_damage": 15, "cleave_columns": 1, "cleave_damage_pct": 0.5},
-							{"hits_to_activate": 3, "bonus_damage": 25, "cleave_columns": 1, "cleave_damage_pct": 0.6},
-							{"hits_to_activate": 2, "bonus_damage": 35, "cleave_columns": 1, "cleave_damage_pct": 0.7},
-							{"hits_to_activate": 2, "bonus_damage": 45, "cleave_columns": 2, "cleave_damage_pct": 0.75}
+							{"hits_to_activate": 3, "bonus_damage": 22.5, "cleave_columns": 1, "cleave_damage_pct": 0.5},
+							{"hits_to_activate": 3, "bonus_damage": 37.5, "cleave_columns": 1, "cleave_damage_pct": 0.6},
+							{"hits_to_activate": 2, "bonus_damage": 52.5, "cleave_columns": 1, "cleave_damage_pct": 0.7},
+							{"hits_to_activate": 2, "bonus_damage": 67.5, "cleave_columns": 2, "cleave_damage_pct": 0.75}
 						]
 					},
 					{
@@ -772,9 +823,9 @@ var zones: Dictionary = {
 						"type": "ultimate",
 						"description": "Ultimate: Kaelen summons the ship that carried him to the bottom of the sea. The Sunken One rises from behind him and unleashes a devastating broadside in the direction Kaelen is facing, damaging every enemy caught in its path.",
 						"levels": [
-							{"damage": 200, "range": 4, "mana_cost": 100, "cooldown": 10},
-							{"damage": 300, "range": 5, "mana_cost": 110, "cooldown": 9},
-							{"damage": 400, "range": 6, "mana_cost": 120, "cooldown": 8}
+							{"damage": 300, "range": 4, "mana_cost": 100, "cooldown": 10},
+							{"damage": 450, "range": 5, "mana_cost": 110, "cooldown": 9},
+							{"damage": 600, "range": 6, "mana_cost": 120, "cooldown": 8}
 						]
 					},
 				],
@@ -793,7 +844,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -808,7 +859,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -823,7 +874,7 @@ var zones: Dictionary = {
 				"type": "range",
 				"main_stat": "agility",
 				"main_stat_value": 10,
-				"hp": 100,
+				"hp": 150,
 				"mana": 50,
 				"damage": 20,
 				"speed": 1,
@@ -851,6 +902,7 @@ var zones: Dictionary = {
 				"background": "res://assets/zones/frostspire_nhal.jpg",
 				"range_type": "Range",
 				"main_stat": "Intelligence",
+				"damage_per_main_stat": 1.8,
 				"attack_effect": "ice_shard",
 				"attack_origin": Vector2(0.66, -0.02),
 				"stats": {
@@ -861,7 +913,7 @@ var zones: Dictionary = {
 					"hp": 530,
 					"mana": 299,
 					"armor": 2,
-					"damage": "44-54",
+					"damage": "66-81",
 					"speed": 1
 				},
 				"skills": [
@@ -871,10 +923,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Nhal marks an enemy with the cold that existed before motion itself. The afflicted creature slowly loses the warmth and movement that keep it alive, suffering damage for the duration of the curse.",
 						"levels": [
-							{"damage": 15, "duration": 3, "range": 2, "mana_cost": 40, "cooldown": 4},
-							{"damage": 25, "duration": 3, "range": 3, "mana_cost": 45, "cooldown": 4},
-							{"damage": 35, "duration": 4, "range": 3, "mana_cost": 50, "cooldown": 3},
-							{"damage": 45, "duration": 4, "range": 4, "mana_cost": 55, "cooldown": 3}
+							{"damage": 16.9, "duration": 3, "range": 2, "mana_cost": 40, "cooldown": 4},
+							{"damage": 28.1, "duration": 3, "range": 3, "mana_cost": 45, "cooldown": 4},
+							{"damage": 39.4, "duration": 4, "range": 3, "mana_cost": 50, "cooldown": 3},
+							{"damage": 50.6, "duration": 4, "range": 4, "mana_cost": 55, "cooldown": 3}
 						]
 					},
 					{
@@ -883,10 +935,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Nhal opens a small wound in the air, releasing the cold of the emptiness that existed before the world. A freezing vortex lingers at the target location, slowly consuming the warmth of every enemy caught within it.",
 						"levels": [
-							{"damage": 15, "radius": 1, "duration": 3, "mana_cost": 40, "cooldown": 5},
-							{"damage": 25, "radius": 1, "duration": 3, "mana_cost": 45, "cooldown": 5},
-							{"damage": 35, "radius": 1, "duration": 4, "mana_cost": 50, "cooldown": 4},
-							{"damage": 45, "radius": 2, "duration": 4, "mana_cost": 55, "cooldown": 4}
+							{"damage": 16.9, "radius": 1, "duration": 3, "mana_cost": 40, "cooldown": 5},
+							{"damage": 28.1, "radius": 1, "duration": 3, "mana_cost": 45, "cooldown": 5},
+							{"damage": 39.4, "radius": 1, "duration": 4, "mana_cost": 50, "cooldown": 4},
+							{"damage": 50.6, "radius": 2, "duration": 4, "mana_cost": 55, "cooldown": 4}
 						]
 					},
 					{
@@ -895,10 +947,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Nhal reaches into an enemy with a fragment of the cold that existed before stars, flesh, and fire. His attack carries this primordial chill, striking the target with unnatural force.",
 						"levels": [
-							{"bonus_damage": 40, "mana_cost": 50, "cooldown": 6},
-							{"bonus_damage": 70, "mana_cost": 55, "cooldown": 6},
-							{"bonus_damage": 110, "mana_cost": 60, "cooldown": 5},
-							{"bonus_damage": 150, "mana_cost": 65, "cooldown": 5}
+							{"bonus_damage": 45, "mana_cost": 50, "cooldown": 6},
+							{"bonus_damage": 78.8, "mana_cost": 55, "cooldown": 6},
+							{"bonus_damage": 123.8, "mana_cost": 60, "cooldown": 5},
+							{"bonus_damage": 168.8, "mana_cost": 65, "cooldown": 5}
 						]
 					},
 					{
@@ -907,9 +959,9 @@ var zones: Dictionary = {
 						"type": "ultimate",
 						"description": "Ultimate: Nhal marks an enemy and erases part of the material plane around it. Returning the world to the empty void before the creation of the matter. Everyone caught in its radius is struck with a primordial cold that continues to consume the heat of their bodies over time and they are prevented from retaining the life they once possessed. Any enemy whose health falls beneath a marked threshold is claimed by the cold void and dies instantly.",
 						"levels": [
-							{"damage": 150, "dot_damage": 20, "dot_duration": 3, "stun_turns": 1, "execute_pct": 0.20, "radius": 1, "mana_cost": 100, "cooldown": 10},
-							{"damage": 225, "dot_damage": 30, "dot_duration": 3, "stun_turns": 1, "execute_pct": 0.25, "radius": 1, "mana_cost": 110, "cooldown": 9},
-							{"damage": 300, "dot_damage": 40, "dot_duration": 4, "stun_turns": 2, "execute_pct": 0.30, "radius": 2, "mana_cost": 120, "cooldown": 8}
+							{"damage": 168.8, "dot_damage": 22.5, "dot_duration": 3, "stun_turns": 1, "execute_pct": 0.20, "radius": 1, "mana_cost": 100, "cooldown": 10},
+							{"damage": 253.1, "dot_damage": 33.8, "dot_duration": 3, "stun_turns": 1, "execute_pct": 0.25, "radius": 1, "mana_cost": 110, "cooldown": 9},
+							{"damage": 337.5, "dot_damage": 45, "dot_duration": 4, "stun_turns": 2, "execute_pct": 0.30, "radius": 2, "mana_cost": 120, "cooldown": 8}
 						]
 					},
 				],
@@ -926,6 +978,7 @@ var zones: Dictionary = {
 				"background": "res://assets/zones/frostspire_the_primordial_hunger.jpg",
 				"range_type": "Range",
 				"main_stat": "Intelligence",
+				"damage_per_main_stat": 2.6,
 				"battle_scale": 1.7,
 				"roar_origin": Vector2(0.76, 0.1),
 				"attack_effect": "bite",
@@ -938,7 +991,7 @@ var zones: Dictionary = {
 					"hp": 560,
 					"mana": 387,
 					"armor": 3.24,
-					"damage": "42-49",
+					"damage": "63-74",
 					"speed": 1
 				},
 				"skills": [
@@ -948,10 +1001,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "The Primordial Hunger's claws and fangs become coated in ancient frost, extending its reach and empowering its next attacks with the killing cold of Frostspire.",
 						"levels": [
-							{"bonus_damage": 30, "bonus_range": 2, "attacks": 2, "duration": 3, "mana_cost": 40, "cooldown": 5},
-							{"bonus_damage": 50, "bonus_range": 2, "attacks": 3, "duration": 3, "mana_cost": 50, "cooldown": 5},
-							{"bonus_damage": 70, "bonus_range": 3, "attacks": 3, "duration": 4, "mana_cost": 60, "cooldown": 4},
-							{"bonus_damage": 90, "bonus_range": 3, "attacks": 4, "duration": 4, "mana_cost": 70, "cooldown": 4}
+							{"bonus_damage": 38.2, "bonus_range": 2, "attacks": 2, "duration": 3, "mana_cost": 40, "cooldown": 5},
+							{"bonus_damage": 63.7, "bonus_range": 2, "attacks": 3, "duration": 3, "mana_cost": 50, "cooldown": 5},
+							{"bonus_damage": 89.2, "bonus_range": 3, "attacks": 3, "duration": 4, "mana_cost": 60, "cooldown": 4},
+							{"bonus_damage": 114.7, "bonus_range": 3, "attacks": 4, "duration": 4, "mana_cost": 70, "cooldown": 4}
 						]
 					},
 					{
@@ -960,10 +1013,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "The Primordial Hunger release a terrifying roar against a marked target, causing it to loose its will to live.  The minds of all other enemies around the target are shattered.",
 						"levels": [
-							{"damage": 100, "shatter_damage": 60, "shatter_range": 1, "mana_cost": 50, "cooldown": 5},
-							{"damage": 150, "shatter_damage": 90, "shatter_range": 1, "mana_cost": 55, "cooldown": 5},
-							{"damage": 200, "shatter_damage": 120, "shatter_range": 1, "mana_cost": 60, "cooldown": 4},
-							{"damage": 250, "shatter_damage": 150, "shatter_range": 2, "mana_cost": 65, "cooldown": 4}
+							{"damage": 127.5, "shatter_damage": 76.5, "shatter_range": 1, "mana_cost": 50, "cooldown": 5},
+							{"damage": 191.2, "shatter_damage": 114.7, "shatter_range": 1, "mana_cost": 55, "cooldown": 5},
+							{"damage": 255, "shatter_damage": 153, "shatter_range": 1, "mana_cost": 60, "cooldown": 4},
+							{"damage": 318.8, "shatter_damage": 191.2, "shatter_range": 2, "mana_cost": 65, "cooldown": 4}
 						]
 					},
 					{
@@ -1005,7 +1058,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -1020,7 +1073,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -1036,7 +1089,7 @@ var zones: Dictionary = {
 				"projectile": "frost_shard",
 				"main_stat": "agility",
 				"main_stat_value": 10,
-				"hp": 100,
+				"hp": 150,
 				"mana": 50,
 				"damage": 20,
 				"speed": 1,
@@ -1066,6 +1119,7 @@ var zones: Dictionary = {
 				"attack_origin": Vector2(0.91, 0.28),
 				"range_type": "Range",
 				"main_stat": "Intelligence",
+				"damage_per_main_stat": 1.6,
 				"stats": {
 					"strength": 17,
 					"agility": 16,
@@ -1074,7 +1128,7 @@ var zones: Dictionary = {
 					"hp": 494,
 					"mana": 291,
 					"armor": 4.3,
-					"damage": "48-54",
+					"damage": "72-81",
 					"speed": 1
 				},
 				"skills": [
@@ -1084,10 +1138,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Frost Daughter summons a massive axe of solid ice above an enemy and brings it crashing down upon them. At higher levels, the frozen blade cleaves through nearby enemies with the force of the impact.",
 						"levels": [
-							{"damage": 85, "radius": 0, "mana_cost": 70, "cooldown": 3},
-							{"damage": 110, "radius": 0, "mana_cost": 100, "cooldown": 3},
-							{"damage": 150, "radius": 1, "mana_cost": 135, "cooldown": 4},
-							{"damage": 200, "radius": 2, "mana_cost": 170, "cooldown": 4}
+							{"damage": 95.6, "radius": 0, "mana_cost": 70, "cooldown": 3},
+							{"damage": 123.8, "radius": 0, "mana_cost": 100, "cooldown": 3},
+							{"damage": 168.8, "radius": 1, "mana_cost": 135, "cooldown": 4},
+							{"damage": 225, "radius": 2, "mana_cost": 170, "cooldown": 4}
 						]
 					},
 					{
@@ -1096,10 +1150,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Frost Daughter calls the frozen earth beneath an enemy to life. Spectral hands of ice burst from the ground and seize the victim, holding them in place while the freezing grip slowly tears away their strength.",
 						"levels": [
-							{"stun_turns": 1, "dot_damage": 25, "dot_duration": 2, "mana_cost": 80, "cooldown": 4},
-							{"stun_turns": 1, "dot_damage": 45, "dot_duration": 2, "mana_cost": 110, "cooldown": 4},
-							{"stun_turns": 2, "dot_damage": 60, "dot_duration": 3, "mana_cost": 145, "cooldown": 5},
-							{"stun_turns": 2, "dot_damage": 85, "dot_duration": 4, "mana_cost": 180, "cooldown": 5}
+							{"stun_turns": 1, "dot_damage": 28.1, "dot_duration": 2, "mana_cost": 80, "cooldown": 4},
+							{"stun_turns": 1, "dot_damage": 50.6, "dot_duration": 2, "mana_cost": 110, "cooldown": 4},
+							{"stun_turns": 2, "dot_damage": 67.5, "dot_duration": 3, "mana_cost": 145, "cooldown": 5},
+							{"stun_turns": 2, "dot_damage": 95.6, "dot_duration": 4, "mana_cost": 180, "cooldown": 5}
 						]
 					},
 					{
@@ -1120,9 +1174,9 @@ var zones: Dictionary = {
 						"type": "ultimate",
 						"description": "Ultimate: Frost Daughter rises above the ground and becomes the still center of a violent winter storm. A massive vortex of snow, ice, and freezing wind tears through everything around her, damaging every enemy caught within its reach.",
 						"levels": [
-							{"damage": 90, "duration": 3, "radius": 2, "mana_cost": 200, "cooldown": 8},
-							{"damage": 130, "duration": 3, "radius": 2, "mana_cost": 260, "cooldown": 9},
-							{"damage": 185, "duration": 4, "radius": 3, "mana_cost": 330, "cooldown": 10}
+							{"damage": 101.2, "duration": 3, "radius": 2, "mana_cost": 200, "cooldown": 8},
+							{"damage": 146.2, "duration": 3, "radius": 2, "mana_cost": 260, "cooldown": 9},
+							{"damage": 208.1, "duration": 4, "radius": 3, "mana_cost": 330, "cooldown": 10}
 						]
 					},
 				],
@@ -1139,6 +1193,7 @@ var zones: Dictionary = {
 				"background": "res://assets/zones/the_everfrost_skarn.jpg",
 				"range_type": "Melee",
 				"main_stat": "Strength",
+				"damage_per_main_stat": 3.0,
 				"stats": {
 					"strength": 23,
 					"agility": 21,
@@ -1147,7 +1202,7 @@ var zones: Dictionary = {
 					"hp": 640,
 					"mana": 267,
 					"armor": 3.83,
-					"damage": "50-54",
+					"damage": "75-81",
 					"speed": 1
 				},
 				"skills": [
@@ -1157,10 +1212,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Unleashes a surge of frozen force toward an enemy, dealing damage and freezing a line of columns from Skarn's position toward the target. Enemies caught within the frozen ground cannot move, and no enemy can enter the frozen columns for the duration. Attacks, skills, and items can still be used normally.",
 						"levels": [
-							{"damage": 70, "blocked_columns": 2, "duration": 2, "range": 4, "mana_cost": 70, "cooldown": 4},
-							{"damage": 110, "blocked_columns": 3, "duration": 2, "range": 4, "mana_cost": 95, "cooldown": 4},
-							{"damage": 150, "blocked_columns": 3, "duration": 3, "range": 4, "mana_cost": 120, "cooldown": 5},
-							{"damage": 200, "blocked_columns": 4, "duration": 3, "range": 4, "mana_cost": 150, "cooldown": 5}
+							{"damage": 105, "blocked_columns": 2, "duration": 2, "range": 4, "mana_cost": 70, "cooldown": 4},
+							{"damage": 165, "blocked_columns": 3, "duration": 2, "range": 4, "mana_cost": 95, "cooldown": 4},
+							{"damage": 225, "blocked_columns": 3, "duration": 3, "range": 4, "mana_cost": 120, "cooldown": 5},
+							{"damage": 300, "blocked_columns": 4, "duration": 3, "range": 4, "mana_cost": 150, "cooldown": 5}
 						]
 					},
 					{
@@ -1169,10 +1224,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Skarn locks onto an enemy within range, becoming completely focused on his prey before charging directly at it. He crashes into the target, dealing damage and stunning it on impact.",
 						"levels": [
-							{"damage": 85, "stun_turns": 1, "range": 2, "mana_cost": 90, "cooldown": 5},
-							{"damage": 130, "stun_turns": 1, "range": 3, "mana_cost": 115, "cooldown": 5},
-							{"damage": 175, "stun_turns": 2, "range": 3, "mana_cost": 145, "cooldown": 6},
-							{"damage": 230, "stun_turns": 2, "range": 4, "mana_cost": 175, "cooldown": 6}
+							{"damage": 127.5, "stun_turns": 1, "range": 2, "mana_cost": 90, "cooldown": 5},
+							{"damage": 195, "stun_turns": 1, "range": 3, "mana_cost": 115, "cooldown": 5},
+							{"damage": 262.5, "stun_turns": 2, "range": 3, "mana_cost": 145, "cooldown": 6},
+							{"damage": 345, "stun_turns": 2, "range": 4, "mana_cost": 175, "cooldown": 6}
 						]
 					},
 					{
@@ -1181,10 +1236,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Skarn succumbs to his primal fury, entering a savage rage that empowers his Attacks with increased damage for the duration.",
 						"levels": [
-							{"bonus_damage": 30, "duration": 3, "mana_cost": 60, "cooldown": 5},
-							{"bonus_damage": 50, "duration": 3, "mana_cost": 80, "cooldown": 5},
-							{"bonus_damage": 75, "duration": 4, "mana_cost": 105, "cooldown": 6},
-							{"bonus_damage": 105, "duration": 4, "mana_cost": 130, "cooldown": 6}
+							{"bonus_damage": 45, "duration": 3, "mana_cost": 60, "cooldown": 5},
+							{"bonus_damage": 75, "duration": 3, "mana_cost": 80, "cooldown": 5},
+							{"bonus_damage": 112.5, "duration": 4, "mana_cost": 105, "cooldown": 6},
+							{"bonus_damage": 157.5, "duration": 4, "mana_cost": 130, "cooldown": 6}
 						]
 					},
 					{
@@ -1214,7 +1269,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -1229,7 +1284,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -1245,7 +1300,7 @@ var zones: Dictionary = {
 				"projectile": "wooden_spear",
 				"main_stat": "agility",
 				"main_stat_value": 10,
-				"hp": 100,
+				"hp": 150,
 				"mana": 50,
 				"damage": 20,
 				"speed": 1,
@@ -1274,6 +1329,7 @@ var zones: Dictionary = {
 				"background": "res://assets/zones/the_verdant_scar_the_rootmother.jpg",
 				"range_type": "Melee",
 				"main_stat": "Strength",
+				"damage_per_main_stat": 3.0,
 				"stats": {
 					"strength": 25,
 					"agility": 15,
@@ -1282,7 +1338,7 @@ var zones: Dictionary = {
 					"hp": 670,
 					"mana": 315,
 					"armor": 3.5,
-					"damage": "85-93",
+					"damage": "105-115",
 					"speed": 1
 				},
 				"skills": [
@@ -1304,10 +1360,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "The Rootmother plants a parasitic bloom within an enemy. The unnatural growth feeds on the victim's life force for several turns, dealing damage over time while transferring a portion of that stolen vitality back to the Rootmother.",
 						"levels": [
-							{"dot_damage": 25, "heal_per_turn": 15, "duration": 3, "range": 2, "mana_cost": 70, "cooldown": 5},
-							{"dot_damage": 40, "heal_per_turn": 25, "duration": 3, "range": 2, "mana_cost": 90, "cooldown": 5},
-							{"dot_damage": 55, "heal_per_turn": 35, "duration": 4, "range": 2, "mana_cost": 115, "cooldown": 6},
-							{"dot_damage": 75, "heal_per_turn": 50, "duration": 4, "range": 2, "mana_cost": 145, "cooldown": 6}
+							{"dot_damage": 37.5, "heal_per_turn": 15, "duration": 3, "range": 2, "mana_cost": 70, "cooldown": 5},
+							{"dot_damage": 60, "heal_per_turn": 25, "duration": 3, "range": 2, "mana_cost": 90, "cooldown": 5},
+							{"dot_damage": 82.5, "heal_per_turn": 35, "duration": 4, "range": 2, "mana_cost": 115, "cooldown": 6},
+							{"dot_damage": 112.5, "heal_per_turn": 50, "duration": 4, "range": 2, "mana_cost": 145, "cooldown": 6}
 						]
 					},
 					{
@@ -1328,9 +1384,9 @@ var zones: Dictionary = {
 						"type": "ultimate",
 						"description": "Ultimate: The Rootmother awakens the roots beneath her and sends them violently through the ground. Every enemy within range is seized and bound in place, unable to move while remaining free to attack and cast skills. The roots continue to tear into their victims for the duration.",
 						"levels": [
-							{"dot_damage": 65, "root_duration": 2, "radius": 1, "mana_cost": 180, "cooldown": 9},
-							{"dot_damage": 100, "root_duration": 3, "radius": 2, "mana_cost": 240, "cooldown": 10},
-							{"dot_damage": 150, "root_duration": 3, "radius": 2, "mana_cost": 300, "cooldown": 11}
+							{"dot_damage": 97.5, "root_duration": 2, "radius": 1, "mana_cost": 180, "cooldown": 9},
+							{"dot_damage": 150, "root_duration": 3, "radius": 2, "mana_cost": 240, "cooldown": 10},
+							{"dot_damage": 225, "root_duration": 3, "radius": 2, "mana_cost": 300, "cooldown": 11}
 						]
 					},
 				],
@@ -1347,6 +1403,7 @@ var zones: Dictionary = {
 				"background": "res://assets/zones/the_verdant_scar_cinder.jpg",
 				"range_type": "Range",
 				"main_stat": "Strength",
+				"damage_per_main_stat": 2.6,
 				"attack_range": 1,
 				"attack_effect": "flamethrower",
 				"attack_origin": Vector2(0.94, 0.45),
@@ -1358,7 +1415,7 @@ var zones: Dictionary = {
 					"hp": 714,
 					"mana": 351,
 					"armor": 2.67,
-					"damage": "48-52",
+					"damage": "72-78",
 					"speed": 1
 				},
 				"skills": [
@@ -1368,10 +1425,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Cinder swings his flamethrower in a wide arc, unleashing a torrent of fire around himself. Every enemy caught within the flames suffers damage as the burning fuel scorches flesh.",
 						"levels": [
-							{"damage": 100, "radius": 1, "mana_cost": 70, "cooldown": 4},
-							{"damage": 150, "radius": 1, "mana_cost": 90, "cooldown": 4},
-							{"damage": 200, "radius": 2, "mana_cost": 115, "cooldown": 5},
-							{"damage": 260, "radius": 2, "mana_cost": 140, "cooldown": 5}
+							{"damage": 120, "radius": 1, "mana_cost": 70, "cooldown": 4},
+							{"damage": 180, "radius": 1, "mana_cost": 90, "cooldown": 4},
+							{"damage": 240, "radius": 2, "mana_cost": 115, "cooldown": 5},
+							{"damage": 312, "radius": 2, "mana_cost": 140, "cooldown": 5}
 						]
 					},
 					{
@@ -1380,10 +1437,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Cinder fires a hooked chain that anchors above the marked enemy. He swings toward the target, dragging his flamethrower beneath him and leaving a trail of fire along his path.",
 						"levels": [
-							{"damage": 70, "range": 3, "mana_cost": 60, "cooldown": 4},
-							{"damage": 95, "range": 3, "mana_cost": 80, "cooldown": 4},
-							{"damage": 130, "range": 4, "mana_cost": 105, "cooldown": 5},
-							{"damage": 185, "range": 5, "mana_cost": 130, "cooldown": 5}
+							{"damage": 84, "range": 3, "mana_cost": 60, "cooldown": 4},
+							{"damage": 114, "range": 3, "mana_cost": 80, "cooldown": 4},
+							{"damage": 156, "range": 4, "mana_cost": 105, "cooldown": 5},
+							{"damage": 222, "range": 5, "mana_cost": 130, "cooldown": 5}
 						]
 					},
 					{
@@ -1404,9 +1461,9 @@ var zones: Dictionary = {
 						"type": "ultimate",
 						"description": "Ultimate: Cinder hurls an improvised incendiary barrel toward the target location. On impact, the barrel bursts apart, spreading burning fuel across the surrounding ground. The resulting blaze damages enemies caught in the blast and continues to burn at the impact site.",
 						"levels": [
-							{"cast_damage": 150, "damage_per_turn": 80, "duration": 2, "radius": 1, "range": 5, "mana_cost": 200, "cooldown": 10},
-							{"cast_damage": 225, "damage_per_turn": 120, "duration": 3, "radius": 1, "range": 6, "mana_cost": 275, "cooldown": 11},
-							{"cast_damage": 325, "damage_per_turn": 170, "duration": 3, "radius": 2, "range": 7, "mana_cost": 350, "cooldown": 12}
+							{"cast_damage": 180, "damage_per_turn": 96, "duration": 2, "radius": 1, "range": 5, "mana_cost": 200, "cooldown": 10},
+							{"cast_damage": 270, "damage_per_turn": 144, "duration": 3, "radius": 1, "range": 6, "mana_cost": 275, "cooldown": 11},
+							{"cast_damage": 390, "damage_per_turn": 204, "duration": 3, "radius": 2, "range": 7, "mana_cost": 350, "cooldown": 12}
 						]
 					},
 				],
@@ -1425,7 +1482,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -1440,7 +1497,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -1456,7 +1513,7 @@ var zones: Dictionary = {
 				"projectile": "rear_vine",
 				"main_stat": "agility",
 				"main_stat_value": 10,
-				"hp": 100,
+				"hp": 150,
 				"mana": 50,
 				"damage": 20,
 				"speed": 1,
@@ -1506,6 +1563,7 @@ var zones: Dictionary = {
 				"background": "res://assets/zones/drowned_empire_the_last_empress.jpg",
 				"range_type": "Melee",
 				"main_stat": "Agility",
+				"damage_per_main_stat": 1.1,
 				"stats": {
 					"strength": 21,
 					"agility": 22,
@@ -1514,7 +1572,7 @@ var zones: Dictionary = {
 					"hp": 582,
 					"mana": 303,
 					"armor": 4.7,
-					"damage": "45-47",
+					"damage": "68-71",
 					"speed": 1
 				},
 				"skills": [
@@ -1536,10 +1594,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "The Last Empress commands spectral chains to erupt from the depths and bind an enemy within range. The shackles tear into their victim and hold it firmly in place, preventing movement and jumping while leaving it able to attack and cast skills.",
 						"levels": [
-							{"damage": 60, "range": 3, "root_turns": 1, "mana_cost": 60, "cooldown": 4},
-							{"damage": 100, "range": 4, "root_turns": 2, "mana_cost": 80, "cooldown": 4},
-							{"damage": 145, "range": 5, "root_turns": 2, "mana_cost": 105, "cooldown": 5},
-							{"damage": 200, "range": 6, "root_turns": 3, "mana_cost": 130, "cooldown": 5}
+							{"damage": 54, "range": 3, "root_turns": 1, "mana_cost": 60, "cooldown": 4},
+							{"damage": 90, "range": 4, "root_turns": 2, "mana_cost": 80, "cooldown": 4},
+							{"damage": 130.5, "range": 5, "root_turns": 2, "mana_cost": 105, "cooldown": 5},
+							{"damage": 180, "range": 6, "root_turns": 3, "mana_cost": 130, "cooldown": 5}
 						]
 					},
 					{
@@ -1578,7 +1636,8 @@ var zones: Dictionary = {
 				"image": "res://assets/heroes/Dreadlure.png",
 				"background": "res://assets/zones/drowned_empire_dreadlure.jpg",
 				"range_type": "Melee",
-				"main_stat": "Strength ",
+				"main_stat": "Strength",
+				"damage_per_main_stat": 1.6,
 				"stats": {
 					"strength": 21,
 					"agility": 17,
@@ -1587,7 +1646,7 @@ var zones: Dictionary = {
 					"hp": 582,
 					"mana": 255,
 					"armor": 5.83,
-					"damage": "51-59",
+					"damage": "77-89",
 					"speed": 1
 				},
 				"skills": [
@@ -1609,10 +1668,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Dreadlure releases paralytic toxins into the surrounding area, damaging nearby enemies and immobilizing them as the venom overwhelms their bodies.",
 						"levels": [
-							{"damage": 90, "radius": 1, "stun_turns": 1, "mana_cost": 70, "cooldown": 4},
-							{"damage": 140, "radius": 1, "stun_turns": 1, "mana_cost": 95, "cooldown": 4},
-							{"damage": 200, "radius": 1, "stun_turns": 2, "mana_cost": 125, "cooldown": 5},
-							{"damage": 270, "radius": 1, "stun_turns": 2, "mana_cost": 155, "cooldown": 5}
+							{"damage": 114.7, "radius": 1, "stun_turns": 1, "mana_cost": 70, "cooldown": 4},
+							{"damage": 178.5, "radius": 1, "stun_turns": 1, "mana_cost": 95, "cooldown": 4},
+							{"damage": 255, "radius": 1, "stun_turns": 2, "mana_cost": 125, "cooldown": 5},
+							{"damage": 344.2, "radius": 1, "stun_turns": 2, "mana_cost": 155, "cooldown": 5}
 						]
 					},
 					{
@@ -1654,7 +1713,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -1669,7 +1728,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -1684,7 +1743,7 @@ var zones: Dictionary = {
 				"type": "range",
 				"main_stat": "agility",
 				"main_stat_value": 10,
-				"hp": 100,
+				"hp": 150,
 				"mana": 50,
 				"damage": 20,
 				"speed": 1,
@@ -1707,12 +1766,16 @@ var zones: Dictionary = {
 		"music": "the_blackbloom",
 		"heroes": [
 			{
-				"id": "mirana",
-				"name": "Mirana",
-				"image": "res://assets/heroes/Mirana.png",
-				"background": "res://assets/zones/the_blackbloom_mirana.png",
+				"id": "solara",
+				"name": "Solara",
+				"image": "res://assets/heroes/Solara.png",
+				"background": "res://assets/zones/the_blackbloom_solara.jpg",
+				"attack_effect": "projectile",
+				"attack_projectile": "solara_arrow",
+				"attack_origin": Vector2(0.99, 0.23),
 				"range_type": "Range",
 				"main_stat": "Agility",
+				"damage_per_main_stat": 3.0,
 				"stats": {
 					"strength": 20,
 					"agility": 26,
@@ -1721,55 +1784,55 @@ var zones: Dictionary = {
 					"hp": 560,
 					"mana": 339,
 					"armor": 2,
-					"damage": "19-23",
+					"damage": "45-55",
 					"speed": 1
 				},
 				"skills": [
 					{
-						"id": "starstorm",
-						"name": "Starstorm",
+						"id": "fallen_grace",
+						"name": "Fallen Grace",
 						"type": "standard",
-						"description": "Calls down meteors, dealing damage to every enemy within radius of Mirana.",
+						"description": "Unleashes a volley of arrows that rains down upon every enemy within radius of Solara, dealing damage.",
 						"levels": [
-							{"damage": 90, "radius": 1, "mana_cost": 65, "cooldown": 4},
-							{"damage": 140, "radius": 1, "mana_cost": 90, "cooldown": 4},
-							{"damage": 200, "radius": 2, "mana_cost": 120, "cooldown": 5},
-							{"damage": 270, "radius": 2, "mana_cost": 150, "cooldown": 5}
+							{"damage": 135, "radius": 1, "mana_cost": 65, "cooldown": 4},
+							{"damage": 210, "radius": 1, "mana_cost": 90, "cooldown": 4},
+							{"damage": 300, "radius": 2, "mana_cost": 120, "cooldown": 5},
+							{"damage": 405, "radius": 2, "mana_cost": 150, "cooldown": 5}
 						]
 					},
 					{
-						"id": "sacred_arrow",
-						"name": "Sacred Arrow",
+						"id": "hope_of_the_fallen",
+						"name": "Hope of the Fallen",
 						"type": "standard",
-						"description": "Marks a target within range with a long-range arrow, dealing more damage the further it traveled, and stuns it.",
+						"description": "Solara pours all she got left of her lost world into a mighty arrow at a distant target, dealing greater damage the farther it travels and stunning the target on impact.",
 						"levels": [
-							{"base_damage": 80, "bonus_per_column": 20, "range": 4, "stun_turns": 1, "mana_cost": 70, "cooldown": 5},
-							{"base_damage": 120, "bonus_per_column": 30, "range": 5, "stun_turns": 2, "mana_cost": 100, "cooldown": 5},
-							{"base_damage": 170, "bonus_per_column": 40, "range": 6, "stun_turns": 2, "mana_cost": 135, "cooldown": 6},
-							{"base_damage": 230, "bonus_per_column": 50, "range": 7, "stun_turns": 3, "mana_cost": 170, "cooldown": 6}
+							{"base_damage": 120, "bonus_per_column": 30, "range": 4, "stun_turns": 1, "mana_cost": 70, "cooldown": 5},
+							{"base_damage": 180, "bonus_per_column": 45, "range": 5, "stun_turns": 2, "mana_cost": 100, "cooldown": 5},
+							{"base_damage": 255, "bonus_per_column": 60, "range": 6, "stun_turns": 2, "mana_cost": 135, "cooldown": 6},
+							{"base_damage": 345, "bonus_per_column": 75, "range": 7, "stun_turns": 3, "mana_cost": 170, "cooldown": 6}
 						]
 					},
 					{
-						"id": "leap",
-						"name": "Leap",
+						"id": "withering_pursuit",
+						"name": "Withering Pursuit",
 						"type": "standard",
-						"description": "Leaps in the direction she's facing, sailing clean over any enemy in the way.",
+						"description": "Surges forward with fading determination, leaping over any enemies in her path.",
 						"levels": [
-							{"jump_distance": 2, "mana_cost": 50, "cooldown": 4},
-							{"jump_distance": 3, "mana_cost": 65, "cooldown": 4},
-							{"jump_distance": 4, "mana_cost": 80, "cooldown": 5},
-							{"jump_distance": 5, "mana_cost": 100, "cooldown": 5}
+							{"move_distance": 1, "jump_distance": 1, "dash": false, "mana_cost": 50, "cooldown": 4},
+							{"move_distance": 2, "jump_distance": 1, "dash": false, "mana_cost": 65, "cooldown": 4},
+							{"move_distance": 2, "jump_distance": 2, "dash": true, "mana_cost": 80, "cooldown": 5},
+							{"move_distance": 2, "jump_distance": 3, "dash": true, "mana_cost": 100, "cooldown": 5}
 						]
 					},
 					{
-						"id": "moonlight_shadow",
-						"name": "Moonlight Shadow",
+						"id": "ambush_strike",
+						"name": "Ambush Strike",
 						"type": "ultimate",
-						"description": "Ultimate: turns invisible for the duration - enemies can't attack or chase her while it holds. Her next Attack from stealth deals bonus damage and reveals her.",
+						"description": "Ultimate: Conceals herself for the duration, preventing enemies from attacking or pursuing her. Her next Attack from stealth deals bonus damage and reveals her.",
 						"levels": [
-							{"duration": 2, "bonus_damage_pct": 0.75, "mana_cost": 180, "cooldown": 9},
-							{"duration": 3, "bonus_damage_pct": 1.10, "mana_cost": 240, "cooldown": 10},
-							{"duration": 4, "bonus_damage_pct": 1.50, "mana_cost": 300, "cooldown": 11}
+							{"duration": 2, "bonus_damage_pct": 1, "mana_cost": 180, "cooldown": 9},
+							{"duration": 3, "bonus_damage_pct": 1.5, "mana_cost": 240, "cooldown": 10},
+							{"duration": 4, "bonus_damage_pct": 2, "mana_cost": 300, "cooldown": 11}
 						]
 					},
 				],
@@ -1780,12 +1843,15 @@ var zones: Dictionary = {
 				},
 			},
 			{
-				"id": "luna",
-				"name": "Luna",
-				"image": "res://assets/heroes/Luna.png",
-				"background": "res://assets/zones/the_blackbloom_luna.png",
+				"id": "lunara",
+				"name": "Lunara, the Crimson Thorn",
+				"image": "res://assets/heroes/Lunara.png",
+				"background": "res://assets/zones/the_blackbloom_lunara.jpg",
+				"attack_effect": "chakram",
+				"attack_origin": Vector2(0.88, 0.22),
 				"range_type": "Range",
 				"main_stat": "Agility",
+				"damage_per_main_stat": 1.0,
 				"stats": {
 					"strength": 21,
 					"agility": 24,
@@ -1794,27 +1860,27 @@ var zones: Dictionary = {
 					"hp": 582,
 					"mana": 351,
 					"armor": 5.83,
-					"damage": "50-56",
+					"damage": "75-84",
 					"speed": 1
 				},
 				"skills": [
 					{
-						"id": "lucent_beam",
-						"name": "Lucent Beam",
+						"id": "moonfall_lance",
+						"name": "Moonfall Lance",
 						"type": "standard",
-						"description": "Fires a lunar beam at an enemy within range, dealing damage and stunning it.",
+						"description": "Lunara unleashes a concentrated lance of lunar energy at an enemy within range, dealing damage and stunning the target.",
 						"levels": [
-							{"damage": 100, "stun_turns": 1, "range": 4, "mana_cost": 60, "cooldown": 4},
-							{"damage": 160, "stun_turns": 1, "range": 5, "mana_cost": 85, "cooldown": 4},
-							{"damage": 230, "stun_turns": 2, "range": 6, "mana_cost": 115, "cooldown": 5},
-							{"damage": 310, "stun_turns": 2, "range": 7, "mana_cost": 145, "cooldown": 5}
+							{"damage": 75, "stun_turns": 1, "range": 4, "mana_cost": 60, "cooldown": 4},
+							{"damage": 120, "stun_turns": 1, "range": 5, "mana_cost": 85, "cooldown": 4},
+							{"damage": 172.5, "stun_turns": 2, "range": 6, "mana_cost": 115, "cooldown": 5},
+							{"damage": 232.5, "stun_turns": 2, "range": 7, "mana_cost": 145, "cooldown": 5}
 						]
 					},
 					{
-						"id": "moon_glaives",
-						"name": "Moon Glaives",
+						"id": "lunar_ricochet",
+						"name": "Lunar Ricochet",
 						"type": "passive",
-						"description": "Passive: Luna's attacks bounce to nearby enemies for reduced damage.",
+						"description": "Passive: Lunara's attacks carry lunar energy, causing their projectiles to ricochet between nearby enemies, dealing reduced damage with each successive hit.",
 						"levels": [
 							{"bounces": 2, "bounce_damage_pct": 0.75, "bounce_range": 0},
 							{"bounces": 3, "bounce_damage_pct": 0.65, "bounce_range": 1},
@@ -1823,10 +1889,10 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "lunar_blessing",
-						"name": "Lunar Blessing",
+						"id": "moonbound_might",
+						"name": "Moonbound Might",
 						"type": "passive",
-						"description": "Passive: grants Luna bonus Attack damage.",
+						"description": "Passive: Bound to the power of the eternal night, Lunara channels lunar energy into her attacks, increasing her Attack damage.",
 						"levels": [
 							{"bonus_damage_pct": 0.15},
 							{"bonus_damage_pct": 0.25},
@@ -1835,14 +1901,14 @@ var zones: Dictionary = {
 						]
 					},
 					{
-						"id": "eclipse",
-						"name": "Eclipse",
+						"id": "eternal_eclipse",
+						"name": "Eternal Eclipse",
 						"type": "ultimate",
-						"description": "Ultimate: darkens the sky - for the duration, lunar beams strike random enemies within radius of Luna, moving with her, until every beam has landed.",
+						"description": "Ultimate: Lunara plunges the battlefield into a supernatural eclipse. For the duration, lunar beams rain down upon random enemies within a radius around her, following her movements until every beam has struck.",
 						"levels": [
-							{"beams": 4, "damage": 130, "radius": 2, "mana_cost": 200, "cooldown": 9},
-							{"beams": 6, "damage": 175, "radius": 3, "mana_cost": 275, "cooldown": 10},
-							{"beams": 8, "damage": 230, "radius": 4, "mana_cost": 350, "cooldown": 11}
+							{"beams": 4, "damage": 97.5, "radius": 2, "mana_cost": 200, "cooldown": 9},
+							{"beams": 6, "damage": 131.2, "radius": 3, "mana_cost": 275, "cooldown": 10},
+							{"beams": 8, "damage": 172.5, "radius": 4, "mana_cost": 350, "cooldown": 11}
 						]
 					},
 				],
@@ -1861,7 +1927,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -1876,7 +1942,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -1889,9 +1955,10 @@ var zones: Dictionary = {
 				"name": "Blackbloom range creep",
 				"image": "res://assets/enemies/the_blackbloom_range.png",
 				"type": "range",
+				"projectile": "bone_spear",
 				"main_stat": "agility",
 				"main_stat_value": 10,
-				"hp": 100,
+				"hp": 150,
 				"mana": 50,
 				"damage": 20,
 				"speed": 1,
@@ -1901,8 +1968,8 @@ var zones: Dictionary = {
 			}
 		],
 		"unlocked": true,
-		"background": "res://assets/zones/the_blackbloom_mirana.png",
-		"battle_background": "res://assets/battle_areas/the_blackbloom_area.png"
+		"background": "res://assets/zones/the_blackbloom_solara.jpg",
+		"battle_background": "res://assets/battle_areas/the_blackbloom_area.jpg"
 	},
 
 	"the_wildreach": {
@@ -1965,6 +2032,7 @@ var zones: Dictionary = {
 				"attack_origin": Vector2(0.965, 0.13),
 				"range_type": "Range",
 				"main_stat": "Strength",
+				"damage_per_main_stat": 1.2,
 				"stats": {
 					"strength": 21,
 					"agility": 16,
@@ -1973,7 +2041,7 @@ var zones: Dictionary = {
 					"hp": 582,
 					"mana": 327,
 					"armor": 3.7,
-					"damage": "67-73",
+					"damage": "95-103",
 					"speed": 1
 				},
 				"skills": [
@@ -1983,10 +2051,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Raze unleashes both barrels of her battered shotgun in the direction she's facing, blasting every enemy caught within range. She calls it a warning shot. Nobody believes her.",
 						"levels": [
-							{"damage": 70, "range": 2, "mana_cost": 80, "cooldown": 6},
-							{"damage": 100, "range": 2, "mana_cost": 105, "cooldown": 6},
-							{"damage": 170, "range": 3, "mana_cost": 135, "cooldown": 7},
-							{"damage": 230, "range": 3, "mana_cost": 160, "cooldown": 7}
+							{"damage": 57.8, "range": 2, "mana_cost": 80, "cooldown": 6},
+							{"damage": 82.5, "range": 2, "mana_cost": 105, "cooldown": 6},
+							{"damage": 140.2, "range": 3, "mana_cost": 135, "cooldown": 7},
+							{"damage": 189.8, "range": 3, "mana_cost": 160, "cooldown": 7}
 						]
 					},
 					{
@@ -1995,10 +2063,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Raze detonates an explosive beneath her feet, launching herself toward the direction she's facing. While in the air she fires both barrels of her shotgun down at her enemies, damaging and blinding them with a deafening blast. Blinded enemies are stunned and unable to act for the duration.",
 						"levels": [
-							{"jump_distance": 2, "damage": 60, "radius": 1, "stun_turns": 1, "mana_cost": 70, "cooldown": 5},
-							{"jump_distance": 2, "damage": 90, "radius": 1, "stun_turns": 1, "mana_cost": 90, "cooldown": 5},
-							{"jump_distance": 3, "damage": 120, "radius": 1, "stun_turns": 2, "mana_cost": 115, "cooldown": 6},
-							{"jump_distance": 3, "damage": 160, "radius": 1, "stun_turns": 2, "mana_cost": 140, "cooldown": 6}
+							{"jump_distance": 2, "damage": 49.5, "radius": 1, "stun_turns": 1, "mana_cost": 70, "cooldown": 5},
+							{"jump_distance": 2, "damage": 74.2, "radius": 1, "stun_turns": 1, "mana_cost": 90, "cooldown": 5},
+							{"jump_distance": 3, "damage": 99, "radius": 1, "stun_turns": 2, "mana_cost": 115, "cooldown": 6},
+							{"jump_distance": 3, "damage": 132, "radius": 1, "stun_turns": 2, "mana_cost": 140, "cooldown": 6}
 						]
 					},
 					{
@@ -2019,9 +2087,9 @@ var zones: Dictionary = {
 						"type": "ultimate",
 						"description": "Ultimate: Raze blows her target a kiss before unleashing a barrage of three incendiary shots. She becomes completely committed to the attack, unable to move, act, or use items while firing one shot per turn. Each shot tracks the target, or its last known position if it dies, dealing heavy damage and setting its victim ablaze. The impact also scatters burning fragments across adjacent columns, catching nearby enemies in the inferno.",
 						"levels": [
-							{"hits": 3, "main_damage": 180, "splash_damage": 90, "burn_per_turn": 35, "burn_duration": 5, "mana_cost": 200, "cooldown": 10},
-							{"hits": 3, "main_damage": 260, "splash_damage": 130, "burn_per_turn": 50, "burn_duration": 5, "mana_cost": 270, "cooldown": 11},
-							{"hits": 3, "main_damage": 350, "splash_damage": 175, "burn_per_turn": 70, "burn_duration": 6, "mana_cost": 350, "cooldown": 12}
+							{"hits": 3, "main_damage": 148.5, "splash_damage": 74.2, "burn_per_turn": 28.9, "burn_duration": 5, "mana_cost": 200, "cooldown": 10},
+							{"hits": 3, "main_damage": 214.5, "splash_damage": 107.3, "burn_per_turn": 41.2, "burn_duration": 5, "mana_cost": 270, "cooldown": 11},
+							{"hits": 3, "main_damage": 288.8, "splash_damage": 144.4, "burn_per_turn": 57.8, "burn_duration": 6, "mana_cost": 350, "cooldown": 12}
 						]
 					},
 				],
@@ -2040,7 +2108,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -2055,7 +2123,7 @@ var zones: Dictionary = {
 				"type": "melee",
 				"main_stat": "strength",
 				"main_stat_value": 10,
-				"hp": 150,
+				"hp": 225,
 				"mana": 50,
 				"damage": 10,
 				"speed": 1,
@@ -2071,7 +2139,7 @@ var zones: Dictionary = {
 				"projectile": "rifle_bullet",
 				"main_stat": "agility",
 				"main_stat_value": 10,
-				"hp": 100,
+				"hp": 150,
 				"mana": 50,
 				"damage": 20,
 				"speed": 1,
@@ -2527,13 +2595,18 @@ func build_hero_fight_enemy_def(hero_static: Dictionary) -> Dictionary:
 # battle item grid, they restore current_hp/current_mana directly and
 # are removed from the inventory.
 # effect "stat" items (damage, armor, strength, agility, intelligence,
-# or a list of several, like Circlet) are passive equipment instead:
+# or a list of several, like Mindband) are passive equipment instead:
 # PlayerManager.get_inventory_stat_bonus() sums their "value" for
 # every copy currently owned, so the bonus applies only as long as the
 # item stays in the inventory and disappears the moment it's sold.
 # A "passive" item can carry the same "stat"/"value" pair on top of
 # its passive (Cleaver's +10 damage) - get_inventory_stat_bonus() counts
 # any item with a "stat" field, whatever its effect.
+# An item can instead carry a "stats" dict ({stat_key: value}) for
+# different bonuses per stat (Ironfang) - besides the attribute/damage/
+# armor keys it may use "max_hp", "hp_regen", "max_mana" and "mana_regen". An item with a
+# "requires" list (item ids) can only be bought while the player owns
+# one of each; they are consumed on purchase.
 
 # ============================================================
 # SHOP DATA
@@ -2543,8 +2616,8 @@ func build_hero_fight_enemy_def(hero_static: Dictionary) -> Dictionary:
 # full item catalog (including ones not sold yet, like the stat
 # boosts) doesn't have to be filtered down at runtime.
 
-const SHOP_ITEM_IDS: Array[String] = ["health", "mana", "gauntlets_of_strength", "mantle_of_intelligence",
-"slippers_of_agility", "circlet", "blades_of_attack", "cleaver", "hunters_bow", "morbid_mask", "broadsword", "claymore"]
+const SHOP_ITEM_IDS: Array[String] = ["health", "mana", "iron_grips", "sage_mantle",
+"swiftsteps", "mindband", "grimfangs", "cleaver", "hunters_bow", "morbid_mask", "broadsword", "claymore", "ironfang", "spellfang", "shadowfang"]
 const SHOP_LIMITED_STOCK_IDS: Array[String] = ["health", "mana"]
 const SHOP_STOCK_PER_ITEM: int = 3
 
@@ -2570,50 +2643,50 @@ var items: Dictionary = {
 		"cost": 60,
 		"stackable": true
 	},
-	"blades_of_attack": {
-		"id": "blades_of_attack",
-		"name": "Blades of Attack",
-		"image": "res://assets/items/Blades_of_Attack.png",
-		"description": "Add +9 damage",
+	"grimfangs": {
+		"id": "grimfangs",
+		"name": "Grimfangs",
+		"image": "res://assets/items/Grimfangs.png",
+		"description": "Add +14 damage",
 		"effect": "stat",
 		"stat": "damage",
-		"value": 9,
+		"value": 14,
 		"cost": 450
 	},
-	"gauntlets_of_strength": {
-		"id": "gauntlets_of_strength",
-		"name": "Gauntlets of strength",
-		"image": "res://assets/items/gauntlets_of_strength.png",
+	"iron_grips": {
+		"id": "iron_grips",
+		"name": "Iron Grips",
+		"image": "res://assets/items/iron_grips.png",
 		"description": "Adds +3 strength",
 		"effect": "stat",
 		"stat": "strength",
 		"value": 3,
 		"cost": 140
 	},
-	"slippers_of_agility": {
-		"id": "slippers_of_agility",
-		"name": "Slippers of agility",
-		"image": "res://assets/items/slippers_of_agility.png",
+	"swiftsteps": {
+		"id": "swiftsteps",
+		"name": "Swiftsteps",
+		"image": "res://assets/items/swiftsteps.png",
 		"description": "Adds +3 agility",
 		"effect": "stat",
 		"stat": "agility",
 		"value": 3,
 		"cost": 140
 	},
-	"mantle_of_intelligence": {
-		"id": "mantle_of_intelligence",
-		"name": "Mantle of intelligence",
-		"image": "res://assets/items/mantle_of_intelligence.png",
+	"sage_mantle": {
+		"id": "sage_mantle",
+		"name": "Sage Mantle",
+		"image": "res://assets/items/sage_mantle.png",
 		"description": "Adds +3 intelligence",
 		"effect": "stat",
 		"stat": "intelligence",
 		"value": 3,
 		"cost": 140
 	},
-	"circlet": {
-		"id": "circlet",
-		"name": "Circlet",
-		"image": "res://assets/items/circlet.png",
+	"mindband": {
+		"id": "mindband",
+		"name": "Mindband",
+		"image": "res://assets/items/mindband.png",
 		"description": "Adds +1.5 to all attributes",
 		"effect": "stat",
 		"stat": ["strength", "agility", "intelligence"],
@@ -2624,27 +2697,29 @@ var items: Dictionary = {
 		"id": "cleaver",
 		"name": "Cleaver",
 		"image": "res://assets/items/cleaver.png",
-		"description": "Adds +10 damage. Passive (melee heroes only): Attacks cleave for 30% Cleave Damage to enemies within 1 column on either side.",
+		"description": "Adds +15 damage. Passive (melee heroes only): Attacks cleave for 30% Cleave Damage to enemies within 1 column on either side.",
 		"effect": "passive",
+		"hero_type": "melee",
 		"stat": "damage",
-		"value": 10,
+		"value": 15,
 		"cost": 850
 	},
 	"hunters_bow": {
 		"id": "hunters_bow",
 		"name": "Hunter's Bow",
 		"image": "res://assets/items/hunters_bow.png",
-		"description": "Adds +10 damage. Passive (ranged heroes only): every 3rd Attack splits, also hitting another enemy within 2 columns of the target for full damage.",
+		"description": "Adds +15 damage. Passive (ranged heroes only): every 3rd Attack splits, also hitting another enemy within 2 columns of the target for full damage.",
 		"effect": "passive",
+		"hero_type": "range",
 		"stat": "damage",
-		"value": 10,
+		"value": 15,
 		"cost": 900
 	},
 	"morbid_mask": {
 		"id": "morbid_mask",
 		"name": "Morbid Mask",
 		"image": "res://assets/items/morbid mask.png",
-		"description": "Passive: Heals for 10% of the damage dealt by your Attacks. No other stats.",
+		"description": "Passive: Heals for 15% of the damage dealt by your Attacks. No other stats.",
 		"effect": "passive",
 		"cost": 700
 	},
@@ -2652,24 +2727,78 @@ var items: Dictionary = {
 		"id": "broadsword",
 		"name": "Broadsword",
 		"image": "res://assets/items/broadsword.png",
-		"description": "Add +15 damage",
+		"description": "Add +30 damage",
 		"effect": "stat",
 		"stat": "damage",
-		"value": 15,
+		"value": 30,
 		"cost": 1000
 	},
 	"claymore": {
 		"id": "claymore",
 		"name": "Claymore",
 		"image": "res://assets/items/claymore.png",
-		"description": "Add +20 damage",
+		"description": "Add +45 damage",
 		"effect": "stat",
 		"stat": "damage",
-		"value": 20,
-		"cost": 1350
+		"value": 45,
+		"cost": 1400
+	},
+	"ironfang": {
+		"id": "ironfang",
+		"name": "Ironfang",
+		"image": "res://assets/items/Ironfang.png",
+		"description": "Adds +30 damage, +10 strength, +4 agility, +4 intelligence, +350 max HP and +5 HP regen per turn. Requires Grimfangs, Mindband and Iron Grips, which are consumed on purchase.",
+		"effect": "stat",
+		"stats": {"damage": 30, "strength": 10, "agility": 4, "intelligence": 4, "max_hp": 350, "hp_regen": 5},
+		"requires": ["grimfangs", "mindband", "iron_grips"],
+		"cost": 255
+	},
+	"spellfang": {
+		"id": "spellfang",
+		"name": "Spellfang",
+		"image": "res://assets/items/Spellfang.png",
+		"description": "Adds +30 damage, +4 strength, +4 agility, +12 intelligence, +300 max mana and +4 mana regen per turn. Requires Grimfangs, Mindband and Sage Mantle, which are consumed on purchase.",
+		"effect": "stat",
+		"stats": {"damage": 30, "strength": 4, "agility": 4, "intelligence": 12, "max_mana": 300, "mana_regen": 4},
+		"requires": ["grimfangs", "mindband", "sage_mantle"],
+		"cost": 255
+	},
+	"shadowfang": {
+		"id": "shadowfang",
+		"name": "Shadowfang",
+		"image": "res://assets/items/Shadowfang.png",
+		"description": "Adds +30 damage, +4 strength, +12 agility, +4 intelligence and +10 armor. Requires Grimfangs, Mindband and Swiftsteps, which are consumed on purchase.",
+		"effect": "stat",
+		"stats": {"damage": 30, "strength": 4, "agility": 12, "intelligence": 4, "armor": 10},
+		"requires": ["grimfangs", "mindband", "swiftsteps"],
+		"cost": 255
 	},
 }
 
 
 func get_item(item_id: String) -> Dictionary:
 	return items.get(item_id, {})
+
+
+## Share of its Attack damage the Morbid Mask heals back - used by the
+## player's own battle code and by rival heroes that own one.
+const MORBID_MASK_LIFESTEAL_PCT: float = 0.15
+
+
+## Total bonus to `stat_key` from an {item_id: count} inventory: every
+## copy of every item with a "stat"/"value" pair (single stat or a list)
+## or a "stats" dict. Shared by the player's inventory and rival heroes'
+## own item lists, so both read bonuses the same way.
+func sum_item_stat_bonus(inventory: Dictionary, stat_key: String) -> float:
+	var total: float = 0.0
+	for item_id in inventory.keys():
+		var item_data: Dictionary = get_item(item_id)
+		if item_data.has("stats"):
+			total += float(item_data["stats"].get(stat_key, 0)) * inventory[item_id]
+		if not item_data.has("stat"):
+			continue
+		var stat_field = item_data.get("stat", "")
+		var grants_this_stat: bool = stat_field.has(stat_key) if stat_field is Array else stat_field == stat_key
+		if grants_this_stat:
+			total += float(item_data.get("value", 0)) * inventory[item_id]
+	return total

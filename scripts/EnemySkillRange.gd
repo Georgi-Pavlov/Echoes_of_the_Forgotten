@@ -37,11 +37,11 @@ class_name EnemySkillRange
 #   - Barbed Lunge: a gap-closer, but only up to its own `distance` field of
 #     columns - it stops the moment it lands on the player's column
 #     (see battle.gd's _cast_enemy_barbed_lunge()), so a player standing
-#     farther away than that just watches the rival leap partway and
+#     farther away than that just watches the rival close in partway and
 #     whiff instead of taking the hit. In range whenever the player is
 #     within `distance`, the same "distance <= radius" comparison as
 #     Abyssal Spasm/Drowned Surge/Undertow/The Sunken One, just against the
-#     leap's own reach instead of a targeting range or AoE radius.
+#     the hop's own reach instead of a targeting range or AoE radius.
 #   - Mark of Stillness: a targeted cast with its own per-level `range` field
 #     (2-4, growing with level) - same "distance <= radius" comparison
 #     as Drowned Surge/Undertow/The Sunken One, just against Mark of Stillness's
@@ -114,10 +114,10 @@ class_name EnemySkillRange
 #   - Deathlight Lure (Dreadlure's ultimate): also a targeted cast with its
 #     own per-level `range` field, same "distance <= radius" comparison
 #     as Shackles's own just above.
-#   - Sacred Arrow (Mirana's): also a targeted cast with its own per-
+#   - Hope of the Fallen (Solara's): also a targeted cast with its own per-
 #     level `range` field, same "distance <= radius" comparison as
 #     Shackles's/Deathlight Lure's own just above.
-#   - Lucent Beam (Luna's): also a targeted cast with its own per-level
+#   - Moonfall Lance (Lunara's): also a targeted cast with its own per-level
 #     `range` field, same "distance <= radius" comparison as Sacred
 #     Arrow's own just above.
 # The Last Empress's Luring Gaze is deliberately NOT range-checked here
@@ -138,20 +138,20 @@ class_name EnemySkillRange
 # its value is purely about what the boosted NEXT move can then reach
 # (see EnemySkillAI's own _dreadlure_hunting_instinct_modifier()). Might of
 # the Deep is passive and never even reaches this file.
-# Mirana's Starstorm follows Paralytic Venom's own precedent exactly - a
+# Solara's Fallen Grace follows Paralytic Venom's own precedent exactly - a
 # self-centered AoE scored (not gated) against range via EnemySkillAI's
-# own _mirana_starstorm_modifier() (fed by `living_target_hps`, already
+# own _solara_fallen_grace_modifier() (fed by `living_target_hps`, already
 # empty out of range), so it's never in RANGE_CHECKED_SKILL_IDS either.
-# Leap is a self-directed hop with no target requirement at all to even
+# Withering Pursuit is a self-directed hop with no target requirement at all to even
 # attempt it, same as Blast Hopper above - it "sails clean over any
 # enemy in the way" regardless of range (see battle.gd's own
-# _activate_leap()). Moonlight Shadow is a self-buff with no target of
+# _activate_withering_pursuit()). Ambush Strike is a self-buff with no target of
 # its own to reach at cast time, same as Imperial Guard/Hunting Instinct
 # above.
-# Luna's Eclipse is a self-cast ultimate with no target of its own to
-# reach at cast time either, same as Moonlight Shadow above - its own
-# radius moves with her and is scored (via EnemySkillAI's own _luna_
-# eclipse_modifier()), never gated here. Moon Glaives and Lunar Blessing
+# Lunara's Eternal Eclipse is a self-cast ultimate with no target of its own to
+# reach at cast time either, same as Ambush Strike above - its own
+# radius moves with her and is scored (via EnemySkillAI's own _lunara_
+# eternal_eclipse_modifier()), never gated here. Lunar Ricochet and Moonbound Might
 # are both passive and never even reach this file.
 # Every other known skill (Leeching Hunger, Depthsveil, Wildbond,
 # Beast of the Elderwild, Elderwild Companion, Veil of the Forgotten, Frostbound Fangs, The Test of
@@ -178,7 +178,37 @@ class_name EnemySkillRange
 # _raze_blast_hopper_modifier()), never a candidacy gate here.
 # ============================================================
 
-const RANGE_CHECKED_SKILL_IDS: Array[String] = ["abyssal_spasm", "thornbind", "whisper_of_the_veil", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "frostbound_rupture", "charge", "glacier_breaker", "sanguine_bloom", "sweep", "chainfire", "cinderbomb", "three_cheers", "kiss_the_wastes", "double_trouble", "shackles", "deathlight_lure", "sacred_arrow", "lucent_beam"]
+const RANGE_CHECKED_SKILL_IDS: Array[String] = ["abyssal_spasm", "thornbind", "whisper_of_the_veil", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "frostbound_rupture", "charge", "glacier_breaker", "sanguine_bloom", "sweep", "chainfire", "cinderbomb", "three_cheers", "kiss_the_wastes", "double_trouble", "shackles", "deathlight_lure", "hope_of_the_fallen", "moonfall_lance"]
+
+
+# Self-cast skills whose whole value comes from the player being close:
+# they have no targeting range to gate on (so they're not in
+# RANGE_CHECKED_SKILL_IDS), but casting them while the player is far away
+# just wastes them. They're allowed once the player is within reach NOW or
+# will be after the rival's next one-column step (see
+# is_engagement_ready()).
+#   - RADIUS: AoE centered on the caster, reach = the skill's own `radius`.
+#   - ATTACK: buffs that pay off through follow-up basic attacks, reach =
+#     the rival's own basic-attack range for its type.
+const ENGAGEMENT_RADIUS_SKILL_IDS: Array[String] = ["the_frost_tempest", "mother's_grasp", "luring_gaze", "paralytic_venom", "fallen_grace", "eternal_eclipse"]
+const ENGAGEMENT_ATTACK_SKILL_IDS: Array[String] = ["leeching_hunger", "bestial_rage", "frostbound_fangs", "beast_of_the_elderwild"]
+
+
+static func requires_engagement_check(skill_id: String) -> bool:
+	return skill_id in ENGAGEMENT_RADIUS_SKILL_IDS or skill_id in ENGAGEMENT_ATTACK_SKILL_IDS
+
+
+## True if the player is, or after the rival's next move will be, within
+## the skill's reach. `radius` is the skill's own `radius` field (RADIUS
+## group), `attack_range` the rival's basic-attack range (ATTACK group),
+## `move_distance` how many columns the rival closes per turn. Skills
+## outside the two groups always report true.
+static func is_engagement_ready(skill_id: String, distance: int, radius: int, attack_range: int, move_distance: int = 1) -> bool:
+	if skill_id in ENGAGEMENT_RADIUS_SKILL_IDS:
+		return distance <= radius + move_distance
+	if skill_id in ENGAGEMENT_ATTACK_SKILL_IDS:
+		return distance <= attack_range + move_distance
+	return true
 
 
 ## True if `skill_id` needs a range check at all before being cast -
@@ -199,7 +229,7 @@ static func requires_range_check(skill_id: String) -> bool:
 ## requires_range_check().
 static func is_in_range(skill_id: String, distance: int, radius: int, attack_range: int) -> bool:
 	match skill_id:
-		"abyssal_spasm", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "frostbound_rupture", "charge", "sanguine_bloom", "sweep", "chainfire", "cinderbomb", "shackles", "deathlight_lure", "sacred_arrow", "lucent_beam":
+		"abyssal_spasm", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "frostbound_rupture", "charge", "sanguine_bloom", "sweep", "chainfire", "cinderbomb", "shackles", "deathlight_lure", "hope_of_the_fallen", "moonfall_lance":
 			return distance <= radius
 		"thornbind", "whisper_of_the_veil", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "glacier_breaker", "three_cheers", "kiss_the_wastes":
 			return distance <= attack_range

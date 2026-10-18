@@ -311,6 +311,10 @@ func _populate_skill_buttons() -> void:
 		btn.text = skill.get("name", "Skill")
 		btn.custom_minimum_size = Vector2(0, 40)
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# Long names (Elderwild Companion) wrap onto a second row instead
+		# of stretching the button past the panel.
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		btn.add_theme_font_size_override("font_size", 14)
 		# Every skill is clickable here so the player can read its
 		# description (including the ultimate) - whether it can
 		# actually be SELECTED as the starting skill is enforced

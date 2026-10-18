@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bahs7pd826mkv"
-path="res://.godot/imported/slippers_of_agility.png-9d62bd76a0bad6eafbdb60a065b14dc6.ctex"
+uid="uid://biv1epwutalag"
+path="res://.godot/imported/iron_grips.png-436c785a7c47aa89375128402943bdae.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/items/slippers_of_agility.png"
-dest_files=["res://.godot/imported/slippers_of_agility.png-9d62bd76a0bad6eafbdb60a065b14dc6.ctex"]
+source_file="res://assets/items/iron_grips.png"
+dest_files=["res://.godot/imported/iron_grips.png-436c785a7c47aa89375128402943bdae.ctex"]
 
 [params]
 

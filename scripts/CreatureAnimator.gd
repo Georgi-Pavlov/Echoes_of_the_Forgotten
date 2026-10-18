@@ -238,6 +238,46 @@ const PROFILES := {
 		"glow_color": Color(1.0, 0.5, 0.15),
 		"edge_color": Color(1.0, 0.4, 0.1),
 	},
+	# Lunara: unhurried and predatory - slow, deep breaths, her torn dress
+	# and long hair stirring in a faint ripple, hardly any sway - and a
+	# blood-red glow when she casts.
+	"lunara": {
+		"breath_amount": 0.014, "breath_speed": 1.2,
+		"sway_amount": 0.008, "sway_speed": 0.6,
+		"ripple_amount": 0.0028, "ripple_freq": 6.0, "ripple_speed": 1.4,
+		"glow_color": Color(1.0, 0.2, 0.25),
+		"edge_color": Color(0.9, 0.1, 0.2),
+	},
+	# The Blackbloom's two-headed beast: heavy, ragged breaths, its quills
+	# and torn flesh crawling in a restless ripple, and a hot pink glow
+	# when it strikes.
+	"blackbloom_melee": {
+		"breath_amount": 0.022, "breath_speed": 2.1,
+		"sway_amount": 0.012, "sway_speed": 0.9,
+		"ripple_amount": 0.0032, "ripple_freq": 7.0, "ripple_speed": 2.4,
+		"glow_color": Color(1.0, 0.3, 0.5),
+		"edge_color": Color(0.9, 0.2, 0.4),
+	},
+	# The Blackbloom's spear-tailed stalker: slow, patient breaths, its
+	# matted hair crawling in a faint ripple, and a pink glow when it
+	# hurls its spear.
+	"blackbloom_range": {
+		"breath_amount": 0.016, "breath_speed": 1.5,
+		"sway_amount": 0.008, "sway_speed": 0.7,
+		"ripple_amount": 0.0028, "ripple_freq": 6.0, "ripple_speed": 1.8,
+		"glow_color": Color(1.0, 0.35, 0.5),
+		"edge_color": Color(0.9, 0.25, 0.45),
+	},
+	# Solara: a rider drawn at full stretch - slow, measured breaths, her
+	# tattered cloak, long hair and the horse's trappings stirring in a faint
+	# ripple, barely any sway - and a warm golden glow when she casts.
+	"solara": {
+		"breath_amount": 0.013, "breath_speed": 1.3,
+		"sway_amount": 0.006, "sway_speed": 0.6,
+		"ripple_amount": 0.0026, "ripple_freq": 6.0, "ripple_speed": 1.5,
+		"glow_color": Color(1.0, 0.75, 0.3),
+		"edge_color": Color(1.0, 0.6, 0.2),
+	},
 	# The toad-like brute: heaving breaths, its claws and thorned limbs
 	# barely stirring, the gold of its eyes flaring when it strikes.
 	"verdant_scar_melee": {
@@ -493,8 +533,14 @@ func play_charge(from_delta_x: float, duration: float) -> void:
 ## battle.gd snaps nodes straight to their new column; this slides the
 ## art in from where it was (`from_delta_x` = old x - new x, in pixels)
 ## along a small hop arc, then lands with a squash.
+## While true, a move makes no footstep sound (a skill that plays its own
+## footsteps for the move sets this around the call).
+static var silent_moves := false
+
+
 func play_move(from_delta_x: float) -> void:
-	AudioManager.play_event("steps", 0.0, 0.1)
+	if not silent_moves:
+		AudioManager.play_event("steps", 0.0, 0.1)
 	if _move_tween != null and _move_tween.is_valid():
 		_move_tween.kill()
 	_move_from_x = from_delta_x
@@ -529,6 +575,60 @@ func play_blast_hop(from_delta_x: float, height: float, duration: float) -> void
 	t.tween_property(_mat, _param("squash"), Vector2(0.97, 1.04), duration * 0.5)
 	t.tween_property(_mat, _param("squash"), Vector2(1.14, 0.84), duration * 0.5 - 0.08)
 	t.tween_property(_mat, _param("squash"), Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## A run (or a dash) into a jump (Solara's Withering Pursuit): she RUNS
+## `run_dx` px along the ground for `run_time` seconds - a stride bounce for
+## every step, leaning into it (a `dash` is flatter, faster and leans harder,
+## stretched out) - then springs, with a quick coil and stretch, and sails
+## `height` px up over the rest of the way (the `jump_time` seconds that
+## remain to land at her final spot, where the offset reaches zero),
+## coming down in a hard landing squash. `start_x` is the whole move's
+## starting offset (old x minus new x); `direction` is +1/-1. Replaces any
+## play_move() already running for the same move.
+func play_run_leap(start_x: float, run_dx: float, direction: float, height: float, run_time: float, jump_time: float, dash: bool) -> void:
+	if _move_tween != null and _move_tween.is_valid():
+		_move_tween.kill()
+	var run_end_x: float = start_x + run_dx          # where the run stops and the jump begins
+	var steps: float = maxf(absf(run_dx) / 120.0, 1.0)
+	_mat.set_shader_parameter("move_offset", Vector2(start_x, 0.0))
+	_move_tween = create_tween()
+	var run_fn := func(p: float) -> void:
+		var x: float = lerpf(start_x, run_end_x, p)
+		# A stride bounce per step - a dash barely leaves the ground.
+		var bob: float = (3.0 if dash else 9.0) * absf(sin(p * steps * PI))
+		_mat.set_shader_parameter("move_offset", Vector2(x, -bob))
+	var jump_fn := func(p: float) -> void:
+		var arc: float = 4.0 * p * (1.0 - p)
+		_mat.set_shader_parameter("move_offset", Vector2(lerpf(run_end_x, 0.0, p), -height * arc))
+	if run_time > 0.0:
+		_move_tween.tween_method(run_fn, 0.0, 1.0, run_time)
+	_move_tween.tween_method(jump_fn, 0.0, 1.0, jump_time).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+	var t := _new_action_tween()
+	if run_time > 0.0:
+		# Running: leaning into it.
+		var lean: float = direction * (0.13 if dash else 0.07)
+		var squash := Vector2(1.08, 0.92) if dash else Vector2(1.03, 0.97)
+		t.tween_property(_mat, _param("lean"), lean, 0.06)
+		t.parallel().tween_property(_mat, _param("squash"), squash, 0.06)
+		t.tween_interval(maxf(run_time - 0.12, 0.0))
+	# The coil and the spring.
+	t.tween_property(_mat, _param("squash"), Vector2(1.1, 0.88), 0.06)
+	t.parallel().tween_property(_mat, _param("lean"), -direction * 0.04, 0.06)
+	t.tween_property(_mat, _param("squash"), Vector2(0.88, 1.14), 0.07)
+	t.parallel().tween_property(_mat, _param("lean"), direction * 0.1, 0.07)
+	# Airborne, then the landing.
+	t.tween_property(_mat, _param("squash"), Vector2(0.97, 1.04), jump_time * 0.45)
+	t.tween_property(_mat, _param("squash"), Vector2(1.14, 0.85), jump_time * 0.55 - 0.07)
+	t.parallel().tween_property(_mat, _param("lean"), 0.0, jump_time * 0.55)
+	t.tween_property(_mat, _param("squash"), Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## How far the animation currently has her drawn from her node's own
+## position (px) - for effects that follow her body.
+func current_offset() -> Vector2:
+	return _mat.get_shader_parameter("move_offset")
 
 
 func _set_move_progress(p: float) -> void:

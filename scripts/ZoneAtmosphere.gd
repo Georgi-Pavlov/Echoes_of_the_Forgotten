@@ -141,6 +141,10 @@ const LAST_EMPRESS_BG := "res://assets/zones/drowned_empire_the_last_empress.jpg
 # The Last Empress's Drowned Empire runs in its own child too - see LastEmpressAtmosphere.gd.
 const LAST_EMPRESS_FX := preload("res://scripts/LastEmpressAtmosphere.gd")
 const DREADLURE_BG := "res://assets/zones/drowned_empire_dreadlure.jpg"
+const LUNARA_BG := "res://assets/zones/the_blackbloom_lunara.jpg"
+const SOLARA_BG := "res://assets/zones/the_blackbloom_solara.jpg"
+# Lunara's Blackbloom runs in its own child too - see LunaraAtmosphere.gd.
+const LUNARA_FX := preload("res://scripts/LunaraAtmosphere.gd")
 const UNKNOWN_BG := "res://assets/zones/empty_zone.jpg"
 const UNKNOWN_FX := preload("res://scripts/UnknownZoneAtmosphere.gd")
 
@@ -261,7 +265,7 @@ func _ready() -> void:
 ## Called by zone.gd after it has set the background for the shown hero.
 func show_for_background(path: String) -> void:
 	_clear()
-	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG, EVERFROST_BG, EVERFROST_SKARN_BG, ROOTMOTHER_BG, CINDER_BG, SCORCHLANDS_BG, LAST_EMPRESS_BG, DREADLURE_BG, UNKNOWN_BG]:
+	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG, EVERFROST_BG, EVERFROST_SKARN_BG, ROOTMOTHER_BG, CINDER_BG, SCORCHLANDS_BG, LUNARA_BG, SOLARA_BG, LAST_EMPRESS_BG, DREADLURE_BG, UNKNOWN_BG]:
 		return
 	# Guards against a hero switch landing during the await below.
 	_build_id += 1
@@ -290,6 +294,10 @@ func show_for_background(path: String) -> void:
 		_build_rootmother("the_rootmother")
 	elif path == CINDER_BG:
 		_build_rootmother("cinder")
+	elif path == SOLARA_BG:
+		_build_lunara("solara")
+	elif path == LUNARA_BG:
+		_build_lunara("lunara")
 	elif path == SCORCHLANDS_BG:
 		_build_scorchlands()
 	elif path == LAST_EMPRESS_BG:
@@ -1053,6 +1061,15 @@ func _build_last_empress(hero: String) -> void:
 	add_child(fx)
 	fx.build(self, _background, hero)
 	_zone = "last_empress"
+
+
+# --- The Blackbloom -----------------------------------------------
+
+func _build_lunara(hero: String) -> void:
+	var fx: Control = LUNARA_FX.new()
+	add_child(fx)
+	fx.build(self, _background, hero)
+	_zone = hero
 
 
 # --- Zones with no heroes yet ---------------------------------------
