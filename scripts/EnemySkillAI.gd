@@ -703,8 +703,8 @@ static func _hero_specific_modifier(archetype: String, skill_id: String, level_d
 ## Veyrik: an aggressive kill-seeker. Barbed Lunge gets a further top-up when
 ## it can personally close out the kill (on top of the generic kill
 ## bonus every offensive skill already gets), and Leeching Hunger is more
-## attractive when Veyrik is healthy enough to expect to land the
-## follow-up hits it needs to pay off.
+## attractive when Veyrik is hurt enough to want the healing - and not worth
+## much while he is nearly full.
 static func _veyrik_modifier(skill_id: String, level_data: Dictionary, context: Dictionary) -> float:
 	match skill_id:
 		"barbed_lunge":
@@ -712,7 +712,10 @@ static func _veyrik_modifier(skill_id: String, level_data: Dictionary, context: 
 			var dmg: float = _estimate_skill_damage(skill_id, level_data, context)
 			return 15.0 if (target_hp > 0.0 and dmg >= target_hp) else 0.0
 		"leeching_hunger":
-			return 15.0 if float(context.get("hero_hp_ratio", 1.0)) > 0.6 else 0.0
+			var hp_ratio: float = float(context.get("hero_hp_ratio", 1.0))
+			if hp_ratio < 0.7:
+				return 15.0
+			return -10.0 if hp_ratio > 0.9 else 0.0
 		_:
 			return 0.0
 

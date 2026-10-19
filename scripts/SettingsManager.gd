@@ -19,6 +19,8 @@ var music_on: bool = true
 var sound_on: bool = true
 var music_volume: float = DEFAULT_VOLUME
 var sound_volume: float = DEFAULT_VOLUME
+# Records what happens in battle to a file for balance analysis - see PlayLog.gd.
+var play_log_on: bool = false
 
 
 func _ready() -> void:
@@ -34,6 +36,7 @@ func load_settings() -> void:
 		sound_on = cfg.get_value("audio", "sound_on", true)
 		music_volume = cfg.get_value("audio", "music_volume", DEFAULT_VOLUME)
 		sound_volume = cfg.get_value("audio", "sound_volume", DEFAULT_VOLUME)
+		play_log_on = cfg.get_value("debug", "play_log_on", false)
 	# If the file doesn't exist yet (first run), the defaults above
 	# already give 50% volume with both music and sound on.
 
@@ -44,6 +47,7 @@ func save_settings() -> void:
 	cfg.set_value("audio", "sound_on", sound_on)
 	cfg.set_value("audio", "music_volume", music_volume)
 	cfg.set_value("audio", "sound_volume", sound_volume)
+	cfg.set_value("debug", "play_log_on", play_log_on)
 	cfg.save(SETTINGS_FILE)
 
 
@@ -82,4 +86,9 @@ func set_music_volume(value: float) -> void:
 func set_sound_volume(value: float) -> void:
 	sound_volume = value
 	apply_settings()
+	save_settings()
+
+
+func set_play_log_on(value: bool) -> void:
+	play_log_on = value
 	save_settings()

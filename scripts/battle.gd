@@ -172,7 +172,7 @@ const THORNBIND_FLASH_COLOR := Color(0.5, 1.8, 0.4, 1)
 # _flash_bounce_hit() return to instead of a hard-coded Vector2.ONE.
 const HERO_ENLARGED_SCALE := 1.1
 
-# Mote colors for _play_drain_effect(): Leeching Hunger's stolen stats
+# Mote colors for _play_drain_effect(): Leeching Hunger's drained health
 # in Veyrik's teal, any lifesteal in red (see _play_lifesteal_effect()).
 const LEECHING_HUNGER_MOTE_COLOR := Color(0.2, 0.9, 0.8, 1.0)
 const LIFESTEAL_MOTE_COLOR := Color(1.0, 0.2, 0.15, 1.0)
@@ -378,30 +378,21 @@ var _pending_level_up_skill_id: String = ""
 
 # ------------------------------------------------------------------
 # Veyrik's Leeching Hunger: while active, Veyrik's next
-# _leeching_hunger_attacks_remaining melee hits each steal 1 point of
-# the target's main stat (see _apply_leeching_hunger_steal()). All
-# currently-borrowed stats are handed back - to whichever donor
-# enemies are still alive - together, once
-# _leeching_hunger_turns_remaining counts down to 0 (see
-# _tick_leeching_hunger() / _end_leeching_hunger()).
+# _leeching_hunger_attacks_remaining melee hits each heal him for
+# _leeching_hunger_lifesteal_pct of the damage they deal (see
+# _apply_leeching_hunger_steal()). It runs out after that many hits, or
+# once _leeching_hunger_turns_remaining counts down to 0 (see
+# _tick_leeching_hunger() / _end_leeching_hunger()), whichever is first.
 # ------------------------------------------------------------------
 var _leeching_hunger_active: bool = false
 var _leeching_hunger_attacks_remaining: int = 0
+var _leeching_hunger_lifesteal_pct: float = 0.0
 var _leeching_hunger_turns_remaining: int = 0
 # True from the moment the skill is cast until the first End Turn
 # after that - the casting turn itself doesn't count against the
 # duration, so this makes _tick_leeching_hunger() skip exactly one
 # decrement before duration starts counting down for real.
 var _leeching_hunger_duration_pending_start: bool = false
-# Every point currently borrowed, so it can be handed back on expiry:
-# each entry is {enemy: Dictionary (that enemy's own _enemies entry),
-# stat: String, amount: int}.
-var _leeching_hunger_stolen: Array = []
-# Running total of the borrowed stats currently added to Veyrik -
-# purely a battle-local calculation/display modifier (see
-# _roll_hero_damage(), _hero_armor(), _refresh_bars()). Never written
-# to PlayerManager, so it naturally has no effect outside this fight.
-var _leeching_hunger_bonus: Dictionary = {"damage": 0.0, "hp": 0.0, "mana": 0.0, "armor": 0.0}
 
 # ------------------------------------------------------------------
 # Veyrik's Depthsveil: while active, the hero is hidden (see
@@ -514,15 +505,14 @@ var _kindled_resolve_stack_turns: Array[int] = []
 # ------------------------------------------------------------------
 # The Primordial Hunger's Frostbound Fangs: while active, the hero's plain Attacks
 # get a flat bonus_damage (folded into _roll_hero_damage(), same slot
-# Leeching Hunger's/Depthsveil's/Beast of the Elderwild's own bonus damage use) and
+# Depthsveil's/Beast of the Elderwild's own bonus damage use) and
 # extra reach (folded into _hero_attack_column_range(), so ranged
 # targeting opens further out too), for this level's own `attacks`
 # count of Attacks or `duration` turns - whichever runs out first, same
 # two-limits race as Leeching Hunger's attacks_remaining/turns_remaining
 # (see _apply_frostbound_fangs_attack()/_tick_frostbound_fangs()). Recasting
 # while a previous activation is still running just overwrites it
-# outright - there's nothing borrowed to give back first, unlike
-# Leeching Hunger.
+# outright.
 # ------------------------------------------------------------------
 var _frostbound_fangs_active: bool = false
 var _frostbound_fangs_bonus_damage: float = 0.0
@@ -777,15 +767,13 @@ var _enemy_ai_hero_hidden: bool = false
 
 # ------------------------------------------------------------------
 # Erynd's Wildbond: while active, the hero gets a flat armor
-# bonus (folded into _hero_armor(), same slot Leeching Hunger's borrowed
-# armor uses) and lifesteal on his Attacks - a % of an Attack's
+# bonus (folded into _hero_armor()) and lifesteal on his Attacks - a % of an Attack's
 # damage, taken AFTER the target's armor has already reduced it, paid
 # back as HP (see _apply_wildbond_lifesteal(), called only from
 # _apply_hero_attack() - skill damage never triggers it). Same
 # "casting turn doesn't count" duration pattern as Leeching Hunger/
 # Depthsveil. Recasting simply overwrites the running values with
-# the new cast's - there's nothing to "give back" the way Essence
-# Shift's borrowed stats are, so no need to end the old one first.
+# the new cast's, so there's no need to end the old one first.
 # ------------------------------------------------------------------
 var _wildbond_active: bool = false
 var _wildbond_lifesteal_pct: float = 0.0
@@ -844,8 +832,8 @@ var _beast_of_the_elderwild_duration_pending_start: bool = false
 # _veil_of_the_forgotten_radius columns of the hero, the same radius-around-
 # a-position AoE concept Abyssal Spasm uses (_cast_abyssal_spasm()). Casting
 # it also dispels every negative effect currently on the player - root,
-# a hostile Thornbind's damage-over-time, Barbed Lunge's stun, and a hostile
-# Leeching Hunger's stat drain (see _activate_veil_of_the_forgotten()) - except
+# a hostile Thornbind's damage-over-time and Barbed Lunge's stun (see
+# _activate_veil_of_the_forgotten()) - except
 # silence, since _on_skill_pressed() already refuses to cast ANY skill
 # while silenced, so that debuff can never still be active by the time
 # this one goes off.
@@ -928,19 +916,14 @@ var _enemy_potion_mana_count: int = 0
 # starts every skill ready.
 var _enemy_skill_cooldowns: Dictionary = {}
 
-# Veyrik's Leeching Hunger, cast by the rival at the PLAYER: unlike the
-# player's own copy (which drains a battle-local counter on the
-# enemy), there's nothing equivalent to permanently drain on the
-# player, so this steals from - and gives back to - a battle-local
-# penalty instead (_player_leeching_hunger_penalty below), never written
-# to PlayerManager. The stolen stat is always the player's own
-# main_stat (there's only one target, so no need to track "stolen"
-# per-donor the way the player's own _leeching_hunger_stolen does).
+# Veyrik's Leeching Hunger, cast by the rival: the mirror of the player's
+# own copy - its next hits heal the rival for a share of the damage they
+# deal to the player.
 var _enemy_leeching_hunger_active: bool = false
 var _enemy_leeching_hunger_attacks_remaining: int = 0
+var _enemy_leeching_hunger_lifesteal_pct: float = 0.0
 var _enemy_leeching_hunger_turns_remaining: int = 0
 var _enemy_leeching_hunger_duration_pending_start: bool = false
-var _enemy_leeching_hunger_bonus: Dictionary = {"damage": 0.0, "hp": 0.0, "mana": 0.0, "armor": 0.0}
 
 # Veyrik's Depthsveil, cast by the rival: while active the boss can't
 # be targeted by any of the player's attacks or targeted skills (see
@@ -1144,8 +1127,7 @@ var _enemy_rootveil_duration_pending_start: bool = false
 # The Rootmother's Woven Flesh, cast by the rival on himself - mirrors
 # the player's own _activate_woven_flesh()/_tick_woven_flesh()/
 # _end_woven_flesh(): bonus_armor folds into _enemy_hero_bonus_armor()
-# (the same slot Leeching Hunger's/Wildbond's own bonus armor already
-# share there), bonus_hp_regen heals the rival on top of his own
+# (the same slot Wildbond's own bonus armor already uses there), bonus_hp_regen heals the rival on top of his own
 # baseline passive regen (_tick_enemy_passive_regen()) every tick - see
 # _tick_enemy_woven_flesh().
 var _enemy_woven_flesh_active: bool = false
@@ -1224,17 +1206,6 @@ var _enemy_guards_duration_pending_start: bool = false
 # ever gets set during a hero fight and is reset by
 # _reset_enemy_hero_state() before each new one.
 # ------------------------------------------------------------------
-
-# Leeching Hunger's running toll on the player - subtracted everywhere
-# the matching _leeching_hunger_bonus is normally ADDED (see
-# _hero_max_hp(), _hero_armor(), _roll_hero_damage(), _refresh_bars())
-# so a hostile Leeching Hunger is exactly as strong in reverse as the
-# player's own copy is in his favor. Reset to all-zero, in one shot,
-# once the cast that caused it ends (_end_enemy_leeching_hunger()) -
-# there's only one victim (the player), so there's no per-donor
-# bookkeeping to do the way the player's own _leeching_hunger_stolen
-# needs for potentially many enemies.
-var _player_leeching_hunger_penalty: Dictionary = {"damage": 0.0, "hp": 0.0, "mana": 0.0, "armor": 0.0}
 
 # Thornbind's root/silence/damage-over-time, cast by the rival on the
 # player - the mirror of _apply_root(), just aimed at the player
@@ -1738,6 +1709,7 @@ func _ready() -> void:
 	_load_enemies()
 	_update_stage_label()
 	_update_action_buttons()
+	_play_log_session()
 
 	if TutorialManager.is_active and TutorialManager.current_stage == 1:
 		_advance_tutorial_stage1_step("move_to_drowned_surge_range")
@@ -1884,24 +1856,23 @@ func _apply_armor_reduction(raw_damage: float, armor: float) -> float:
 	return maxf(0.0, raw_damage * (1.0 - reduction))
 
 
-## Hero's total max HP: base stat plus Leeching Hunger's borrowed hp
-## plus Beast of the Elderwild's bonus hp while each is active - the one place
+## Hero's total max HP: base stat plus Beast of the Elderwild's bonus hp
+## while it is active - the one place
 ## that combination is computed, used by the HP bar, Blood of the Wild's
 ## threshold check, and the bear-death HP penalty.
 func _hero_max_hp() -> float:
 	var stats: Dictionary = _recruited.get("stats", {})
-	return float(stats.get("hp", 0)) + _leeching_hunger_bonus.get("hp", 0.0) + _beast_of_the_elderwild_bonus_hp - _player_leeching_hunger_penalty.get("hp", 0.0)
+	return float(stats.get("hp", 0)) + _beast_of_the_elderwild_bonus_hp
 
 
 ## Hero's total armor: base stat from GameManager plus any permanent
 ## bonus picked up from items (mirrors how damage bonus is combined
-## in _roll_hero_damage), plus any armor currently borrowed via
-## Leeching Hunger, plus Wildbond's flat bonus, Woven Flesh's own
+## in _roll_hero_damage), plus Wildbond's flat bonus, Woven Flesh's own
 ## flat bonus, and Kindled Resolve's own per-stack bonus, each while
 ## active.
 func _hero_armor() -> float:
 	var stats: Dictionary = _recruited.get("stats", {})
-	return float(stats.get("armor", 0)) + _leeching_hunger_bonus.get("armor", 0.0) + _wildbond_bonus_armor + _woven_flesh_bonus_armor + _kindled_resolve_bonus_armor() - _player_leeching_hunger_penalty.get("armor", 0.0) - _player_armor_reduction
+	return float(stats.get("armor", 0)) + _wildbond_bonus_armor + _woven_flesh_bonus_armor + _kindled_resolve_bonus_armor() - _player_armor_reduction
 
 
 ## Blood of the Wild's current level data ({} if not learned yet) - looked
@@ -2053,6 +2024,9 @@ func _load_enemies() -> void:
 
 	_spawn_stage_enemies(melee_templates, int(counts.get("melee", 0)))
 	_spawn_stage_enemies(range_templates, int(counts.get("range", 0)))
+	_play_log_reset_stage()
+	if PlayLog.enabled():
+		PlayLog.event("stage_start", _play_log_state())
 
 
 func _spawn_stage_enemies(templates: Array, count: int, stage: int = -1) -> void:
@@ -2375,6 +2349,7 @@ func _refresh_enemy_overhead_labels() -> void:
 ## as everywhere else that reads it, so the stat scaling still lines up
 ## either way.
 func _spawn_reinforcements() -> void:
+	PlayLog.event("reinforcements", _play_log_state())
 	var zone_data: Dictionary = GameManager.get_selected_zone()
 	var enemy_defs: Array = zone_data.get("enemies", [])
 
@@ -2488,6 +2463,8 @@ func _on_item_pressed(item_id: String) -> void:
 	var item_data: Dictionary = GameManager.get_item(item_id)
 	var effect: String = item_data.get("effect", "")
 	var value: float = float(item_data.get("value", 0))
+	_log_pending_action = "potion:" + item_id
+	_log_potions[item_id] = int(_log_potions.get(item_id, 0)) + 1
 
 	match effect:
 		"heal":
@@ -2534,15 +2511,14 @@ func _refresh_bars() -> void:
 	_recruited = PlayerManager.get_recruited_hero()
 	var stats: Dictionary = _recruited.get("stats", {})
 
-	# Leeching Hunger's borrowed hp/mana, and Beast of the Elderwild's bonus hp while
-	# it's active, show up as extra max here - a battle-local display
-	# bonus only, never written back to PlayerManager (see
-	# _leeching_hunger_bonus/_beast_of_the_elderwild_bonus_hp).
+	# Beast of the Elderwild's bonus hp while it's active shows up as extra
+	# max here - a battle-local display bonus only, never written back to
+	# PlayerManager (see _beast_of_the_elderwild_bonus_hp).
 	hp_bar.max_value = _hero_max_hp()
 	hp_bar.value = _recruited.get("current_hp", 0)
 	hp_value_label.text = str(int(hp_bar.value)) + "/" + str(int(hp_bar.max_value))
 
-	mana_bar.max_value = float(stats.get("mana", 1)) + _leeching_hunger_bonus.get("mana", 0.0) - _player_leeching_hunger_penalty.get("mana", 0.0)
+	mana_bar.max_value = float(stats.get("mana", 1))
 	mana_bar.value = _recruited.get("current_mana", 0)
 	mana_value_label.text = str(int(mana_bar.value)) + "/" + str(int(mana_bar.max_value))
 
@@ -2814,6 +2790,7 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 		return
 
 	var generation_before: int = _stage_generation
+	_log_pending_action = "skill:" + skill_id
 
 	match skill_id:
 		"barbed_lunge":
@@ -5145,12 +5122,12 @@ func _play_kiss_blow(caster: Variant) -> void:
 ## tracks it turn to turn (a live Dictionary reference into _enemies),
 ## and once it's dead _kill_enemy() never mutates that field further,
 ## so it keeps reading as wherever it died - "the last column that the
-## enemy occupied" falls out for free. Deals this level's own
-## main_damage plus a refreshed burn DoT to whoever's standing on that
-## column RIGHT NOW (_get_enemy_at() - not necessarily the marked enemy
-## itself, if it died and something else moved onto that spot), and
-## splash_damage (no burn) to anything exactly 1 column either side of
-## it. Always plays the lava-pool impact visual at that column, even if
+## enemy occupied" falls out for free. The marked enemy (or, once it's
+## dead, whoever's weakest on that column now) takes main_damage;
+## EVERY other enemy within 1 column of the impact - the column itself
+## included, since creeps stack in one column - takes splash_damage. All of
+## them, main and splash alike, are set burning (refreshed by every shot).
+## Always plays the lava-pool impact visual at that column, even if
 ## nothing was actually standing there to hit.
 func _fire_kiss_the_wastes_shot(impact_delay: float = 0.0) -> void:
 	var level_data: Dictionary = _kiss_the_wastes_level_data
@@ -5161,20 +5138,28 @@ func _fire_kiss_the_wastes_shot(impact_delay: float = 0.0) -> void:
 	var burn_per_turn: float = float(level_data.get("burn_per_turn", 0))
 	var burn_duration: int = int(level_data.get("burn_duration", 0))
 
-	var main_target: Dictionary = _get_enemy_at(impact_pos)
-	if not main_target.is_empty():
-		_deal_fixed_damage_to_enemy(main_target, main_damage)
-		if main_target.get("current_hp", 0) > 0 and burn_per_turn > 0.0:
-			main_target["kiss_burn_dot_damage"] = burn_per_turn
-			main_target["kiss_burn_dot_turns_left"] = burn_duration
-
-	for enemy in _enemies.duplicate():
+	# Everyone in the blast, captured before any damage lands - a kill
+	# changes _enemies.
+	var main_target: Dictionary = {}
+	if _enemies.any(func(e: Dictionary) -> bool: return is_same(e, _kiss_marked_enemy)) and not _is_target_hidden(_kiss_marked_enemy):
+		main_target = _kiss_marked_enemy
+	else:
+		main_target = _get_enemy_at(impact_pos)
+	var blast: Array = []
+	for enemy in _enemies:
 		if _is_target_hidden(enemy):
 			continue
-		if is_same(enemy, main_target):
-			continue
-		if _distance(enemy["pos_index"], impact_pos) == 1:
-			_deal_fixed_damage_to_enemy(enemy, splash_damage)
+		if is_same(enemy, main_target) or _distance(enemy["pos_index"], impact_pos) <= 1:
+			blast.append(enemy)
+
+	for enemy in blast:
+		var damage: float = main_damage if is_same(enemy, main_target) else splash_damage
+		_deal_fixed_damage_to_enemy(enemy, damage)
+		if _battle_over:
+			return
+		if enemy.get("current_hp", 0) > 0 and burn_per_turn > 0.0:
+			enemy["kiss_burn_dot_damage"] = burn_per_turn
+			enemy["kiss_burn_dot_turns_left"] = burn_duration
 
 	# A rival's own guard (The Last Empress's Imperial Guard) exactly on the
 	# impact column takes main_damage, one column either side takes
@@ -5889,8 +5874,7 @@ func _resolve_maddening_roar_cast(target: Dictionary, level_data: Dictionary) ->
 ## enemy within `level_data.curse_range` columns of it for as long as
 ## that freeze holds (see _is_the_hunger_calls_active()). Recasting while a
 ## previous curse is still running simply overwrites it outright -
-## there's nothing to give back the way Leeching Hunger's borrowed stats
-## need.
+## there's nothing to give back.
 func _resolve_the_hunger_calls_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
@@ -7800,10 +7784,10 @@ func _tick_enemy_turn_start_effects(enemy: Dictionary) -> void:
 			enemy["deathlight_lure_bonus_pct"] = 0.0
 
 	# Kiss the Wastes' burn: re-armed (both damage and turns_left) by
-	# every main-hit shot that lands on this enemy (see
-	# _fire_kiss_the_wastes_shot()), never by its splash - so "the DoT
-	# duration starts from the first hit" falls out for free here too,
-	# same reasoning the armor shred block above already spells out.
+	# every shot that catches this enemy, main target or splash (see
+	# _fire_kiss_the_wastes_shot()) - so "the DoT duration starts from
+	# the first hit" falls out for free here too, same reasoning the armor
+	# shred block above already spells out.
 	if enemy.get("kiss_burn_dot_turns_left", 0) > 0:
 		enemy["kiss_burn_dot_turns_left"] -= 1
 		var kiss_burn_dot: float = float(enemy.get("kiss_burn_dot_damage", 0))
@@ -8043,54 +8027,37 @@ func _is_enemy_silenced(enemy: Dictionary) -> bool:
 ## `level_data.duration` turns. Always "succeeds" (there's no target
 ## or range requirement to activate it, unlike Barbed Lunge/Abyssal Spasm) - it
 ## just arms the effect for upcoming attacks. Recasting while a
-## previous activation is still running first returns everything that
-## one had borrowed (as if its duration had just run out) so the two
-## instances' durations/attack counts never get mixed together.
+## previous activation is still running first ends it (as if its duration
+## had just run out) so the two instances' durations/attack counts never
+## get mixed together.
 func _activate_leeching_hunger(level_data: Dictionary) -> void:
 	if _leeching_hunger_active:
 		_end_leeching_hunger()
 
 	_leeching_hunger_active = true
 	_leeching_hunger_attacks_remaining = int(level_data.get("attacks", 0))
+	_leeching_hunger_lifesteal_pct = float(level_data.get("lifesteal_pct", 0.0))
 	_leeching_hunger_turns_remaining = int(level_data.get("duration", 0))
 	# The casting turn itself doesn't count - duration only starts
 	# ticking from the turn after (see _tick_leeching_hunger()).
 	_leeching_hunger_duration_pending_start = true
 
 
-## Called right after a melee Attack lands (see _apply_hero_attack()).
-## If Leeching Hunger is active and still has attacks banked, steals 1
-## point of `target`'s main stat - down to
-## GameManager.LEECHING_HUNGER_MIN_ENEMY_MAIN_STAT, never lower - and
-## converts it into the matching Veyrik bonus via
-## _leeching_hunger_contribution_for(). A hit that can't steal anything
-## (enemy already at the floor, or has no main stat at all) doesn't
-## spend one of the banked attacks.
-func _apply_leeching_hunger_steal(target: Dictionary) -> void:
+## Called right after a melee Attack lands (see _apply_hero_attack()), with
+## the damage it dealt after armor. If Leeching Hunger is active and still
+## has hits banked, heals Veyrik for its lifesteal share of that damage and
+## spends one of the banked hits.
+func _apply_leeching_hunger_steal(target: Dictionary, mitigated_damage: float) -> void:
 	if not _leeching_hunger_active or _leeching_hunger_attacks_remaining <= 0:
 		return
-
-	var stat_name: String = str(target["static"].get("main_stat", "")).to_lower()
-	if stat_name == "":
+	if mitigated_damage <= 0.0:
 		return
 
-	var current_value: float = float(target.get("current_main_stat_value", 0.0))
-	if current_value <= GameManager.LEECHING_HUNGER_MIN_ENEMY_MAIN_STAT:
-		_show_message_over_hero("Nothing left to steal")
-		return
-
-	target["current_main_stat_value"] = current_value - 1.0
 	_leeching_hunger_attacks_remaining -= 1
-	_leeching_hunger_stolen.append({"enemy": target, "stat": stat_name, "amount": 1.0})
-
-	var contribution: Dictionary = _leeching_hunger_contribution_for(stat_name)
-	_leeching_hunger_bonus["damage"] = _leeching_hunger_bonus.get("damage", 0.0) + contribution["damage"]
-	_leeching_hunger_bonus["hp"] = _leeching_hunger_bonus.get("hp", 0.0) + contribution["hp"]
-	_leeching_hunger_bonus["mana"] = _leeching_hunger_bonus.get("mana", 0.0) + contribution["mana"]
-	_leeching_hunger_bonus["armor"] = _leeching_hunger_bonus.get("armor", 0.0) + contribution["armor"]
-
+	heal(mitigated_damage * _leeching_hunger_lifesteal_pct)
 	_play_drain_effect(target.get("node"), hero_image, LEECHING_HUNGER_MOTE_COLOR)
-	_refresh_bars()
+	if _leeching_hunger_attacks_remaining <= 0:
+		_end_leeching_hunger()
 
 
 ## Purely cosmetic: a short stream of small motes drifting from
@@ -8155,30 +8122,6 @@ func _play_drain_effect(from_node: Variant, to_node: Variant, mote_color: Color)
 		tween.tween_callback(mote.queue_free)
 
 
-## What 1 stolen point of `stat_name` ("strength"/"agility"/
-## "intelligence") is worth to Veyrik, in the same battle-facing terms
-## his own stat growth uses (see GameManager.compute_derived_stats):
-## strength -> hp, agility -> armor, intelligence -> mana, each at
-## that same per-point rate. On top of that, if `stat_name` happens to
-## be Veyrik's own main stat, the point also adds damage - exactly like
-## a hero's main-stat growth does.
-func _leeching_hunger_contribution_for(stat_name: String) -> Dictionary:
-	var contribution: Dictionary = {"damage": 0.0, "hp": 0.0, "mana": 0.0, "armor": 0.0}
-
-	match stat_name:
-		"strength":
-			contribution["hp"] = GameManager.HP_PER_STRENGTH
-		"agility":
-			contribution["armor"] = GameManager.ARMOR_PER_AGILITY
-		"intelligence":
-			contribution["mana"] = GameManager.MANA_PER_INTELLIGENCE
-
-	if stat_name == str(_hero_static.get("main_stat", "")).to_lower():
-		contribution["damage"] = GameManager.DAMAGE_PER_MAIN_STAT
-
-	return contribution
-
-
 ## Ticks Leeching Hunger's duration down once per End Turn, same timing
 ## as _tick_skill_cooldowns() - except the very first call after the
 ## skill is cast is skipped (see _leeching_hunger_duration_pending_start)
@@ -8196,29 +8139,18 @@ func _tick_leeching_hunger() -> void:
 		_end_leeching_hunger()
 
 
-## Leeching Hunger has run its course: Veyrik loses every borrowed point
-## and each donor enemy that's still alive gets its point(s) back
-## (donors from a stage/hero fight that's already moved on are simply
-## skipped - see _is_enemy_still_active()).
+## Leeching Hunger has run its course - out of hits, or out of turns.
 func _end_leeching_hunger() -> void:
-	for entry in _leeching_hunger_stolen:
-		var donor: Dictionary = entry["enemy"]
-		if _is_enemy_still_active(donor):
-			donor["current_main_stat_value"] = float(donor.get("current_main_stat_value", 0.0)) + float(entry["amount"])
-
-	_leeching_hunger_stolen.clear()
-	_leeching_hunger_bonus = {"damage": 0.0, "hp": 0.0, "mana": 0.0, "armor": 0.0}
 	_leeching_hunger_active = false
 	_leeching_hunger_attacks_remaining = 0
+	_leeching_hunger_lifesteal_pct = 0.0
 	_leeching_hunger_turns_remaining = 0
 	_leeching_hunger_duration_pending_start = false
 
-	_refresh_bars()
 	_show_message_over_hero("Leeching Hunger wore off")
 
 
-## Whether `enemy_ref` (one of _enemies' own dictionaries, stashed
-## earlier in _leeching_hunger_stolen) is still part of the current
+## Whether `enemy_ref` (one of _enemies' own dictionaries) is still part of the current
 ## fight - false once it's died, or once a stage/hero-fight transition
 ## has cleared and replaced the whole _enemies roster.
 func _is_enemy_still_active(enemy_ref: Dictionary) -> bool:
@@ -8333,7 +8265,7 @@ func _activate_the_test_of_time(level_data: Dictionary) -> void:
 ## Mist's/Mark of Stillness's/The Hollow Cold's/Return to the Void's/Winter's Grip's/Sanguine
 ## Bloom's/Mother's Grasp's/Kiss the Wastes' burn damage-over-time, Ice
 ## Blast's execute threshold, Barbed Lunge's/Drowned Surge's stun, Three Cheers's
-## own armor reduction, and a hostile Leeching Hunger's stat penalty) -
+## own armor reduction) -
 ## the same field list _reset_enemy_hero_state() clears fresh for each
 ## new hero fight.
 func _dispel_all_hero_effects() -> void:
@@ -8354,7 +8286,6 @@ func _dispel_all_hero_effects() -> void:
 	if _the_mist_remembers_active:
 		_end_the_mist_remembers()
 
-	_player_leeching_hunger_penalty = {"damage": 0.0, "hp": 0.0, "mana": 0.0, "armor": 0.0}
 	_player_root_turns_left = 0
 	_player_silence_turns_left = 0
 	_player_thornbind_dot_damage = 0.0
@@ -8462,11 +8393,11 @@ func _can_enemy_see_hero() -> bool:
 ## Activates Depthsveil: hides Veyrik for `level_data.duration` turns
 ## (not counting the casting turn itself - see
 ## _depthsveil_duration_pending_start) and arms
-## `level_data.bonus_damage` for whichever comes first, his next
-## Attack or the duration running out.
+## `level_data.bonus_damage_pct` of his max damage for whichever comes
+## first, his next Attack or the duration running out.
 func _activate_depthsveil(level_data: Dictionary) -> void:
 	_depthsveil_active = true
-	_depthsveil_bonus_damage = float(level_data.get("bonus_damage", 0))
+	_depthsveil_bonus_damage = float(level_data.get("bonus_damage_pct", 0.0)) * _hero_max_damage()
 	_depthsveil_turns_remaining = int(level_data.get("duration", 0))
 	_depthsveil_duration_pending_start = true
 	_update_hero_visibility()
@@ -8610,9 +8541,7 @@ func _update_hero_visibility() -> void:
 # ------------------------------------------------------------------
 
 ## Activates (or refreshes) Wildbond at `level_data`'s values.
-## Nothing needs to be "returned" the way Leeching Hunger's borrowed
-## stats do on recast, since the bonus armor/lifesteal aren't taken
-## from anything - overwriting the running values is enough.
+## Overwriting the running values is enough on a recast.
 func _activate_wildbond(level_data: Dictionary) -> void:
 	_wildbond_active = true
 	_wildbond_lifesteal_pct = float(level_data.get("lifesteal_pct", 0.0))
@@ -8723,9 +8652,8 @@ func _play_lifesteal_effect(from_node: Variant, to_node: Variant) -> void:
 ## and arms the bonus HP/damage plus the forced-melee range for the
 ## duration (see _hero_max_hp(), _roll_hero_damage(), _is_ranged_hero()
 ## respectively - each reads the state set here directly). The bonus
-## HP raises his max HP the same way Leeching Hunger's borrowed HP does
-## (see _hero_max_hp()) rather than instantly topping him up - it's
-## extra capacity for the duration, not a free heal.
+## HP raises his max HP (see _hero_max_hp()) rather than instantly
+## topping him up - it's extra capacity for the duration, not a free heal.
 func _activate_beast_of_the_elderwild(level_data: Dictionary) -> void:
 	if _beast_of_the_elderwild_active:
 		_end_beast_of_the_elderwild()
@@ -9238,8 +9166,7 @@ func _tick_enemy_passive_regen() -> void:
 		if is_boss:
 			var intelligence: float = float(_enemy_hero_static.get("stats", {}).get("intelligence", 0))
 			var mana_regen: float = PASSIVE_MANA_REGEN_BASE + intelligence * PASSIVE_MANA_REGEN_PER_INT + PlayerManager.get_npc_item_bonus(_enemy_hero_id, "mana_regen")
-			var max_mana: float = _enemy_max_mana + _enemy_leeching_hunger_bonus.get("mana", 0.0)
-			_enemy_current_mana = minf(max_mana, _enemy_current_mana + mana_regen)
+			_enemy_current_mana = minf(_enemy_max_mana, _enemy_current_mana + mana_regen)
 
 
 # ------------------------------------------------------------------
@@ -9267,16 +9194,12 @@ func _activate_veil_of_the_forgotten(level_data: Dictionary) -> void:
 	# cleanse sparks in _show_veil_shell().
 	var cleansed: bool = _player_root_turns_left > 0 or _player_thornbind_dot_turns_left > 0 \
 		or _player_stun_turns_left > 0 or _player_the_hunger_calls_active
-	for penalty in _player_leeching_hunger_penalty.values():
-		if float(penalty) > 0.0:
-			cleansed = true
 
 	_player_root_turns_left = 0
 	_player_thornbind_dot_damage = 0.0
 	_player_thornbind_dot_turns_left = 0
 	_player_stun_turns_left = 0
 	_player_the_hunger_calls_active = false
-	_player_leeching_hunger_penalty = {"damage": 0.0, "hp": 0.0, "mana": 0.0, "armor": 0.0}
 
 	_show_message_over_hero("Shield up!")
 	_show_veil_shell(hero_image, _veil_of_the_forgotten_hp, cleansed)
@@ -9877,6 +9800,7 @@ func gain_xp(amount: float) -> void:
 	var level_ups: Array = PlayerManager.check_level_up(_hero_static)
 	_refresh_bars()
 	if not level_ups.is_empty():
+		PlayLog.event("level_up", {"level": PlayerManager.get_level()})
 		_show_level_up_popup(level_ups)
 
 
@@ -10321,6 +10245,7 @@ func _hero_move(direction: int) -> void:
 	if _battle_over or _stage_generation != generation_before:
 		return
 
+	_log_pending_action = "move"
 	_mark_turn_used()
 
 
@@ -10334,6 +10259,7 @@ func _hero_move(direction: int) -> void:
 ## fires during an actual hero fight - fleeing a normal creep stage has
 ## no rival hero to restock.
 func _on_flee_pressed() -> void:
+	_play_log_stage_end("flee")
 	if _in_hero_fight:
 		EnemyHeroManager.npc_shop(_enemy_hero_id)
 	get_tree().change_scene_to_file("res://scenes/Map.tscn")
@@ -10358,6 +10284,7 @@ func _on_attack_pressed() -> void:
 		_show_message_over_hero("Focused on Kiss the Wastes!")
 		return
 
+	_log_pending_action = "attack"
 	if _is_ranged_hero():
 		_start_ranged_targeting()
 	else:
@@ -11365,7 +11292,7 @@ func _apply_hero_attack(target: Dictionary) -> void:
 		attack_damage += attack_damage * float(might_level_data.get("bonus_damage_pct", 0.0))
 	var mitigated_damage: float = _deal_fixed_damage_to_enemy(target, attack_damage)
 	_deferred_hit_node = null
-	_apply_leeching_hunger_steal(target)
+	_apply_leeching_hunger_steal(target, mitigated_damage)
 	# Frostbound Fangs' bonus_damage is already folded into the roll above
 	# (see _roll_hero_damage()) - this just spends one of its banked
 	# Attacks, ending the effect once the last one is used.
@@ -11549,15 +11476,15 @@ func _deal_fixed_damage_to_enemy(target: Dictionary, amount: float, is_critical:
 	return mitigated
 
 
-## A rival hero's own Leeching Hunger/Wildbond armor bonuses, folded
-## into the armor the player's damage has to punch through - the enemy-
-## side mirror of _hero_armor()'s own borrowed-armor terms. 0 for
+## A rival hero's own Wildbond/Woven Flesh/Kindled Resolve armor bonuses,
+## folded into the armor the player's damage has to punch through - the
+## enemy-side mirror of _hero_armor()'s own bonus terms. 0 for
 ## anything that isn't the actual boss (a regular creep, or the boss's
 ## own summoned Elderwild Companion ally).
 func _enemy_hero_bonus_armor(target: Dictionary) -> float:
 	if not target["static"].get("is_hero_fight_boss", false):
 		return 0.0
-	return _enemy_leeching_hunger_bonus.get("armor", 0.0) + _enemy_wildbond_bonus_armor + _enemy_woven_flesh_bonus_armor + _enemy_kindled_resolve_bonus_armor()
+	return _enemy_wildbond_bonus_armor + _enemy_woven_flesh_bonus_armor + _enemy_kindled_resolve_bonus_armor()
 
 
 ## The enemy to actually hit for whatever's on `pos_index` - the
@@ -11602,8 +11529,22 @@ func _is_target_hidden(target: Dictionary) -> bool:
 	return target["static"].get("is_hero_fight_boss", false) and (_enemy_depthsveil_active or _enemy_rootveil_active or _enemy_ambush_strike_active)
 
 
-## Rolls a hero attack's damage, adding Leeching Hunger's ongoing
-## borrowed damage, Beast of the Elderwild's bonus damage, The Primordial Hunger's Frostbound
+## The top of the hero's damage range - the base a percentage bonus like
+## Depthsveil's is taken from - with the flat damage buffs that are active.
+func _hero_max_damage() -> float:
+	var parts: PackedStringArray = str(_recruited.get("stats", {}).get("damage", "0-0")).split("-")
+	var max_dmg: float = float(parts[1]) if parts.size() > 1 else float(parts[0])
+	return max_dmg + _beast_of_the_elderwild_bonus_damage + _frostbound_fangs_bonus_damage + _bestial_rage_bonus_damage
+
+
+## The rival's top damage, from the damage range its stats were built from.
+func _enemy_hero_max_damage() -> float:
+	var parts: PackedStringArray = str(_enemy_hero_static.get("stats", {}).get("damage", "0-0")).split("-")
+	var max_dmg: float = float(parts[1]) if parts.size() > 1 else float(parts[0])
+	return max_dmg + _enemy_beast_of_the_elderwild_bonus_damage + _enemy_frostbound_fangs_bonus_damage + _enemy_bestial_rage_bonus_damage
+
+
+## Rolls a hero attack's damage, adding Beast of the Elderwild's bonus damage, The Primordial Hunger's Frostbound
 ## Fangs bonus damage, and Skarn's Bestial Rage bonus damage (while each is
 ## active) plus (for the single hit that triggers it) Depthsveil's
 ## one-shot `extra_bonus`, before mitigation. Lunara's Moonbound Might then
@@ -11616,13 +11557,13 @@ func _roll_hero_damage(extra_bonus: float = 0.0) -> float:
 	var min_dmg: float = float(parts[0]) if parts.size() > 0 else 0.0
 	var max_dmg: float = float(parts[1]) if parts.size() > 1 else min_dmg
 
-	# Leeching Hunger's borrowed damage, Beast of the Elderwild's bonus damage, Frostbound
+	# Beast of the Elderwild's bonus damage, Frostbound
 	# Fangs's bonus damage, and Bestial Rage's bonus damage (while each is
 	# active) apply on top of both ends of the roll, same as a permanent
 	# damage bonus would - Depthsveil's bonus (passed in by the
 	# caller, only for the specific hit that triggers it) stacks on top
 	# of that the same way.
-	var bonus_damage: float = _leeching_hunger_bonus.get("damage", 0.0) + _beast_of_the_elderwild_bonus_damage + _frostbound_fangs_bonus_damage + _bestial_rage_bonus_damage + extra_bonus - _player_leeching_hunger_penalty.get("damage", 0.0)
+	var bonus_damage: float = _beast_of_the_elderwild_bonus_damage + _frostbound_fangs_bonus_damage + _bestial_rage_bonus_damage + extra_bonus
 	min_dmg += bonus_damage
 	max_dmg += bonus_damage
 
@@ -11786,6 +11727,7 @@ func _show_gold_gain(target_node: Control, amount: int) -> void:
 ## winning that hero fight (_in_hero_fight was true when the last
 ## enemy died) marks it defeated and then finishes for real.
 func _handle_victory() -> void:
+	_play_log_stage_end("victory")
 	# Tutorial stage 1 ends here rather than rolling into the zone's own
 	# stage 2 - the next tutorial stage is a separately scripted scenario
 	# (Kaelen Varr at level 5, mid-fight, low on resources - not a straight
@@ -12038,6 +11980,8 @@ func _start_hero_fight(hero_static: Dictionary) -> void:
 	_refresh_skill_cooldown_labels()
 
 	_update_action_buttons()
+	_play_log_reset_stage()
+	_play_log_fight_start(hero_static)
 
 
 ## Fresh state for a newly-challenged rival hero's own skills, and for
@@ -12053,9 +11997,9 @@ func _reset_enemy_hero_state(hero_static: Dictionary) -> void:
 
 	_enemy_leeching_hunger_active = false
 	_enemy_leeching_hunger_attacks_remaining = 0
+	_enemy_leeching_hunger_lifesteal_pct = 0.0
 	_enemy_leeching_hunger_turns_remaining = 0
 	_enemy_leeching_hunger_duration_pending_start = false
-	_enemy_leeching_hunger_bonus = {"damage": 0.0, "hp": 0.0, "mana": 0.0, "armor": 0.0}
 
 	_enemy_depthsveil_active = false
 	_enemy_depthsveil_bonus_damage = 0.0
@@ -12154,7 +12098,6 @@ func _reset_enemy_hero_state(hero_static: Dictionary) -> void:
 	_enemy_potion_health_count = PlayerManager.get_npc_potion_count(_enemy_hero_id, "health")
 	_enemy_potion_mana_count = PlayerManager.get_npc_potion_count(_enemy_hero_id, "mana")
 
-	_player_leeching_hunger_penalty = {"damage": 0.0, "hp": 0.0, "mana": 0.0, "armor": 0.0}
 	_player_root_turns_left = 0
 	_player_silence_turns_left = 0
 	_player_thornbind_dot_damage = 0.0
@@ -12209,6 +12152,93 @@ func _update_stage_label() -> void:
 # move/attack allowance resets.
 # ------------------------------------------------------------------
 
+# ------------------------------------------------------------------
+# Play log (see PlayLog.gd): what the player's next turn-ending action is,
+# and what's been spent since the current wave/fight began. Only read when
+# the log is on.
+# ------------------------------------------------------------------
+var _log_pending_action: String = ""
+var _log_potions: Dictionary = {}
+var _log_casts: Dictionary = {}
+var _log_turns_in_stage: int = 0
+
+
+## The numbers every play-log row carries.
+func _play_log_state() -> Dictionary:
+	var enemy_hp := 0.0
+	for enemy in _enemies:
+		enemy_hp += maxf(float(enemy.get("current_hp", 0)), 0.0)
+	var state := {
+		"turn": _turn_count,
+		"stage": _current_stage,
+		"hp": roundi(float(_recruited.get("current_hp", 0))),
+		"max_hp": roundi(_hero_max_hp()),
+		"mana": roundi(float(_recruited.get("current_mana", 0))),
+		"max_mana": roundi(float(_recruited.get("stats", {}).get("mana", 0))),
+		"enemies": _enemies.size(),
+		"enemy_hp": roundi(enemy_hp),
+	}
+	if _in_hero_fight:
+		var boss: Dictionary = _get_hero_fight_boss()
+		state["rival"] = _enemy_hero_id
+		state["rival_hp"] = 0 if boss.is_empty() else roundi(float(boss.get("current_hp", 0)))
+	return state
+
+
+## Who you are going into this battle scene: level, stats, skill levels, potions.
+func _play_log_session() -> void:
+	if not PlayLog.enabled():
+		return
+	var skills := {}
+	for skill in _hero_static.get("skills", []):
+		var level: int = PlayerManager.get_skill_level(skill.get("id", ""))
+		if level > 0:
+			skills[skill["id"]] = level
+	var inventory: Dictionary = PlayerManager.get_inventory()
+	var data: Dictionary = _play_log_state()
+	data["hero"] = _recruited.get("id", "")
+	data["level"] = PlayerManager.get_level()
+	data["zone"] = GameManager.selected_zone
+	data["stats"] = _recruited.get("stats", {})
+	data["skills"] = skills
+	data["potions_held"] = {"health": int(inventory.get("health", 0)), "mana": int(inventory.get("mana", 0))}
+	PlayLog.event("session", data)
+
+
+## The rival you are about to fight: its level, stats and skill levels.
+func _play_log_fight_start(rival_static: Dictionary) -> void:
+	if not PlayLog.enabled():
+		return
+	var rival_id: String = rival_static.get("id", "")
+	var skills := {}
+	for skill in rival_static.get("skills", []):
+		var level: int = PlayerManager.get_npc_skill_level(rival_id, skill.get("id", ""))
+		if level > 0:
+			skills[skill["id"]] = level
+	var data: Dictionary = _play_log_state()
+	data["rival"] = rival_id
+	data["rival_level"] = PlayerManager.get_npc_level(rival_id)
+	data["rival_stats"] = rival_static.get("stats", {})
+	data["rival_skills"] = skills
+	data["rival_potions"] = {"health": _enemy_potion_health_count, "mana": _enemy_potion_mana_count}
+	PlayLog.event("fight_start", data)
+
+
+func _play_log_reset_stage() -> void:
+	_log_potions.clear()
+	_log_casts.clear()
+	_log_turns_in_stage = 0
+
+
+func _play_log_stage_end(kind: String) -> void:
+	var data: Dictionary = _play_log_state()
+	data["potions"] = _log_potions.duplicate()
+	data["casts"] = _log_casts.duplicate()
+	data["turns"] = _log_turns_in_stage
+	data["level"] = PlayerManager.get_level()
+	PlayLog.event(kind, data)
+
+
 ## Locks the action buttons and, after a brief pause so the player can
 ## see the result of their action (damage numbers, messages, etc.),
 ## triggers the enemies' turn automatically. Bails out first if the
@@ -12230,6 +12260,15 @@ func _mark_turn_used() -> void:
 	if _auto_skip_pending and _auto_skip_generation == _stage_generation:
 		return
 	_has_acted_this_turn = true
+	if PlayLog.enabled():
+		var what: String = _log_pending_action if _log_pending_action != "" else "other"
+		if what.begins_with("skill:"):
+			var skill_name: String = what.substr(6)
+			_log_casts[skill_name] = int(_log_casts.get(skill_name, 0)) + 1
+		var data: Dictionary = _play_log_state()
+		data["action"] = what
+		PlayLog.event("action", data)
+		_log_pending_action = ""
 	_update_action_buttons()
 	get_tree().create_timer(0.9).timeout.connect(_end_turn)
 
@@ -12360,6 +12399,10 @@ func _end_turn() -> void:
 			get_tree().create_timer(0.9).timeout.connect(_end_turn)
 			return
 
+	_log_turns_in_stage += 1
+	if PlayLog.enabled():
+		PlayLog.event("turn_end", _play_log_state())
+
 	# Reopens the turn - and if the player is still stunned or held in
 	# The Test of Time, _update_action_buttons() hands it straight back
 	# via _maybe_auto_skip_player_turn().
@@ -12387,6 +12430,10 @@ func _maybe_auto_skip_player_turn() -> void:
 		return
 
 	_has_acted_this_turn = true
+	if PlayLog.enabled():
+		var skipped: Dictionary = _play_log_state()
+		skipped["action"] = "skipped (stunned or held)"
+		PlayLog.event("action", skipped)
 	_auto_skip_pending = true
 	_auto_skip_generation = _stage_generation
 	_cancel_targeting()
@@ -12839,19 +12886,13 @@ func _drink_enemy_health_potion(enemy: Dictionary) -> void:
 	_refresh_bars()
 
 
-## Restores the Mana Potion's own flat value. _enemy_max_mana is the
-## rival's base max mana, so a hostile-looking but actually-beneficial
-## Leeching Hunger bonus (_enemy_leeching_hunger_bonus's own "mana" key)
-## has to be added back in for the clamp, the same pairing
-## _build_enemy_ai_context() uses for its own "hero_mana"/"hero_max_
-## mana" fields.
+## Restores the Mana Potion's own flat value, clamped to _enemy_max_mana.
 func _drink_enemy_mana_potion() -> void:
 	_enemy_potion_mana_count -= 1
 	PlayerManager.set_npc_potion_count(_enemy_hero_id, "mana", _enemy_potion_mana_count)
 
 	var mana_amount: float = float(GameManager.get_item("mana").get("value", 0))
-	var max_mana: float = _enemy_max_mana + _enemy_leeching_hunger_bonus.get("mana", 0.0)
-	_enemy_current_mana = minf(max_mana, _enemy_current_mana + mana_amount)
+	_enemy_current_mana = minf(_enemy_max_mana, _enemy_current_mana + mana_amount)
 	_show_message_over_hero("Rival drank a Mana Potion")
 	_refresh_bars()
 
@@ -12899,7 +12940,7 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 	var mitigated: float = apply_damage(attack_damage)
 	_deferred_hit_node = null
 
-	_apply_enemy_leeching_hunger_steal(enemy)
+	_apply_enemy_leeching_hunger_steal(enemy, mitigated)
 	_apply_enemy_wildbond_lifesteal(enemy, mitigated)
 	_apply_enemy_mark_of_the_mist_stack()
 	_apply_enemy_frostbound_fangs_attack()
@@ -12953,7 +12994,7 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 ## range.
 func _roll_enemy_hero_damage(enemy: Dictionary, extra_bonus: float = 0.0) -> float:
 	var base_damage: float = float(enemy["static"].get("damage", 0))
-	var bonus: float = _enemy_leeching_hunger_bonus.get("damage", 0.0) + _enemy_beast_of_the_elderwild_bonus_damage + _enemy_frostbound_fangs_bonus_damage + _enemy_bestial_rage_bonus_damage + extra_bonus
+	var bonus: float = _enemy_beast_of_the_elderwild_bonus_damage + _enemy_frostbound_fangs_bonus_damage + _enemy_bestial_rage_bonus_damage + extra_bonus
 	var total: float = maxf(0.0, base_damage + bonus)
 
 	# Lunara's Moonbound Might - read fresh off the rival's current level
@@ -12971,11 +13012,10 @@ func _roll_enemy_hero_damage(enemy: Dictionary, extra_bonus: float = 0.0) -> flo
 	return total
 
 
-## The rival's current max hp: base + Leeching Hunger's borrowed hp +
-## Beast of the Elderwild's bonus hp while each is active - the enemy-side mirror
-## of _hero_max_hp(). Used to clamp Wildbond's lifesteal.
+## The rival's current max hp: base + Beast of the Elderwild's bonus hp
+## while it is active - the enemy-side mirror of _hero_max_hp(). Used to clamp Wildbond's lifesteal.
 func _enemy_hero_effective_max_hp(enemy: Dictionary) -> float:
-	return float(enemy["static"].get("hp", 1)) + _enemy_leeching_hunger_bonus.get("hp", 0.0) + _enemy_beast_of_the_elderwild_bonus_hp
+	return float(enemy["static"].get("hp", 1)) + _enemy_beast_of_the_elderwild_bonus_hp
 
 
 func _get_hero_fight_boss() -> Dictionary:
@@ -14456,11 +14496,9 @@ func _cast_enemy_barbed_lunge(enemy: Dictionary, level_data: Dictionary) -> void
 
 
 # ------------------------------------------------------------------
-# Veyrik's Leeching Hunger, cast by the rival at the player - mirrors the
-# player's own _activate_leeching_hunger()/_tick_leeching_hunger()/
-# _end_leeching_hunger(), just draining a battle-local penalty on the
-# player (_player_leeching_hunger_penalty) instead of a battle-local
-# counter on an enemy, since the player has no such counter to drain.
+# Veyrik's Leeching Hunger, cast by the rival - mirrors the player's own
+# _activate_leeching_hunger()/_tick_leeching_hunger()/_end_leeching_hunger():
+# its next hits on the player heal the rival for a share of the damage.
 # ------------------------------------------------------------------
 
 func _activate_enemy_leeching_hunger(level_data: Dictionary) -> void:
@@ -14468,69 +14506,26 @@ func _activate_enemy_leeching_hunger(level_data: Dictionary) -> void:
 		_end_enemy_leeching_hunger()
 	_enemy_leeching_hunger_active = true
 	_enemy_leeching_hunger_attacks_remaining = int(level_data.get("attacks", 0))
+	_enemy_leeching_hunger_lifesteal_pct = float(level_data.get("lifesteal_pct", 0.0))
 	_enemy_leeching_hunger_turns_remaining = int(level_data.get("duration", 0))
 	_enemy_leeching_hunger_duration_pending_start = true
 
 
-## Steals one point of the player's own main stat, converting it into
-## the same hp/armor/mana contribution (plus damage, since the stolen
-## stat is always the player's own main stat by definition) that the
-## same point would be worth on the player's side of the fight -
-## mirrors _leeching_hunger_contribution_for(), just applied as a
-## penalty to the player instead of a bonus to whoever cast it.
-##
-## Simplification versus the player's own copy: there's no floor on
-## how much can be drained from the player the way enemies' battle-
-## local main-stat counters bottom out at
-## GameManager.LEECHING_HUNGER_MIN_ENEMY_MAIN_STAT, since the player has
-## no such counter - a hero fight is expected to resolve in far fewer
-## turns than it'd take for this to matter in practice.
-func _apply_enemy_leeching_hunger_steal(enemy: Dictionary) -> void:
+## Called right after the rival's plain Attack lands on the player, with the
+## damage it dealt: heals the rival for the skill's share of it and spends
+## one of the banked hits.
+func _apply_enemy_leeching_hunger_steal(enemy: Dictionary, mitigated_damage: float) -> void:
 	if not _enemy_leeching_hunger_active or _enemy_leeching_hunger_attacks_remaining <= 0:
 		return
-
-	var stat_name: String = str(_hero_static.get("main_stat", "")).to_lower()
-	if stat_name == "":
+	if mitigated_damage <= 0.0:
 		return
 
 	_enemy_leeching_hunger_attacks_remaining -= 1
-
-	match stat_name:
-		"strength":
-			_player_leeching_hunger_penalty["hp"] = _player_leeching_hunger_penalty.get("hp", 0.0) + GameManager.HP_PER_STRENGTH
-		"agility":
-			_player_leeching_hunger_penalty["armor"] = _player_leeching_hunger_penalty.get("armor", 0.0) + GameManager.ARMOR_PER_AGILITY
-		"intelligence":
-			_player_leeching_hunger_penalty["mana"] = _player_leeching_hunger_penalty.get("mana", 0.0) + GameManager.MANA_PER_INTELLIGENCE
-	_player_leeching_hunger_penalty["damage"] = _player_leeching_hunger_penalty.get("damage", 0.0) + GameManager.DAMAGE_PER_MAIN_STAT
-
-	var enemy_contribution: Dictionary = _enemy_leeching_hunger_contribution_for(stat_name)
-	for stat_key in enemy_contribution.keys():
-		_enemy_leeching_hunger_bonus[stat_key] = _enemy_leeching_hunger_bonus.get(stat_key, 0.0) + enemy_contribution[stat_key]
-
+	var max_hp: float = _enemy_hero_effective_max_hp(enemy)
+	enemy["current_hp"] = minf(max_hp, enemy["current_hp"] + mitigated_damage * _enemy_leeching_hunger_lifesteal_pct)
 	_play_drain_effect(hero_image, enemy.get("node"), LEECHING_HUNGER_MOTE_COLOR)
-	_refresh_bars()
-
-
-## What the RIVAL gains from stealing one point of `stat_name` - the
-## same conversion table as _leeching_hunger_contribution_for(), just
-## checked against the rival's own main stat (rather than the
-## player's) for the extra-damage condition.
-func _enemy_leeching_hunger_contribution_for(stat_name: String) -> Dictionary:
-	var contribution: Dictionary = {"damage": 0.0, "hp": 0.0, "mana": 0.0, "armor": 0.0}
-
-	match stat_name:
-		"strength":
-			contribution["hp"] = GameManager.HP_PER_STRENGTH
-		"agility":
-			contribution["armor"] = GameManager.ARMOR_PER_AGILITY
-		"intelligence":
-			contribution["mana"] = GameManager.MANA_PER_INTELLIGENCE
-
-	if stat_name == str(_enemy_hero_static.get("main_stat", "")).to_lower():
-		contribution["damage"] = GameManager.DAMAGE_PER_MAIN_STAT
-
-	return contribution
+	if _enemy_leeching_hunger_attacks_remaining <= 0:
+		_end_enemy_leeching_hunger()
 
 
 func _tick_enemy_leeching_hunger() -> void:
@@ -14545,13 +14540,11 @@ func _tick_enemy_leeching_hunger() -> void:
 
 
 func _end_enemy_leeching_hunger() -> void:
-	_player_leeching_hunger_penalty = {"damage": 0.0, "hp": 0.0, "mana": 0.0, "armor": 0.0}
-	_enemy_leeching_hunger_bonus = {"damage": 0.0, "hp": 0.0, "mana": 0.0, "armor": 0.0}
 	_enemy_leeching_hunger_active = false
 	_enemy_leeching_hunger_attacks_remaining = 0
+	_enemy_leeching_hunger_lifesteal_pct = 0.0
 	_enemy_leeching_hunger_turns_remaining = 0
 	_enemy_leeching_hunger_duration_pending_start = false
-	_refresh_bars()
 
 
 # ------------------------------------------------------------------
@@ -14566,7 +14559,7 @@ func _end_enemy_leeching_hunger() -> void:
 
 func _activate_enemy_depthsveil(level_data: Dictionary) -> void:
 	_enemy_depthsveil_active = true
-	_enemy_depthsveil_bonus_damage = float(level_data.get("bonus_damage", 0))
+	_enemy_depthsveil_bonus_damage = float(level_data.get("bonus_damage_pct", 0.0)) * _enemy_hero_max_damage()
 	_enemy_depthsveil_turns_remaining = int(level_data.get("duration", 0))
 	_enemy_depthsveil_duration_pending_start = true
 	_update_enemy_hero_visibility()
@@ -17105,8 +17098,8 @@ func _kill_enemy_guard(guard: Dictionary) -> void:
 
 
 ## The boss's own effective armor for mitigating a hit onto one of its
-## guards - base armor plus its own borrowed bonuses (Kindled
-## Resolve's stack, Leeching Hunger, etc., via _enemy_hero_bonus_armor())
+## guards - base armor plus its own bonuses (Kindled
+## Resolve's stack, Wildbond, etc., via _enemy_hero_bonus_armor())
 ## minus Three Cheers's own shred, same three terms
 ## _deal_fixed_damage_to_enemy()'s own redirect branch already reads.
 ## A guard is a copy of the boss, not a separate combatant with its
@@ -18744,6 +18737,7 @@ func _tutorial_maybe_advance_stage3_for_reinforcements() -> void:
 
 
 func _handle_defeat() -> void:
+	_play_log_stage_end("defeat")
 	_battle_over = true
 	_update_action_buttons()
 	PlayerManager.record_high_score()

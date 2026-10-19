@@ -4,6 +4,7 @@ extends Control
 @onready var music_slider: HSlider = $Panel/Margin/VBox/MusicVolumeRow/MusicVolumeSlider
 @onready var sound_toggle: CheckButton = $Panel/Margin/VBox/SoundRow/SoundToggle
 @onready var sound_slider: HSlider = $Panel/Margin/VBox/SoundVolumeRow/SoundVolumeSlider
+@onready var play_log_toggle: CheckButton = $Panel/Margin/VBox/PlayLogRow/PlayLogToggle
 @onready var close_button: Button = $Panel/Margin/VBox/CloseButton
 
 
@@ -12,6 +13,7 @@ func _ready() -> void:
 	music_slider.value_changed.connect(_on_music_volume_changed)
 	sound_toggle.toggled.connect(_on_sound_toggled)
 	sound_slider.value_changed.connect(_on_sound_volume_changed)
+	play_log_toggle.toggled.connect(_on_play_log_toggled)
 	close_button.pressed.connect(close)
 
 
@@ -21,6 +23,7 @@ func open() -> void:
 	music_slider.value = SettingsManager.music_volume
 	sound_toggle.button_pressed = SettingsManager.sound_on
 	sound_slider.value = SettingsManager.sound_volume
+	play_log_toggle.button_pressed = SettingsManager.play_log_on
 	visible = true
 
 
@@ -42,3 +45,7 @@ func _on_sound_toggled(pressed: bool) -> void:
 
 func _on_sound_volume_changed(value: float) -> void:
 	SettingsManager.set_sound_volume(value)
+
+
+func _on_play_log_toggled(pressed: bool) -> void:
+	SettingsManager.set_play_log_on(pressed)

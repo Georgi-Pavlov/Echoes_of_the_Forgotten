@@ -134,10 +134,6 @@ const ARMOR_PER_AGILITY: float = 0.167
 const MANA_PER_INTELLIGENCE: float = 12.0
 const DAMAGE_PER_MAIN_STAT: float = 3.0
 
-# Veyrik's Leeching Hunger (see battle.gd's _apply_leeching_hunger_steal):
-# an enemy's main_stat_value is never drained below this floor, so a
-# long fight can't leave an enemy sitting at 0 or negative stats.
-const LEECHING_HUNGER_MIN_ENEMY_MAIN_STAT: int = 5
 
 
 ## Computes a hero's effective hp/mana/armor/damage from how far
@@ -365,12 +361,12 @@ var zones: Dictionary = {
 						"id": "leeching_hunger",
 						"name": "Leeching Hunger",
 						"type": "standard",
-						"description": "Veyrik awakens a ravenous hunger within himself. For several turns, his next melee attacks tear a fragment of the target's main attribute from them, weakening the victim and feeding Veyrik's strength.",
+						"description": "Veyrik awakens a ravenous hunger within himself. For several turns, his next melee attacks feed on the victim, healing Veyrik for a share of the damage they deal.",
 						"levels": [
-							{"attacks": 2, "steal_per_hit": 1, "duration": 4, "mana_cost": 30, "cooldown": 3},
-							{"attacks": 3, "steal_per_hit": 1, "duration": 4, "mana_cost": 35, "cooldown": 3},
-							{"attacks": 3, "steal_per_hit": 1, "duration": 5, "mana_cost": 40, "cooldown": 3},
-							{"attacks": 4, "steal_per_hit": 1, "duration": 6, "mana_cost": 45, "cooldown": 3}
+							{"attacks": 3, "lifesteal_pct": 0.30, "duration": 4, "mana_cost": 30, "cooldown": 3},
+							{"attacks": 3, "lifesteal_pct": 0.40, "duration": 4, "mana_cost": 35, "cooldown": 3},
+							{"attacks": 4, "lifesteal_pct": 0.50, "duration": 5, "mana_cost": 40, "cooldown": 3},
+							{"attacks": 4, "lifesteal_pct": 0.60, "duration": 5, "mana_cost": 45, "cooldown": 3}
 						]
 					},
 					{
@@ -379,9 +375,9 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Veyrik violently convulses, releasing a burst of unnatural force around himself. Enemies caught within it suffer damage and are silenced.",
 						"levels": [
-							{"damage_multiplier": 0.75, "radius": 0, "mana_cost": 65, "cooldown": 4},
-							{"damage_multiplier": 1.0, "radius": 0, "mana_cost": 70, "cooldown": 4},
-							{"damage_multiplier": 1.25, "radius": 0, "mana_cost": 75, "cooldown": 3},
+							{"damage_multiplier": 0.75, "radius": 1, "mana_cost": 65, "cooldown": 4},
+							{"damage_multiplier": 1.0, "radius": 1, "mana_cost": 70, "cooldown": 4},
+							{"damage_multiplier": 1.25, "radius": 1, "mana_cost": 75, "cooldown": 3},
 							{"damage_multiplier": 1.5, "radius": 1, "mana_cost": 80, "cooldown": 3}
 						]
 					},
@@ -401,11 +397,11 @@ var zones: Dictionary = {
 						"id": "depthsveil",
 						"name": "Depthsveil",
 						"type": "ultimate",
-						"description": "Ultimate: Veyrik slips beneath a veil of unnatural darkness, becoming invisible and untouchable. His next attack while concealed tears into his victim with increased force and ends the veil early. If he does not attack, the effect eventually fades.",
+						"description": "Ultimate: Veyrik slips beneath a veil of unnatural darkness, becoming invisible and untouchable. His next attack while concealed tears into his victim for bonus damage equal to a share of his maximum damage, and ends the veil early. If he does not attack, the effect eventually fades.",
 						"levels": [
-							{"duration": 2, "bonus_damage": 30, "mana_cost": 80, "cooldown": 8},
-							{"duration": 3, "bonus_damage": 52.5, "mana_cost": 90, "cooldown": 7},
-							{"duration": 4, "bonus_damage": 75, "mana_cost": 100, "cooldown": 6}
+							{"duration": 2, "bonus_damage_pct": 1.0, "mana_cost": 80, "cooldown": 8},
+							{"duration": 3, "bonus_damage_pct": 1.5, "mana_cost": 90, "cooldown": 7},
+							{"duration": 4, "bonus_damage_pct": 2.0, "mana_cost": 100, "cooldown": 6}
 						]
 					}
 				],
@@ -2051,10 +2047,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Raze unleashes both barrels of her battered shotgun in the direction she's facing, blasting every enemy caught within range. She calls it a warning shot. Nobody believes her.",
 						"levels": [
-							{"damage": 57.8, "range": 2, "mana_cost": 80, "cooldown": 6},
-							{"damage": 82.5, "range": 2, "mana_cost": 105, "cooldown": 6},
-							{"damage": 140.2, "range": 3, "mana_cost": 135, "cooldown": 7},
-							{"damage": 189.8, "range": 3, "mana_cost": 160, "cooldown": 7}
+							{"damage": 80, "range": 2, "mana_cost": 80, "cooldown": 6},
+							{"damage": 120, "range": 2, "mana_cost": 105, "cooldown": 6},
+							{"damage": 170, "range": 3, "mana_cost": 135, "cooldown": 7},
+							{"damage": 250, "range": 3, "mana_cost": 160, "cooldown": 7}
 						]
 					},
 					{
@@ -2063,10 +2059,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Raze detonates an explosive beneath her feet, launching herself toward the direction she's facing. While in the air she fires both barrels of her shotgun down at her enemies, damaging and blinding them with a deafening blast. Blinded enemies are stunned and unable to act for the duration.",
 						"levels": [
-							{"jump_distance": 2, "damage": 49.5, "radius": 1, "stun_turns": 1, "mana_cost": 70, "cooldown": 5},
-							{"jump_distance": 2, "damage": 74.2, "radius": 1, "stun_turns": 1, "mana_cost": 90, "cooldown": 5},
-							{"jump_distance": 3, "damage": 99, "radius": 1, "stun_turns": 2, "mana_cost": 115, "cooldown": 6},
-							{"jump_distance": 3, "damage": 132, "radius": 1, "stun_turns": 2, "mana_cost": 140, "cooldown": 6}
+							{"jump_distance": 2, "damage": 60, "radius": 1, "stun_turns": 1, "mana_cost": 70, "cooldown": 5},
+							{"jump_distance": 2, "damage": 80, "radius": 1, "stun_turns": 1, "mana_cost": 90, "cooldown": 5},
+							{"jump_distance": 3, "damage": 100, "radius": 1, "stun_turns": 2, "mana_cost": 115, "cooldown": 6},
+							{"jump_distance": 3, "damage": 150, "radius": 1, "stun_turns": 2, "mana_cost": 140, "cooldown": 6}
 						]
 					},
 					{
@@ -2075,10 +2071,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Raze marks an enemy and unleashes three rapid shots from her modified firearm. Each hit deals a portion of her attack damage and tears away at the target's armor, leaving it increasingly exposed. The armor damage fades after a short duration.",
 						"levels": [
-							{"shots": 3, "damage_pct": 0.45, "armor_reduction_per_shot": 1, "duration": 1, "mana_cost": 80, "cooldown": 5},
-							{"shots": 3, "damage_pct": 0.55, "armor_reduction_per_shot": 2, "duration": 1, "mana_cost": 105, "cooldown": 5},
-							{"shots": 3, "damage_pct": 0.65, "armor_reduction_per_shot": 3.5, "duration": 2, "mana_cost": 130, "cooldown": 6},
-							{"shots": 3, "damage_pct": 0.75, "armor_reduction_per_shot": 5, "duration": 2, "mana_cost": 155, "cooldown": 6}
+							{"shots": 3, "damage_pct": 0.5, "armor_reduction_per_shot": 1, "duration": 1, "mana_cost": 80, "cooldown": 5},
+							{"shots": 3, "damage_pct": 0.6, "armor_reduction_per_shot": 2, "duration": 1, "mana_cost": 105, "cooldown": 5},
+							{"shots": 3, "damage_pct": 0.7, "armor_reduction_per_shot": 3.5, "duration": 2, "mana_cost": 130, "cooldown": 6},
+							{"shots": 3, "damage_pct": 0.8, "armor_reduction_per_shot": 5, "duration": 2, "mana_cost": 155, "cooldown": 6}
 						]
 					},
 					{
@@ -2087,9 +2083,9 @@ var zones: Dictionary = {
 						"type": "ultimate",
 						"description": "Ultimate: Raze blows her target a kiss before unleashing a barrage of three incendiary shots. She becomes completely committed to the attack, unable to move, act, or use items while firing one shot per turn. Each shot tracks the target, or its last known position if it dies, dealing heavy damage and setting its victim ablaze. The impact also scatters burning fragments across adjacent columns, catching nearby enemies in the inferno.",
 						"levels": [
-							{"hits": 3, "main_damage": 148.5, "splash_damage": 74.2, "burn_per_turn": 28.9, "burn_duration": 5, "mana_cost": 200, "cooldown": 10},
-							{"hits": 3, "main_damage": 214.5, "splash_damage": 107.3, "burn_per_turn": 41.2, "burn_duration": 5, "mana_cost": 270, "cooldown": 11},
-							{"hits": 3, "main_damage": 288.8, "splash_damage": 144.4, "burn_per_turn": 57.8, "burn_duration": 6, "mana_cost": 350, "cooldown": 12}
+							{"hits": 3, "main_damage": 200, "splash_damage": 100, "burn_per_turn": 50, "burn_duration": 5, "mana_cost": 200, "cooldown": 10},
+							{"hits": 3, "main_damage": 280, "splash_damage": 140, "burn_per_turn": 75, "burn_duration": 5, "mana_cost": 270, "cooldown": 11},
+							{"hits": 3, "main_damage": 380, "splash_damage": 160, "burn_per_turn": 115, "burn_duration": 6, "mana_cost": 350, "cooldown": 12}
 						]
 					},
 				],

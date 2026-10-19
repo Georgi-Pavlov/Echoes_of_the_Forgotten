@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://bxpvpwtf87thc"
+
+[deps]
+
+files=["res://tools/balance_results/duel6.rival.translation", "res://tools/balance_results/duel6.level.translation", "res://tools/balance_results/duel6.result.translation", "res://tools/balance_results/duel6.turns.translation", "res://tools/balance_results/duel6.player.translation", "res://tools/balance_results/duel6.rival.translation", "res://tools/balance_results/duel6.potions.translation", "res://tools/balance_results/duel6.skills.translation"]
+
+source_file="res://tools/balance_results/duel6.csv"
+dest_files=["res://tools/balance_results/duel6.rival.translation", "res://tools/balance_results/duel6.level.translation", "res://tools/balance_results/duel6.result.translation", "res://tools/balance_results/duel6.turns.translation", "res://tools/balance_results/duel6.player.translation", "res://tools/balance_results/duel6.rival.translation", "res://tools/balance_results/duel6.potions.translation", "res://tools/balance_results/duel6.skills.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

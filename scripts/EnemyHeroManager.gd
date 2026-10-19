@@ -961,9 +961,8 @@ func _build_stage_enemy_batch(templates: Array, count: int, stage: int, spawn_tu
 		result.append({
 			"static": staged,
 			"current_hp": float(staged.get("hp", 1)),
-			# Needed for Veyrik's Leeching Hunger (see
-			# _apply_npc_leeching_hunger_steal()) - mirrors the field
-			# battle.gd's own _spawn_enemy() seeds every enemy with.
+			# Mirrors the field battle.gd's own _spawn_enemy() seeds every
+			# enemy with.
 			"current_main_stat_value": float(staged.get("main_stat_value", 0)),
 			# First turn this creep can act - see CREEP_ARRIVAL_DELAY_TURNS.
 			"arrive_turn": spawn_turn + (CREEP_ARRIVAL_DELAY_TURNS_RANGE if staged.get("type", "") == "range" else CREEP_ARRIVAL_DELAY_TURNS_MELEE),
@@ -1240,7 +1239,7 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 				acted_with = ready_skill_id
 			elif _has_unaffordable_ready_skill(hero_id, hero_static, cooldowns, current_mana, state) and PlayerManager.get_npc_potion_count(hero_id, "mana") > 0:
 				PlayerManager.set_npc_potion_count(hero_id, "mana", PlayerManager.get_npc_potion_count(hero_id, "mana") - 1)
-				current_mana = minf(max_mana + state["leeching_hunger"]["bonus"].get("mana", 0.0), current_mana + float(GameManager.get_item("mana").get("value", 0)))
+				current_mana = minf(max_mana, current_mana + float(GameManager.get_item("mana").get("value", 0)))
 			else:
 				var target: Dictionary = _lowest_hp_enemy(living)
 				var shadow_bonus: float = state["depthsveil"]["bonus_damage"] if state["depthsveil"]["active"] else 0.0
@@ -1272,7 +1271,7 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 				if not might_level_data.is_empty():
 					dmg += dmg * float(might_level_data.get("bonus_damage_pct", 0.0))
 				var mitigated: float = _apply_damage_to_enemy(target, dmg)
-				_apply_npc_leeching_hunger_steal(target, state["leeching_hunger"], hero_static)
+				current_hp = minf(effective_max_hp, current_hp + _apply_npc_leeching_hunger_steal(state["leeching_hunger"], mitigated))
 				_apply_npc_mark_of_the_mist_stack(hero_id, hero_static, target, turn_index)
 				if not pull_of_the_abyss_level_data.is_empty():
 					_apply_npc_pull_of_the_abyss_cleave(target, dmg, pull_of_the_abyss_level_data, living)
@@ -1496,9 +1495,8 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 func _new_npc_combat_state() -> Dictionary:
 	return {
 		"leeching_hunger": {
-			"active": false, "attacks_remaining": 0, "turns_remaining": 0,
-			"duration_pending_start": false, "stolen": [],
-			"bonus": {"damage": 0.0, "hp": 0.0, "mana": 0.0, "armor": 0.0},
+			"active": false, "attacks_remaining": 0, "lifesteal_pct": 0.0, "turns_remaining": 0,
+			"duration_pending_start": false,
 		},
 		"depthsveil": {"active": false, "bonus_damage": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"wildbond": {"active": false, "lifesteal_pct": 0.0, "bonus_armor": 0.0, "turns_remaining": 0, "duration_pending_start": false},
@@ -1546,7 +1544,7 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 		"leeching_hunger":
 			_activate_npc_leeching_hunger(state["leeching_hunger"], level_data)
 		"depthsveil":
-			_activate_npc_depthsveil(state["depthsveil"], level_data)
+			_activate_npc_depthsveil(state["depthsveil"], level_data, damage_range)
 		"thornbind":
 			# No separate "pick a target" step here (there's no player
 			# to click one) - roots/silences/DoTs whichever enemy the
@@ -2191,7 +2189,7 @@ func _npc_estimate_damage(damage_range: String, state: Dictionary) -> float:
 	var parts: PackedStringArray = damage_range.split("-")
 	var min_dmg: float = float(parts[0]) if parts.size() > 0 else 0.0
 	var max_dmg: float = float(parts[1]) if parts.size() > 1 else min_dmg
-	var bonus_damage: float = state["leeching_hunger"]["bonus"].get("damage", 0.0) + state["beast_of_the_elderwild"]["bonus_damage"] + state["bestial_rage"]["bonus_damage"]
+	var bonus_damage: float = state["beast_of_the_elderwild"]["bonus_damage"] + state["bestial_rage"]["bonus_damage"]
 	var estimate: float = (min_dmg + max_dmg) / 2.0 + bonus_damage
 	# Lunara's Moonbound Might - see _npc_roll_damage()'s own comment for why
 	# this reads state's own cached percentage. Applied last, same order
@@ -2225,56 +2223,32 @@ func _has_unaffordable_ready_skill(hero_id: String, hero_static: Dictionary, coo
 # shift/_end_leeching_hunger, just against this sim's flat enemy list
 # and NPC-local state Dictionary instead of instance variables.
 # ------------------------------------------------------------------
+# Veyrik's Leeching Hunger - mirrors battle.gd's _activate_leeching_hunger/
+# _apply_leeching_hunger_steal/_tick_leeching_hunger/_end_leeching_hunger,
+# against this sim's NPC-local state Dictionary: its next hits heal the hero
+# for a share of the damage they deal.
+# ------------------------------------------------------------------
 
 func _activate_npc_leeching_hunger(es: Dictionary, level_data: Dictionary) -> void:
 	if es["active"]:
 		_end_npc_leeching_hunger(es)
 	es["active"] = true
 	es["attacks_remaining"] = int(level_data.get("attacks", 0))
+	es["lifesteal_pct"] = float(level_data.get("lifesteal_pct", 0.0))
 	es["turns_remaining"] = int(level_data.get("duration", 0))
 	es["duration_pending_start"] = true
 
 
-func _apply_npc_leeching_hunger_steal(target: Dictionary, es: Dictionary, hero_static: Dictionary) -> void:
-	if not es["active"] or es["attacks_remaining"] <= 0:
-		return
-
-	var stat_name: String = str(target["static"].get("main_stat", "")).to_lower()
-	if stat_name == "":
-		return
-
-	var current_value: float = float(target.get("current_main_stat_value", 0.0))
-	if current_value <= GameManager.LEECHING_HUNGER_MIN_ENEMY_MAIN_STAT:
-		return
-
-	target["current_main_stat_value"] = current_value - 1.0
+## Spends one banked hit and returns the HP the hero heals for it (0 when
+## Leeching Hunger isn't active or has nothing banked).
+func _apply_npc_leeching_hunger_steal(es: Dictionary, mitigated_damage: float) -> float:
+	if not es["active"] or es["attacks_remaining"] <= 0 or mitigated_damage <= 0.0:
+		return 0.0
 	es["attacks_remaining"] -= 1
-	es["stolen"].append({"enemy": target, "amount": 1.0})
-
-	var contribution: Dictionary = _leeching_hunger_contribution_for(stat_name, hero_static)
-	for stat_key in contribution.keys():
-		es["bonus"][stat_key] = es["bonus"].get(stat_key, 0.0) + contribution[stat_key]
-
-
-## Same conversion table as battle.gd's own
-## _leeching_hunger_contribution_for(): strength -> hp, agility -> armor,
-## intelligence -> mana, at GameManager's per-point rates, plus damage
-## on top if the stolen stat happens to be this hero's own main stat.
-func _leeching_hunger_contribution_for(stat_name: String, hero_static: Dictionary) -> Dictionary:
-	var contribution: Dictionary = {"damage": 0.0, "hp": 0.0, "mana": 0.0, "armor": 0.0}
-
-	match stat_name:
-		"strength":
-			contribution["hp"] = GameManager.HP_PER_STRENGTH
-		"agility":
-			contribution["armor"] = GameManager.ARMOR_PER_AGILITY
-		"intelligence":
-			contribution["mana"] = GameManager.MANA_PER_INTELLIGENCE
-
-	if stat_name == str(hero_static.get("main_stat", "")).to_lower():
-		contribution["damage"] = GameManager.DAMAGE_PER_MAIN_STAT
-
-	return contribution
+	var healed: float = mitigated_damage * float(es["lifesteal_pct"])
+	if es["attacks_remaining"] <= 0:
+		_end_npc_leeching_hunger(es)
+	return healed
 
 
 func _tick_npc_leeching_hunger(es: Dictionary) -> void:
@@ -2288,19 +2262,10 @@ func _tick_npc_leeching_hunger(es: Dictionary) -> void:
 		_end_npc_leeching_hunger(es)
 
 
-## Hands back every currently-borrowed point to whichever donor enemies
-## are still alive (dead ones just forfeit theirs, same as
-## battle.gd's own _is_enemy_still_active() check accomplishes there).
 func _end_npc_leeching_hunger(es: Dictionary) -> void:
-	for entry in es["stolen"]:
-		var donor: Dictionary = entry["enemy"]
-		if donor.get("current_hp", 0) > 0:
-			donor["current_main_stat_value"] = float(donor.get("current_main_stat_value", 0.0)) + float(entry["amount"])
-
-	es["stolen"].clear()
-	es["bonus"] = {"damage": 0.0, "hp": 0.0, "mana": 0.0, "armor": 0.0}
 	es["active"] = false
 	es["attacks_remaining"] = 0
+	es["lifesteal_pct"] = 0.0
 	es["turns_remaining"] = 0
 	es["duration_pending_start"] = false
 
@@ -2312,9 +2277,11 @@ func _end_npc_leeching_hunger(es: Dictionary) -> void:
 # retaliation entirely for the turn (see _run_stage_fight()).
 # ------------------------------------------------------------------
 
-func _activate_npc_depthsveil(sd: Dictionary, level_data: Dictionary) -> void:
+func _activate_npc_depthsveil(sd: Dictionary, level_data: Dictionary, damage_range: String) -> void:
 	sd["active"] = true
-	sd["bonus_damage"] = float(level_data.get("bonus_damage", 0))
+	var range_parts: PackedStringArray = damage_range.split("-")
+	var max_damage: float = float(range_parts[1]) if range_parts.size() > 1 else float(range_parts[0])
+	sd["bonus_damage"] = float(level_data.get("bonus_damage_pct", 0.0)) * max_damage
 	sd["turns_remaining"] = int(level_data.get("duration", 0))
 	sd["duration_pending_start"] = true
 
@@ -3538,20 +3505,19 @@ func _apply_reduced_damage_to_npc(hero_id: String, hero_static: Dictionary, stat
 # Shared combat-math helpers that fold every active buff's bonus in.
 # ------------------------------------------------------------------
 
-## Base max HP plus Leeching Hunger's borrowed hp plus Beast of the Elderwild's bonus
-## hp while each is active - mirrors battle.gd's _hero_max_hp().
+## Base max HP plus Beast of the Elderwild's bonus
+## hp while it is active - mirrors battle.gd's _hero_max_hp().
 func _npc_effective_max_hp(max_hp: float, state: Dictionary) -> float:
-	return max_hp + state["leeching_hunger"]["bonus"].get("hp", 0.0) + state["beast_of_the_elderwild"]["bonus_hp"]
+	return max_hp + state["beast_of_the_elderwild"]["bonus_hp"]
 
 
-## Base armor plus Leeching Hunger's borrowed armor plus Wildbond's
-## flat bonus while each is active - mirrors battle.gd's _hero_armor().
+## Base armor plus Wildbond's
+## flat bonus while it is active - mirrors battle.gd's _hero_armor().
 func _npc_effective_armor(base_armor: float, state: Dictionary) -> float:
-	return base_armor + state["leeching_hunger"]["bonus"].get("armor", 0.0) + state["wildbond"]["bonus_armor"] + state["woven_flesh"]["bonus_armor"]
+	return base_armor + state["wildbond"]["bonus_armor"] + state["woven_flesh"]["bonus_armor"]
 
 
-## Rolls damage from `damage_range`, adding Leeching Hunger's ongoing
-## borrowed damage, Beast of the Elderwild's bonus damage while active, and (for the
+## Rolls damage from `damage_range`, adding Beast of the Elderwild's bonus damage while active, and (for the
 ## single hit that triggers it) Depthsveil's one-shot `extra_bonus` -
 ## mirrors battle.gd's _roll_hero_damage().
 func _npc_roll_damage(damage_range: String, state: Dictionary, extra_bonus: float = 0.0) -> float:
@@ -3559,7 +3525,7 @@ func _npc_roll_damage(damage_range: String, state: Dictionary, extra_bonus: floa
 	var min_dmg: float = float(parts[0]) if parts.size() > 0 else 0.0
 	var max_dmg: float = float(parts[1]) if parts.size() > 1 else min_dmg
 
-	var bonus_damage: float = state["leeching_hunger"]["bonus"].get("damage", 0.0) + state["beast_of_the_elderwild"]["bonus_damage"] + state["frostbound_fangs"]["bonus_damage"] + state["bestial_rage"]["bonus_damage"] + extra_bonus
+	var bonus_damage: float = state["beast_of_the_elderwild"]["bonus_damage"] + state["frostbound_fangs"]["bonus_damage"] + state["bestial_rage"]["bonus_damage"] + extra_bonus
 	min_dmg += bonus_damage
 	max_dmg += bonus_damage
 

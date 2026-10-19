@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://dygl8lstsrcty"
+
+[deps]
+
+files=["res://tools/balance_results/ttk12.rival.translation", "res://tools/balance_results/ttk12.level.translation", "res://tools/balance_results/ttk12.result.translation", "res://tools/balance_results/ttk12.turns.translation", "res://tools/balance_results/ttk12.player.translation", "res://tools/balance_results/ttk12.rival.translation", "res://tools/balance_results/ttk12.potions.translation", "res://tools/balance_results/ttk12.skills.translation"]
+
+source_file="res://tools/balance_results/ttk12.csv"
+dest_files=["res://tools/balance_results/ttk12.rival.translation", "res://tools/balance_results/ttk12.level.translation", "res://tools/balance_results/ttk12.result.translation", "res://tools/balance_results/ttk12.turns.translation", "res://tools/balance_results/ttk12.player.translation", "res://tools/balance_results/ttk12.rival.translation", "res://tools/balance_results/ttk12.potions.translation", "res://tools/balance_results/ttk12.skills.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

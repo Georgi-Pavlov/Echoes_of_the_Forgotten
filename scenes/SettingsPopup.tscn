@@ -30,9 +30,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -180.0
-offset_top = -140.0
+offset_top = -170.0
 offset_right = 180.0
-offset_bottom = 140.0
+offset_bottom = 170.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -114,6 +114,18 @@ min_value = 0.0
 max_value = 1.0
 step = 0.01
 value = 0.5
+
+[node name="PlayLogRow" type="HBoxContainer" parent="Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PlayLogLabel" type="Label" parent="Panel/Margin/VBox/PlayLogRow"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+text = "Play log"
+
+[node name="PlayLogToggle" type="CheckButton" parent="Panel/Margin/VBox/PlayLogRow"]
+layout_mode = 2
 
 [node name="CloseButton" type="Button" parent="Panel/Margin/VBox"]
 custom_minimum_size = Vector2(0, 36)
