@@ -1333,7 +1333,9 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		# same as any other equipment-free NPC advantage in this sim. ---
 		if not state["bear"].is_empty():
 			var bear_target: Dictionary = _lowest_hp_enemy(living)
-			_apply_damage_to_enemy(bear_target, _npc_roll_bear_damage(state["bear"]))
+			var bear_dealt: float = _apply_damage_to_enemy(bear_target, _npc_roll_bear_damage(state["bear"]))
+			# Wildbond heals the hero from the companion's hits too.
+			current_hp = minf(effective_max_hp, current_hp + _npc_wildbond_lifesteal(state["wildbond"], bear_dealt))
 
 			kills = _collect_npc_kills(enemies, counted_dead)
 			xp_gained += kills["xp"]
@@ -1558,7 +1560,7 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 		"wildbond":
 			_activate_npc_wildbond(state["wildbond"], level_data)
 		"beast_of_the_elderwild":
-			_activate_npc_beast_of_the_elderwild(state["beast_of_the_elderwild"], level_data)
+			_activate_npc_beast_of_the_elderwild(state["beast_of_the_elderwild"], level_data, damage_range)
 		"whisper_of_the_veil":
 			_apply_damage_to_enemy(_lowest_hp_enemy(living), float(level_data.get("damage", 0)))
 		"veil_of_the_forgotten":
@@ -3146,12 +3148,14 @@ func _npc_wildbond_lifesteal(sl: Dictionary, mitigated_attack_damage: float) -> 
 # force anything onto), so only the bonus hp/damage carry over.
 # ------------------------------------------------------------------
 
-func _activate_npc_beast_of_the_elderwild(tf: Dictionary, level_data: Dictionary) -> void:
+func _activate_npc_beast_of_the_elderwild(tf: Dictionary, level_data: Dictionary, damage_range: String) -> void:
 	if tf["active"]:
 		_end_npc_beast_of_the_elderwild(tf)
 	tf["active"] = true
 	tf["bonus_hp"] = float(level_data.get("bonus_hp", 0))
-	tf["bonus_damage"] = float(level_data.get("bonus_damage", 0))
+	var range_parts: PackedStringArray = damage_range.split("-")
+	var max_damage: float = float(range_parts[1]) if range_parts.size() > 1 else float(range_parts[0])
+	tf["bonus_damage"] = float(level_data.get("bonus_damage_pct", 0.0)) * max_damage
 	tf["turns_remaining"] = int(level_data.get("duration", 0))
 	tf["duration_pending_start"] = true
 

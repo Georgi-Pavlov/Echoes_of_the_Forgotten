@@ -487,7 +487,7 @@ var zones: Dictionary = {
 					"intelligence": 13,
 					"range": 550,
 					"hp": 473,
-					"mana": 169,
+					"mana": 220,
 					"armor": 3.4,
 					"damage": "50-55",
 					"speed": 1
@@ -497,12 +497,12 @@ var zones: Dictionary = {
 						"id": "elderwild_companion",
 						"name": "Elderwild Companion",
 						"type": "standard",
-						"description": "Erynd calls upon the ancient spirit of the Elderwild, taking shape as a massive spectral bear that fights at his side until slain. The beast acts on its own each turn, attacking enemies in its column or moving toward the nearest foe when none are within reach. When the companion is slain, the bond tears violently, causing Erynd to lose 20% of his maximum HP, though the backlash can never kill him. Calling the spirit again replaces the existing companion with a new one at the skill's current level.",
+						"description": "Erynd calls upon the ancient spirit of the Elderwild, taking shape as a massive spectral bear that fights at his side until slain. The beast acts on its own each turn, attacking enemies in its column or moving toward the nearest foe when none are within reach. When the companion is slain, the bond tears violently, causing Erynd to lose 20% of his maximum HP, though the backlash can never kill him. At its highest level the beast also heals itself for a share of the damage it deals. Calling the spirit again replaces the existing companion with a new one at the skill's current level.",
 						"levels": [
-							{"hp": 300, "damage_min": 30, "damage_max": 36, "armor": 3.0, "speed": 1, "mana_cost": 80, "cooldown": 8},
-							{"hp": 400, "damage_min": 38.4, "damage_max": 45.6, "armor": 4.0, "speed": 1, "mana_cost": 90, "cooldown": 7},
-							{"hp": 525, "damage_min": 48, "damage_max": 56.4, "armor": 5.5, "speed": 1, "mana_cost": 100, "cooldown": 6},
-							{"hp": 675, "damage_min": 60, "damage_max": 69.6, "armor": 7.0, "speed": 2, "mana_cost": 110, "cooldown": 5}
+							{"hp": 330, "damage_min": 33, "damage_max": 40, "armor": 3.0, "speed": 1, "mana_cost": 80, "cooldown": 8},
+							{"hp": 450, "damage_min": 42, "damage_max": 48, "armor": 4.0, "speed": 1, "mana_cost": 90, "cooldown": 7},
+							{"hp": 590, "damage_min": 51, "damage_max": 58, "armor": 5.5, "speed": 1, "mana_cost": 100, "cooldown": 6},
+							{"hp": 770, "damage_min": 60, "damage_max": 70, "armor": 7.0, "speed": 2, "bear_lifesteal_pct": 0.30, "mana_cost": 110, "cooldown": 5}
 						]
 					},
 					{
@@ -511,22 +511,22 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Erynd awakens the roots beneath a targeted enemy, binding it to the earth. The victim cannot move and is silenced while bound, though it can still attack if an enemy is within range. Ancient thorns continue to tear into the trapped foe, dealing damage over time for the duration of the binding.",
 						"levels": [
-							{"root_turns": 1, "silence_turns": 1, "dot_damage": 18, "dot_duration": 2, "mana_cost": 50, "cooldown": 3},
-							{"root_turns": 1, "silence_turns": 1, "dot_damage": 30, "dot_duration": 2, "mana_cost": 55, "cooldown": 3},
-							{"root_turns": 2, "silence_turns": 2, "dot_damage": 36, "dot_duration": 3, "mana_cost": 60, "cooldown": 4},
-							{"root_turns": 2, "silence_turns": 2, "dot_damage": 60, "dot_duration": 3, "mana_cost": 65, "cooldown": 4}
+							{"root_turns": 1, "silence_turns": 1, "dot_damage": 30, "dot_duration": 2, "mana_cost": 50, "cooldown": 3},
+							{"root_turns": 1, "silence_turns": 1, "dot_damage": 48, "dot_duration": 2, "mana_cost": 55, "cooldown": 3},
+							{"root_turns": 2, "silence_turns": 2, "dot_damage": 70, "dot_duration": 3, "mana_cost": 60, "cooldown": 4},
+							{"root_turns": 2, "silence_turns": 2, "dot_damage": 95, "dot_duration": 3, "mana_cost": 65, "cooldown": 4}
 						]
 					},
 					{
 						"id": "wildbond",
 						"name": "Wildbond",
 						"type": "standard",
-						"description": "Erynd strengthens his bond with the living wilderness, hardening his body and drawing vitality from those he strikes. He gains bonus armor and restores a portion of his health whenever one of his Attacks deals damage. The Wildbond feeds only on physical attacks; skill damage cannot trigger its healing.",
+						"description": "Erynd strengthens his bond with the living wilderness, hardening his body and drawing vitality from those he strikes. He gains bonus armor and restores a portion of his health whenever one of his Attacks, or his companion's, deals damage. The Wildbond feeds only on physical attacks; skill damage cannot trigger its healing.",
 						"levels": [
-							{"lifesteal_pct": 0.05, "bonus_armor": 2, "duration": 3, "mana_cost": 50, "cooldown": 5},
-							{"lifesteal_pct": 0.08, "bonus_armor": 3, "duration": 3, "mana_cost": 55, "cooldown": 5},
-							{"lifesteal_pct": 0.11, "bonus_armor": 4, "duration": 4, "mana_cost": 60, "cooldown": 4},
-							{"lifesteal_pct": 0.14, "bonus_armor": 5, "duration": 4, "mana_cost": 65, "cooldown": 4}
+							{"lifesteal_pct": 0.15, "bonus_armor": 2, "duration": 3, "mana_cost": 50, "cooldown": 5},
+							{"lifesteal_pct": 0.25, "bonus_armor": 3, "duration": 3, "mana_cost": 55, "cooldown": 5},
+							{"lifesteal_pct": 0.35, "bonus_armor": 4, "duration": 4, "mana_cost": 60, "cooldown": 4},
+							{"lifesteal_pct": 0.4, "bonus_armor": 5, "duration": 4, "mana_cost": 65, "cooldown": 4}
 						]
 					},
 					{
@@ -545,11 +545,11 @@ var zones: Dictionary = {
 						"id": "beast_of_the_elderwild",
 						"name": "Beast of the Elderwild",
 						"type": "ultimate",
-						"description": "Ultimate: Erynd surrenders himself to the ancient spirit bound within his blood, transforming into a monstrous bear-like beast. The transformation grants bonus HP and increased damage, with the additional HP granted immediately and removed when the transformation ends. While transformed, Erynd fights only at melee range, regardless of his normal attack range.",
+						"description": "Ultimate: Erynd surrenders himself to the ancient spirit bound within his blood, transforming into a monstrous bear-like beast. The transformation grants bonus HP and increased damage equal to a share of his maximum damage, with the additional HP granted immediately and removed when the transformation ends. While transformed, Erynd fights only at melee range, regardless of his normal attack range.",
 						"levels": [
-							{"bonus_hp": 150, "bonus_damage": 18, "duration": 4, "mana_cost": 100, "cooldown": 10},
-							{"bonus_hp": 250, "bonus_damage": 30, "duration": 5, "mana_cost": 110, "cooldown": 9},
-							{"bonus_hp": 350, "bonus_damage": 42, "duration": 6, "mana_cost": 120, "cooldown": 8}
+							{"bonus_hp": 220, "bonus_damage_pct": 0.35, "duration": 4, "mana_cost": 100, "cooldown": 10},
+							{"bonus_hp": 340, "bonus_damage_pct": 0.55, "duration": 5, "mana_cost": 110, "cooldown": 9},
+							{"bonus_hp": 500, "bonus_damage_pct": 0.75, "duration": 6, "mana_cost": 120, "cooldown": 8}
 						]
 					}
 				],

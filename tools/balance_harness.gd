@@ -53,6 +53,8 @@ func _ready() -> void:
 			"trace": _trace = kv[1] != "0"
 			"immortal": _immortal = kv[1] != "0"
 			"tag": PLAYER_NAME = "balance_harness_" + kv[1]
+	# Never write the person's own play log (see PlayLog.gd) from a harness run.
+	SettingsManager.play_log_on = false
 	Engine.time_scale = TIME_SCALE
 	await _run_all()
 	_cleanup_player_file()

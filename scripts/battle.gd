@@ -8660,7 +8660,10 @@ func _activate_beast_of_the_elderwild(level_data: Dictionary) -> void:
 
 	_beast_of_the_elderwild_active = true
 	_beast_of_the_elderwild_bonus_hp = float(level_data.get("bonus_hp", 0))
-	_beast_of_the_elderwild_bonus_damage = float(level_data.get("bonus_damage", 0))
+	# A share of his damage range's top, taken without the buff's own current
+	# bonus (a recast while it is running must not feed on itself).
+	var base_max_damage: float = _hero_max_damage() - _beast_of_the_elderwild_bonus_damage
+	_beast_of_the_elderwild_bonus_damage = float(level_data.get("bonus_damage_pct", 0.0)) * base_max_damage
 	_beast_of_the_elderwild_turns_remaining = int(level_data.get("duration", 0))
 	# The casting turn itself doesn't count - duration only starts
 	# ticking from the turn after (see _tick_beast_of_the_elderwild()).
@@ -8770,6 +8773,7 @@ func _elderwild_companion(level_data: Dictionary) -> void:
 		"damage_max": float(level_data.get("damage_max", 0)),
 		"armor": float(level_data.get("armor", 0)),
 		"speed": maxi(1, int(level_data.get("speed", 1))),
+		"lifesteal_pct": float(level_data.get("bear_lifesteal_pct", 0.0)),
 		"pos_index": _hero_pos_index,
 		"node": tex_rect,
 		"hp_label": hp_label,
@@ -8967,7 +8971,8 @@ func _bear_turn() -> void:
 		if bear_animator != null:
 			# Art faces right natively; flip_h means it's facing left.
 			bear_animator.play_attack(-1.0 if _bear["node"].flip_h else 1.0)
-		_deal_fixed_damage_to_enemy(target, _roll_bear_damage(), false, false)
+		var bear_dealt: float = _deal_fixed_damage_to_enemy(target, _roll_bear_damage(), false, false)
+		_apply_bear_hit_effects(bear_dealt, target)
 		return
 
 	if rooted:
@@ -8988,6 +8993,21 @@ func _bear_turn() -> void:
 	var new_pos: int = _melee_move_target(_bear["pos_index"], direction, int(_bear["speed"]))
 	_bear["pos_index"] = new_pos
 	_place_bear_node(new_pos)
+
+
+## What a landed hit of the companion's gives back: Wildbond heals Erynd for
+## its share of the damage (the same share his own Attacks give), and a
+## top-level companion heals itself for its own lifesteal share.
+func _apply_bear_hit_effects(dealt: float, target: Dictionary) -> void:
+	if dealt <= 0.0 or not _is_bear_alive():
+		return
+	if _wildbond_active:
+		heal(dealt * _wildbond_lifesteal_pct)
+		_play_lifesteal_effect(target.get("node"), hero_image)
+	var bear_lifesteal: float = float(_bear.get("lifesteal_pct", 0.0))
+	if bear_lifesteal > 0.0:
+		_bear["current_hp"] = minf(float(_bear["hp"]), float(_bear["current_hp"]) + dealt * bear_lifesteal)
+		_play_lifesteal_effect(target.get("node"), _bear.get("node"))
 
 
 ## Snaps the bear's node onto column `pos`, sliding its art over from
@@ -12672,11 +12692,12 @@ func _enemy_turn() -> void:
 			var attacked: bool = false
 			if enemy["pos_index"] == _hero_pos_index and not hero_hidden:
 				_play_enemy_attack_lunge(enemy)
-				apply_damage(enemy_damage)
+				_apply_enemy_companion_hit_effects(enemy, apply_damage(enemy_damage))
 				attacked = true
 			elif _is_bear_alive() and enemy["pos_index"] == _bear["pos_index"]:
 				_play_enemy_attack_lunge(enemy)
 				_deal_damage_to_bear(enemy_damage)
+				_apply_enemy_companion_hit_effects(enemy, enemy_damage)
 				attacked = true
 			elif not _guards_at(enemy["pos_index"]).is_empty():
 				# The hero isn't in reach (or can't be seen), but one of his
@@ -14684,8 +14705,25 @@ func _summon_enemy_elderwild_companion(level_data: Dictionary) -> void:
 		# get - see _spawn_enemy()'s use of this flag.
 		"is_hero_fight": true,
 		"is_enemy_elderwild_companion": true,
+		"lifesteal_pct": float(level_data.get("bear_lifesteal_pct", 0.0)),
 	})
 	AudioManager.play_event("bear_summon")
+
+
+## What a landed hit of the rival's companion gives back: Wildbond heals the
+## rival for its share of the damage, and a top-level companion heals itself.
+func _apply_enemy_companion_hit_effects(companion: Dictionary, dealt: float) -> void:
+	if dealt <= 0.0 or not companion["static"].get("is_enemy_elderwild_companion", false):
+		return
+	var boss: Dictionary = _get_hero_fight_boss()
+	if not boss.is_empty() and _enemy_wildbond_active:
+		var max_hp: float = _enemy_hero_effective_max_hp(boss)
+		boss["current_hp"] = minf(max_hp, float(boss["current_hp"]) + dealt * _enemy_wildbond_lifesteal_pct)
+		_play_lifesteal_effect(hero_image, boss.get("node"))
+	var self_lifesteal: float = float(companion["static"].get("lifesteal_pct", 0.0))
+	if self_lifesteal > 0.0:
+		companion["current_hp"] = minf(float(companion["static"].get("hp", 1)), float(companion["current_hp"]) + dealt * self_lifesteal)
+		_play_lifesteal_effect(hero_image, companion.get("node"))
 
 
 func _despawn_enemy_elderwild_companion() -> void:
@@ -14780,7 +14818,8 @@ func _activate_enemy_beast_of_the_elderwild(enemy: Dictionary, level_data: Dicti
 		_end_enemy_beast_of_the_elderwild()
 	_enemy_beast_of_the_elderwild_active = true
 	_enemy_beast_of_the_elderwild_bonus_hp = float(level_data.get("bonus_hp", 0))
-	_enemy_beast_of_the_elderwild_bonus_damage = float(level_data.get("bonus_damage", 0))
+	var base_max_damage: float = _enemy_hero_max_damage() - _enemy_beast_of_the_elderwild_bonus_damage
+	_enemy_beast_of_the_elderwild_bonus_damage = float(level_data.get("bonus_damage_pct", 0.0)) * base_max_damage
 	_enemy_beast_of_the_elderwild_turns_remaining = int(level_data.get("duration", 0))
 	_enemy_beast_of_the_elderwild_duration_pending_start = true
 
