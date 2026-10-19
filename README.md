@@ -92,4 +92,4 @@ Issues and pull requests are welcome. If you're adding a new hero, zone, or syst
 
 ## License
 
-MIT - update this section if you're using a different license.
+MIT
