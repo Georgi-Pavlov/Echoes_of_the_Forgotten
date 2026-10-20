@@ -5,6 +5,7 @@ extends Control
 @onready var sound_toggle: CheckButton = $Panel/Margin/VBox/SoundRow/SoundToggle
 @onready var sound_slider: HSlider = $Panel/Margin/VBox/SoundVolumeRow/SoundVolumeSlider
 @onready var play_log_toggle: CheckButton = $Panel/Margin/VBox/PlayLogRow/PlayLogToggle
+@onready var play_log_folder_button: Button = $Panel/Margin/VBox/PlayLogRow/PlayLogFolderButton
 @onready var close_button: Button = $Panel/Margin/VBox/CloseButton
 
 
@@ -14,6 +15,7 @@ func _ready() -> void:
 	sound_toggle.toggled.connect(_on_sound_toggled)
 	sound_slider.value_changed.connect(_on_sound_volume_changed)
 	play_log_toggle.toggled.connect(_on_play_log_toggled)
+	play_log_folder_button.pressed.connect(_on_play_log_folder_pressed)
 	close_button.pressed.connect(close)
 
 
@@ -45,6 +47,11 @@ func _on_sound_toggled(pressed: bool) -> void:
 
 func _on_sound_volume_changed(value: float) -> void:
 	SettingsManager.set_sound_volume(value)
+
+
+## Opens the folder holding play_log.jsonl, so it can be found and sent on.
+func _on_play_log_folder_pressed() -> void:
+	OS.shell_open(ProjectSettings.globalize_path(PlayLog.FILE.get_base_dir()))
 
 
 func _on_play_log_toggled(pressed: bool) -> void:

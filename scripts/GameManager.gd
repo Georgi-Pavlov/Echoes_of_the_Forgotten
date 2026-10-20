@@ -99,12 +99,26 @@ func format_skill_level_stats(level_data: Dictionary) -> String:
 		if key in HIDDEN_SKILL_STAT_KEYS:
 			continue
 		var raw_value = level_data[key]
-		if str(key).ends_with("_pct"):
+		if key == "spread_radius":
+			lines.append("Radius: %s" % _format_skill_stat_value(raw_value))
+		elif str(key).ends_with("_pct"):
 			var label: String = str(key).trim_suffix("_pct").capitalize()
 			lines.append("%s: %s%%" % [label, _format_pct_value(float(raw_value) * 100.0)])
 		else:
 			lines.append("%s: %s" % [str(key).capitalize(), _format_skill_stat_value(raw_value)])
 	return "\n".join(lines)
+
+
+## Short area-of-effect note appended to a skill's description in the
+## skill popups: radius 1 reaches one column in front and behind, bigger
+## radii cover a few steps in every direction. Empty for non-AoE levels.
+func get_skill_radius_hint(level_data: Dictionary) -> String:
+	var radius: int = int(level_data.get("radius", level_data.get("spread_radius", 0)))
+	if radius <= 0:
+		return ""
+	if radius == 1:
+		return "Area: in front and behind."
+	return "Area: a few steps in all directions."
 
 
 ## A percentage in points (1.35 for 1.35%): whole numbers print without a
@@ -376,7 +390,7 @@ var zones: Dictionary = {
 						"id": "leeching_hunger",
 						"name": "Leeching Hunger",
 						"type": "standard",
-						"description": "Veyrik awakens a ravenous hunger within himself. For several turns, his next melee attacks feed on the victim, healing Veyrik for a share of the damage they deal.",
+						"description": "Veyrik awakens a ravenous hunger within himself. For several turns, his next attacks feed on the victim, healing Veyrik for a share of the damage they deal.",
 						"levels": [
 							{"attacks": 3, "lifesteal_pct": 0.30, "duration": 4, "mana_cost": 30, "cooldown": 3},
 							{"attacks": 3, "lifesteal_pct": 0.40, "duration": 4, "mana_cost": 35, "cooldown": 3},
@@ -400,7 +414,7 @@ var zones: Dictionary = {
 						"id": "barbed_lunge",
 						"name": "Barbed Lunge",
 						"type": "standard",
-						"description": "Veyrik launches himself forward with violent speed, impaling the first enemy hero he reaches and leaving them stunned.",
+						"description": "Veyrik launches himself forward with violent speed, impaling the first enemy he reaches and leaving them stunned.",
 						"levels": [
 							{"distance": 2, "stun_turns": 1, "mana_cost": 75, "cooldown": 5},
 							{"distance": 3, "stun_turns": 1, "mana_cost": 80, "cooldown": 5},
@@ -512,7 +526,7 @@ var zones: Dictionary = {
 						"id": "elderwild_companion",
 						"name": "Elderwild Companion",
 						"type": "standard",
-						"description": "Erynd calls upon the ancient spirit of the Elderwild, taking shape as a massive spectral bear that fights at his side until slain. The beast's health and damage are a share of Erynd's own, growing as he does. The beast acts on its own each turn, attacking enemies in its column or moving toward the nearest foe when none are within reach. When the companion is slain, the bond tears violently, causing Erynd to lose 20% of his maximum HP, though the backlash can never kill him. At its highest level the beast also heals itself for a share of the damage it deals. Calling the spirit again replaces the existing companion with a new one at the skill's current level.",
+						"description": "Erynd calls upon the ancient spirit of the Elderwild, taking shape as a massive spectral bear that fights at his side until slain. When the companion is slain, the bond tears violently, causing Erynd to lose 20% of his maximum HP, though the backlash can never kill him. At its highest level the beast also heals itself for a share of the damage it deals.",
 						"levels": [
 							{"hp_pct": 0.40, "damage_pct": 0.45, "armor": 3.0, "speed": 1, "mana_cost": 80, "cooldown": 8},
 							{"hp_pct": 0.50, "damage_pct": 0.55, "armor": 4.0, "speed": 1, "mana_cost": 90, "cooldown": 7},
@@ -536,7 +550,7 @@ var zones: Dictionary = {
 						"id": "wildbond",
 						"name": "Wildbond",
 						"type": "standard",
-						"description": "Erynd strengthens his bond with the living wilderness, hardening his body and drawing vitality from those he strikes. He gains bonus armor and restores a portion of his health whenever one of his Attacks, or his companion's, deals damage. The Wildbond feeds only on physical attacks; skill damage cannot trigger its healing.",
+						"description": "Erynd strengthens his bond with the living wilderness, hardening his body and drawing vitality from those he strikes. He gains bonus armor and restores a portion of his health whenever he or his companion deal damage. The Wildbond feeds only on physical attacks; skill damage cannot trigger its healing.",
 						"levels": [
 							{"lifesteal_pct": 0.15, "bonus_armor": 2, "duration": 3, "mana_cost": 50, "cooldown": 5},
 							{"lifesteal_pct": 0.25, "bonus_armor": 3, "duration": 3, "mana_cost": 55, "cooldown": 5},
@@ -560,7 +574,7 @@ var zones: Dictionary = {
 						"id": "beast_of_the_elderwild",
 						"name": "Beast of the Elderwild",
 						"type": "ultimate",
-						"description": "Ultimate: Erynd surrenders himself to the ancient spirit bound within his blood, transforming into a monstrous bear-like beast. The transformation grants bonus HP and increased damage equal to a share of his maximum damage, with the additional HP granted immediately and removed when the transformation ends. While transformed, Erynd fights only at melee range, regardless of his normal attack range.",
+						"description": "Ultimate: Erynd surrenders himself to the ancient spirit bound within his blood, transforming into a monstrous bear-like beast. The transformation grants bonus HP and increased damage. While transformed, Erynd fights only at melee range, regardless of his normal attack range.",
 						"levels": [
 							{"bonus_hp": 220, "bonus_damage_pct": 0.35, "duration": 4, "mana_cost": 100, "cooldown": 10},
 							{"bonus_hp": 340, "bonus_damage_pct": 0.55, "duration": 5, "mana_cost": 110, "cooldown": 9},
@@ -697,7 +711,7 @@ var zones: Dictionary = {
 						"name": "The Mist Remembers",
 						"type": "ultimate",
 						"auto_activate": true,
-						"description": "Ultimate: Not cast - automatically activates when Morvael's HP falls to this level's threshold. For the duration, the mist refuses to let its creation disperse. Every attack that would harm Morvael is instead consumed by the mist and transformed into healing. While the effect lasts, Morvael cannot be brought closer to death by incoming attacks.",
+						"description": "Ultimate: Not cast - automatically activates when Morvael's HP falls to this level's threshold. For the duration, the mist refuses to let its creation disperse. Every attack that would harm Morvael is instead consumed by the mist and transformed into healing.",
 						"levels": [
 							{"auto_activate_hp_pct": 0.3, "duration": 3, "heal_conversion_pct": 0.65, "cooldown": 12},
 							{"auto_activate_hp_pct": 0.3, "duration": 4, "heal_conversion_pct": 0.65, "cooldown": 11},
@@ -776,6 +790,7 @@ var zones: Dictionary = {
 				"id": "kaelen_varr",
 				"name": "Kaelen Varr, the Drowned Captain",
 				"image": "res://assets/heroes/Kaelen_Varr.png",
+				"attack_sound": "sword",
 				"background": "res://assets/zones/the_ironbound_isles.jpg",
 				"range_type": "Melee",
 				"main_stat": "Strength",
@@ -796,7 +811,7 @@ var zones: Dictionary = {
 						"id": "drowned_surge",
 						"name": "Drowned Surge",
 						"type": "standard",
-						"description": "Kaelen calls a violent surge from the depths beneath his target. The water erupts upward without warning, damaging and stunning the enemy. At maximum strength, the surge spills outward and catches nearby enemies as well.",
+						"description": "Kaelen calls a violent surge from the depths beneath his target. The water erupts upward, damaging and stunning the enemy. At maximum strength, the surge spills outward and catches nearby enemies as well.",
 						"levels": [
 							{"damage": 90, "stun_turns": 1, "range": 3, "radius": 0, "mana_cost": 50, "cooldown": 5},
 							{"damage": 135, "stun_turns": 1, "range": 3, "radius": 0, "mana_cost": 55, "cooldown": 5},
@@ -1022,7 +1037,7 @@ var zones: Dictionary = {
 						"id": "maddening_roar",
 						"name": "Maddening Roar",
 						"type": "standard",
-						"description": "The Primordial Hunger release a terrifying roar against a marked target, causing it to loose its will to live.  The minds of all other enemies around the target are shattered.",
+						"description": "The Primordial Hunger release a terrifying roar against a marked target, causing it to loose its will to live. The minds of all other enemies around the target are shattered.",
 						"levels": [
 							{"damage": 135, "shatter_damage": 80, "shatter_range": 1, "mana_cost": 50, "cooldown": 5},
 							{"damage": 190, "shatter_damage": 115, "shatter_range": 1, "mana_cost": 55, "cooldown": 5},
@@ -1046,7 +1061,7 @@ var zones: Dictionary = {
 						"id": "the_hunger_calls",
 						"name": "The Hunger Calls",
 						"type": "ultimate",
-						"description": "Ultimate: The Primordial Hunger freezes an enemy in place and awakens an unnatural hunger for living flesh in every creature nearby. Enemies within the Hunger's reach become driven to tear into the marked victim, moving toward it or attacking it for increased damage. Creatures beyond its reach remain focused on the Primordial Hunger as normal.",
+						"description": "Ultimate: The Primordial Hunger freezes an enemy in place and awakens an unnatural hunger for living flesh in every creature nearby. Enemies within the Hunger's reach become driven to tear into the marked victim, moving toward it or attacking it for increased damage.",
 						"levels": [
 							{"duration": 2, "curse_range": 2, "bonus_damage_pct": 0.10, "mana_cost": 100, "cooldown": 10},
 							{"duration": 3, "curse_range": 2, "bonus_damage_pct": 0.15, "mana_cost": 110, "cooldown": 9},
@@ -1249,8 +1264,8 @@ var zones: Dictionary = {
 						"levels": [
 							{"bonus_damage": 45, "duration": 3, "mana_cost": 60, "cooldown": 5},
 							{"bonus_damage": 75, "duration": 3, "mana_cost": 80, "cooldown": 5},
-							{"bonus_damage": 113, "duration": 4, "mana_cost": 105, "cooldown": 6},
-							{"bonus_damage": 158, "duration": 4, "mana_cost": 130, "cooldown": 6}
+							{"bonus_damage": 115, "duration": 4, "mana_cost": 105, "cooldown": 6},
+							{"bonus_damage": 160, "duration": 4, "mana_cost": 130, "cooldown": 6}
 						]
 					},
 					{
@@ -1259,9 +1274,9 @@ var zones: Dictionary = {
 						"type": "ultimate",
 						"description": "Ultimate: Skarn delivers a devastating melee strike, dealing a multiple of his own Attack damage and violently knocking the enemy backward. If the enemy's movement is stopped by the edge of the battlefield or another enemy, it suffers additional impact damage and is stunned. The enemy is stunned after the knockback either way.",
 						"levels": [
-							{"damage_multiplier": 2.0, "knockback": 2, "stun_turns": 1, "mana_cost": 150, "cooldown": 8},
-							{"damage_multiplier": 2.5, "knockback": 3, "stun_turns": 1, "mana_cost": 200, "cooldown": 9},
-							{"damage_multiplier": 3.0, "knockback": 4, "stun_turns": 2, "mana_cost": 250, "cooldown": 10}
+							{"damage_multiplier": 2.5, "knockback": 2, "stun_turns": 1, "mana_cost": 150, "cooldown": 8},
+							{"damage_multiplier": 3, "knockback": 3, "stun_turns": 1, "mana_cost": 200, "cooldown": 9},
+							{"damage_multiplier": 3.5, "knockback": 4, "stun_turns": 2, "mana_cost": 250, "cooldown": 10}
 						]
 					},
 				],
@@ -1357,7 +1372,7 @@ var zones: Dictionary = {
 						"id": "rootveil",
 						"name": "Rootveil",
 						"type": "standard",
-						"description": "The Rootmother sinks into the living root network beneath her, becoming nearly indistinguishable from the growth around her. While concealed, enemies cannot target or chase her, and she moves 2 columns per move instead of 1. The veil breaks the moment she attacks or casts another skill. An attack from concealment lashes the target with roots, rooting it in place while leaving it free to attack and cast skills.",
+						"description": "The Rootmother sinks into the living root network beneath her, becoming nearly indistinguishable from the growth around her. She moves faster and attacking from the concealment lashes the target with roots, rooting it in place. The veil breaks the moment she attacks or casts another skill.",
 						"levels": [
 							{"duration": 3, "root_turns": 1, "mana_cost": 60, "cooldown": 5},
 							{"duration": 3, "root_turns": 1, "mana_cost": 75, "cooldown": 5},
@@ -1369,7 +1384,7 @@ var zones: Dictionary = {
 						"id": "sanguine_bloom",
 						"name": "Sanguine Bloom",
 						"type": "standard",
-						"description": "The Rootmother plants a parasitic bloom within an enemy. The unnatural growth feeds on the victim's life force for several turns, dealing damage over time while transferring a portion of that stolen vitality back to the Rootmother.",
+						"description": "The Rootmother plants a parasitic bloom within an enemy. The unnatural growth feeds on the victim's life force for several turns, dealing damage while transferring a portion of that stolen vitality back to the Rootmother.",
 						"levels": [
 							{"dot_damage": 50, "heal_per_turn": 15, "duration": 3, "range": 2, "mana_cost": 70, "cooldown": 5},
 							{"dot_damage": 70, "heal_per_turn": 25, "duration": 3, "range": 2, "mana_cost": 90, "cooldown": 5},

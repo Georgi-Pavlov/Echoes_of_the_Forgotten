@@ -459,7 +459,8 @@ func play_attack(direction: float, lunge: bool = true) -> void:
 ## Flinch: red-white flash, a knockback away from `from_direction`
 ## (the side the hit came from; 0 = unknown, just shudder) and a squash.
 func play_hit(from_direction: float = 0.0) -> void:
-	AudioManager.play_event("hit")
+	if not AudioManager.suppress_hit_sound:
+		AudioManager.play_event("hit")
 	var t := _new_action_tween()
 	_mat.set_shader_parameter("flash_color", HIT_FLASH_COLOR)
 	var knock := Vector2(-from_direction * 12.0, 0.0)

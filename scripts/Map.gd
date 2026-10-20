@@ -62,7 +62,14 @@ const REGIONS := [
 	{"id": "the_last_horizon", "pos": Vector2(0.906, 0.864), "size": Vector2(0.110, 0.033)},
 ]
 
+## The ambience fades out when the map is left (the main menu's or a
+## zone's own music, if any, takes over from it instead).
+func _exit_tree() -> void:
+	AudioManager.stop_music_fade()
+
+
 func _ready() -> void:
+	AudioManager.play_ambience("forest-ambience")
 	$BackButton.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/PostLogin.tscn"))
 	$ShopButton.pressed.connect(_on_shop_pressed)
 	$WorldStatusButton.pressed.connect(_on_world_status_pressed)

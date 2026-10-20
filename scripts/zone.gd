@@ -344,7 +344,11 @@ func _on_skill_button_pressed(skill: Dictionary) -> void:
 	# level_stats().
 	var level_data: Dictionary = GameManager.get_skill_level_data(skill, 1)
 	var stats_summary: String = GameManager.format_skill_level_stats(level_data)
-	skill_desc_label.text = skill.get("description", "") + "\n\n" + stats_summary
+	var radius_hint: String = GameManager.get_skill_radius_hint(level_data)
+	var description_text: String = skill.get("description", "")
+	if radius_hint != "":
+		description_text += " " + radius_hint
+	skill_desc_label.text = description_text + "\n\n" + stats_summary
 
 	skill_desc_panel.visible = true
 

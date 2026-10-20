@@ -2475,6 +2475,7 @@ func _on_item_pressed(item_id: String) -> void:
 		return
 	if not PlayerManager.use_item(item_id):
 		return
+	AudioManager.play_event("potion")
 
 	var item_data: Dictionary = GameManager.get_item(item_id)
 	var effect: String = item_data.get("effect", "")
@@ -4103,9 +4104,14 @@ func _cast_the_sunken_one(level_data: Dictionary) -> bool:
 			_the_sunken_one_ground_y(), dir, landings, func() -> void:
 		if _battle_over or _stage_generation != generation_before:
 			return
+		# The tutorial's showcase cast always wipes out everything it hits, so
+		# the lesson ("thinned the crowd out") holds whatever the balance.
+		var tutorial_wipe: bool = TutorialManager.is_active and TutorialManager.current_stage == 3
 		for enemy in hit_targets:
 			if _enemies.any(func(e: Dictionary) -> bool: return is_same(e, enemy)):
-				_deal_fixed_damage_to_enemy(enemy, damage)
+				# Padded well past its HP, since armor shaves the hit down.
+				var hit_damage: float = maxf(damage, float(enemy.get("current_hp", 0)) * 20.0) if tutorial_wipe else damage
+				_deal_fixed_damage_to_enemy(enemy, hit_damage)
 		# A rival's own guard (The Last Empress's Imperial Guard) in the line
 		# of fire is caught in it too.
 		_deal_line_aoe_damage_to_enemy_guards(span.x, span.y, damage)
@@ -4498,6 +4504,7 @@ func _play_hope_of_the_fallen_flight(caster_node: Control, target_node: TextureR
 ## glow of its own that pulses as it goes, trailing sparks, and bursts on
 ## the target.
 func _launch_hope_of_the_fallen_arrow(start: Vector2, end: Vector2, distance: int, palette: Dictionary, trail_color: Color, target_node: TextureRect) -> void:
+	AudioManager.play_event("arrow")
 	var arrow: Node2D = _build_hope_of_the_fallen(palette)
 	# Drawn pointing right - turned to point along its flight.
 	var aim: Vector2 = (end - start).normalized()
@@ -6124,15 +6131,21 @@ func _resolve_rimecleaver_cast(target: Dictionary, level_data: Dictionary) -> vo
 func _play_rimecleaver(target_node: Variant, radius: int, on_impact: Callable, on_sweep: Callable,
 		pass_nodes: Array = [], on_pass: Callable = Callable()) -> void:
 	if not is_instance_valid(target_node) or not (target_node is Control) or not is_instance_valid(_fx_layer):
-		on_impact.call()
+		AudioManager.silent_hits(on_impact)
 		if radius > 0:
-			on_sweep.call()
+			AudioManager.silent_hits(on_sweep)
 		return
 	var sweep_px := _grid_unit() * (float(radius) + 0.5) if radius > 0 else 0.0
+	AudioManager.play_event("rimecleaver")
 	RimecleaverFX.play(_fx_layer, target_node, sweep_px, func() -> void:
+		AudioManager.play_event("rimecleaver_hit")
 		_shake_screen()
-		on_impact.call()
-	, on_sweep, pass_nodes, on_pass)
+		AudioManager.silent_hits(on_impact)
+	, func() -> void: AudioManager.silent_hits(on_sweep), pass_nodes, func(i: int) -> void:
+		# Each further enemy the swing cuts through gets its own hit.
+		AudioManager.play_event("rimecleaver_hit")
+		if on_pass.is_valid():
+			AudioManager.silent_hits(on_pass, [i]))
 
 
 ## Resolves a Winter's Grip cast on `target`: freezes it in place for
@@ -10082,7 +10095,11 @@ func _on_skill_choice_option_pressed(skill: Dictionary) -> void:
 	var stats_summary: String = GameManager.format_skill_level_stats(level_data)
 
 	skill_choice_desc_name_label.text = skill.get("name", "")
-	skill_choice_desc_label.text = skill.get("description", "") + "\n\n" + stats_summary + "\n\n" + action_text
+	var radius_hint: String = GameManager.get_skill_radius_hint(level_data)
+	var description_text: String = skill.get("description", "")
+	if radius_hint != "":
+		description_text += " " + radius_hint
+	skill_choice_desc_label.text = description_text + "\n\n" + stats_summary + "\n\n" + action_text
 
 	# Swap the list popup for the description popup - Cancel brings
 	# the list back rather than closing everything, so the player can
@@ -18356,6 +18373,9 @@ func _fire_enemy_rear_vine(enemy: Dictionary, target_node: Control) -> void:
 ## `transformed` (Beast of the Elderwild): the bear fights in melee, so its
 ## attack is just its own lunge, no ranged effect.
 func _play_hero_attack_effect(hero_static: Dictionary, caster: TextureRect, target_node: Control, transformed: bool) -> void:
+	var attack_sound: String = hero_static.get("attack_sound", "")
+	if attack_sound != "" and not transformed:
+		AudioManager.play_event(attack_sound)
 	var effect: String = hero_static.get("attack_effect", "")
 	if effect == "" or transformed or caster == null or not is_instance_valid(target_node):
 		return

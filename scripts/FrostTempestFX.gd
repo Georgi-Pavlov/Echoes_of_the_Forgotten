@@ -46,6 +46,7 @@ var _age := 0.0
 var _strength := 0.0          # 0..1, ramps in and out
 var _ending := false
 var _end_t := 0.0
+var _loop: AudioStreamPlayer
 var _streaks: Array[Dictionary] = []
 var _flakes: Array[Dictionary] = []
 var _shards: Array[Dictionary] = []
@@ -73,6 +74,8 @@ static func release(node: Variant) -> void:
 
 
 func _ready() -> void:
+	# The storm's wind howls for as long as it lasts, fading out as it winds away.
+	_loop = AudioManager.play_loop("the_frost_tempest", self, 0.0, RISE_TIME)
 	_back = Node2D.new()
 	_back.show_behind_parent = true
 	_back.draw.connect(_draw_layer.bind(false))
@@ -104,6 +107,7 @@ func _start_end() -> void:
 		return
 	_ending = true
 	name = NODE_NAME + "Ending"
+	AudioManager.stop_loop(_loop, END_TIME)
 
 
 func _process(delta: float) -> void:

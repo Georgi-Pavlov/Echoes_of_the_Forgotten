@@ -39,7 +39,7 @@ static func play(host: Node, from: Vector2, to: Vector2, on_hit: Callable = Call
 
 
 func _ready() -> void:
-	AudioManager.play_event("creep_shoot")
+	AudioManager.play_event("hand_projectile")
 	var dir := _to - _from
 	var heading := dir.normalized() if dir.length() > 1.0 else Vector2.LEFT
 	_spray(_from, heading, 12, 22.0, 50.0, 150.0, 0.4)

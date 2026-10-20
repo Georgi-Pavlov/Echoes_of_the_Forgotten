@@ -17,7 +17,9 @@ const LAUNCH_GAP := 0.045             # between one arrow leaving and the next
 const HOLD := 0.18                    # the pause before the first one falls
 const FALL_TIME := Vector2(0.26, 0.34)
 const GROUP_GAP := 0.1                # between one target's rain and the next's
-const ARROW_GAP := 0.055              # between arrows falling on the same target
+const VOLLEY_SOUND_COUNT := 4
+const VOLLEY_SOUND_GAP := 0.07        # between the volley's arrow sounds
+const ARROW_GAP := 0.055             # between arrows falling on the same target
 
 
 ## `shots`: one Dictionary per target - {"land": Vector2 (global), "on_hit":
@@ -31,6 +33,13 @@ static func play(host: Node, from: Vector2, shots: Array, facing: float) -> void
 	if total <= 0:
 		return
 
+	# A quick burst of shots to read as a volley.
+	for n in VOLLEY_SOUND_COUNT:
+		if n == 0:
+			AudioManager.play_event("arrow")
+		else:
+			host.get_tree().create_timer(VOLLEY_SOUND_GAP * n).timeout.connect(
+				func() -> void: AudioManager.play_event("arrow", 0.0, 0.1))
 	var launch_end := LAUNCH_GAP * float(total) + UP_TIME.y
 	var fall_base := launch_end + HOLD
 	var k := 0

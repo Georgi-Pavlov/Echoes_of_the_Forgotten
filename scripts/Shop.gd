@@ -351,6 +351,9 @@ func _refresh_details_panel() -> void:
 		details_cost_label.text = "Sold out"
 		details_buy_button.disabled = true
 		details_buy_button.text = "Sold Out"
+	elif not TutorialManager.is_action_allowed("buy:" + _selected_item_id):
+		details_buy_button.disabled = true
+		details_buy_button.text = "Buy"
 	elif not _missing_requirements(_selected_item_id).is_empty():
 		details_buy_button.disabled = true
 		details_buy_button.text = "Missing Components"
@@ -416,6 +419,14 @@ func _on_buy_pressed() -> void:
 	AudioManager.play_event("shop_transaction")
 	if _stock.has(item_id):
 		_stock[item_id] -= 1
+	# The tutorial's gold covers exactly one of each potion: once one is
+	# bought, that potion can't be bought again (or the gold goes on it
+	# instead of the other).
+	if TutorialManager.is_active and TutorialManager.current_stage == 2:
+		var allowed: Array = TutorialManager.get_allowed_actions()
+		allowed.erase("buy:" + item_id)
+		if not allowed.is_empty():
+			TutorialManager.set_allowed_actions(allowed)
 
 	_refresh_gold_label()
 	_refresh_item_card(item_id)

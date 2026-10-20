@@ -30,6 +30,12 @@ var _event_cache: Dictionary = {}
 var _prewarm_queue: Array = []
 var _music_tween: Tween
 var _music_fading_out := false
+var _ambience_name := ""
+
+# While true, a unit's flinch (CreatureAnimator.play_hit) makes no generic
+# "hit" sound. A skill or attack with a sound of its own wraps its damage in
+# silent_hits() so only its own sound is heard.
+var suppress_hit_sound := false
 
 
 func _ready() -> void:
@@ -67,6 +73,7 @@ func _process(_delta: float) -> void:
 
 
 func play_music(stream: AudioStream) -> void:
+	_ambience_name = ""
 	_kill_music_tween()
 	music_player.volume_db = 0.0
 
@@ -89,6 +96,43 @@ func play_menu_music(fade_in: float = 1.5) -> void:
 	if music_player.stream == stream and music_player.playing and not _music_fading_out:
 		return
 	if "loop" in stream:
+		stream.loop = true
+	_ambience_name = ""
+	_kill_music_tween()
+	music_player.stream = stream
+	music_player.volume_db = -40.0
+	music_player.play()
+	_music_tween = create_tween()
+	_music_tween.tween_property(music_player, "volume_db", 0.0, fade_in)
+
+
+## Runs `action` (a Callable that deals its damage right away) with the
+## generic hit sound off, then turns it back on.
+func silent_hits(action: Callable, args: Array = []) -> void:
+	suppress_hit_sound = true
+	action.callv(args)
+	suppress_hit_sound = false
+
+
+## A looping ambience bed (assets/sounds/<base_name>.*) on the music
+## player, fading in - the world map's forest ambience. It replaces
+## whatever music is playing; the next play_menu_music()/play_music() call
+## takes over from it.
+func play_ambience(base_name: String, fade_in: float = 1.5) -> void:
+	var stream := _music_file(base_name)
+	if stream == null:
+		return
+	if _ambience_name == base_name and music_player.playing and not _music_fading_out:
+		return
+	_ambience_name = base_name
+	# Loop a copy, so the shared cached resource stays untouched.
+	stream = stream.duplicate()
+	if stream is AudioStreamWAV:
+		var bytes_per_frame: int = (2 if stream.format == AudioStreamWAV.FORMAT_16_BITS else 1) * (2 if stream.stereo else 1)
+		stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		stream.loop_begin = 0
+		stream.loop_end = stream.data.size() / bytes_per_frame
+	elif "loop" in stream:
 		stream.loop = true
 	_kill_music_tween()
 	music_player.stream = stream
@@ -242,7 +286,9 @@ func play_loop(event: String, parent: Node, volume_db: float = 0.0, fade_in: flo
 	if looped is AudioStreamWAV:
 		looped.loop_mode = AudioStreamWAV.LOOP_FORWARD
 		looped.loop_begin = 0
-		looped.loop_end = looped.data.size() / 2
+		# loop_end counts sample frames, not bytes.
+		var bytes_per_frame: int = (2 if looped.format == AudioStreamWAV.FORMAT_16_BITS else 1) * (2 if looped.stereo else 1)
+		looped.loop_end = looped.data.size() / bytes_per_frame
 	elif "loop" in looped:
 		looped.loop = true
 	var player := AudioStreamPlayer.new()

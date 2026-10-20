@@ -233,6 +233,11 @@ static func _style(style_id: String) -> Dictionary:
 static func fire(host: Node, style_id: String, from: Vector2, to: Vector2, on_hit: Callable = Callable()) -> void:
 	var style := _style(style_id)
 	var spread: float = style["spread"]
+	match style["shape"]:
+		"arrow":
+			AudioManager.play_event("arrow")
+		"spike", "spear", "bone_spear":
+			AudioManager.play_event("hand_projectile")
 	for i in int(style["count"]):
 		var aim := to
 		if i > 0:

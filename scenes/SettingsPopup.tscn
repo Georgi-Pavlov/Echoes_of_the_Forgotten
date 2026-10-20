@@ -127,6 +127,10 @@ text = "Play log"
 [node name="PlayLogToggle" type="CheckButton" parent="Panel/Margin/VBox/PlayLogRow"]
 layout_mode = 2
 
+[node name="PlayLogFolderButton" type="Button" parent="Panel/Margin/VBox/PlayLogRow"]
+layout_mode = 2
+text = "Open folder"
+
 [node name="CloseButton" type="Button" parent="Panel/Margin/VBox"]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2

@@ -189,6 +189,7 @@ func _fire(i: int) -> void:
 	if not is_instance_valid(_ship):
 		return
 	var muzzle := _port_point(i)
+	AudioManager.play_event("the_sunken_one")
 
 	# Muzzle flash and a puff of gun smoke.
 	var glow: TextureRect = _port_glows[i]
