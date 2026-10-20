@@ -270,6 +270,9 @@ const CREATURE_BASE_ASPECT := 1.5
 # How much of the hero's own max HP he loses when the bear dies (see
 # _apply_bear_death_penalty()).
 const BEAR_DEATH_HP_PENALTY_PCT := 0.2
+# A rival Erynd's companion is scaled down by this on top of its level
+# percentages, so fighting him never feels like fighting two heroes.
+const ENEMY_BEAR_STAT_MULT := 1.0
 
 # While a rival skill whose damage lands only when its visual effect
 # connects is still playing out - Kaelen Varr's The Sunken One
@@ -584,6 +587,16 @@ var _kiss_the_wastes_level_data: Dictionary = {}
 # ------------------------------------------------------------------
 var _guards: Array = []
 var _guard_damage_pct: float = 0.0
+## Chance (the level's hit_chance_pct) that an enemy's basic attack on the
+## hero lands on one of his guards instead - see _try_redirect_hit_to_guard().
+var _guard_redirect_chance: float = 0.0
+
+## Solara's Withering Pursuit: for `_withering_miss_turns` enemy phases after
+## the cast, each enemy basic attack on her misses with this chance (see
+## _enemy_attack_misses_hero()). Ticked down once per End Turn alongside the
+## other durations.
+var _withering_miss_chance: float = 0.0
+var _withering_miss_turns: int = 0
 var _guards_turns_remaining: int = 0
 var _guards_duration_pending_start: bool = false
 
@@ -1630,6 +1643,9 @@ var _hero_echo_pos_index: int = -1
 # Pending while the level-up flow is still open on top of it.
 var _echo_popup_acknowledged: bool = false
 var _echo_popup_pending: bool = false
+## The last enemy fell while the level-up flow was open - _handle_victory()
+## runs once it closes instead of burying the skill choice.
+var _victory_pending: bool = false
 
 # Where the hero stood as of the last _update_hero_position(), so a
 # move that carries him across several columns still counts as going
@@ -3680,6 +3696,8 @@ func _spawn_pursuit_afterimage(node: TextureRect, animator: CreatureAnimator, di
 ## is what shortens. No damage, no target required - always "succeeds",
 ## same as every other self-cast buff.
 func _activate_withering_pursuit(level_data: Dictionary) -> void:
+	_withering_miss_chance = float(level_data.get("miss_chance_pct", 0.0))
+	_withering_miss_turns = int(level_data.get("miss_turns", 0))
 	var move_distance: int = int(level_data.get("move_distance", 0))
 	var jump_distance: int = int(level_data.get("jump_distance", 0))
 	var direction: int = -1 if hero_image.flip_h else 1
@@ -3709,13 +3727,31 @@ func _resolve_shackles_cast(target: Dictionary, level_data: Dictionary) -> void:
 	var generation_before: int = _stage_generation
 
 	var damage: float = float(level_data.get("damage", 0))
-	_deal_fixed_damage_to_enemy(target, damage)
-	if target.get("current_hp", 0) > 0:
-		_apply_root(target, level_data)
-		# The chains stay on it for as long as this root does (see
-		# _refresh_shackles()).
-		target["shackled"] = true
-		_refresh_shackles()
+	# Higher levels also catch enemies up to `spread_radius` columns either
+	# side of the target (the closest first, then the weakest), up to
+	# `extra_targets` of them - picked before the hit, since a kill can
+	# change who is left standing there.
+	var shackled_targets: Array = [target]
+	var extras: Array = []
+	for enemy in _enemies:
+		if enemy != target and not _is_target_hidden(enemy) and _distance(enemy["pos_index"], target["pos_index"]) <= int(level_data.get("spread_radius", 0)):
+			extras.append(enemy)
+	extras.sort_custom(func(a, b):
+		var da: int = _distance(a["pos_index"], target["pos_index"])
+		var db: int = _distance(b["pos_index"], target["pos_index"])
+		if da != db:
+			return da < db
+		return float(a.get("current_hp", 0)) < float(b.get("current_hp", 0)))
+	shackled_targets.append_array(extras.slice(0, int(level_data.get("extra_targets", 0))))
+
+	for shackled in shackled_targets:
+		_deal_fixed_damage_to_enemy(shackled, damage)
+		if shackled.get("current_hp", 0) > 0:
+			_apply_root(shackled, level_data)
+			# The chains stay on it for as long as this root does (see
+			# _refresh_shackles()).
+			shackled["shackled"] = true
+	_refresh_shackles()
 
 	var mana_cost: float = float(level_data.get("mana_cost", 0))
 	spend_mana(mana_cost)
@@ -5283,6 +5319,7 @@ func _activate_imperial_guard(level_data: Dictionary) -> void:
 		_guards.append(_spawn_guard(pos, facing, guard_hp))
 
 	_guard_damage_pct = float(level_data.get("damage_pct", 0.0)) + float(empress_will_level_data.get("guardians_damage_bonus_pct", 0.0))
+	_guard_redirect_chance = float(level_data.get("hit_chance_pct", 0.0))
 	_guards_turns_remaining = int(level_data.get("duration", 0)) + int(empress_will_level_data.get("guard_duration_bonus", 0))
 	# The casting turn itself doesn't count - duration only starts
 	# ticking (and the guards only start acting) from the turn after (see
@@ -5603,6 +5640,26 @@ func _enemy_attack_guard(guard: Dictionary, raw_damage: float) -> void:
 	_deal_damage_to_guard(guard, _apply_armor_reduction(raw_damage, _hero_armor()))
 
 
+## Imperial Guard's redirect: an enemy's basic attack aimed at the hero lands
+## on a random living guard instead with _guard_redirect_chance. Returns the
+## (armor-mitigated) damage the guard took, or -1.0 when the hit stays on the
+## hero. Only basic attacks roll it - DoTs, skills and AoE keep their own
+## rules (AoE already hits guards separately).
+func _enemy_attack_misses_hero() -> bool:
+	if _withering_miss_turns <= 0 or randf() >= _withering_miss_chance:
+		return false
+	_show_rising_message_over(hero_image, "Missed!", Color(0.8, 0.9, 1.0, 1.0))
+	return true
+
+
+func _try_redirect_hit_to_guard(raw_damage: float) -> float:
+	if _guards.is_empty() or _guard_redirect_chance <= 0.0 or randf() >= _guard_redirect_chance:
+		return -1.0
+	var guard: Dictionary = _guards[randi() % _guards.size()]
+	var mitigated: float = _apply_armor_reduction(raw_damage, _hero_armor())
+	_deal_damage_to_guard(guard, mitigated)
+	return mitigated
+
 ## Ends Imperial Guard, despawning every surviving guard - called both
 ## when its duration runs out (_tick_imperial_guard()) and defensively at
 ## the top of _activate_imperial_guard() so a recast mid-duration never
@@ -5618,6 +5675,7 @@ func _end_imperial_guard() -> void:
 			guard["hp_label"].queue_free()
 	_guards.clear()
 	_guard_damage_pct = 0.0
+	_guard_redirect_chance = 0.0
 	_guards_turns_remaining = 0
 	_guards_duration_pending_start = false
 
@@ -6564,7 +6622,10 @@ func _apply_frostborn_regen() -> void:
 	if level_data.is_empty():
 		return
 
-	restore_mana(float(level_data.get("bonus_mana_regen", 0)))
+	# A share of max mana, so it keeps pace with her growing skill costs; a
+	# flat bonus_mana_regen still adds on if a level ever carries one.
+	var max_mana: float = float(_recruited.get("stats", {}).get("mana", 0))
+	restore_mana(float(level_data.get("bonus_mana_regen", 0)) + float(level_data.get("bonus_mana_regen_pct", 0.0)) * max_mana)
 
 
 # ------------------------------------------------------------------
@@ -7509,7 +7570,9 @@ func _resolve_sanguine_bloom_cast(target: Dictionary, level_data: Dictionary) ->
 func _activate_woven_flesh(level_data: Dictionary) -> void:
 	_woven_flesh_active = true
 	_woven_flesh_bonus_armor = float(level_data.get("bonus_armor", 0))
-	_woven_flesh_bonus_hp_regen = float(level_data.get("bonus_hp_regen", 0))
+	# Per-turn healing is a share of max HP (so it keeps pace with Strength's
+	# own passive regen), fixed at cast time; a flat bonus_hp_regen still adds on.
+	_woven_flesh_bonus_hp_regen = float(level_data.get("bonus_hp_regen", 0)) + float(level_data.get("bonus_hp_regen_pct", 0.0)) * _hero_max_hp()
 	_woven_flesh_turns_remaining = int(level_data.get("duration", 0))
 	# The casting turn itself doesn't count - duration only starts
 	# ticking from the turn after (see _tick_woven_flesh()), same as
@@ -8765,12 +8828,19 @@ func _elderwild_companion(level_data: Dictionary) -> void:
 	add_child(hp_label)
 	move_child(hp_label, tex_rect.get_index() + 1)
 
-	var hp: float = float(level_data.get("hp", 1))
+	# Its health and damage are a share of Erynd's own (his stats with gear,
+	# not counting a running Beast of the Elderwild).
+	var hero_stats: Dictionary = _recruited.get("stats", {})
+	var hero_damage_parts: PackedStringArray = str(hero_stats.get("damage", "0-0")).split("-")
+	var hero_min_damage: float = float(hero_damage_parts[0])
+	var hero_max_damage: float = float(hero_damage_parts[1]) if hero_damage_parts.size() > 1 else hero_min_damage
+	var damage_pct: float = float(level_data.get("damage_pct", 0.0))
+	var hp: float = maxf(1.0, float(level_data.get("hp_pct", 0.0)) * float(hero_stats.get("hp", 0)))
 	_bear = {
 		"hp": hp,
 		"current_hp": hp,
-		"damage_min": float(level_data.get("damage_min", 0)),
-		"damage_max": float(level_data.get("damage_max", 0)),
+		"damage_min": damage_pct * hero_min_damage,
+		"damage_max": damage_pct * hero_max_damage,
 		"armor": float(level_data.get("armor", 0)),
 		"speed": maxi(1, int(level_data.get("speed", 1))),
 		"lifesteal_pct": float(level_data.get("bear_lifesteal_pct", 0.0)),
@@ -9004,7 +9074,11 @@ func _apply_bear_hit_effects(dealt: float, target: Dictionary) -> void:
 	if _wildbond_active:
 		heal(dealt * _wildbond_lifesteal_pct)
 		_play_lifesteal_effect(target.get("node"), hero_image)
+	# Wildbond shares its lifesteal with the companion too; the top-level
+	# companion's own share doesn't stack on it, the larger one applies.
 	var bear_lifesteal: float = float(_bear.get("lifesteal_pct", 0.0))
+	if _wildbond_active:
+		bear_lifesteal = maxf(bear_lifesteal, _wildbond_lifesteal_pct)
 	if bear_lifesteal > 0.0:
 		_bear["current_hp"] = minf(float(_bear["hp"]), float(_bear["current_hp"]) + dealt * bear_lifesteal)
 		_play_lifesteal_effect(target.get("node"), _bear.get("node"))
@@ -9078,6 +9152,10 @@ func _tick_skill_cooldowns() -> void:
 	_tick_frostbound_rupture()
 	_tick_bestial_rage()
 	_tick_woven_flesh()
+	if _withering_miss_turns > 0:
+		_withering_miss_turns -= 1
+		if _withering_miss_turns <= 0:
+			_withering_miss_chance = 0.0
 	_tick_wildbond()
 	_tick_beast_of_the_elderwild()
 	_tick_veil_of_the_forgotten()
@@ -9888,6 +9966,15 @@ func _refresh_level_up_input_blocker() -> void:
 	_level_up_input_blocker.visible = _is_level_up_flow_open() or echo_popup.visible
 	if _echo_popup_pending and not _is_level_up_flow_open():
 		_show_hero_echo_popup.call_deferred()
+	if _victory_pending and not _is_level_up_flow_open():
+		_resume_pending_victory.call_deferred()
+
+
+func _resume_pending_victory() -> void:
+	# Deferred for the same reason as the echo popup: closing LevelUpPopup
+	# can open SkillChoicePopup in the same call.
+	if _victory_pending and not _is_level_up_flow_open():
+		_handle_victory()
 
 
 func _set_stat_row(old_label: Label, new_label: Label, old_value, new_value) -> void:
@@ -10420,7 +10507,7 @@ const WHISPER_OF_THE_VEIL_RANGE := 2
 func _start_whisper_of_the_veil_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
-	var col_range: int = WHISPER_OF_THE_VEIL_RANGE
+	var col_range: int = int(level_data.get("range", WHISPER_OF_THE_VEIL_RANGE))
 	for enemy in _enemies:
 		if _is_target_hidden(enemy):
 			continue
@@ -11747,6 +11834,14 @@ func _show_gold_gain(target_node: Control, amount: int) -> void:
 ## winning that hero fight (_in_hero_fight was true when the last
 ## enemy died) marks it defeated and then finishes for real.
 func _handle_victory() -> void:
+	# A level-up from the killing blow comes first: hold the stage/zone
+	# clear until the player has picked their skill (see
+	# _refresh_level_up_input_blocker(), which re-runs this once the
+	# level-up flow closes).
+	if _is_level_up_flow_open():
+		_victory_pending = true
+		return
+	_victory_pending = false
 	_play_log_stage_end("victory")
 	# Tutorial stage 1 ends here rather than rolling into the zone's own
 	# stage 2 - the next tutorial stage is a separately scripted scenario
@@ -12198,11 +12293,36 @@ func _play_log_state() -> Dictionary:
 		"enemies": _enemies.size(),
 		"enemy_hp": roundi(enemy_hp),
 	}
+	if _is_bear_alive():
+		state["bear_hp"] = roundi(float(_bear.get("current_hp", 0)))
+		state["bear_max_hp"] = roundi(float(_bear.get("hp", 0)))
+		state["bear_dmg"] = roundi((float(_bear.get("damage_min", 0)) + float(_bear.get("damage_max", 0))) / 2.0)
+	# Summons on each side. Only present while something is out, so rows stay
+	# short; the rival's bear is also counted inside enemies/enemy_hp above.
+	_play_log_add_guards(state, "guards", _guards)
+	_play_log_add_guards(state, "rival_guards", _enemy_guards)
 	if _in_hero_fight:
 		var boss: Dictionary = _get_hero_fight_boss()
 		state["rival"] = _enemy_hero_id
 		state["rival_hp"] = 0 if boss.is_empty() else roundi(float(boss.get("current_hp", 0)))
+		state["rival_mana"] = roundi(_enemy_current_mana)
+		var rival_bear: Dictionary = _get_enemy_elderwild_companion()
+		if not rival_bear.is_empty():
+			state["rival_bear_hp"] = roundi(float(rival_bear.get("current_hp", 0)))
+			state["rival_bear_dmg"] = roundi(float(rival_bear["static"].get("damage", 0)))
 	return state
+
+
+func _play_log_add_guards(state: Dictionary, key: String, guards: Array) -> void:
+	var total_hp := 0.0
+	var alive := 0
+	for guard in guards:
+		if float(guard.get("current_hp", 0)) > 0.0:
+			alive += 1
+			total_hp += float(guard["current_hp"])
+	if alive > 0:
+		state[key] = alive
+		state[key + "_hp"] = roundi(total_hp)
 
 
 ## Who you are going into this battle scene: level, stats, skill levels, potions.
@@ -12241,6 +12361,9 @@ func _play_log_fight_start(rival_static: Dictionary) -> void:
 	data["rival_stats"] = rival_static.get("stats", {})
 	data["rival_skills"] = skills
 	data["rival_potions"] = {"health": _enemy_potion_health_count, "mana": _enemy_potion_mana_count}
+	data["rival_items"] = PlayerManager.get_npc_items(rival_id)
+	data["rival_mana"] = roundi(_enemy_current_mana)
+	data["rival_max_mana"] = roundi(_enemy_max_mana)
 	PlayLog.event("fight_start", data)
 
 
@@ -12653,7 +12776,8 @@ func _enemy_turn() -> void:
 				# always the priority over the bear.
 				_play_enemy_attack_lunge(enemy, _hero_pos_index)
 				_fire_enemy_projectile(enemy, hero_image)
-				apply_damage(enemy_damage)
+				if not _enemy_attack_misses_hero() and _try_redirect_hit_to_guard(enemy_damage) < 0.0:
+					apply_damage(enemy_damage)
 				_deferred_hit_node = null
 				attacked = true
 			elif _is_bear_alive() and _distance(enemy["pos_index"], _bear["pos_index"]) <= _enemy_attack_range(enemy):
@@ -12692,7 +12816,12 @@ func _enemy_turn() -> void:
 			var attacked: bool = false
 			if enemy["pos_index"] == _hero_pos_index and not hero_hidden:
 				_play_enemy_attack_lunge(enemy)
-				_apply_enemy_companion_hit_effects(enemy, apply_damage(enemy_damage))
+				var melee_dealt: float = 0.0
+				if not _enemy_attack_misses_hero():
+					melee_dealt = _try_redirect_hit_to_guard(enemy_damage)
+					if melee_dealt < 0.0:
+						melee_dealt = apply_damage(enemy_damage)
+				_apply_enemy_companion_hit_effects(enemy, melee_dealt)
 				attacked = true
 			elif _is_bear_alive() and enemy["pos_index"] == _bear["pos_index"]:
 				_play_enemy_attack_lunge(enemy)
@@ -12836,6 +12965,16 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 	# - so the rival still gets to pick a skill; the picker (via
 	# _enemy_ai_hero_hidden) then only considers the bear-targetable
 	# ones, aimed at the bear, plus that self-heal.
+	# Beast of the Elderwild is committed to: the rival walks in for it (see
+	# closing_for_beast below), so once the player is within its reach it is
+	# cast regardless of what the scorer thinks of it at his current HP - it's
+	# his best skill. The one thing allowed to go first is a missing companion.
+	if not silenced and not hero_hidden and hero_distance <= EnemySkillRange.BEAST_OF_THE_ELDERWILD_REACH 			and _is_enemy_skill_ready("beast_of_the_elderwild", enemy_type, hero_distance, enemy):
+		var companion_first: bool = _get_enemy_elderwild_companion().is_empty() 				and _is_enemy_skill_ready("elderwild_companion", enemy_type, hero_distance, enemy)
+		if not companion_first:
+			_cast_enemy_skill(enemy, "beast_of_the_elderwild")
+			return
+
 	if not silenced:
 		_enemy_ai_hero_hidden = hero_hidden
 		var skill_id: String = _pick_enemy_ready_skill(enemy, enemy_type, hero_distance)
@@ -12848,7 +12987,12 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 			_drink_enemy_mana_potion()
 			return
 
-	if enemy_type == "range":
+	# Beast of the Elderwild is a melee form: if it's ready but the player is
+	# further than its reach, close in (skipping the usual kite/shoot) so it
+	# can actually be cast next turn.
+	var closing_for_beast: bool = enemy_type == "range" and not hero_hidden and not rooted and hero_distance > EnemySkillRange.BEAST_OF_THE_ELDERWILD_REACH and _is_enemy_skill_ready("beast_of_the_elderwild", enemy_type, hero_distance, enemy, true)
+
+	if enemy_type == "range" and not closing_for_beast:
 		if not hero_hidden and not rooted and _enemy_flees_at(enemy, hero_distance):
 			var flee_pos: int = _get_flee_position(enemy)
 			if not _is_column_frostbound_rupture_blocked(flee_pos):
@@ -12899,6 +13043,7 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 func _drink_enemy_health_potion(enemy: Dictionary) -> void:
 	_enemy_potion_health_count -= 1
 	PlayerManager.set_npc_potion_count(_enemy_hero_id, "health", _enemy_potion_health_count)
+	PlayLog.event("rival_potion", {"potion": "health", "left": _enemy_potion_health_count, "turn": _turn_count})
 
 	var heal_amount: float = float(GameManager.get_item("health").get("value", 0))
 	var max_hp: float = _enemy_hero_effective_max_hp(enemy)
@@ -12911,6 +13056,7 @@ func _drink_enemy_health_potion(enemy: Dictionary) -> void:
 func _drink_enemy_mana_potion() -> void:
 	_enemy_potion_mana_count -= 1
 	PlayerManager.set_npc_potion_count(_enemy_hero_id, "mana", _enemy_potion_mana_count)
+	PlayLog.event("rival_potion", {"potion": "mana", "left": _enemy_potion_mana_count, "turn": _turn_count})
 
 	var mana_amount: float = float(GameManager.get_item("mana").get("value", 0))
 	_enemy_current_mana = minf(_enemy_max_mana, _enemy_current_mana + mana_amount)
@@ -12958,8 +13104,17 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 	if not might_level_data.is_empty():
 		attack_damage += attack_damage * float(might_level_data.get("bonus_damage_pct", 0.0))
 	_play_hero_attack_effect(_enemy_hero_static, enemy.get("node"), hero_image, _enemy_beast_of_the_elderwild_active)
-	var mitigated: float = apply_damage(attack_damage)
+	var rival_missed: bool = _enemy_attack_misses_hero()
+	var mitigated: float = 0.0 if rival_missed else _try_redirect_hit_to_guard(attack_damage)
+	if not rival_missed and mitigated < 0.0:
+		mitigated = apply_damage(attack_damage)
 	_deferred_hit_node = null
+	var hit_log: Dictionary = _play_log_state()
+	hit_log["raw"] = roundi(attack_damage)
+	hit_log["dealt"] = roundi(mitigated)
+	hit_log["armor"] = snappedf(_hero_armor(), 0.01)
+	hit_log["beast"] = _enemy_beast_of_the_elderwild_active
+	PlayLog.event("rival_hit", hit_log)
 
 	_apply_enemy_leeching_hunger_steal(enemy, mitigated)
 	_apply_enemy_wildbond_lifesteal(enemy, mitigated)
@@ -13659,6 +13814,11 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 	var level_data: Dictionary = GameManager.get_skill_level_data(skill, level)
 	_enemy_skill_cooldowns[skill_id] = int(level_data.get("cooldown", 0))
 	_enemy_current_mana -= float(level_data.get("mana_cost", 0))
+	var cast_log: Dictionary = _play_log_state()
+	cast_log["skill"] = skill_id
+	cast_log["skill_level"] = level
+	cast_log["distance"] = _distance(enemy["pos_index"], _hero_pos_index)
+	PlayLog.event("rival_cast", cast_log)
 
 	# Aimed at the player's Elderwild Companion instead of the player? Each
 	# bear-targetable _cast_enemy_*() below reads this first.
@@ -14686,16 +14846,16 @@ func _cast_enemy_thornbind(level_data: Dictionary) -> void:
 func _summon_enemy_elderwild_companion(level_data: Dictionary) -> void:
 	_despawn_enemy_elderwild_companion()
 
-	var damage_min: float = float(level_data.get("damage_min", 0))
-	var damage_max: float = float(level_data.get("damage_max", 0))
+	# Its health and damage are a share of the rival's own.
+	var rival_static: Dictionary = _get_hero_fight_boss().get("static", {})
 
 	_spawn_enemy({
 		"id": "enemy_elderwild_companion",
 		"name": "Elderwild Companion",
 		"image": ELDERWILD_COMPANION_IMAGE_PATH,
 		"type": "melee",
-		"hp": float(level_data.get("hp", 1)),
-		"damage": roundi((damage_min + damage_max) / 2.0),
+		"hp": maxf(1.0, float(level_data.get("hp_pct", 0.0)) * float(rival_static.get("hp", 0)) * ENEMY_BEAR_STAT_MULT),
+		"damage": roundi(float(level_data.get("damage_pct", 0.0)) * float(rival_static.get("damage", 0)) * ENEMY_BEAR_STAT_MULT),
 		"armor": float(level_data.get("armor", 0)),
 		"XP": 0,
 		"gold": "0-0",
@@ -14720,7 +14880,11 @@ func _apply_enemy_companion_hit_effects(companion: Dictionary, dealt: float) -> 
 		var max_hp: float = _enemy_hero_effective_max_hp(boss)
 		boss["current_hp"] = minf(max_hp, float(boss["current_hp"]) + dealt * _enemy_wildbond_lifesteal_pct)
 		_play_lifesteal_effect(hero_image, boss.get("node"))
+	# Same as the player's own: Wildbond's share also heals the companion, the
+	# larger of that and its own top-level share (not stacked).
 	var self_lifesteal: float = float(companion["static"].get("lifesteal_pct", 0.0))
+	if not boss.is_empty() and _enemy_wildbond_active:
+		self_lifesteal = maxf(self_lifesteal, _enemy_wildbond_lifesteal_pct)
 	if self_lifesteal > 0.0:
 		companion["current_hp"] = minf(float(companion["static"].get("hp", 1)), float(companion["current_hp"]) + dealt * self_lifesteal)
 		_play_lifesteal_effect(hero_image, companion.get("node"))
@@ -16406,7 +16570,8 @@ func _cast_enemy_sanguine_bloom(level_data: Dictionary) -> void:
 func _activate_enemy_woven_flesh(level_data: Dictionary) -> void:
 	_enemy_woven_flesh_active = true
 	_enemy_woven_flesh_bonus_armor = float(level_data.get("bonus_armor", 0))
-	_enemy_woven_flesh_bonus_hp_regen = float(level_data.get("bonus_hp_regen", 0))
+	var rival_woven_max_hp: float = _enemy_hero_effective_max_hp(_get_hero_fight_boss())
+	_enemy_woven_flesh_bonus_hp_regen = float(level_data.get("bonus_hp_regen", 0)) + float(level_data.get("bonus_hp_regen_pct", 0.0)) * rival_woven_max_hp
 	_enemy_woven_flesh_turns_remaining = int(level_data.get("duration", 0))
 	_enemy_woven_flesh_duration_pending_start = true
 	_show_message_over_hero("Woven Flesh!")

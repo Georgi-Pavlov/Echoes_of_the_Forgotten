@@ -164,6 +164,12 @@ func _npc_can_spend_skill_point_on(hero_id: String, skill_id: String, hero_stati
 	return required_level >= 0 and PlayerManager.get_npc_level(hero_id) >= required_level
 
 
+## A hero whose kit only works with one skill learns it before anything else
+## (Erynd without his Elderwild Companion is just a weak ranged hero, and the
+## random pick below can leave it unlearned for good).
+const CORE_SKILL_IDS := {"erynd": "elderwild_companion"}
+
+
 ## Spends this NPC's one banked skill point (if any) on a random
 ## eligible skill - an eligible ULTIMATE is always chosen over any
 ## eligible standard skill, per design; among ties within whichever
@@ -182,6 +188,11 @@ func _spend_npc_skill_point(hero_id: String, hero_static: Dictionary) -> bool:
 			eligible_ultimates.append(skill_id)
 		else:
 			eligible_standards.append(skill_id)
+
+	var core_skill_id: String = CORE_SKILL_IDS.get(hero_id, "")
+	if core_skill_id != "" and PlayerManager.get_npc_skill_level(hero_id, core_skill_id) <= 0 and core_skill_id in eligible_standards:
+		eligible_ultimates = []
+		eligible_standards = [core_skill_id]
 
 	var pool: Array = eligible_ultimates if not eligible_ultimates.is_empty() else eligible_standards
 	if pool.is_empty():
@@ -1553,9 +1564,12 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 			# hero would otherwise have attacked this turn.
 			_apply_npc_root(_lowest_hp_enemy(living), level_data)
 		"elderwild_companion":
+			var range_parts: PackedStringArray = damage_range.split("-")
+			var range_min: float = float(range_parts[0])
+			var range_max: float = float(range_parts[1]) if range_parts.size() > 1 else range_min
 			state["bear"] = {
-				"damage_min": float(level_data.get("damage_min", 0)),
-				"damage_max": float(level_data.get("damage_max", 0)),
+				"damage_min": float(level_data.get("damage_pct", 0.0)) * range_min,
+				"damage_max": float(level_data.get("damage_pct", 0.0)) * range_max,
 			}
 		"wildbond":
 			_activate_npc_wildbond(state["wildbond"], level_data)
@@ -2785,6 +2799,7 @@ func _activate_npc_woven_flesh(la: Dictionary, level_data: Dictionary) -> void:
 	la["active"] = true
 	la["bonus_armor"] = float(level_data.get("bonus_armor", 0))
 	la["bonus_hp_regen"] = float(level_data.get("bonus_hp_regen", 0))
+	la["bonus_hp_regen_pct"] = float(level_data.get("bonus_hp_regen_pct", 0.0))
 	la["turns_remaining"] = int(level_data.get("duration", 0))
 	la["duration_pending_start"] = true
 
@@ -2796,7 +2811,7 @@ func _tick_npc_woven_flesh(la: Dictionary, current_hp: float, effective_max_hp: 
 		la["duration_pending_start"] = false
 		return current_hp
 
-	current_hp = minf(effective_max_hp, current_hp + float(la["bonus_hp_regen"]))
+	current_hp = minf(effective_max_hp, current_hp + float(la["bonus_hp_regen"]) + float(la.get("bonus_hp_regen_pct", 0.0)) * effective_max_hp)
 	la["turns_remaining"] -= 1
 	if la["turns_remaining"] <= 0:
 		_end_npc_woven_flesh(la)

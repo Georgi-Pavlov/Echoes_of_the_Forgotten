@@ -191,7 +191,15 @@ const RANGE_CHECKED_SKILL_IDS: Array[String] = ["abyssal_spasm", "thornbind", "w
 #   - ATTACK: buffs that pay off through follow-up basic attacks, reach =
 #     the rival's own basic-attack range for its type.
 const ENGAGEMENT_RADIUS_SKILL_IDS: Array[String] = ["the_frost_tempest", "mother's_grasp", "luring_gaze", "paralytic_venom", "fallen_grace", "eternal_eclipse"]
-const ENGAGEMENT_ATTACK_SKILL_IDS: Array[String] = ["leeching_hunger", "bestial_rage", "frostbound_fangs", "beast_of_the_elderwild"]
+const ENGAGEMENT_ATTACK_SKILL_IDS: Array[String] = ["leeching_hunger", "bestial_rage", "frostbound_fangs", "beast_of_the_elderwild", "wildbond"]
+## Short-window buffs that must be in reach THIS turn, not after the next
+## step - a rival who casts them a column early can wander off or retreat
+## and burn the window (Erynd's Wildbond/Beast of the Elderwild).
+const ENGAGEMENT_NOW_SKILL_IDS: Array[String] = ["beast_of_the_elderwild", "wildbond"]
+## Beast of the Elderwild's bear form fights in melee, so it's only worth
+## casting from the player's own column or the next one over, however far
+## the caster's normal attack reaches. battle.gd walks the rival in first.
+const BEAST_OF_THE_ELDERWILD_REACH := 1
 
 
 static func requires_engagement_check(skill_id: String) -> bool:
@@ -206,6 +214,10 @@ static func requires_engagement_check(skill_id: String) -> bool:
 static func is_engagement_ready(skill_id: String, distance: int, radius: int, attack_range: int, move_distance: int = 1) -> bool:
 	if skill_id in ENGAGEMENT_RADIUS_SKILL_IDS:
 		return distance <= radius + move_distance
+	if skill_id == "beast_of_the_elderwild":
+		return distance <= BEAST_OF_THE_ELDERWILD_REACH
+	if skill_id in ENGAGEMENT_NOW_SKILL_IDS:
+		return distance <= attack_range
 	if skill_id in ENGAGEMENT_ATTACK_SKILL_IDS:
 		return distance <= attack_range + move_distance
 	return true
@@ -229,9 +241,9 @@ static func requires_range_check(skill_id: String) -> bool:
 ## requires_range_check().
 static func is_in_range(skill_id: String, distance: int, radius: int, attack_range: int) -> bool:
 	match skill_id:
-		"abyssal_spasm", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "frostbound_rupture", "charge", "sanguine_bloom", "sweep", "chainfire", "cinderbomb", "shackles", "deathlight_lure", "hope_of_the_fallen", "moonfall_lance":
+		"abyssal_spasm", "whisper_of_the_veil", "drowned_surge", "undertow", "the_sunken_one", "barbed_lunge", "mark_of_stillness", "the_hollow_cold", "frostbound_rupture", "charge", "sanguine_bloom", "sweep", "chainfire", "cinderbomb", "shackles", "deathlight_lure", "hope_of_the_fallen", "moonfall_lance":
 			return distance <= radius
-		"thornbind", "whisper_of_the_veil", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "glacier_breaker", "three_cheers", "kiss_the_wastes":
+		"thornbind", "touch_of_the_first_cold", "maddening_roar", "the_hunger_calls", "rimecleaver", "winters_grip", "glacier_breaker", "three_cheers", "kiss_the_wastes":
 			return distance <= attack_range
 		_:
 			# double_trouble never reaches this generic chain - battle.gd's

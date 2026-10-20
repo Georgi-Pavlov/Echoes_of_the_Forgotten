@@ -77,6 +77,8 @@ func get_skill_level_data(skill: Dictionary, level: int) -> Dictionary:
 	return {"cooldown": skill.get("cooldown", 0)}
 
 
+const HIDDEN_SKILL_STAT_KEYS: Array[String] = ["dash"]
+
 ## Turns one level's worth of a skill's raw mechanical fields (damage,
 ## mana_cost, cooldown, dot_damage, stun_turns, radius, ... - the exact
 ## set varies per skill, see get_skill_level_data()) into a human-
@@ -93,13 +95,26 @@ func get_skill_level_data(skill: Dictionary, level: int) -> Dictionary:
 func format_skill_level_stats(level_data: Dictionary) -> String:
 	var lines: PackedStringArray = []
 	for key in level_data.keys():
+		# Animation-only flags (Withering Pursuit's dash) aren't stats.
+		if key in HIDDEN_SKILL_STAT_KEYS:
+			continue
 		var raw_value = level_data[key]
 		if str(key).ends_with("_pct"):
 			var label: String = str(key).trim_suffix("_pct").capitalize()
-			lines.append("%s: %d%%" % [label, roundi(float(raw_value) * 100.0)])
+			lines.append("%s: %s%%" % [label, _format_pct_value(float(raw_value) * 100.0)])
 		else:
 			lines.append("%s: %s" % [str(key).capitalize(), _format_skill_stat_value(raw_value)])
 	return "\n".join(lines)
+
+
+## A percentage in points (1.35 for 1.35%): whole numbers print without a
+## decimal ("35"), anything else keeps up to two places with trailing zeros
+## dropped ("1.35", "2.5").
+func _format_pct_value(points: float) -> String:
+	if is_equal_approx(points, roundf(points)):
+		return str(int(roundf(points)))
+	var text: String = "%.2f" % points
+	return text.rstrip("0").rstrip(".")
 
 
 ## A whole-number float (the overwhelming majority of skill level
@@ -497,12 +512,12 @@ var zones: Dictionary = {
 						"id": "elderwild_companion",
 						"name": "Elderwild Companion",
 						"type": "standard",
-						"description": "Erynd calls upon the ancient spirit of the Elderwild, taking shape as a massive spectral bear that fights at his side until slain. The beast acts on its own each turn, attacking enemies in its column or moving toward the nearest foe when none are within reach. When the companion is slain, the bond tears violently, causing Erynd to lose 20% of his maximum HP, though the backlash can never kill him. At its highest level the beast also heals itself for a share of the damage it deals. Calling the spirit again replaces the existing companion with a new one at the skill's current level.",
+						"description": "Erynd calls upon the ancient spirit of the Elderwild, taking shape as a massive spectral bear that fights at his side until slain. The beast's health and damage are a share of Erynd's own, growing as he does. The beast acts on its own each turn, attacking enemies in its column or moving toward the nearest foe when none are within reach. When the companion is slain, the bond tears violently, causing Erynd to lose 20% of his maximum HP, though the backlash can never kill him. At its highest level the beast also heals itself for a share of the damage it deals. Calling the spirit again replaces the existing companion with a new one at the skill's current level.",
 						"levels": [
-							{"hp": 330, "damage_min": 33, "damage_max": 40, "armor": 3.0, "speed": 1, "mana_cost": 80, "cooldown": 8},
-							{"hp": 450, "damage_min": 42, "damage_max": 48, "armor": 4.0, "speed": 1, "mana_cost": 90, "cooldown": 7},
-							{"hp": 590, "damage_min": 51, "damage_max": 58, "armor": 5.5, "speed": 1, "mana_cost": 100, "cooldown": 6},
-							{"hp": 770, "damage_min": 60, "damage_max": 70, "armor": 7.0, "speed": 2, "bear_lifesteal_pct": 0.30, "mana_cost": 110, "cooldown": 5}
+							{"hp_pct": 0.40, "damage_pct": 0.45, "armor": 3.0, "speed": 1, "mana_cost": 80, "cooldown": 8},
+							{"hp_pct": 0.50, "damage_pct": 0.55, "armor": 4.0, "speed": 1, "mana_cost": 90, "cooldown": 7},
+							{"hp_pct": 0.60, "damage_pct": 0.65, "armor": 5.5, "speed": 1, "mana_cost": 100, "cooldown": 6},
+							{"hp_pct": 0.70, "damage_pct": 0.75, "armor": 7.0, "speed": 2, "bear_lifesteal_pct": 0.30, "mana_cost": 110, "cooldown": 5}
 						]
 					},
 					{
@@ -647,10 +662,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Morvael sends a tendril of living mist toward a target. Against an enemy, the mist tears away at its life force, dealing damage. When directed into Morvael himself (double tap the skill button), the mist consumes a portion of his physical essence before knitting his form back together, costing HP but restoring more in return.",
 						"levels": [
-							{"heal": 80, "damage": 120, "hp_cost": 30, "mana_cost": 35, "cooldown": 3},
-							{"heal": 120, "damage": 180, "hp_cost": 40, "mana_cost": 40, "cooldown": 3},
-							{"heal": 160, "damage": 240, "hp_cost": 50, "mana_cost": 45, "cooldown": 2},
-							{"heal": 200, "damage": 300, "hp_cost": 60, "mana_cost": 50, "cooldown": 2}
+							{"heal": 80, "damage": 150, "range": 3, "hp_cost": 30, "mana_cost": 35, "cooldown": 3},
+							{"heal": 120, "damage": 210, "range": 3, "hp_cost": 40, "mana_cost": 40, "cooldown": 3},
+							{"heal": 160, "damage": 280, "range": 3, "hp_cost": 50, "mana_cost": 45, "cooldown": 2},
+							{"heal": 200, "damage": 350, "range": 3, "hp_cost": 60, "mana_cost": 50, "cooldown": 2}
 						]
 					},
 					{
@@ -659,10 +674,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Morvael surrounds himself with a dense veil of living mist that absorbs incoming damage and strips away all negative effects upon its formation. If the veil is broken by force, the imprisoned mist erupts outward, lashing nearby enemies with the echoes of those lost within Morvain.",
 						"levels": [
-							{"shield_hp": 100, "aoe_damage": 75, "radius": 0, "duration": 3, "mana_cost": 50, "cooldown": 5},
-							{"shield_hp": 150, "aoe_damage": 112.5, "radius": 0, "duration": 3, "mana_cost": 55, "cooldown": 5},
-							{"shield_hp": 200, "aoe_damage": 150, "radius": 1, "duration": 4, "mana_cost": 60, "cooldown": 4},
-							{"shield_hp": 250, "aoe_damage": 187.5, "radius": 1, "duration": 4, "mana_cost": 65, "cooldown": 4}
+							{"shield_hp": 120, "aoe_damage": 100, "radius": 0, "duration": 3, "mana_cost": 50, "cooldown": 5},
+							{"shield_hp": 170, "aoe_damage": 145, "radius": 0, "duration": 3, "mana_cost": 55, "cooldown": 5},
+							{"shield_hp": 230, "aoe_damage": 200, "radius": 1, "duration": 4, "mana_cost": 60, "cooldown": 4},
+							{"shield_hp": 280, "aoe_damage": 250, "radius": 1, "duration": 4, "mana_cost": 65, "cooldown": 4}
 						]
 					},
 					{
@@ -671,10 +686,10 @@ var zones: Dictionary = {
 						"type": "passive",
 						"description": "Passive: every attack leaves a fragment of Morvael's mist clinging to the target. The fragments accumulate with each successive strike. When enough mist has gathered, it consumes the victim's voice and vitality, silencing them and dealing damage over time. The fragments dissipate if the target remains untouched for 3 turns.",
 						"levels": [
-							{"hits_to_activate": 3, "silence_turns": 1, "dot_damage": 22.5, "dot_duration": 2},
-							{"hits_to_activate": 3, "silence_turns": 1, "dot_damage": 37.5, "dot_duration": 2},
-							{"hits_to_activate": 2, "silence_turns": 2, "dot_damage": 45, "dot_duration": 3},
-							{"hits_to_activate": 2, "silence_turns": 2, "dot_damage": 52.5, "dot_duration": 3}
+							{"hits_to_activate": 3, "silence_turns": 1, "dot_damage": 40, "dot_duration": 2},
+							{"hits_to_activate": 3, "silence_turns": 1, "dot_damage": 65, "dot_duration": 2},
+							{"hits_to_activate": 2, "silence_turns": 2, "dot_damage": 95, "dot_duration": 3},
+							{"hits_to_activate": 2, "silence_turns": 2, "dot_damage": 135, "dot_duration": 3}
 						]
 					},
 					{
@@ -684,9 +699,9 @@ var zones: Dictionary = {
 						"auto_activate": true,
 						"description": "Ultimate: Not cast - automatically activates when Morvael's HP falls to this level's threshold. For the duration, the mist refuses to let its creation disperse. Every attack that would harm Morvael is instead consumed by the mist and transformed into healing. While the effect lasts, Morvael cannot be brought closer to death by incoming attacks.",
 						"levels": [
-							{"auto_activate_hp_pct": 0.3, "duration": 3, "heal_conversion_pct": 1.0, "cooldown": 10},
-							{"auto_activate_hp_pct": 0.3, "duration": 4, "heal_conversion_pct": 1.0, "cooldown": 9},
-							{"auto_activate_hp_pct": 0.3, "duration": 5, "heal_conversion_pct": 1.0, "cooldown": 8}
+							{"auto_activate_hp_pct": 0.3, "duration": 3, "heal_conversion_pct": 0.65, "cooldown": 12},
+							{"auto_activate_hp_pct": 0.3, "duration": 4, "heal_conversion_pct": 0.65, "cooldown": 11},
+							{"auto_activate_hp_pct": 0.3, "duration": 5, "heal_conversion_pct": 0.65, "cooldown": 10}
 						]
 					},
 				],
@@ -795,10 +810,10 @@ var zones: Dictionary = {
 						"type": "passive",
 						"description": "Passive: every few attacks, Kaelen's blade carries the crushing pull of the deep, empowering the strike and tearing through nearby enemies with a portion of its force.",
 						"levels": [
-							{"hits_to_activate": 3, "bonus_damage": 22.5, "cleave_columns": 1, "cleave_damage_pct": 0.5},
-							{"hits_to_activate": 3, "bonus_damage": 37.5, "cleave_columns": 1, "cleave_damage_pct": 0.6},
-							{"hits_to_activate": 2, "bonus_damage": 52.5, "cleave_columns": 1, "cleave_damage_pct": 0.7},
-							{"hits_to_activate": 2, "bonus_damage": 67.5, "cleave_columns": 2, "cleave_damage_pct": 0.75}
+							{"hits_to_activate": 3, "bonus_damage": 23, "cleave_columns": 1, "cleave_damage_pct": 0.5},
+							{"hits_to_activate": 3, "bonus_damage": 38, "cleave_columns": 1, "cleave_damage_pct": 0.6},
+							{"hits_to_activate": 2, "bonus_damage": 53, "cleave_columns": 1, "cleave_damage_pct": 0.7},
+							{"hits_to_activate": 2, "bonus_damage": 68, "cleave_columns": 2, "cleave_damage_pct": 0.75}
 						]
 					},
 					{
@@ -917,12 +932,12 @@ var zones: Dictionary = {
 						"id": "mark_of_stillness",
 						"name": "Mark of Stillness",
 						"type": "standard",
-						"description": "Nhal marks an enemy with the cold that existed before motion itself. The afflicted creature slowly loses the warmth and movement that keep it alive, suffering damage for the duration of the curse.",
+						"description": "Nhal marks an enemy with primordial cold. The afflicted creature slowly loses the warmth, suffering damage for the duration of the curse.",
 						"levels": [
-							{"damage": 16.9, "duration": 3, "range": 2, "mana_cost": 40, "cooldown": 4},
-							{"damage": 28.1, "duration": 3, "range": 3, "mana_cost": 45, "cooldown": 4},
-							{"damage": 39.4, "duration": 4, "range": 3, "mana_cost": 50, "cooldown": 3},
-							{"damage": 50.6, "duration": 4, "range": 4, "mana_cost": 55, "cooldown": 3}
+							{"damage": 45, "duration": 3, "range": 2, "mana_cost": 40, "cooldown": 4},
+							{"damage": 70, "duration": 3, "range": 3, "mana_cost": 45, "cooldown": 4},
+							{"damage": 105, "duration": 4, "range": 3, "mana_cost": 50, "cooldown": 3},
+							{"damage": 155, "duration": 4, "range": 4, "mana_cost": 55, "cooldown": 3}
 						]
 					},
 					{
@@ -931,22 +946,22 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Nhal opens a small wound in the air, releasing the cold of the emptiness that existed before the world. A freezing vortex lingers at the target location, slowly consuming the warmth of every enemy caught within it.",
 						"levels": [
-							{"damage": 16.9, "radius": 1, "duration": 3, "mana_cost": 40, "cooldown": 5},
-							{"damage": 28.1, "radius": 1, "duration": 3, "mana_cost": 45, "cooldown": 5},
-							{"damage": 39.4, "radius": 1, "duration": 4, "mana_cost": 50, "cooldown": 4},
-							{"damage": 50.6, "radius": 2, "duration": 4, "mana_cost": 55, "cooldown": 4}
+							{"damage": 55, "radius": 1, "duration": 3, "mana_cost": 40, "cooldown": 5},
+							{"damage": 85, "radius": 1, "duration": 3, "mana_cost": 45, "cooldown": 5},
+							{"damage": 125, "radius": 1, "duration": 4, "mana_cost": 50, "cooldown": 4},
+							{"damage": 175, "radius": 2, "duration": 4, "mana_cost": 55, "cooldown": 4}
 						]
 					},
 					{
 						"id": "touch_of_the_first_cold",
 						"name": "Touch of the First Cold",
 						"type": "standard",
-						"description": "Nhal reaches into an enemy with a fragment of the cold that existed before stars, flesh, and fire. His attack carries this primordial chill, striking the target with unnatural force.",
+						"description": "Nhal reaches into an enemy with a fragment of the cold that existed before the stars. His attack carries this chill, striking the target with unnatural force.",
 						"levels": [
-							{"bonus_damage": 45, "mana_cost": 50, "cooldown": 6},
-							{"bonus_damage": 78.8, "mana_cost": 55, "cooldown": 6},
-							{"bonus_damage": 123.8, "mana_cost": 60, "cooldown": 5},
-							{"bonus_damage": 168.8, "mana_cost": 65, "cooldown": 5}
+							{"bonus_damage": 55, "mana_cost": 50, "cooldown": 6},
+							{"bonus_damage": 90, "mana_cost": 55, "cooldown": 6},
+							{"bonus_damage": 145, "mana_cost": 60, "cooldown": 5},
+							{"bonus_damage": 215, "mana_cost": 65, "cooldown": 5}
 						]
 					},
 					{
@@ -955,9 +970,9 @@ var zones: Dictionary = {
 						"type": "ultimate",
 						"description": "Ultimate: Nhal marks an enemy and erases part of the material plane around it. Returning the world to the empty void before the creation of the matter. Everyone caught in its radius is struck with a primordial cold that continues to consume the heat of their bodies over time and they are prevented from retaining the life they once possessed. Any enemy whose health falls beneath a marked threshold is claimed by the cold void and dies instantly.",
 						"levels": [
-							{"damage": 168.8, "dot_damage": 22.5, "dot_duration": 3, "stun_turns": 1, "execute_pct": 0.20, "radius": 1, "mana_cost": 100, "cooldown": 10},
-							{"damage": 253.1, "dot_damage": 33.8, "dot_duration": 3, "stun_turns": 1, "execute_pct": 0.25, "radius": 1, "mana_cost": 110, "cooldown": 9},
-							{"damage": 337.5, "dot_damage": 45, "dot_duration": 4, "stun_turns": 2, "execute_pct": 0.30, "radius": 2, "mana_cost": 120, "cooldown": 8}
+							{"damage": 175, "dot_damage": 35, "dot_duration": 3, "stun_turns": 1, "execute_pct": 0.20, "radius": 1, "mana_cost": 100, "cooldown": 10},
+							{"damage": 265, "dot_damage": 45, "dot_duration": 3, "stun_turns": 1, "execute_pct": 0.25, "radius": 1, "mana_cost": 110, "cooldown": 9},
+							{"damage": 385, "dot_damage": 65, "dot_duration": 4, "stun_turns": 2, "execute_pct": 0.30, "radius": 2, "mana_cost": 120, "cooldown": 8}
 						]
 					},
 				],
@@ -997,10 +1012,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "The Primordial Hunger's claws and fangs become coated in ancient frost, extending its reach and empowering its next attacks with the killing cold of Frostspire.",
 						"levels": [
-							{"bonus_damage": 38.2, "bonus_range": 2, "attacks": 2, "duration": 3, "mana_cost": 40, "cooldown": 5},
-							{"bonus_damage": 63.7, "bonus_range": 2, "attacks": 3, "duration": 3, "mana_cost": 50, "cooldown": 5},
-							{"bonus_damage": 89.2, "bonus_range": 3, "attacks": 3, "duration": 4, "mana_cost": 60, "cooldown": 4},
-							{"bonus_damage": 114.7, "bonus_range": 3, "attacks": 4, "duration": 4, "mana_cost": 70, "cooldown": 4}
+							{"bonus_damage": 45, "bonus_range": 2, "attacks": 2, "duration": 3, "mana_cost": 40, "cooldown": 5},
+							{"bonus_damage": 70, "bonus_range": 2, "attacks": 3, "duration": 3, "mana_cost": 50, "cooldown": 5},
+							{"bonus_damage": 100, "bonus_range": 3, "attacks": 3, "duration": 4, "mana_cost": 60, "cooldown": 4},
+							{"bonus_damage": 135, "bonus_range": 3, "attacks": 4, "duration": 4, "mana_cost": 70, "cooldown": 4}
 						]
 					},
 					{
@@ -1009,10 +1024,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "The Primordial Hunger release a terrifying roar against a marked target, causing it to loose its will to live.  The minds of all other enemies around the target are shattered.",
 						"levels": [
-							{"damage": 127.5, "shatter_damage": 76.5, "shatter_range": 1, "mana_cost": 50, "cooldown": 5},
-							{"damage": 191.2, "shatter_damage": 114.7, "shatter_range": 1, "mana_cost": 55, "cooldown": 5},
-							{"damage": 255, "shatter_damage": 153, "shatter_range": 1, "mana_cost": 60, "cooldown": 4},
-							{"damage": 318.8, "shatter_damage": 191.2, "shatter_range": 2, "mana_cost": 65, "cooldown": 4}
+							{"damage": 135, "shatter_damage": 80, "shatter_range": 1, "mana_cost": 50, "cooldown": 5},
+							{"damage": 190, "shatter_damage": 115, "shatter_range": 1, "mana_cost": 55, "cooldown": 5},
+							{"damage": 255, "shatter_damage": 150, "shatter_range": 1, "mana_cost": 60, "cooldown": 4},
+							{"damage": 330, "shatter_damage": 190, "shatter_range": 2, "mana_cost": 65, "cooldown": 4}
 						]
 					},
 					{
@@ -1134,10 +1149,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Frost Daughter summons a massive axe of solid ice above an enemy and brings it crashing down upon them. At higher levels, the frozen blade cleaves through nearby enemies with the force of the impact.",
 						"levels": [
-							{"damage": 95.6, "radius": 0, "mana_cost": 70, "cooldown": 3},
-							{"damage": 123.8, "radius": 0, "mana_cost": 100, "cooldown": 3},
-							{"damage": 168.8, "radius": 1, "mana_cost": 135, "cooldown": 4},
-							{"damage": 225, "radius": 2, "mana_cost": 170, "cooldown": 4}
+							{"damage": 100, "radius": 0, "mana_cost": 70, "cooldown": 3},
+							{"damage": 130, "radius": 0, "mana_cost": 100, "cooldown": 3},
+							{"damage": 175, "radius": 1, "mana_cost": 135, "cooldown": 4},
+							{"damage": 235, "radius": 2, "mana_cost": 170, "cooldown": 4}
 						]
 					},
 					{
@@ -1146,22 +1161,22 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Frost Daughter calls the frozen earth beneath an enemy to life. Spectral hands of ice burst from the ground and seize the victim, holding them in place while the freezing grip slowly tears away their strength.",
 						"levels": [
-							{"stun_turns": 1, "dot_damage": 28.1, "dot_duration": 2, "mana_cost": 80, "cooldown": 4},
-							{"stun_turns": 1, "dot_damage": 50.6, "dot_duration": 2, "mana_cost": 110, "cooldown": 4},
-							{"stun_turns": 2, "dot_damage": 67.5, "dot_duration": 3, "mana_cost": 145, "cooldown": 5},
-							{"stun_turns": 2, "dot_damage": 95.6, "dot_duration": 4, "mana_cost": 180, "cooldown": 5}
+							{"stun_turns": 1, "dot_damage": 40, "dot_duration": 2, "mana_cost": 80, "cooldown": 4},
+							{"stun_turns": 1, "dot_damage": 70, "dot_duration": 2, "mana_cost": 110, "cooldown": 4},
+							{"stun_turns": 2, "dot_damage": 95, "dot_duration": 3, "mana_cost": 145, "cooldown": 5},
+							{"stun_turns": 2, "dot_damage": 120, "dot_duration": 4, "mana_cost": 180, "cooldown": 5}
 						]
 					},
 					{
 						"id": "frostborn",
 						"name": "Frostborn",
 						"type": "passive",
-						"description": "Passive: Frost Daughter draws strength from the Everfrost itself. The unnatural cold flowing through her body restores a portion of her magical energy every turn.",
+						"description": "Passive: Frost Daughter draws strength from the Everfrost itself. The unnatural cold flowing through her body restores a share of her maximum magical energy every turn.",
 						"levels": [
-							{"bonus_mana_regen": 1.5},
-							{"bonus_mana_regen": 2.7},
-							{"bonus_mana_regen": 4},
-							{"bonus_mana_regen": 5.3}
+							{"bonus_mana_regen_pct": 0.009},
+							{"bonus_mana_regen_pct": 0.0135},
+							{"bonus_mana_regen_pct": 0.019},
+							{"bonus_mana_regen_pct": 0.0235}
 						]
 					},
 					{
@@ -1170,9 +1185,9 @@ var zones: Dictionary = {
 						"type": "ultimate",
 						"description": "Ultimate: Frost Daughter rises above the ground and becomes the still center of a violent winter storm. A massive vortex of snow, ice, and freezing wind tears through everything around her, damaging every enemy caught within its reach.",
 						"levels": [
-							{"damage": 101.2, "duration": 3, "radius": 2, "mana_cost": 200, "cooldown": 8},
-							{"damage": 146.2, "duration": 3, "radius": 2, "mana_cost": 260, "cooldown": 9},
-							{"damage": 208.1, "duration": 4, "radius": 3, "mana_cost": 330, "cooldown": 10}
+							{"damage": 105, "duration": 3, "radius": 2, "mana_cost": 200, "cooldown": 8},
+							{"damage": 170, "duration": 3, "radius": 2, "mana_cost": 260, "cooldown": 9},
+							{"damage": 240, "duration": 4, "radius": 3, "mana_cost": 330, "cooldown": 10}
 						]
 					},
 				],
@@ -1220,9 +1235,9 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Skarn locks onto an enemy within range, becoming completely focused on his prey before charging directly at it. He crashes into the target, dealing damage and stunning it on impact.",
 						"levels": [
-							{"damage": 127.5, "stun_turns": 1, "range": 2, "mana_cost": 90, "cooldown": 5},
+							{"damage": 128, "stun_turns": 1, "range": 2, "mana_cost": 90, "cooldown": 5},
 							{"damage": 195, "stun_turns": 1, "range": 3, "mana_cost": 115, "cooldown": 5},
-							{"damage": 262.5, "stun_turns": 2, "range": 3, "mana_cost": 145, "cooldown": 6},
+							{"damage": 263, "stun_turns": 2, "range": 3, "mana_cost": 145, "cooldown": 6},
 							{"damage": 345, "stun_turns": 2, "range": 4, "mana_cost": 175, "cooldown": 6}
 						]
 					},
@@ -1234,8 +1249,8 @@ var zones: Dictionary = {
 						"levels": [
 							{"bonus_damage": 45, "duration": 3, "mana_cost": 60, "cooldown": 5},
 							{"bonus_damage": 75, "duration": 3, "mana_cost": 80, "cooldown": 5},
-							{"bonus_damage": 112.5, "duration": 4, "mana_cost": 105, "cooldown": 6},
-							{"bonus_damage": 157.5, "duration": 4, "mana_cost": 130, "cooldown": 6}
+							{"bonus_damage": 113, "duration": 4, "mana_cost": 105, "cooldown": 6},
+							{"bonus_damage": 158, "duration": 4, "mana_cost": 130, "cooldown": 6}
 						]
 					},
 					{
@@ -1325,7 +1340,7 @@ var zones: Dictionary = {
 				"background": "res://assets/zones/the_verdant_scar_the_rootmother.jpg",
 				"range_type": "Melee",
 				"main_stat": "Strength",
-				"damage_per_main_stat": 3.0,
+				"damage_per_main_stat": 2.3,
 				"stats": {
 					"strength": 25,
 					"agility": 15,
@@ -1356,10 +1371,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "The Rootmother plants a parasitic bloom within an enemy. The unnatural growth feeds on the victim's life force for several turns, dealing damage over time while transferring a portion of that stolen vitality back to the Rootmother.",
 						"levels": [
-							{"dot_damage": 37.5, "heal_per_turn": 15, "duration": 3, "range": 2, "mana_cost": 70, "cooldown": 5},
-							{"dot_damage": 60, "heal_per_turn": 25, "duration": 3, "range": 2, "mana_cost": 90, "cooldown": 5},
-							{"dot_damage": 82.5, "heal_per_turn": 35, "duration": 4, "range": 2, "mana_cost": 115, "cooldown": 6},
-							{"dot_damage": 112.5, "heal_per_turn": 50, "duration": 4, "range": 2, "mana_cost": 145, "cooldown": 6}
+							{"dot_damage": 50, "heal_per_turn": 15, "duration": 3, "range": 2, "mana_cost": 70, "cooldown": 5},
+							{"dot_damage": 70, "heal_per_turn": 25, "duration": 3, "range": 2, "mana_cost": 90, "cooldown": 5},
+							{"dot_damage": 100, "heal_per_turn": 35, "duration": 4, "range": 2, "mana_cost": 115, "cooldown": 6},
+							{"dot_damage": 125, "heal_per_turn": 50, "duration": 4, "range": 2, "mana_cost": 145, "cooldown": 6}
 						]
 					},
 					{
@@ -1368,10 +1383,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "The Rootmother draws living roots beneath her skin, weaving bark, flesh and plant matter into a regenerative shell. The growth hardens her body against attacks and continuously repairs her wounds for the duration.",
 						"levels": [
-							{"bonus_armor": 3, "bonus_hp_regen": 2, "duration": 4, "mana_cost": 60, "cooldown": 5},
-							{"bonus_armor": 5, "bonus_hp_regen": 3, "duration": 5, "mana_cost": 80, "cooldown": 5},
-							{"bonus_armor": 7, "bonus_hp_regen": 4, "duration": 6, "mana_cost": 100, "cooldown": 6},
-							{"bonus_armor": 9, "bonus_hp_regen": 5, "duration": 7, "mana_cost": 120, "cooldown": 6}
+							{"bonus_armor": 3, "bonus_hp_regen_pct": 0.02, "duration": 4, "mana_cost": 60, "cooldown": 5},
+							{"bonus_armor": 5, "bonus_hp_regen_pct": 0.025, "duration": 5, "mana_cost": 80, "cooldown": 5},
+							{"bonus_armor": 7, "bonus_hp_regen_pct": 0.03, "duration": 6, "mana_cost": 100, "cooldown": 6},
+							{"bonus_armor": 9, "bonus_hp_regen_pct": 0.035, "duration": 7, "mana_cost": 120, "cooldown": 6}
 						]
 					},
 					{
@@ -1380,9 +1395,9 @@ var zones: Dictionary = {
 						"type": "ultimate",
 						"description": "Ultimate: The Rootmother awakens the roots beneath her and sends them violently through the ground. Every enemy within range is seized and bound in place, unable to move while remaining free to attack and cast skills. The roots continue to tear into their victims for the duration.",
 						"levels": [
-							{"dot_damage": 97.5, "root_duration": 2, "radius": 1, "mana_cost": 180, "cooldown": 9},
-							{"dot_damage": 150, "root_duration": 3, "radius": 2, "mana_cost": 240, "cooldown": 10},
-							{"dot_damage": 225, "root_duration": 3, "radius": 2, "mana_cost": 300, "cooldown": 11}
+							{"dot_damage": 110, "root_duration": 2, "radius": 1, "mana_cost": 180, "cooldown": 9},
+							{"dot_damage": 170, "root_duration": 3, "radius": 2, "mana_cost": 240, "cooldown": 10},
+							{"dot_damage": 255, "root_duration": 3, "radius": 2, "mana_cost": 300, "cooldown": 11}
 						]
 					},
 				],
@@ -1411,7 +1426,7 @@ var zones: Dictionary = {
 					"hp": 714,
 					"mana": 351,
 					"armor": 2.67,
-					"damage": "72-78",
+					"damage": "66-72",
 					"speed": 1
 				},
 				"skills": [
@@ -1421,10 +1436,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Cinder swings his flamethrower in a wide arc, unleashing a torrent of fire around himself. Every enemy caught within the flames suffers damage as the burning fuel scorches flesh.",
 						"levels": [
-							{"damage": 120, "radius": 1, "mana_cost": 70, "cooldown": 4},
-							{"damage": 180, "radius": 1, "mana_cost": 90, "cooldown": 4},
-							{"damage": 240, "radius": 2, "mana_cost": 115, "cooldown": 5},
-							{"damage": 312, "radius": 2, "mana_cost": 140, "cooldown": 5}
+							{"damage": 80, "radius": 1, "mana_cost": 70, "cooldown": 4},
+							{"damage": 130, "radius": 1, "mana_cost": 90, "cooldown": 4},
+							{"damage": 185, "radius": 2, "mana_cost": 115, "cooldown": 5},
+							{"damage": 245, "radius": 2, "mana_cost": 140, "cooldown": 5}
 						]
 					},
 					{
@@ -1433,10 +1448,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Cinder fires a hooked chain that anchors above the marked enemy. He swings toward the target, dragging his flamethrower beneath him and leaving a trail of fire along his path.",
 						"levels": [
-							{"damage": 84, "range": 3, "mana_cost": 60, "cooldown": 4},
-							{"damage": 114, "range": 3, "mana_cost": 80, "cooldown": 4},
-							{"damage": 156, "range": 4, "mana_cost": 105, "cooldown": 5},
-							{"damage": 222, "range": 5, "mana_cost": 130, "cooldown": 5}
+							{"damage": 55, "range": 3, "mana_cost": 60, "cooldown": 4},
+							{"damage": 85, "range": 3, "mana_cost": 80, "cooldown": 4},
+							{"damage": 125, "range": 4, "mana_cost": 105, "cooldown": 5},
+							{"damage": 185, "range": 4, "mana_cost": 130, "cooldown": 5}
 						]
 					},
 					{
@@ -1559,7 +1574,7 @@ var zones: Dictionary = {
 				"background": "res://assets/zones/drowned_empire_the_last_empress.jpg",
 				"range_type": "Melee",
 				"main_stat": "Agility",
-				"damage_per_main_stat": 1.1,
+				"damage_per_main_stat": 2.0,
 				"stats": {
 					"strength": 21,
 					"agility": 22,
@@ -1568,7 +1583,7 @@ var zones: Dictionary = {
 					"hp": 582,
 					"mana": 303,
 					"armor": 4.7,
-					"damage": "68-71",
+					"damage": "72-75",
 					"speed": 1
 				},
 				"skills": [
@@ -1578,22 +1593,22 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "The Last Empress summons her personal guard, ancient drowned warriors who emerge around the nearest enemy. The guards protect their sovereign by drawing attacks away from her, while striking nearby enemies whenever they find an opening. Their decayed forms can be destroyed, but their loyalty endures beyond death.",
 						"levels": [
-							{"guards": 3, "hp_pct": 0.35, "damage_pct": 0.4, "hit_chance_pct": 0.20, "duration": 3, "mana_cost": 70, "cooldown": 5},
-							{"guards": 3, "hp_pct": 0.4, "damage_pct": 0.45, "hit_chance_pct": 0.25, "duration": 3, "mana_cost": 90, "cooldown": 5},
-							{"guards": 3, "hp_pct": 0.45, "damage_pct": 0.5, "hit_chance_pct": 0.35, "duration": 4, "mana_cost": 115, "cooldown": 6},
-							{"guards": 3, "hp_pct": 0.5, "damage_pct": 0.55, "hit_chance_pct": 0.45, "duration": 4, "mana_cost": 140, "cooldown": 6}
+							{"guards": 3, "hp_pct": 0.35, "damage_pct": 0.5, "hit_chance_pct": 0.30, "duration": 3, "mana_cost": 70, "cooldown": 4},
+							{"guards": 3, "hp_pct": 0.4, "damage_pct": 0.6, "hit_chance_pct": 0.40, "duration": 3, "mana_cost": 90, "cooldown": 4},
+							{"guards": 3, "hp_pct": 0.45, "damage_pct": 0.7, "hit_chance_pct": 0.50, "duration": 4, "mana_cost": 115, "cooldown": 5},
+							{"guards": 3, "hp_pct": 0.5, "damage_pct": 0.8, "hit_chance_pct": 0.60, "duration": 4, "mana_cost": 140, "cooldown": 5}
 						]
 					},
 					{
 						"id": "shackles",
 						"name": "Shackles",
 						"type": "standard",
-						"description": "The Last Empress commands spectral chains to erupt from the depths and bind an enemy within range. The shackles tear into their victim and hold it firmly in place, preventing movement and jumping while leaving it able to attack and cast skills.",
+						"description": "The Last Empress commands spectral chains to erupt from the depths and bind an enemy within range. The shackles tear into their victim and hold it firmly in place, preventing movement and jumping while leaving it able to attack and cast skills. At higher levels the chains also catch the enemies standing one column in front of and behind the target: one more at level 3, two more at level 4.",
 						"levels": [
-							{"damage": 54, "range": 3, "root_turns": 1, "mana_cost": 60, "cooldown": 4},
-							{"damage": 90, "range": 4, "root_turns": 2, "mana_cost": 80, "cooldown": 4},
-							{"damage": 130.5, "range": 5, "root_turns": 2, "mana_cost": 105, "cooldown": 5},
-							{"damage": 180, "range": 6, "root_turns": 3, "mana_cost": 130, "cooldown": 5}
+							{"damage": 70, "range": 3, "root_turns": 2, "mana_cost": 60, "cooldown": 4},
+							{"damage": 100, "range": 4, "root_turns": 2, "mana_cost": 80, "cooldown": 4},
+							{"damage": 150, "range": 5, "root_turns": 3, "extra_targets": 1, "spread_radius": 1, "mana_cost": 105, "cooldown": 5},
+							{"damage": 210, "range": 6, "root_turns": 3, "extra_targets": 2, "spread_radius": 1, "mana_cost": 130, "cooldown": 5}
 						]
 					},
 					{
@@ -1602,10 +1617,10 @@ var zones: Dictionary = {
 						"type": "passive",
 						"description": "Passive: The Last Empress's will flows through every strike, releasing a crushing surge that damages nearby enemies. Her authority also strengthens her Imperial Guard, increasing their damage and duration as her power grows. At its peak, her command summons an additional guardian.",
 						"levels": [
-							{"aoe_damage_pct": 0.15, "radius": 1, "guardians_damage_bonus_pct": 0.02, "guard_duration_bonus": 0, "extra_guard": 0},
-							{"aoe_damage_pct": 0.20, "radius": 1, "guardians_damage_bonus_pct": 0.03, "guard_duration_bonus": 0, "extra_guard": 0},
-							{"aoe_damage_pct": 0.25, "radius": 1, "guardians_damage_bonus_pct": 0.04, "guard_duration_bonus": 1, "extra_guard": 0},
-							{"aoe_damage_pct": 0.30, "radius": 1, "guardians_damage_bonus_pct": 0.05, "guard_duration_bonus": 1, "extra_guard": 1}
+							{"aoe_damage_pct": 0.25, "radius": 1, "guardians_damage_bonus_pct": 0.02, "guard_duration_bonus": 0, "extra_guard": 0},
+							{"aoe_damage_pct": 0.30, "radius": 1, "guardians_damage_bonus_pct": 0.03, "guard_duration_bonus": 0, "extra_guard": 0},
+							{"aoe_damage_pct": 0.35, "radius": 1, "guardians_damage_bonus_pct": 0.04, "guard_duration_bonus": 1, "extra_guard": 0},
+							{"aoe_damage_pct": 0.40, "radius": 1, "guardians_damage_bonus_pct": 0.05, "guard_duration_bonus": 1, "extra_guard": 1}
 						]
 					},
 					{
@@ -1614,9 +1629,9 @@ var zones: Dictionary = {
 						"type": "ultimate",
 						"description": "Ultimate: The Last Empress fixes her gaze upon every enemy within range, revealing the haunting beauty that conceals her monstrous nature. Mesmerized by her presence, they become unable to act as their defenses weaken beneath her influence. The Empress and her Imperial Guard remain free to move and attack while her victims stand helpless before her.",
 						"levels": [
-							{"stun_turns": 3, "radius": 3, "armor_reduction": 5, "mana_cost": 200, "cooldown": 9},
-							{"stun_turns": 3, "radius": 3, "armor_reduction": 8, "mana_cost": 260, "cooldown": 10},
-							{"stun_turns": 4, "radius": 4, "armor_reduction": 12, "mana_cost": 330, "cooldown": 11}
+							{"stun_turns": 3, "radius": 3, "armor_reduction": 5, "mana_cost": 170, "cooldown": 9},
+							{"stun_turns": 3, "radius": 3, "armor_reduction": 8, "mana_cost": 220, "cooldown": 10},
+							{"stun_turns": 4, "radius": 4, "armor_reduction": 12, "mana_cost": 280, "cooldown": 11}
 						]
 					},
 				],
@@ -1664,10 +1679,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Dreadlure releases paralytic toxins into the surrounding area, damaging nearby enemies and immobilizing them as the venom overwhelms their bodies.",
 						"levels": [
-							{"damage": 114.7, "radius": 1, "stun_turns": 1, "mana_cost": 70, "cooldown": 4},
-							{"damage": 178.5, "radius": 1, "stun_turns": 1, "mana_cost": 95, "cooldown": 4},
+							{"damage": 115, "radius": 1, "stun_turns": 1, "mana_cost": 70, "cooldown": 4},
+							{"damage": 179, "radius": 1, "stun_turns": 1, "mana_cost": 95, "cooldown": 4},
 							{"damage": 255, "radius": 1, "stun_turns": 2, "mana_cost": 125, "cooldown": 5},
-							{"damage": 344.2, "radius": 1, "stun_turns": 2, "mana_cost": 155, "cooldown": 5}
+							{"damage": 345, "radius": 1, "stun_turns": 2, "mana_cost": 155, "cooldown": 5}
 						]
 					},
 					{
@@ -1790,10 +1805,10 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Unleashes a volley of arrows that rains down upon every enemy within radius of Solara, dealing damage.",
 						"levels": [
-							{"damage": 135, "radius": 1, "mana_cost": 65, "cooldown": 4},
-							{"damage": 210, "radius": 1, "mana_cost": 90, "cooldown": 4},
-							{"damage": 300, "radius": 2, "mana_cost": 120, "cooldown": 5},
-							{"damage": 405, "radius": 2, "mana_cost": 150, "cooldown": 5}
+							{"damage": 110, "radius": 1, "mana_cost": 65, "cooldown": 4},
+							{"damage": 180, "radius": 1, "mana_cost": 90, "cooldown": 4},
+							{"damage": 265, "radius": 2, "mana_cost": 120, "cooldown": 5},
+							{"damage": 370, "radius": 2, "mana_cost": 150, "cooldown": 5}
 						]
 					},
 					{
@@ -1802,22 +1817,22 @@ var zones: Dictionary = {
 						"type": "standard",
 						"description": "Solara pours all she got left of her lost world into a mighty arrow at a distant target, dealing greater damage the farther it travels and stunning the target on impact.",
 						"levels": [
-							{"base_damage": 120, "bonus_per_column": 30, "range": 4, "stun_turns": 1, "mana_cost": 70, "cooldown": 5},
-							{"base_damage": 180, "bonus_per_column": 45, "range": 5, "stun_turns": 2, "mana_cost": 100, "cooldown": 5},
-							{"base_damage": 255, "bonus_per_column": 60, "range": 6, "stun_turns": 2, "mana_cost": 135, "cooldown": 6},
-							{"base_damage": 345, "bonus_per_column": 75, "range": 7, "stun_turns": 3, "mana_cost": 170, "cooldown": 6}
+							{"base_damage": 90, "bonus_per_column": 30, "range": 4, "stun_turns": 1, "mana_cost": 70, "cooldown": 5},
+							{"base_damage": 150, "bonus_per_column": 45, "range": 5, "stun_turns": 2, "mana_cost": 100, "cooldown": 5},
+							{"base_damage": 220, "bonus_per_column": 60, "range": 6, "stun_turns": 2, "mana_cost": 135, "cooldown": 6},
+							{"base_damage": 310, "bonus_per_column": 75, "range": 7, "stun_turns": 3, "mana_cost": 170, "cooldown": 6}
 						]
 					},
 					{
 						"id": "withering_pursuit",
 						"name": "Withering Pursuit",
 						"type": "standard",
-						"description": "Surges forward with fading determination, leaping over any enemies in her path.",
+						"description": "Surges forward with fading determination, leaping over any enemies in her path. Her afterimage lingers, making enemy attacks against her miss for a short time.",
 						"levels": [
-							{"move_distance": 1, "jump_distance": 1, "dash": false, "mana_cost": 50, "cooldown": 4},
-							{"move_distance": 2, "jump_distance": 1, "dash": false, "mana_cost": 65, "cooldown": 4},
-							{"move_distance": 2, "jump_distance": 2, "dash": true, "mana_cost": 80, "cooldown": 5},
-							{"move_distance": 2, "jump_distance": 3, "dash": true, "mana_cost": 100, "cooldown": 5}
+							{"move_distance": 1, "jump_distance": 1, "miss_chance_pct": 0.2, "miss_turns": 1, "mana_cost": 50, "cooldown": 4},
+							{"move_distance": 2, "jump_distance": 1, "miss_chance_pct": 0.3, "miss_turns": 1, "mana_cost": 65, "cooldown": 4},
+							{"move_distance": 2, "jump_distance": 2, "dash": true, "miss_chance_pct": 0.4, "miss_turns": 2, "mana_cost": 80, "cooldown": 5},
+							{"move_distance": 2, "jump_distance": 3, "dash": true, "miss_chance_pct": 0.5, "miss_turns": 2, "mana_cost": 100, "cooldown": 5}
 						]
 					},
 					{
@@ -1868,8 +1883,8 @@ var zones: Dictionary = {
 						"levels": [
 							{"damage": 75, "stun_turns": 1, "range": 4, "mana_cost": 60, "cooldown": 4},
 							{"damage": 120, "stun_turns": 1, "range": 5, "mana_cost": 85, "cooldown": 4},
-							{"damage": 172.5, "stun_turns": 2, "range": 6, "mana_cost": 115, "cooldown": 5},
-							{"damage": 232.5, "stun_turns": 2, "range": 7, "mana_cost": 145, "cooldown": 5}
+							{"damage": 173, "stun_turns": 2, "range": 6, "mana_cost": 115, "cooldown": 5},
+							{"damage": 233, "stun_turns": 2, "range": 7, "mana_cost": 145, "cooldown": 5}
 						]
 					},
 					{
@@ -1902,9 +1917,9 @@ var zones: Dictionary = {
 						"type": "ultimate",
 						"description": "Ultimate: Lunara plunges the battlefield into a supernatural eclipse. For the duration, lunar beams rain down upon random enemies within a radius around her, following her movements until every beam has struck.",
 						"levels": [
-							{"beams": 4, "damage": 97.5, "radius": 2, "mana_cost": 200, "cooldown": 9},
-							{"beams": 6, "damage": 131.2, "radius": 3, "mana_cost": 275, "cooldown": 10},
-							{"beams": 8, "damage": 172.5, "radius": 4, "mana_cost": 350, "cooldown": 11}
+							{"beams": 4, "damage": 98, "radius": 2, "mana_cost": 200, "cooldown": 9},
+							{"beams": 6, "damage": 132, "radius": 3, "mana_cost": 275, "cooldown": 10},
+							{"beams": 8, "damage": 173, "radius": 4, "mana_cost": 350, "cooldown": 11}
 						]
 					},
 				],

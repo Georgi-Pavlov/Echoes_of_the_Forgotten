@@ -733,7 +733,12 @@ static func _erynd_modifier(skill_id: String, level_data: Dictionary, context: D
 		"thornbind":
 			return 10.0 if bear_active else 0.0
 		"wildbond":
-			return 15.0 if bear_active else 0.0
+			# It heals from hits, so it's wasted on a healthy Erynd - hold it
+			# until he has actually taken some damage.
+			var wildbond_score: float = 15.0 if bear_active else 0.0
+			if float(context.get("hero_hp_ratio", 1.0)) >= 0.85:
+				wildbond_score -= 45.0
+			return wildbond_score
 		_:
 			return 0.0
 
@@ -751,7 +756,7 @@ static func _morvael_modifier(skill_id: String, level_data: Dictionary, context:
 		"whisper_of_the_veil":
 			var target_hp: float = float(context.get("target_hp", 0.0))
 			var dmg: float = _estimate_skill_damage(skill_id, level_data, context)
-			return -10.0 if (target_hp > 0.0 and dmg < target_hp * 0.3) else 0.0
+			return -5.0 if (target_hp > 0.0 and dmg < target_hp * 0.2) else 0.0
 		"whisper_of_the_veil_self":
 			return _morvael_whisper_of_the_veil_self_modifier(level_data, context)
 		_:
@@ -1905,7 +1910,7 @@ static func _tp_sanguine_bloom_modifier(level_data: Dictionary, context: Diction
 ## value on top, plus a penalty when the Rootmother isn't close enough to combat
 ## for either to matter yet.
 static func _tp_woven_flesh_modifier(level_data: Dictionary, context: Dictionary) -> float:
-	var bonus_hp_regen: float = float(level_data.get("bonus_hp_regen", 0.0))
+	var bonus_hp_regen: float = float(level_data.get("bonus_hp_regen", 0.0)) + float(level_data.get("bonus_hp_regen_pct", 0.0)) * float(context.get("hero_max_hp", 0.0))
 	var duration: int = int(level_data.get("duration", 0))
 	var expected_healing: float = bonus_hp_regen * float(duration)
 
