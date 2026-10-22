@@ -360,6 +360,8 @@ const MAX_SIMULATED_TURNS: int = 30
 # ticks - otherwise rivals kill each other long before the player meets them.
 const NPC_DUEL_MIN_LEVEL: int = 6
 const NPC_DUEL_COOLDOWN_TICKS: int = 10
+# Chance that a rival starting a duel challenges the player's hero instead.
+const NPC_PLAYER_CHALLENGE_CHANCE: float = 0.25
 
 # The sim has no positions, so without this every creep would hit the
 # hero from turn 1. In a real battle creeps spawn at the far end (melee
@@ -704,7 +706,7 @@ func tick_npc_hero(hero_id: String, hero_static: Dictionary) -> void:
 		if fight["result"] != "win":
 			break
 		if stage_before >= GameManager.MAX_ZONE_STAGE:
-			if _npc_duel_ready(hero_id):
+			if _npc_duel_ready(hero_id) and not _try_npc_challenge_player(hero_id):
 				_try_npc_zone_mate_fight(hero_id, hero_static)
 			break
 
@@ -719,6 +721,32 @@ func _npc_duel_ready(hero_id: String) -> bool:
 		return false
 	PlayerManager.set_npc_field(hero_id, "duel_cooldown", str(NPC_DUEL_COOLDOWN_TICKS))
 	return true
+
+
+## A rival that is about to duel may pick the player's hero as its opponent
+## instead: it then waits to confront them the next time they open a zone (see
+## get_player_challenger()). Only one challenge is pending at a time.
+func _try_npc_challenge_player(hero_id: String) -> bool:
+	var recruited: Dictionary = PlayerManager.get_recruited_hero()
+	if TutorialManager.is_active or recruited.is_empty() or recruited.get("current_hp", 0) <= 0:
+		return false
+	if get_player_challenger() != "" or randf() >= NPC_PLAYER_CHALLENGE_CHANCE:
+		return false
+	PlayerManager.set_npc_field(hero_id, "challenging_player", "1")
+	return true
+
+
+## The rival waiting to duel the player, or "" if none.
+func get_player_challenger() -> String:
+	var player_hero_id: String = PlayerManager.get_recruited_hero().get("id", "")
+	for hero_id in get_all_npc_hero_ids(player_hero_id):
+		if PlayerManager.get_npc_field(hero_id, "challenging_player", "0") == "1" and not PlayerManager.is_hero_defeated(hero_id):
+			return hero_id
+	return ""
+
+
+func clear_player_challenge(hero_id: String) -> void:
+	PlayerManager.set_npc_field(hero_id, "challenging_player", "0")
 
 
 func _tick_npc_duel_cooldown(hero_id: String) -> void:
@@ -824,7 +852,7 @@ func _tick_freed_npc_hero(hero_id: String, hero_static: Dictionary) -> void:
 		if fight["result"] != "win":
 			break
 		if stage_before >= GameManager.MAX_ZONE_STAGE:
-			if _npc_duel_ready(hero_id):
+			if _npc_duel_ready(hero_id) and not _try_npc_challenge_player(hero_id):
 				_try_npc_invasion_duel(hero_id, hero_static, target_id)
 			break
 

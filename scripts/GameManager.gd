@@ -7,6 +7,11 @@ extends Node
 # Currently selected zone
 var selected_zone: String = ""
 
+# A rival hero who has challenged the player (see EnemyHeroManager.
+# get_player_challenger()): zone.gd sets this when the player opens a zone, and
+# the Battle scene starts the duel against them straight away.
+var pending_challenger_id: String = ""
+
 
 # ============================================================
 # LEVELING

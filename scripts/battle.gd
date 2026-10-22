@@ -1631,6 +1631,12 @@ var _in_hero_fight: bool = false
 # mark defeated via PlayerManager.mark_hero_defeated() when it's won.
 var _hero_fight_target_id: String = ""
 
+# True while the hero fight is a rival's challenge to the player (see
+# GameManager.pending_challenger_id) rather than the zone's own boss: no
+# reinforcements, the rival may flee when nearly dead, and it doesn't clear
+# the zone.
+var _rival_challenge: bool = false
+
 # The fallen rival's Echo (see HeroEchoFX), left in the column where
 # they died - a hero fight isn't won until the hero goes over it with
 # no enemies left standing (see _try_collect_hero_echo()). null while
@@ -1726,6 +1732,14 @@ func _ready() -> void:
 	_update_stage_label()
 	_update_action_buttons()
 	_play_log_session()
+
+	if GameManager.pending_challenger_id != "":
+		var challenger: Dictionary = GameManager.get_hero_by_id(GameManager.pending_challenger_id)
+		GameManager.pending_challenger_id = ""
+		if not challenger.is_empty():
+			_rival_challenge = true
+			_current_stage = GameManager.MAX_ZONE_STAGE
+			_start_hero_fight(challenger)
 
 	if TutorialManager.is_active and TutorialManager.current_stage == 1:
 		_advance_tutorial_stage1_step("move_to_drowned_surge_range")
@@ -11973,8 +11987,10 @@ func _finish_zone_victory() -> void:
 	# rest of the world (see PlayerManager.is_home_zone_cleared()) - so
 	# it gets a moment of story before heading back to the Map.
 	var first_home_clear: bool = GameManager.selected_zone == PlayerManager.get_home_zone_id() \
-			and not PlayerManager.is_zone_cleared(GameManager.selected_zone)
-	PlayerManager.set_zone_cleared(GameManager.selected_zone)
+			and not PlayerManager.is_zone_cleared(GameManager.selected_zone) \
+			and not _rival_challenge
+	if not _rival_challenge:
+		PlayerManager.set_zone_cleared(GameManager.selected_zone)
 
 	_battle_over = true
 	_update_action_buttons()
@@ -12083,7 +12099,8 @@ func _start_hero_fight(hero_static: Dictionary) -> void:
 	_end_hunger_calls_fx()
 
 	_update_stage_label()
-	_show_message_over_hero("%s challenges you!" % hero_static.get("name", "A rival hero"))
+	var rival_name: String = hero_static.get("name", "A rival hero")
+	_show_message_over_hero(("%s has challenged you" if _rival_challenge else "%s challenges you!") % rival_name)
 
 	_cancel_targeting()
 	_hero_pos_index = 1
@@ -12457,7 +12474,7 @@ func _end_turn() -> void:
 		# Covers the last enemy leaving the field some way other than
 		# _kill_enemy() (e.g. a rival's Elderwild Companion despawning).
 		_try_collect_hero_echo(_hero_pos_index, _hero_pos_index)
-	elif _turn_count >= _next_reinforcement_turn:
+	elif _turn_count >= _next_reinforcement_turn and not _rival_challenge:
 		_spawn_reinforcements()
 		_next_reinforcement_turn += HERO_FIGHT_REINFORCEMENT_REPEAT_INTERVAL if _in_hero_fight else GameManager.get_reinforcement_repeat(_current_stage)
 
@@ -12973,6 +12990,9 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 	# player's own item buttons - it's never gated by hero_hidden/
 	# silence/root the way casting a skill or attacking is.
 	var effective_max_hp: float = _enemy_hero_effective_max_hp(enemy)
+	if _rival_challenge and _enemy_wants_to_flee(enemy, effective_max_hp):
+		_enemy_hero_flee(enemy)
+		return
 	if float(enemy.get("current_hp", 0.0)) <= effective_max_hp * EnemyHeroManager.LOW_HP_POTION_THRESHOLD and _enemy_potion_health_count > 0:
 		_drink_enemy_health_potion(enemy)
 		return
@@ -13067,6 +13087,33 @@ func _drink_enemy_health_potion(enemy: Dictionary) -> void:
 	enemy["current_hp"] = minf(max_hp, enemy["current_hp"] + heal_amount)
 	_show_message_over_hero("Rival drank a Health Potion")
 	_refresh_bars()
+
+
+## A challenging rival gives up the duel once it is nearly dead with no way left
+## to heal: no Health Potions, no healing buff running, no self-heal ready.
+func _enemy_wants_to_flee(enemy: Dictionary, effective_max_hp: float) -> bool:
+	if float(enemy.get("current_hp", 0.0)) > effective_max_hp * EnemyHeroManager.FLEE_HP_THRESHOLD:
+		return false
+	if _enemy_potion_health_count > 0:
+		return false
+	if _enemy_leeching_hunger_active or _enemy_wildbond_active or _enemy_woven_flesh_active \
+			or _enemy_the_mist_remembers_active or _enemy_the_test_of_time_active:
+		return false
+	return not _enemy_whisper_of_the_veil_self_ready(enemy)
+
+
+## The rival escapes: the duel ends with no victory, no Echo and no reward.
+func _enemy_hero_flee(enemy: Dictionary) -> void:
+	_battle_over = true
+	_cancel_targeting()
+	_update_action_buttons()
+	_play_log_stage_end("rival_fled")
+	var rival_name: String = str(_enemy_hero_static.get("name", "The rival"))
+	EnemyHeroManager.npc_shop(_enemy_hero_id)
+	CreatureAnimator.spawn_death_ghost(enemy["node"], _fx_layer)
+	await StoryBanner.play(self, "%s has fled," % rival_name,
+			"but you get the feeling this will not be the last time you see them.").finished
+	get_tree().change_scene_to_file("res://scenes/Map.tscn")
 
 
 ## Restores the Mana Potion's own flat value, clamped to _enemy_max_mana.

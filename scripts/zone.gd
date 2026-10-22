@@ -107,6 +107,13 @@ func _ready() -> void:
 	var recruited: Dictionary = PlayerManager.get_recruited_hero()
 	if not recruited.is_empty():
 		if recruited.get("current_hp", 0) > 0:
+			# A rival who has challenged the player pulls them to their own
+			# home zone, whichever zone they clicked.
+			var challenger_id: String = EnemyHeroManager.get_player_challenger()
+			if challenger_id != "":
+				EnemyHeroManager.clear_player_challenge(challenger_id)
+				GameManager.pending_challenger_id = challenger_id
+				GameManager.select_zone(PlayerManager.get_home_zone_id())
 			get_tree().change_scene_to_file("res://scenes/Battle.tscn")
 		else:
 			# Hero died and hasn't been cleared yet (that only happens
