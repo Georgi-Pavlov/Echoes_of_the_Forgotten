@@ -119,7 +119,13 @@ func _offset_for(depth: float) -> Vector2:
 
 ## The current tilt, -1..1 on each axis.
 func _read_tilt(delta: float) -> Vector2:
+	# Both sensors must be switched on in Project Settings (input_devices/
+	# sensors/enable_gravity, enable_accelerometer) or they read zero. A
+	# phone without a gravity sensor falls back to the accelerometer -
+	# noisier (it feels the hand moving too), which the smoothing evens out.
 	var g: Vector3 = Input.get_gravity()
+	if g.length_squared() <= 1.0:
+		g = Input.get_accelerometer()
 	if g.length_squared() > 1.0:
 		if not _has_neutral:
 			_neutral = g
