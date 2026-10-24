@@ -545,10 +545,177 @@ func _snapshot_display_stats(data: Dictionary, hero_static: Dictionary) -> Dicti
 const ECHO_GROWTH_FACTOR: float = 0.75
 
 
+# ------------------------------------------------------------------
+# The first choice and the endings (see Endings.gd): the path the player
+# picks once, after the first-choice dream; an ending a rival has won that
+# the Map is yet to play; and the endings the player has ever reached - the
+# one thing here that survives New Game, since it belongs to the player
+# rather than to a run.
+# ------------------------------------------------------------------
+
+## Endings.PATH_RESTORE / Endings.PATH_RULE once chosen, "" before.
+func get_path_choice() -> String:
+	if current_player == "":
+		return ""
+	return str(_read_player_data(current_player).get("path_choice", ""))
+
+
+## Locks the choice in for the rest of the run: ignored once one is made.
+func set_path_choice(choice: String) -> void:
+	if current_player == "" or get_path_choice() != "":
+		return
+	var data := _read_player_data(current_player)
+	data["path_choice"] = choice
+	_write_player_data(current_player, data)
+
+
+## True once the player has killed enough rivals for the first-choice dream
+## and has not yet chosen a path.
+func is_first_choice_pending() -> bool:
+	return get_rivals_killed() >= TheFirstChoice.RIVALS_REQUIRED and get_path_choice() == ""
+
+
+## An ending a rival won in the background, waiting for the Map to play it
+## ("" if none).
+func get_pending_ending() -> String:
+	if current_player == "":
+		return ""
+	return str(_read_player_data(current_player).get("pending_ending", ""))
+
+
+func set_pending_ending(ending_id: String) -> void:
+	if current_player == "":
+		return
+	var data := _read_player_data(current_player)
+	if ending_id == "":
+		data.erase("pending_ending")
+	else:
+		data["pending_ending"] = ending_id
+	_write_player_data(current_player, data)
+
+
+## Every ending this player has ever reached, as Endings ids.
+func get_achievements() -> Array:
+	if current_player == "":
+		return []
+	var raw: String = str(_read_player_data(current_player).get("achievements", ""))
+	return [] if raw == "" else Array(raw.split(","))
+
+
+func has_achievement(ending_id: String) -> bool:
+	return ending_id in get_achievements()
+
+
+func add_achievement(ending_id: String) -> void:
+	if current_player == "" or ending_id == "" or has_achievement(ending_id):
+		return
+	var earned: Array = get_achievements()
+	earned.append(ending_id)
+	var data := _read_player_data(current_player)
+	data["achievements"] = ",".join(earned)
+	_write_player_data(current_player, data)
+
+
+## True once every rival (every hero but the player's own) is dead - by
+## whoever's hand.
+func are_all_rivals_defeated() -> bool:
+	var own_id: String = get_recruited_hero().get("id", "")
+	for zone_id in GameManager.zones.keys():
+		for hero in GameManager.zones[zone_id].get("heroes", []):
+			var hero_id: String = hero.get("id", "")
+			if hero_id != "" and hero_id != own_id and not is_hero_defeated(hero_id):
+				return false
+	return true
+
+
+# ------------------------------------------------------------------
+# Collected Echoes: every Remembered carries one Echo of their own (the
+# player's awakens when they clear their home zone; a rival starts with
+# one). Whoever kills a hero takes ALL the Echoes that hero had gathered,
+# so a rival that has eaten several others is worth that many - and
+# carries them all on to whoever kills it in turn. See take_echoes().
+# ------------------------------------------------------------------
+
+## How many Echoes the player's hero holds.
+func get_echoes() -> int:
+	if current_player == "":
+		return 0
+	return int(_read_player_data(current_player).get("echoes", "0"))
+
+
+## How many rivals the player has killed (and collected the Echo of).
+func get_rivals_killed() -> int:
+	if current_player == "":
+		return 0
+	return int(_read_player_data(current_player).get("rivals_killed", "0"))
+
+
+## Counts one more rival killed by the player and returns the new total.
+func add_rival_kill() -> int:
+	if current_player == "":
+		return 0
+	var data := _read_player_data(current_player)
+	var total: int = int(data.get("rivals_killed", "0")) + 1
+	data["rivals_killed"] = str(total)
+	_write_player_data(current_player, data)
+	return total
+
+
+func add_echoes(amount: int) -> void:
+	if current_player == "" or amount == 0:
+		return
+	var data := _read_player_data(current_player)
+	data["echoes"] = str(maxi(0, int(data.get("echoes", "0")) + amount))
+	_write_player_data(current_player, data)
+
+
+## Whether the Echo vortex on the Map (see Map.gd) has already opened for
+## this run - it only tears open with its full animation the first time.
+func is_echo_vortex_seen() -> bool:
+	if current_player == "":
+		return false
+	return _read_player_data(current_player).get("echo_vortex_seen", "0") == "1"
+
+
+func mark_echo_vortex_seen() -> void:
+	if current_player == "":
+		return
+	var data := _read_player_data(current_player)
+	data["echo_vortex_seen"] = "1"
+	_write_player_data(current_player, data)
+
+
+## How many Echoes a rival holds - the one it was born with, until it has
+## taken others' (or lost its own to a killer).
+func get_npc_echoes(hero_id: String) -> int:
+	return int(get_npc_field(hero_id, "echoes", "1"))
+
+
+## Empties `victim_id`'s Echoes (a rival's - the player's own hero is
+## never a victim here) and gives them all to `killer_id`: a rival's id,
+## or "" for the player. Returns how many moved. Safe to call twice: the
+## victim is empty after the first, so the second moves nothing.
+func take_echoes(victim_id: String, killer_id: String = "") -> int:
+	if current_player == "" or victim_id == "":
+		return 0
+	var amount: int = get_npc_echoes(victim_id)
+	if amount <= 0:
+		return 0
+	set_npc_field(victim_id, "echoes", "0")
+	if killer_id == "":
+		add_echoes(amount)
+	else:
+		set_npc_field(killer_id, "echoes", str(get_npc_echoes(killer_id) + amount))
+	return amount
+
+
 ## Adds an Echo's attribute bonus to the player's hero and returns what was
 ## gained as {stat_key: amount}. Max HP/mana are derived from strength/
 ## intelligence, so current HP/mana rise by the same amount the max does -
-## exactly like a level-up (see check_level_up()).
+## exactly like a level-up (see check_level_up()). Always the same bonus per
+## rival defeated, however many Echoes it was carrying - those all still
+## pass to the player (take_echoes()), but the attribute bonus isn't tied
+## to how many there were.
 func apply_echo_bonus(hero_static: Dictionary) -> Dictionary:
 	var gained := {}
 	if current_player == "":
@@ -668,7 +835,10 @@ func is_hero_defeated(hero_id: String) -> bool:
 ## death, plus a follow-up if it was the last hero standing in its
 ## zone. Both are skipped if the hero was already marked defeated, so
 ## this only ever fires once per hero.
-func mark_hero_defeated(hero_id: String) -> void:
+## `killer_id` is the rival that did it, whose kill hands it all of
+## `hero_id`'s Echoes on the spot; leave it empty for a kill by the
+## player, who takes them when they collect the Echo (battle.gd).
+func mark_hero_defeated(hero_id: String, killer_id: String = "") -> void:
 	if current_player == "" or hero_id == "" or is_hero_defeated(hero_id):
 		return
 	var defeated: Array = get_defeated_heroes()
@@ -677,7 +847,22 @@ func mark_hero_defeated(hero_id: String) -> void:
 	data["defeated_heroes"] = ",".join(defeated)
 	_write_player_data(current_player, data)
 
+	if killer_id != "":
+		take_echoes(hero_id, killer_id)
+
 	_queue_hero_defeat_events(hero_id)
+
+
+## Takes `hero_id` back off the defeated list (the tutorial uses this to
+## make sure its showcase rival is alive).
+func revive_hero(hero_id: String) -> void:
+	if current_player == "" or not is_hero_defeated(hero_id):
+		return
+	var defeated: Array = get_defeated_heroes()
+	defeated.erase(hero_id)
+	var data := _read_player_data(current_player)
+	data["defeated_heroes"] = ",".join(defeated)
+	_write_player_data(current_player, data)
 
 
 ## Builds and queues the event(s) for `hero_id` just having been
@@ -1488,6 +1673,8 @@ func clear_recruited_hero() -> void:
 		if key == "hero" or key == "hero_name" or key == "hero_xp" \
 		or key == "hero_current_hp" or key == "hero_current_mana" \
 		or key == "inventory" or key == "backpack" or key == "skill_points" or key == "defeated_heroes" \
+		or key == "echoes" or key == "echo_vortex_seen" \
+		or key == "rivals_killed" or key == "path_choice" or key == "pending_ending" \
 		or key.begins_with("hero_stat_") or key.begins_with("hero_skill_") \
 		or key.begins_with("skill_cooldown_") or key.begins_with("skill_level_") \
 		or key.begins_with("zone_cleared_") or key.begins_with("npc_") \
@@ -1498,7 +1685,9 @@ func clear_recruited_hero() -> void:
 		data.erase(key)
 
 	# A new game also means a fresh start on progression that isn't
-	# tied to the hero dictionary above: gold and level reset too.
+	# tied to the hero dictionary above: gold and level reset too, and
+	# "echoes" (erased above) reads back as 0 - every rival's own count
+	# goes with the npc_* keys, so they're all back to their one each.
 	data["gold"] = "0"
 	data["level"] = "1"
 

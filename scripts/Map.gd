@@ -80,11 +80,251 @@ func _ready() -> void:
 	_spawn_region_buttons()
 	_style_stats_panel()
 	_refresh_stats_panel()
+	# Tilting the phone (or moving the mouse) gives the map depth: the map
+	# and everything drawn on it - plates, compass, the plaques on it, the
+	# vortex - drift together under the stats, legend and Back button,
+	# which stay put (see TiltParallax).
+	_tilt = TiltParallax.attach(self, [[$Background, 1.0], [$MapFX, 1.0], [$RegionButtons, 1.0],
+			[$CompassFX, 1.0], [$ShopButton, 1.0], [$WorldStatusButton, 1.0]])
+	# Straight away, before anything else can be clicked: an ending a rival won
+	# in the background, or the first choice.
+	_play_pending_story()
 	_maybe_show_queued_events()
+	_maybe_open_echo_vortex()
 
 	if TutorialManager.is_active and TutorialManager.current_stage == 2:
 		_tutorial_force_shop()
 		TutorialManager.show_popup("Head to the Shop and restock before going anywhere else.")
+	elif TutorialManager.is_active and TutorialManager.current_stage == 4:
+		_tutorial_map_tour()
+
+
+# ------------------------------------------------------------------
+# Tutorial stage 4, the Map tour (see TutorialManager.start_stage4()):
+# nothing on the Map can be used except the one control each step
+# points at. TutorialManager.current_step: 0 = intro (this scene's first
+# visit), 1 = World Status is open (WorldStatus.gd drives that), 2 = back
+# here for the closing message.
+# ------------------------------------------------------------------
+
+var _tutorial_glow_tweens: Array = []
+var _tutorial_vortex_ring: Panel = null
+
+
+func _tutorial_map_tour() -> void:
+	_tutorial_lock_all()
+	if TutorialManager.current_step == 2:
+		_tutorial_show_vortex(false)
+		TutorialManager.show_popup(
+			"Now that you know how to fight and what to expect, the forgotten realms awaits you. "
+			+ "Just remember - your choices may lead to different paths.",
+			TutorialManager.exit_tutorial,
+			"Exit Tutorial"
+		)
+		return
+
+	TutorialManager.show_popup(
+		"This is the world map. Now that you have cleared your home zone you are free to roam the world "
+		+ "and challenge the other Remembered for their echoes.",
+		func():
+			_tutorial_glow_stats(true)
+			TutorialManager.show_popup(
+				"Here you can see your current state and your echoes. The echoes are the key to enter the final stage.",
+				_tutorial_open_vortex_step,
+				"Continue",
+				false
+			)
+	)
+
+
+func _tutorial_lock_all() -> void:
+	$BackButton.disabled = true
+	$ShopButton.disabled = true
+	$WorldStatusButton.disabled = true
+	for child in $RegionButtons.get_children():
+		if child is Button:
+			child.disabled = true
+
+
+func _tutorial_clear_glow() -> void:
+	for tween in _tutorial_glow_tweens:
+		if tween:
+			tween.kill()
+	_tutorial_glow_tweens.clear()
+
+
+## The stats panel gets the tutorial glow as its border, keeping its own
+## dark fill; off restores the normal look.
+func _tutorial_glow_stats(on: bool) -> void:
+	_tutorial_clear_glow()
+	_style_stats_panel()
+	if not on:
+		return
+	var style: StyleBoxFlat = TutorialManager.make_glow_style()
+	style.bg_color = Color(0.055, 0.035, 0.028, 0.95)
+	$StatsPanel.add_theme_stylebox_override("panel", style)
+	_tutorial_glow_tweens.append(TutorialManager.start_glow_pulse(style, self))
+
+
+func _tutorial_show_vortex(animate: bool) -> void:
+	_echo_vortex = EchoVortexFX.open(self, animate)
+	move_child(_echo_vortex, $CompassFX.get_index() + 1)
+	_tilt.add_layer(_echo_vortex, 1.0)
+
+
+## The vortex tears open, then glows - clicking it is the only way on.
+func _tutorial_open_vortex_step() -> void:
+	_tutorial_glow_stats(false)
+	_tutorial_show_vortex(true)
+	await get_tree().create_timer(EchoVortexFX.OPEN_TIME).timeout
+
+	var ring := Panel.new()
+	var style: StyleBoxFlat = TutorialManager.make_glow_style()
+	style.bg_color = Color(0, 0, 0, 0)
+	style.set_corner_radius_all(int(_echo_vortex.size.x * 0.5))
+	ring.add_theme_stylebox_override("panel", style)
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ring.position = _echo_vortex.position
+	ring.size = _echo_vortex.size
+	add_child(ring)
+	move_child(ring, _echo_vortex.get_index() + 1)
+	# Placed from the vortex's position, which already carries the drift.
+	_tilt.add_layer(ring, 1.0, true)
+	_tutorial_vortex_ring = ring
+	_tutorial_glow_tweens.append(TutorialManager.start_glow_pulse(style, self))
+	_echo_vortex.pressed.connect(_on_tutorial_vortex_pressed, CONNECT_ONE_SHOT)
+
+
+func _on_tutorial_vortex_pressed() -> void:
+	_tutorial_clear_glow()
+	if _tutorial_vortex_ring != null:
+		_tutorial_vortex_ring.queue_free()
+		_tutorial_vortex_ring = null
+	TutorialManager.show_popup(
+		"You still need more echoes! Lets see where they are.",
+		func():
+			var glow_style: StyleBoxFlat = TutorialManager.make_glow_style()
+			$WorldStatusButton.disabled = false
+			$WorldStatusButton.add_theme_stylebox_override("normal", glow_style)
+			$WorldStatusButton.add_theme_stylebox_override("hover", glow_style)
+			_tutorial_glow_tweens.append(TutorialManager.start_glow_pulse(glow_style, self))
+	)
+
+
+# ------------------------------------------------------------------
+# The Echo vortex: once the player holds enough Echoes (GameManager.
+# get_echoes_required()), a crimson vortex opens over the compass
+# (EchoVortexFX) - between the compass's own effects and the Shop/World
+# Status plaques, which stay clickable on top of it. It tears open the
+# first time it appears, and is simply there on every visit after.
+# Entering it ends the demo with one of the endings (Endings.gd) - decided by
+# the path chosen after the first-choice dream and by whether every rival is
+# dead: an ending banner, a closing banner, then the run is over and
+# the player is back at the main menu with only New Game left.
+# ------------------------------------------------------------------
+
+var _echo_vortex: EchoVortexFX
+var _ending_demo := false
+# The map's depth from tilting (see _ready()); the vortex joins it when it opens.
+var _tilt: TiltParallax
+
+
+func _maybe_open_echo_vortex() -> void:
+	if TutorialManager.is_active:
+		return
+	if PlayerManager.get_recruited_hero().is_empty():
+		return
+	if PlayerManager.get_echoes() < GameManager.get_echoes_required():
+		return
+	var first_time: bool = not PlayerManager.is_echo_vortex_seen()
+	_echo_vortex = EchoVortexFX.open(self, first_time)
+	move_child(_echo_vortex, $CompassFX.get_index() + 1)
+	_tilt.add_layer(_echo_vortex, 1.0)
+	_echo_vortex.pressed.connect(_on_echo_vortex_pressed)
+	if first_time:
+		PlayerManager.mark_echo_vortex_seen()
+
+
+func _on_echo_vortex_pressed() -> void:
+	if _ending_demo:
+		return
+	_ending_demo = true
+	_block_map()
+
+	# The vortex is the way out, whichever path was taken: if the choice was
+	# somehow never made (killing one rival that carried many Echoes could
+	# give the player the count before the third kill), it is made now.
+	if PlayerManager.get_path_choice() == "":
+		await _ask_first_choice()
+
+	var ending: String = Endings.for_vortex(PlayerManager.get_path_choice(), PlayerManager.are_all_rivals_defeated())
+	await _play_ending(ending)
+
+
+## What the Map has to say before the player can do anything: an ending a
+## rival won while the player was away, else the first choice if it is due.
+func _play_pending_story() -> void:
+	if TutorialManager.is_active or _ending_demo:
+		return
+	var pending: String = PlayerManager.get_pending_ending()
+	if pending != "":
+		_ending_demo = true
+		_block_map()
+		await _play_ending(pending)
+		return
+	if PlayerManager.is_first_choice_pending():
+		_block_map()
+		await _ask_first_choice()
+		_unblock_map()
+
+
+## The one decision of the dream: restore the old world or rule the new one.
+## Saved the instant a button is pressed, and never asked again.
+func _ask_first_choice() -> void:
+	var banner := ChoiceBanner.play(self, "The choice is yours, Remembered.", [
+		{"id": Endings.PATH_RESTORE, "text": "Restore what once was"},
+		{"id": Endings.PATH_RULE, "text": "Embrace this new power"},
+	])
+	var choice: String = await banner.chosen
+	PlayerManager.set_path_choice(choice)
+
+
+var _blocker: Control
+
+
+## Nothing else on the Map can be used while a banner is up: a full-screen
+## catch under it.
+func _block_map() -> void:
+	if _blocker != null:
+		return
+	_blocker = Control.new()
+	_blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_blocker)
+
+
+func _unblock_map() -> void:
+	if _blocker != null:
+		_blocker.queue_free()
+		_blocker = null
+
+
+## The run is over with this ending: it is recorded as an achievement, the
+## banner announces it ("Ending 2/5 (...)", click to skip), then the demo's
+## closing banner, and the run is wiped the same way New Game does it - so
+## the main menu has nothing left to Continue.
+func _play_ending(ending_id: String) -> void:
+	PlayerManager.add_achievement(ending_id)
+	PlayerManager.set_pending_ending("")
+
+	await StoryBanner.play(self, Endings.banner_text(ending_id), "", 44, true).finished
+	await StoryBanner.play(self, "Thank you for playing this demo version", "", 44, true).finished
+
+	# The run is over: its score is kept, everything else goes.
+	PlayerManager.record_high_score()
+	PlayerManager.clear_recruited_hero()
+	AudioManager.stop_music_fade()
+	get_tree().change_scene_to_file("res://scenes/PostLogin.tscn")
 
 
 ## Tutorial stage 2: the Shop is the only way forward - every other
@@ -198,11 +438,12 @@ func _style_stats_panel() -> void:
 
 
 ## Fills the top-right stats table with the current player's hero,
-## level, gold, health and mana. Call again whenever any of those
+## level, gold, health, mana and collected Echoes. Call again whenever any of those
 ## change (e.g. after returning from a battle) to keep it in sync.
 func _refresh_stats_panel() -> void:
 	var hero := PlayerManager.get_recruited_hero()
-	var hero_name: String = hero.get("name", "")
+	# Only the name, not the title after the comma ("Kaelen Varr, the Drowned Captain").
+	var hero_name: String = str(hero.get("name", "")).split(",")[0].strip_edges()
 	$StatsPanel/Margin/VBox/HeroNameLabel.text = hero_name if hero_name != "" else "No hero yet"
 
 	$StatsPanel/Margin/VBox/StatsGrid/LevelValue.text = str(PlayerManager.get_level())
@@ -216,6 +457,7 @@ func _refresh_stats_panel() -> void:
 
 	$StatsPanel/Margin/VBox/StatsGrid/HealthValue.text = "%d / %d" % [current_hp, max_hp]
 	$StatsPanel/Margin/VBox/StatsGrid/ManaValue.text = "%d / %d" % [current_mana, max_mana]
+	$StatsPanel/Margin/VBox/StatsGrid/EchoesValue.text = GameManager.format_echoes(PlayerManager.get_echoes())
 
 
 func _on_shop_pressed() -> void:
@@ -223,6 +465,8 @@ func _on_shop_pressed() -> void:
 
 
 func _on_world_status_pressed() -> void:
+	if TutorialManager.is_active and TutorialManager.current_stage == 4:
+		TutorialManager.current_step = 1
 	get_tree().change_scene_to_file("res://scenes/WorldStatus.tscn")
 
 func _spawn_region_buttons() -> void:

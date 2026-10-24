@@ -639,21 +639,20 @@ var _frost_tempest_turns_remaining: int = 0
 var _frost_tempest_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
-# Lunara's ultimate, Eternal Eclipse: a self-cast that, at the start of every turn
-# for as long as beams remain, fires ETERNAL_ECLIPSE_BEAMS_PER_TURN beams (or
-# however many are left, if fewer) at random living, targetable enemies
-# within radius columns of the hero's CURRENT position (re-checked
-# fresh every tick, same as The Frost Tempest's own radius above - so it
-# follows her if she moves), each for this level's own damage. Ends the
-# instant every beam has landed, rather than running a fixed number of
-# turns like The Frost Tempest's own duration does. Same "casting turn
-# doesn't count" pattern as every other buff (see _tick_eternal_eclipse()).
+# Lunara's ultimate, Eternal Eclipse: a self-cast whose first beam strikes on
+# the casting turn itself, then at every End Turn for as long as beams
+# remain fires ETERNAL_ECLIPSE_BEAMS_PER_TURN more (or however many are left,
+# if fewer), a moment apart, at random living, targetable enemies within
+# radius columns of the hero's CURRENT position (re-checked fresh for
+# every beam, same as The Frost Tempest's own radius above - so it follows
+# her if she moves), each for this level's own damage. Ends the instant
+# every beam has landed, rather than running a fixed number of turns like
+# The Frost Tempest's own duration does (see _fire_eternal_eclipse_beams()).
 # ------------------------------------------------------------------
 var _eternal_eclipse_active: bool = false
 var _eternal_eclipse_damage_per_beam: float = 0.0
 var _eternal_eclipse_radius: int = 0
 var _eternal_eclipse_beams_remaining: int = 0
-var _eternal_eclipse_duration_pending_start: bool = false
 
 # ------------------------------------------------------------------
 # Cinder's ultimate, Cinderbomb: a targeted cast that deals this
@@ -1037,7 +1036,7 @@ var _enemy_ambush_strike_duration_pending_start: bool = false
 
 # Lunara's ultimate, Eternal Eclipse, cast by the rival - mirrors the player's own
 # _eternal_eclipse_active/_eternal_eclipse_damage_per_beam/_eternal_eclipse_radius/_eternal_eclipse_
-# beams_remaining/_eternal_eclipse_duration_pending_start fields exactly: fires
+# beams_remaining fields exactly: fires one beam on the casting turn, then
 # ETERNAL_ECLIPSE_BEAMS_PER_TURN beams per End Turn (see _tick_enemy_eternal_eclipse()),
 # each independently picking ONE random living, targetable candidate from
 # everything within radius columns of the rival's CURRENT position - the
@@ -1049,7 +1048,6 @@ var _enemy_eternal_eclipse_active: bool = false
 var _enemy_eternal_eclipse_damage_per_beam: float = 0.0
 var _enemy_eternal_eclipse_radius: int = 0
 var _enemy_eternal_eclipse_beams_remaining: int = 0
-var _enemy_eternal_eclipse_duration_pending_start: bool = false
 
 # Kaelen Varr's Undertow, on the rival - unlike the player's own
 # copy, the target is always the player (the only other participant in
@@ -1636,6 +1634,10 @@ var _hero_fight_target_id: String = ""
 # reinforcements, the rival may flee when nearly dead, and it doesn't clear
 # the zone.
 var _rival_challenge: bool = false
+# Set when the Echo just collected was the player's third rival kill: after the
+# zone wraps up, the "first choice" dream plays instead of going straight
+# back to the Map.
+var _first_choice_due: bool = false
 
 # The fallen rival's Echo (see HeroEchoFX), left in the column where
 # they died - a hero fight isn't won until the hero goes over it with
@@ -1740,6 +1742,9 @@ func _ready() -> void:
 			_rival_challenge = true
 			_current_stage = GameManager.MAX_ZONE_STAGE
 			_start_hero_fight(challenger)
+			# The invasion announces itself across the screen - it fades on
+			# its own, or a click anywhere dismisses it (see StoryBanner).
+			StoryBanner.play(self, "%s invaded you" % challenger.get("name", "A rival hero"), "", 44, true)
 
 	if TutorialManager.is_active and TutorialManager.current_stage == 1:
 		_advance_tutorial_stage1_step("move_to_drowned_surge_range")
@@ -2815,13 +2820,20 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 	var mana_cost: float = float(level_data.get("mana_cost", skill.get("mana_cost", 0)))
 	if _recruited.get("current_mana", 0) < mana_cost:
 		_show_message_over_hero("Not enough mana")
-		if TutorialManager.is_active and TutorialManager.current_stage == 3 \
+		if TutorialManager.is_active and TutorialManager.current_stage == 3 and not _probing_reach \
 		and skill_id == "the_sunken_one" and _tutorial_stage3_step == "cast_ultimate":
 			_advance_tutorial_stage3_step("need_mana_potion")
 		return
 
+	# Probing (see _player_skill_can_reach()): only a skill that reaches an
+	# enemy counts as something to do - every other kind (a buff, a summon)
+	# is passed over without running.
+	if _probing_reach and not REACH_SKILL_IDS.has(skill_id):
+		return
+
 	var generation_before: int = _stage_generation
-	_log_pending_action = "skill:" + skill_id
+	if not _probing_reach:
+		_log_pending_action = "skill:" + skill_id
 
 	match skill_id:
 		"barbed_lunge":
@@ -2888,7 +2900,9 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 			# click resolves (_resolve_moonfall_lance_cast), not here.
 			return
 		"eternal_eclipse":
-			_activate_eternal_eclipse(level_data)
+			if not _activate_eternal_eclipse(level_data):
+				# Nothing within its radius to rain on - no-op, same as above.
+				return
 		"withering_pursuit":
 			_activate_withering_pursuit(level_data)
 		"ambush_strike":
@@ -3110,6 +3124,11 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 			# confirms the wiring works end to end.
 			print("Used skill: ", skill.get("name", ""))
 
+	# A probe that got this far found its target (the handler above already
+	# recorded it and stopped short) - nothing is spent.
+	if _probing_reach:
+		return
+
 	# Depthsveil/Rootveil/Ambush Strike only break from
 	# attacking or casting ANOTHER skill - not from the cast that just
 	# activated them in the first place, and not from items/potions
@@ -3188,6 +3207,12 @@ func _cast_barbed_lunge(level_data: Dictionary) -> bool:
 			hit_enemy = enemy_here
 			break
 
+	# Probing (see _player_skill_can_reach()): it only reaches an enemy if
+	# the leap lands on one.
+	if _probing_reach:
+		_probe_found = not hit_enemy.is_empty()
+		return _probe_found
+
 	_hero_pos_index = pos
 	_update_hero_position()
 
@@ -3220,6 +3245,9 @@ func _cast_abyssal_spasm(level_data: Dictionary) -> bool:
 	if targets.is_empty():
 		_show_message_over_hero("No enemies in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	var multiplier: float = float(level_data.get("damage_multiplier", 0.75))
 	var pact_damage: float = _roll_hero_damage() * multiplier
@@ -3255,6 +3283,9 @@ func _cast_sweep(level_data: Dictionary) -> bool:
 	if targets.is_empty():
 		_show_message_over_hero("No enemies in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	var sweep_damage: float = float(level_data.get("damage", 0))
 	_play_sweep_flames(_hero_pos_index, radius)
@@ -3300,6 +3331,9 @@ func _cast_paralytic_venom(level_data: Dictionary) -> bool:
 	if targets.is_empty():
 		_show_message_over_hero("No enemies in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	var venom_damage: float = float(level_data.get("damage", 0))
 	var stun_turns: int = int(level_data.get("stun_turns", 0))
@@ -3348,6 +3382,9 @@ func _cast_fallen_grace(level_data: Dictionary) -> bool:
 	if targets.is_empty():
 		_show_message_over_hero("No enemies in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	var fallen_grace_damage: float = float(level_data.get("damage", 0))
 	# Arrows at every unit about to be hit - launched before any damage
@@ -3399,6 +3436,9 @@ func _cast_luring_gaze(level_data: Dictionary) -> bool:
 	if targets.is_empty():
 		_show_message_over_hero("No enemies in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	var stun_turns: int = int(level_data.get("stun_turns", 0))
 	var armor_reduction: float = float(level_data.get("armor_reduction", 0))
@@ -3448,6 +3488,9 @@ func _cast_double_trouble(level_data: Dictionary) -> bool:
 	if targets.is_empty():
 		_show_message_over_hero("No enemies in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	var trouble_damage: float = float(level_data.get("damage", 0))
 	for enemy in targets:
@@ -4096,6 +4139,9 @@ func _cast_the_sunken_one(level_data: Dictionary) -> bool:
 	if hit_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	var damage: float = float(level_data.get("damage", 0))
 	spend_mana(float(level_data.get("mana_cost", 0)))
@@ -4131,6 +4177,7 @@ func _cast_the_sunken_one(level_data: Dictionary) -> bool:
 		_deal_line_aoe_damage_to_enemy_guards(span.x, span.y, damage)
 		_shake_screen()
 		if TutorialManager.is_active and TutorialManager.current_stage == 3 \
+		and not _battle_over \
 		and (_tutorial_stage3_step == "cast_ultimate" or _tutorial_stage3_step == "cast_ultimate_ready"):
 			_advance_tutorial_stage3_step("mop_up")
 		if _battle_over or _stage_generation != generation_before:
@@ -5118,6 +5165,9 @@ func _start_kiss_the_wastes_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "kiss_the_wastes"
@@ -6794,86 +6844,127 @@ func _play_eclipse_strike(target_node: Variant) -> void:
 # How many beams _tick_eternal_eclipse() fires per End Turn while Eternal Eclipse is
 # active - a flat rule, not a per-level number (only the total beam
 # count, damage, and radius scale with level - see GameManager's own
-# "eternal_eclipse" skill data).
+# "eternal_eclipse" skill data). The cast itself fires one more on the spot
+# (see _activate_eternal_eclipse()).
 const ETERNAL_ECLIPSE_BEAMS_PER_TURN := 2
+# Seconds between the beams of one volley, so each reads as its own
+# strike instead of several landing as one - on creeps stacked in one
+# column they'd otherwise draw on top of each other.
+const ETERNAL_ECLIPSE_BEAM_STAGGER := 0.25
 
 
-## Activates Eternal Eclipse: arms this level's own damage/radius/beams. Always
-## "succeeds" - cast on the hero himself, no target or range
-## requirement, same as every other self-cast buff.
-func _activate_eternal_eclipse(level_data: Dictionary) -> void:
+## Activates Eternal Eclipse: arms this level's own damage/radius/beams, and
+## the first beam strikes right away, on the casting turn - the rest fall
+## ETERNAL_ECLIPSE_BEAMS_PER_TURN per End Turn after it (_tick_eternal_eclipse()).
+## Refuses (returns false, with a message, nothing spent) while nothing is
+## within the level's radius of the hero - every beam would just be lost
+## (see _eternal_eclipse_strike()).
+func _activate_eternal_eclipse(level_data: Dictionary) -> bool:
+	if _eternal_eclipse_candidates(int(level_data.get("radius", 0))).is_empty():
+		_show_message_over_hero("No enemies in range")
+		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
+
 	_eternal_eclipse_active = true
 	_eternal_eclipse_damage_per_beam = float(level_data.get("damage", 0))
 	_eternal_eclipse_radius = int(level_data.get("radius", 0))
 	_eternal_eclipse_beams_remaining = int(level_data.get("beams", 0))
-	# The casting turn itself doesn't count - beams only start landing
-	# from the turn after (see _tick_eternal_eclipse()), same as every other
-	# duration-based buff.
-	_eternal_eclipse_duration_pending_start = true
 
 	_begin_eclipse_sky()
 	_show_message_over_hero("Eternal Eclipse!")
+	_fire_eternal_eclipse_beams(1)
+	return true
 
 
-## Ticks Eternal Eclipse once per End Turn, same timing (and same "the casting
-## turn doesn't count" skip) as every other duration-based buff: fires
-## up to ETERNAL_ECLIPSE_BEAMS_PER_TURN beams (or however many are left, if
-## fewer) this turn. Each beam independently rolls ONE random living,
-## targetable candidate from everything within radius columns of the
-## hero's CURRENT position (re-checked fresh here, not fixed at cast
-## time, so the range follows her if she moves) - a real enemy or, while
-## the rival has Imperial Guard up, one of its guards, both equally
-## likely since a guard is a real occupant of its own column same as
-## the boss's own Elderwild Companion already is (it's a regular _enemies entry,
-## same reasoning as Lunar Ricochet' own bounce - see
-## _apply_lunar_ricochet_bounces()'s own comment). A beam with nothing in
-## range still counts against the total, same as a Dota Eternal Eclipse beam
-## that finds no target. Every beam that does land also plays Moonfall
-## Lance's own falling-moonlight visual (_play_moonfall_lance_impact()) on
-## whatever it struck. Ends the instant every beam has landed.
+## Ticks Eternal Eclipse once per End Turn: fires up to
+## ETERNAL_ECLIPSE_BEAMS_PER_TURN beams (or however many are left, if fewer).
+## Unlike the duration buffs, there's no "casting turn doesn't count" skip
+## here - the cast already fired its own first beam.
 func _tick_eternal_eclipse() -> void:
 	if not _eternal_eclipse_active:
 		return
+	_fire_eternal_eclipse_beams(ETERNAL_ECLIPSE_BEAMS_PER_TURN)
 
-	if _eternal_eclipse_duration_pending_start:
-		_eternal_eclipse_duration_pending_start = false
+
+## Fires one volley of up to `count` beams (fewer if fewer are left),
+## ETERNAL_ECLIPSE_BEAM_STAGGER s apart: the first strikes now, each later
+## one picks its target and lands its damage only when it actually falls
+## - so it never aims at someone an earlier beam of the volley just
+## killed, and its damage number shows with its own beam. A later beam
+## is dropped if the stage/hero fight moved on or the battle ended in the
+## meantime. Ends Eternal Eclipse once its last beam has fallen.
+func _fire_eternal_eclipse_beams(count: int) -> void:
+	var volley: int = mini(count, _eternal_eclipse_beams_remaining)
+	_eternal_eclipse_beams_remaining -= volley
+	if volley <= 0:
+		_end_eternal_eclipse()
 		return
 
+	_eternal_eclipse_strike()
+	if volley == 1:
+		if _eternal_eclipse_beams_remaining <= 0 and _eternal_eclipse_active:
+			_end_eternal_eclipse()
+		return
+
+	var generation_before: int = _stage_generation
+	for i in range(1, volley):
+		var last: bool = i == volley - 1
+		get_tree().create_timer(ETERNAL_ECLIPSE_BEAM_STAGGER * i).timeout.connect(func() -> void:
+			if _battle_over or _stage_generation != generation_before or not _eternal_eclipse_active:
+				return
+			_eternal_eclipse_strike()
+			if last and _eternal_eclipse_beams_remaining <= 0 and _eternal_eclipse_active:
+				_end_eternal_eclipse()
+		)
+
+
+## Everything an Eternal Eclipse beam could strike right now within `radius`
+## columns of the hero: every living, targetable enemy, plus the rival's
+## own guards while it has Imperial Guard up. Shared by the cast's own
+## "anything in range?" check and every beam, so the two never disagree.
+func _eternal_eclipse_candidates(radius: int) -> Array:
+	var candidates: Array = []
+	for enemy in _enemies:
+		if _is_target_hidden(enemy):
+			continue
+		if _distance(enemy["pos_index"], _hero_pos_index) <= radius:
+			candidates.append(enemy)
+	if not _get_hero_fight_boss().is_empty():
+		for guard in _enemy_guards:
+			if _distance(guard["pos_index"], _hero_pos_index) <= radius:
+				candidates.append(guard)
+	return candidates
+
+
+## One Eternal Eclipse beam: rolls ONE random living, targetable candidate
+## from everything within radius columns of the hero's CURRENT position
+## (re-checked fresh, so the range follows her if she moves) - a real
+## enemy or, while the rival has Imperial Guard up, one of its guards,
+## both equally likely since a guard is a real occupant of its own column
+## same as the boss's own Elderwild Companion already is (it's a regular
+## _enemies entry, same reasoning as Lunar Ricochet's own bounce - see
+## _apply_lunar_ricochet_bounces()'s own comment). Creeps stacked in one
+## column are each their own candidate. A beam with nothing in range is
+## simply spent, same as a Dota Eternal Eclipse beam that finds no target.
+## A beam that does land plays the falling-moonlight strike on whatever
+## it hit (_play_eclipse_strike()).
+func _eternal_eclipse_strike() -> void:
 	var boss: Dictionary = _get_hero_fight_boss()
+	var candidates: Array = _eternal_eclipse_candidates(_eternal_eclipse_radius)
+	if candidates.is_empty():
+		return
 
-	for i in range(ETERNAL_ECLIPSE_BEAMS_PER_TURN):
-		if _eternal_eclipse_beams_remaining <= 0:
-			break
-		_eternal_eclipse_beams_remaining -= 1
-
-		var candidates: Array = []
-		for enemy in _enemies:
-			if _is_target_hidden(enemy):
-				continue
-			if _distance(enemy["pos_index"], _hero_pos_index) <= _eternal_eclipse_radius:
-				candidates.append(enemy)
-		if not boss.is_empty():
-			for guard in _enemy_guards:
-				if _distance(guard["pos_index"], _hero_pos_index) <= _eternal_eclipse_radius:
-					candidates.append(guard)
-
-		if not candidates.is_empty():
-			var picked: Dictionary = candidates[randi() % candidates.size()]
-			if picked.has("static"):
-				_deal_fixed_damage_to_enemy(picked, _eternal_eclipse_damage_per_beam)
-			else:
-				var mitigated: float = _apply_armor_reduction(_eternal_eclipse_damage_per_beam, _enemy_hero_effective_armor(boss))
-				_deal_damage_to_enemy_guard(picked, mitigated)
-			# Same falling moonlight beam Moonfall Lance lands with (see
-			# _play_moonfall_lance_impact()'s own comment) - purely cosmetic,
-			# played alongside the damage above rather than gating it.
-			_play_eclipse_strike(picked.get("node"))
-
-		if _battle_over:
-			return
-
-	if _eternal_eclipse_beams_remaining <= 0:
-		_end_eternal_eclipse()
+	var picked: Dictionary = candidates[randi() % candidates.size()]
+	# Captured before the damage - a kill frees the node.
+	var node: Variant = picked.get("node")
+	if picked.has("static"):
+		_deal_fixed_damage_to_enemy(picked, _eternal_eclipse_damage_per_beam)
+	else:
+		var mitigated: float = _apply_armor_reduction(_eternal_eclipse_damage_per_beam, _enemy_hero_effective_armor(boss))
+		_deal_damage_to_enemy_guard(picked, mitigated)
+	_play_eclipse_strike(node)
 
 
 ## Ends Eternal Eclipse once every beam has landed.
@@ -6882,7 +6973,6 @@ func _end_eternal_eclipse() -> void:
 	_eternal_eclipse_damage_per_beam = 0.0
 	_eternal_eclipse_radius = 0
 	_eternal_eclipse_beams_remaining = 0
-	_eternal_eclipse_duration_pending_start = false
 
 	_refresh_eclipse_sky()
 	_show_message_over_hero("Eternal Eclipse fades")
@@ -10510,6 +10600,9 @@ func _start_thornbind_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "thornbind"
@@ -10544,6 +10637,12 @@ func _start_whisper_of_the_veil_targeting(level_data: Dictionary) -> bool:
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
+
+	# Probing (see _player_skill_can_reach()): only an enemy in range counts
+	# - the self-heal doesn't reach anyone.
+	if _probing_reach:
+		_probe_found = not _valid_targets.is_empty()
+		return _probe_found
 
 	var hp_cost: float = float(level_data.get("hp_cost", 0))
 	var can_self_cast: bool = float(_recruited.get("current_hp", 0)) >= hp_cost
@@ -10581,6 +10680,9 @@ func _start_drowned_surge_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "drowned_surge"
@@ -10606,6 +10708,9 @@ func _start_undertow_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "undertow"
@@ -10631,6 +10736,9 @@ func _start_deathlight_lure_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "deathlight_lure"
@@ -10659,6 +10767,9 @@ func _start_hope_of_the_fallen_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "hope_of_the_fallen"
@@ -10684,6 +10795,9 @@ func _start_moonfall_lance_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "moonfall_lance"
@@ -10710,6 +10824,9 @@ func _start_shackles_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "shackles"
@@ -10735,6 +10852,9 @@ func _start_chainfire_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "chainfire"
@@ -10762,6 +10882,9 @@ func _start_cinderbomb_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "cinderbomb"
@@ -10787,6 +10910,9 @@ func _start_mark_of_stillness_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "mark_of_stillness"
@@ -10819,6 +10945,9 @@ func _start_the_hollow_cold_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "the_hollow_cold"
@@ -10847,6 +10976,9 @@ func _start_touch_of_the_first_cold_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "touch_of_the_first_cold"
@@ -10872,6 +11004,9 @@ func _start_return_to_the_void_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "return_to_the_void"
@@ -10899,6 +11034,9 @@ func _start_maddening_roar_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "maddening_roar"
@@ -10925,6 +11063,9 @@ func _start_the_hunger_calls_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "the_hunger_calls"
@@ -10950,6 +11091,9 @@ func _start_rimecleaver_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "rimecleaver"
@@ -10977,6 +11121,9 @@ func _start_three_cheers_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "three_cheers"
@@ -11002,6 +11149,9 @@ func _start_winters_grip_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "winters_grip"
@@ -11029,6 +11179,9 @@ func _start_frostbound_rupture_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "frostbound_rupture"
@@ -11054,6 +11207,9 @@ func _start_charge_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "charge"
@@ -11079,6 +11235,9 @@ func _start_glacier_breaker_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "glacier_breaker"
@@ -11105,6 +11264,9 @@ func _start_sanguine_bloom_targeting(level_data: Dictionary) -> bool:
 	if _valid_targets.is_empty():
 		_show_message_over_hero("No enemy in range")
 		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
 
 	_targeting_mode = true
 	_targeting_purpose = "sanguine_bloom"
@@ -11751,6 +11913,10 @@ func _show_damage_number(target_node: Control, amount: float, is_critical: bool 
 ## it used to start doing both the instant it appeared, which barely
 ## gave the player time to read it before it was gone.
 func _show_message_over_hero(text: String) -> void:
+	# A reach probe (_player_skill_can_reach()) runs skills' own checks
+	# silently - their "No enemy in range" isn't for the player.
+	if _probing_reach:
+		return
 	var label := Label.new()
 	label.text = text
 	label.add_theme_color_override("font_color", Color(1, 0.15, 0.15, 1))
@@ -11811,6 +11977,10 @@ func _kill_enemy(enemy: Dictionary, claimed_by_void: bool = false) -> void:
 		CreatureAnimator.spawn_death_ghost(enemy["node"], _fx_layer)
 	if _in_hero_fight and enemy["static"].get("is_hero_fight_boss", false):
 		_spawn_hero_echo(enemy)
+		# A rival who invaded the player's realm, cut down - not an ending,
+		# the run goes on.
+		if _rival_challenge:
+			_award_achievement(Achievements.NOT_IN_MY_REALM)
 	enemy["node"].queue_free()
 	if enemy.get("hp_label") != null:
 		enemy["hp_label"].queue_free()
@@ -11820,7 +11990,35 @@ func _kill_enemy(enemy: Dictionary, claimed_by_void: bool = false) -> void:
 	_refresh_enemy_overhead_labels()
 
 	if _enemies.is_empty():
-		_handle_victory()
+		_schedule_victory()
+
+
+## The last enemy just fell - but the action that killed it may not be
+## done yet: an Attack's cleave/splash/Lunar Ricochet bounce, an AoE's
+## remaining targets, a tick's remaining beams. Clearing the stage on the
+## spot would spawn the next wave right under those, so the rest of a
+## previous wave's skill landed on fresh creeps. Instead the clear waits
+## until the current action has fully resolved (call_deferred - end of
+## this frame), so everything still to come from it finds an empty field;
+## only then does _handle_victory() spawn the next wave. Re-checks the
+## field first, in case anything came back in the meantime.
+func _schedule_victory() -> void:
+	if _victory_scheduled:
+		return
+	_victory_scheduled = true
+	_run_scheduled_victory.call_deferred()
+
+
+func _run_scheduled_victory() -> void:
+	_victory_scheduled = false
+	if _battle_over or not _enemies.is_empty():
+		return
+	_handle_victory()
+
+
+# True from the moment the last enemy falls until the deferred
+# _run_scheduled_victory() runs - see _schedule_victory().
+var _victory_scheduled: bool = false
 
 
 ## Parses an enemy's "gold" field ("34-39") the same way hero damage
@@ -11914,6 +12112,16 @@ func _handle_victory() -> void:
 	_finish_zone_victory()
 
 
+## Records a mid-run achievement (see Achievements.FEATS) and, the first time
+## it's ever earned, announces it with a banner - which fades on its own or
+## skips on a click. Earned again later, it's silently already there.
+func _award_achievement(feat_id: String) -> void:
+	if PlayerManager.current_player == "" or PlayerManager.has_achievement(feat_id):
+		return
+	PlayerManager.add_achievement(feat_id)
+	StoryBanner.play(self, "Achievement unlocked", Achievements.feat_title(feat_id), 40, true)
+
+
 ## The rival hero has fallen: they're marked defeated on the spot (their
 ## kill message is queued now, whatever happens after), and their Echo
 ## opens in the column they died in, waiting to be collected.
@@ -11973,11 +12181,18 @@ func _on_echo_popup_ok_pressed() -> void:
 func _on_hero_echo_collected() -> void:
 	_hero_echo = null
 	_in_hero_fight = false
+	if PlayerManager.add_rival_kill() == TheFirstChoice.RIVALS_REQUIRED:
+		_first_choice_due = true
 	# The Echo is absorbed into the hero's attributes (see
 	# PlayerManager.apply_echo_bonus()); a moment to read what it gave.
+	# The fallen rival's whole stash of Echoes comes with it: its own, plus
+	# every one it had taken from others - but the attribute bonus is the
+	# same for every rival defeated, however many it was carrying.
+	var taken: int = maxi(PlayerManager.take_echoes(_hero_fight_target_id), 1)
 	var gained: Dictionary = PlayerManager.apply_echo_bonus(_hero_static)
 	if not gained.is_empty():
-		_show_message_over_hero("Echo absorbed!  +%.1f Strength  +%.1f Agility  +%.1f Intelligence" % [gained.get("strength", 0.0), gained.get("agility", 0.0), gained.get("intelligence", 0.0)])
+		var headline: String = "Echo absorbed!" if taken == 1 else "%d Echoes absorbed!" % taken
+		_show_message_over_hero("%s  +%.1f Strength  +%.1f Agility  +%.1f Intelligence" % [headline, gained.get("strength", 0.0), gained.get("agility", 0.0), gained.get("intelligence", 0.0)])
 		await get_tree().create_timer(1.6).timeout
 	_finish_zone_victory()
 
@@ -11991,6 +12206,10 @@ func _finish_zone_victory() -> void:
 			and not _rival_challenge
 	if not _rival_challenge:
 		PlayerManager.set_zone_cleared(GameManager.selected_zone)
+	# Clearing the home zone is what awakens the hero's own Echo - the first
+	# one they hold.
+	if first_home_clear:
+		PlayerManager.add_echoes(1)
 
 	_battle_over = true
 	_update_action_buttons()
@@ -11999,9 +12218,41 @@ func _finish_zone_victory() -> void:
 	if not get_tree().get_nodes_in_group(CreatureAnimator.DEATH_GHOST_GROUP).is_empty():
 		await get_tree().create_timer(CreatureAnimator.DEATH_DURATION + 0.15 + AudioManager.attack_wait()).timeout
 	if first_home_clear:
-		await StoryBanner.play(self, "Your journey has only begun.",
-				"The world lies beyond your home. Seek the other Remembered and gather their Echoes.").finished
+		await StoryBanner.play(self, "Your Echo has awakened.",
+				"That dream... I saw my home as it once was.\nBut my home was never like that. Was it?\nIs this a forgotten memory... or a lure into something far more dangerous?",
+				48, true).finished
+	# The third rival felled (and its Echo taken) is answered by a dream
+	# before the Map.
+	if _first_choice_due:
+		TheFirstChoice.play("res://scenes/Map.tscn")
+		return
 	get_tree().change_scene_to_file("res://scenes/Map.tscn")
+
+
+## A new wave (or the hero fight) is about to arrive: every skill the
+## hero left acting on the battlefield ends here, so nothing from the
+## last wave goes on to hit the next one - Cinderbomb's burning ground,
+## the Kiss the Wastes channel, The Frost Tempest's storm, Eternal
+## Eclipse's remaining beams, Frostbound Rupture's walls, Hollow Cold
+## tears, The Hunger Calls. Only what the hero has summoned carries
+## over (the Elderwild Companion, the Imperial Guard - moved back beside
+## him by the callers), along with his own buffs, which act on him
+## rather than on the field. In-flight hits from the last wave already
+## drop themselves on the _stage_generation bump the callers make first,
+## and the clear itself waits for the killing action to finish (see
+## _schedule_victory()).
+func _interrupt_battlefield_skills() -> void:
+	_close_all_hollow_cold_tears()
+	_end_hunger_calls_fx()
+	_despawn_cinderbomb()
+	if _kiss_the_wastes_active:
+		_end_kiss_the_wastes()
+	if _frost_tempest_active:
+		_end_frost_tempest()
+	if _eternal_eclipse_active:
+		_end_eternal_eclipse()
+	if _frostbound_rupture_active:
+		_end_frostbound_rupture()
 
 
 ## Moves on to the next wave without leaving the Battle scene: hero
@@ -12011,8 +12262,7 @@ func _finish_zone_victory() -> void:
 func _advance_to_next_stage() -> void:
 	_current_stage += 1
 	_stage_generation += 1
-	_close_all_hollow_cold_tears()
-	_end_hunger_calls_fx()
+	_interrupt_battlefield_skills()
 	_update_stage_label()
 	_show_message_over_hero("Stage %d!" % _current_stage)
 
@@ -12095,12 +12345,12 @@ func _start_hero_fight(hero_static: Dictionary) -> void:
 	_in_hero_fight = true
 	_hero_fight_target_id = hero_static.get("id", "")
 	_stage_generation += 1
-	_close_all_hollow_cold_tears()
-	_end_hunger_calls_fx()
+	_interrupt_battlefield_skills()
 
 	_update_stage_label()
-	var rival_name: String = hero_static.get("name", "A rival hero")
-	_show_message_over_hero(("%s has challenged you" if _rival_challenge else "%s challenges you!") % rival_name)
+	# An invasion gets its own banner instead (see _ready()).
+	if not _rival_challenge:
+		_show_message_over_hero("%s challenges you!" % hero_static.get("name", "A rival hero"))
 
 	_cancel_targeting()
 	_hero_pos_index = 1
@@ -12447,7 +12697,21 @@ func _mark_turn_used() -> void:
 		PlayLog.event("action", data)
 		_log_pending_action = ""
 	_update_action_buttons()
-	get_tree().create_timer(0.9).timeout.connect(_end_turn)
+	_schedule_end_turn()
+
+
+## Ends the turn after the usual short pause - unless the stage/hero fight
+## has moved on by then. The last kill of an action now clears the stage
+## only once that action is done (see _schedule_victory()), i.e. after
+## this was scheduled, and the fresh encounter opens a turn of its own -
+## this end belonged to the old one.
+func _schedule_end_turn() -> void:
+	var generation_before: int = _stage_generation
+	get_tree().create_timer(0.9).timeout.connect(func() -> void:
+		if _stage_generation != generation_before:
+			return
+		_end_turn()
+	)
 
 
 func _end_turn() -> void:
@@ -12573,7 +12837,7 @@ func _end_turn() -> void:
 		if _kiss_the_wastes_active:
 			_has_acted_this_turn = true
 			_update_action_buttons()
-			get_tree().create_timer(0.9).timeout.connect(_end_turn)
+			_schedule_end_turn()
 			return
 
 	_log_turns_in_stage += 1
@@ -12601,9 +12865,13 @@ func _end_turn() -> void:
 ## with every button locked. Marks the turn as used first, so repeated
 ## _update_action_buttons() calls don't schedule the skip twice.
 func _maybe_auto_skip_player_turn() -> void:
-	if _battle_over or _has_acted_this_turn or _rival_fx_in_flight:
+	if _battle_over or _has_acted_this_turn or _rival_fx_in_flight or _probing_reach:
 		return
-	if _player_stun_turns_left <= 0 and not _the_test_of_time_active:
+	var locked_out: bool = _player_stun_turns_left > 0 or _the_test_of_time_active
+	# Rooted (or frozen in place) with nothing in reach is just as stuck:
+	# no step to take, no attack that lands, no skill that reaches anyone.
+	var stuck: bool = not locked_out and not _player_can_act()
+	if not locked_out and not stuck:
 		return
 
 	_has_acted_this_turn = true
@@ -12614,9 +12882,11 @@ func _maybe_auto_skip_player_turn() -> void:
 	_auto_skip_pending = true
 	_auto_skip_generation = _stage_generation
 	_cancel_targeting()
-	# The Test of Time speaks for itself (the floating, the clock) - only
-	# a stun gets a message.
-	if not _the_test_of_time_active:
+	# The Test of Time speaks for itself (the floating, the clock) - a stun
+	# or being stuck gets a message.
+	if stuck:
+		_show_message_over_hero("Rooted - nothing in reach, turn skipped")
+	elif not _the_test_of_time_active:
 		_show_message_over_hero("Stunned - turn skipped")
 
 	var generation_before: int = _stage_generation
@@ -12628,6 +12898,78 @@ func _maybe_auto_skip_player_turn() -> void:
 			return
 		_end_turn()
 	)
+
+
+# ------------------------------------------------------------------
+# "Is there anything the player can do this turn?" - for the auto-skip
+# above. Moving always counts; once the hero can't move (rooted, or frozen
+# in place by a rival's Frostbound Rupture), only an attack that lands or a
+# skill that reaches an enemy does. Items don't count.
+# ------------------------------------------------------------------
+
+# Every skill whose cast needs an enemy within its reach - the ones a reach
+# probe asks (see _player_skill_can_reach()). Buffs, summons and other
+# self-casts aren't here: they don't reach anyone.
+const REACH_SKILL_IDS := [
+	"abyssal_spasm", "barbed_lunge", "chainfire", "charge", "cinderbomb",
+	"deathlight_lure", "double_trouble", "drowned_surge", "eternal_eclipse",
+	"fallen_grace", "frostbound_rupture", "glacier_breaker", "hope_of_the_fallen",
+	"kiss_the_wastes", "luring_gaze", "maddening_roar", "mark_of_stillness",
+	"moonfall_lance", "paralytic_venom", "return_to_the_void", "rimecleaver",
+	"sanguine_bloom", "shackles", "sweep", "the_hollow_cold", "the_hunger_calls",
+	"the_sunken_one", "thornbind", "three_cheers", "touch_of_the_first_cold",
+	"undertow", "whisper_of_the_veil", "winters_grip",
+]
+
+# True while _player_skill_can_reach() runs a skill's own checks without
+# casting it: each reaching skill's handler stops right after its own
+# "anything in reach?" test, recording the answer in _probe_found, before
+# anything is spent or happens - and messages stay silent.
+var _probing_reach := false
+var _probe_found := false
+
+
+func _player_can_act() -> bool:
+	# Already picking a target - mid-action, not stuck.
+	if _targeting_mode:
+		return true
+	if _player_root_turns_left <= 0 and not _is_column_enemy_frostbound_rupture_blocked(_hero_pos_index):
+		return true
+	if _player_attack_can_reach():
+		return true
+	return _player_skill_can_reach()
+
+
+## Whether a plain Attack would land on anything right now - the same tests
+## the Attack button itself makes (_start_ranged_targeting()/
+## _resolve_melee_attack()).
+func _player_attack_can_reach() -> bool:
+	if _is_ranged_hero():
+		var col_range: int = _hero_attack_column_range()
+		for enemy in _enemies:
+			if not _is_target_hidden(enemy) and _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
+				return true
+		return false
+	return not _get_enemy_at(_hero_pos_index).is_empty() or not _enemy_guard_at(_hero_pos_index).is_empty()
+
+
+## Whether any skill the hero could cast right now (learned, off cooldown,
+## affordable, not silenced) reaches an enemy - asked of each skill's own
+## handler through _on_skill_pressed() itself, so the answer always matches
+## what pressing it would do. See _probing_reach.
+func _player_skill_can_reach() -> bool:
+	for skill in _hero_static.get("skills", []):
+		if not _skill_buttons.has(skill.get("id", "")):
+			continue
+		_probing_reach = true
+		_probe_found = false
+		_on_skill_pressed(skill)
+		_probing_reach = false
+		# A targeted skill's probe collected its targets before stopping.
+		_valid_targets.clear()
+		if _probe_found:
+			return true
+	return false
 
 
 # True from the moment _maybe_auto_skip_player_turn() schedules a skip
@@ -13029,8 +13371,14 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 	# can actually be cast next turn.
 	var closing_for_beast: bool = enemy_type == "range" and not hero_hidden and not rooted and hero_distance > EnemySkillRange.BEAST_OF_THE_ELDERWILD_REACH and _is_enemy_skill_ready("beast_of_the_elderwild", enemy_type, hero_distance, enemy, true)
 
-	if enemy_type == "range" and not closing_for_beast:
-		if not hero_hidden and not rooted and _enemy_flees_at(enemy, hero_distance):
+	# The Frost Tempest rages around her own position - while it's up, a
+	# ranged caster stops kiting: she presses in until the player is inside
+	# it, and never backs away out of it (it only ever hits what's in it).
+	var holding_tempest: bool = _enemy_frost_tempest_active and not hero_hidden
+	var closing_for_tempest: bool = holding_tempest and not rooted and hero_distance > _enemy_frost_tempest_radius
+
+	if enemy_type == "range" and not closing_for_beast and not closing_for_tempest:
+		if not hero_hidden and not rooted and not holding_tempest and _enemy_flees_at(enemy, hero_distance):
 			var flee_pos: int = _get_flee_position(enemy)
 			if not _is_column_frostbound_rupture_blocked(flee_pos):
 				_move_enemy(enemy, flee_pos)
@@ -13291,6 +13639,18 @@ func _enemy_skill_mana_cost(skill_id: String) -> float:
 	return float(_get_enemy_skill_level_data(skill_id).get("mana_cost", 0))
 
 
+## Whether the player could land a plain Attack on `enemy` this turn or
+## after one move: within his attack reach (his range in columns, or his
+## own column for a melee hero) plus his move. A long-range skill alone
+## doesn't count - one nuke isn't the sustained pressure a defensive cast
+## timed by this (Veil of the Forgotten) is meant to meet.
+func _player_can_attack_soon(enemy: Dictionary) -> bool:
+	if enemy.is_empty():
+		return false
+	var reach: int = _hero_attack_column_range() if _is_ranged_hero() else 0
+	return _distance(enemy["pos_index"], _hero_pos_index) <= reach + _hero_move_distance()
+
+
 ## False for a buff/summon skill that's already active and wouldn't do
 ## anything new right now (recasting Leeching Hunger/Depthsveil/Spirit
 ## Link/Beast of the Elderwild just restarts their duration from the same values,
@@ -13306,7 +13666,10 @@ func _enemy_skill_worth_casting(skill_id: String) -> bool:
 		"ambush_strike":
 			return not _enemy_ambush_strike_active
 		"eternal_eclipse":
-			return not _enemy_eternal_eclipse_active
+			# Same rule as the player's own cast: not while nothing is in
+			# reach, or every beam would just be lost.
+			var eclipse_radius: int = int(_get_enemy_skill_level_data("eternal_eclipse").get("radius", 0))
+			return not _enemy_eternal_eclipse_active and not _enemy_eternal_eclipse_candidates(eclipse_radius).is_empty()
 		"wildbond":
 			return not _enemy_wildbond_active
 		"beast_of_the_elderwild":
@@ -13314,7 +13677,17 @@ func _enemy_skill_worth_casting(skill_id: String) -> bool:
 		"elderwild_companion":
 			return _get_enemy_elderwild_companion().is_empty()
 		"veil_of_the_forgotten":
-			return not _enemy_veil_of_the_forgotten_active
+			# A shield only matters once the fight reaches him - raising it
+			# while the player is still far off just burns the skill (and its
+			# duration). Up once the player closes to striking distance, or
+			# once he's already been hurt.
+			if _enemy_veil_of_the_forgotten_active:
+				return false
+			var veil_boss: Dictionary = _get_hero_fight_boss()
+			if veil_boss.is_empty():
+				return false
+			var hurt: bool = float(veil_boss.get("current_hp", 0.0)) < _enemy_hero_effective_max_hp(veil_boss) * 0.7
+			return hurt or _player_can_attack_soon(veil_boss)
 		"undertow":
 			# Not worth recasting while a mark is already pending -
 			# there's only ever one possible target anyway (the
@@ -18013,80 +18386,112 @@ func _cast_enemy_eternal_eclipse(level_data: Dictionary) -> void:
 	_enemy_eternal_eclipse_damage_per_beam = float(level_data.get("damage", 0))
 	_enemy_eternal_eclipse_radius = int(level_data.get("radius", 0))
 	_enemy_eternal_eclipse_beams_remaining = int(level_data.get("beams", 0))
-	# The casting turn itself doesn't count - beams only start landing
-	# from the turn after (see _tick_enemy_eternal_eclipse()), same as every
-	# other duration-based buff.
-	_enemy_eternal_eclipse_duration_pending_start = true
 
 	_begin_eclipse_sky()
 	_show_message_over_hero("Eternal Eclipse!")
+	# Same as the player-side copy: the first beam strikes on the casting
+	# turn, the rest ETERNAL_ECLIPSE_BEAMS_PER_TURN per End Turn after it.
+	_fire_enemy_eternal_eclipse_beams(1)
 
 
-## Ticks Eternal Eclipse once per End Turn, same timing (and same "the casting
-## turn doesn't count" skip) as the player-side copy - fires up to
-## ETERNAL_ECLIPSE_BEAMS_PER_TURN beams (or however many are left) this turn.
-## Each beam independently rolls ONE random living, targetable candidate
-## from the player himself (if within `radius` columns of the rival's
-## CURRENT position, re-checked fresh here, not fixed at cast time), any
-## of the player's own guards within that same radius of the rival,
-## and the player's own Elderwild Companion if it's alive and in range too - the
-## enemy-side mirror of the player-side copy's own "boss, or one of its
-## guards" pool, extended with the bear since (unlike the boss's own
-## Elderwild Companion, a genuine _enemies entry the player-side pool already
-## reaches for free) the player's own bear is a separate structure with
-## no equivalent array to fall into automatically. A beam with nothing in
-## range still counts against the total, same as the player-side copy.
-## Ends the instant every beam has landed.
+## Ticks Eternal Eclipse once per End Turn, same timing as the player-side
+## copy (_tick_eternal_eclipse()) - fires up to ETERNAL_ECLIPSE_BEAMS_PER_TURN
+## beams (or however many are left).
 func _tick_enemy_eternal_eclipse() -> void:
 	if not _enemy_eternal_eclipse_active:
 		return
+	if _get_hero_fight_boss().is_empty():
+		_end_enemy_eternal_eclipse()
+		return
+	_fire_enemy_eternal_eclipse_beams(ETERNAL_ECLIPSE_BEAMS_PER_TURN)
 
-	if _enemy_eternal_eclipse_duration_pending_start:
-		_enemy_eternal_eclipse_duration_pending_start = false
+
+## The rival's volley - mirrors _fire_eternal_eclipse_beams(): the first
+## beam now, each later one ETERNAL_ECLIPSE_BEAM_STAGGER s after the last,
+## picking its target and dealing its damage as it falls. A later beam
+## that downs the player ends the battle right there, since it lands
+## outside _end_turn()'s own defeat checks.
+func _fire_enemy_eternal_eclipse_beams(count: int) -> void:
+	var volley: int = mini(count, _enemy_eternal_eclipse_beams_remaining)
+	_enemy_eternal_eclipse_beams_remaining -= volley
+	if volley <= 0:
+		_end_enemy_eternal_eclipse()
 		return
 
+	_enemy_eternal_eclipse_strike()
+	if volley == 1:
+		if _enemy_eternal_eclipse_beams_remaining <= 0 and _enemy_eternal_eclipse_active:
+			_end_enemy_eternal_eclipse()
+		return
+
+	var generation_before: int = _stage_generation
+	for i in range(1, volley):
+		var last: bool = i == volley - 1
+		get_tree().create_timer(ETERNAL_ECLIPSE_BEAM_STAGGER * i).timeout.connect(func() -> void:
+			if _battle_over or _stage_generation != generation_before or not _enemy_eternal_eclipse_active:
+				return
+			_enemy_eternal_eclipse_strike()
+			if _recruited.get("current_hp", 0) <= 0:
+				_handle_defeat()
+				return
+			if last and _enemy_eternal_eclipse_beams_remaining <= 0 and _enemy_eternal_eclipse_active:
+				_end_enemy_eternal_eclipse()
+		)
+
+
+## Everything one of the rival's beams could strike right now within
+## `radius` columns of the rival: the player, his guards and his Elderwild
+## Companion, each as {"kind": ...} (a guard also carries "ref"). Empty
+## without a boss. Shared by _enemy_skill_worth_casting()'s own "anything
+## in range?" check and every beam.
+func _enemy_eternal_eclipse_candidates(radius: int) -> Array:
+	var candidates: Array = []
 	var boss: Dictionary = _get_hero_fight_boss()
 	if boss.is_empty():
-		_end_enemy_eternal_eclipse()
+		return candidates
+	if _distance(_hero_pos_index, boss["pos_index"]) <= radius:
+		candidates.append({"kind": "player"})
+	for guard in _guards:
+		if _distance(guard["pos_index"], boss["pos_index"]) <= radius:
+			candidates.append({"kind": "guard", "ref": guard})
+	if _is_bear_alive() and _distance(_bear["pos_index"], boss["pos_index"]) <= radius:
+		candidates.append({"kind": "bear"})
+	return candidates
+
+
+## One of the rival's beams: rolls ONE random living, targetable candidate
+## from the player himself (if within `radius` columns of the rival's
+## CURRENT position, re-checked fresh for every beam), any of the player's
+## own guards within that same radius of the rival, and the player's own
+## Elderwild Companion if it's alive and in range too - the enemy-side
+## mirror of the player-side copy's own "boss, or one of its guards" pool,
+## extended with the bear since (unlike the boss's own Elderwild Companion,
+## a genuine _enemies entry the player-side pool already reaches for free)
+## the player's own bear is a separate structure with no equivalent array
+## to fall into automatically. A beam with nothing in range is simply
+## spent, same as the player-side copy.
+func _enemy_eternal_eclipse_strike() -> void:
+	var candidates: Array = _enemy_eternal_eclipse_candidates(_enemy_eternal_eclipse_radius)
+	if candidates.is_empty():
 		return
 
-	for i in range(ETERNAL_ECLIPSE_BEAMS_PER_TURN):
-		if _enemy_eternal_eclipse_beams_remaining <= 0:
-			break
-		_enemy_eternal_eclipse_beams_remaining -= 1
-
-		var candidates: Array = []
-		if _distance(_hero_pos_index, boss["pos_index"]) <= _enemy_eternal_eclipse_radius:
-			candidates.append({"kind": "player"})
-		for guard in _guards:
-			if _distance(guard["pos_index"], boss["pos_index"]) <= _enemy_eternal_eclipse_radius:
-				candidates.append({"kind": "guard", "ref": guard})
-		if _is_bear_alive() and _distance(_bear["pos_index"], boss["pos_index"]) <= _enemy_eternal_eclipse_radius:
-			candidates.append({"kind": "bear"})
-
-		if not candidates.is_empty():
-			var picked: Dictionary = candidates[randi() % candidates.size()]
-			# Same falling-moonlight visual the player-side copy's own
-			# beams land with (see _tick_eternal_eclipse()'s own comment/
-			# _play_eclipse_strike()) - each Dictionary branch just
-			# needs whichever TextureRect that beam actually struck.
-			match picked["kind"]:
-				"player":
-					apply_damage(_enemy_eternal_eclipse_damage_per_beam)
-					_play_eclipse_strike(hero_image)
-				"guard":
-					var guard_damage: float = _apply_armor_reduction(_enemy_eternal_eclipse_damage_per_beam, _hero_armor())
-					_deal_damage_to_guard(picked["ref"], guard_damage)
-					_play_eclipse_strike(picked["ref"].get("node"))
-				"bear":
-					_deal_damage_to_bear(_enemy_eternal_eclipse_damage_per_beam)
-					_play_eclipse_strike(_bear.get("node"))
-
-		if _battle_over:
-			return
-
-	if _enemy_eternal_eclipse_beams_remaining <= 0:
-		_end_enemy_eternal_eclipse()
+	var picked: Dictionary = candidates[randi() % candidates.size()]
+	# Same falling-moonlight strike the player-side copy's own beams land
+	# with (_play_eclipse_strike()), on whichever sprite this beam struck -
+	# captured before the damage, since a kill frees the node.
+	match picked["kind"]:
+		"player":
+			apply_damage(_enemy_eternal_eclipse_damage_per_beam)
+			_play_eclipse_strike(hero_image)
+		"guard":
+			var guard_node: Variant = picked["ref"].get("node")
+			var guard_damage: float = _apply_armor_reduction(_enemy_eternal_eclipse_damage_per_beam, _hero_armor())
+			_deal_damage_to_guard(picked["ref"], guard_damage)
+			_play_eclipse_strike(guard_node)
+		"bear":
+			var bear_node: Variant = _bear.get("node")
+			_deal_damage_to_bear(_enemy_eternal_eclipse_damage_per_beam)
+			_play_eclipse_strike(bear_node)
 
 
 func _end_enemy_eternal_eclipse() -> void:
@@ -18094,7 +18499,6 @@ func _end_enemy_eternal_eclipse() -> void:
 	_enemy_eternal_eclipse_damage_per_beam = 0.0
 	_enemy_eternal_eclipse_radius = 0
 	_enemy_eternal_eclipse_beams_remaining = 0
-	_enemy_eternal_eclipse_duration_pending_start = false
 	_refresh_eclipse_sky()
 
 
@@ -18729,7 +19133,7 @@ func _advance_tutorial_stage1_step(step_id: String) -> void:
 		"cast_drowned_surge_on_range":
 			TutorialManager.set_allowed_actions(["skill:drowned_surge"])
 			TutorialManager.show_popup(
-				"Drowned Surge is in range now. Cast it on the ranged creep in the back - left alone, it'll "
+				"Drowned Surge is in range now. Cast it on the ranged enemy in the back - left alone, it'll "
 				+ "keep its distance and shoot you from afar, or turn and flee if you close in on it "
 				+ "instead."
 			)
@@ -18748,7 +19152,7 @@ func _advance_tutorial_stage1_step(step_id: String) -> void:
 			TutorialManager.set_allowed_actions([move_action])
 			TutorialManager.show_popup(
 				"That'll keep it stunned for a moment, but it's not dead yet. Close the distance on "
-				+ "the melee creeps so you can start on them too."
+				+ "the melee enemies so you can start on them too."
 			)
 		"melee_in_range":
 			# Re-entered every time a Drowned Surge cast finishes off a ranged
@@ -18761,8 +19165,8 @@ func _advance_tutorial_stage1_step(step_id: String) -> void:
 			if not _tutorial_shown_melee_in_range_tip:
 				_tutorial_shown_melee_in_range_tip = true
 				TutorialManager.show_popup(
-					"The melee creeps are in range - keep attacking them. Use Drowned Surge again the moment "
-					+ "it's ready if another ranged creep is still up."
+					"The melee enemies are in range - keep attacking them. Use Drowned Surge again the moment "
+					+ "it's ready if another ranged enemy is still up."
 				)
 		"recast_drowned_surge_on_range":
 			# Same first-visit-only popup as "melee_in_range" above.
@@ -18770,8 +19174,8 @@ func _advance_tutorial_stage1_step(step_id: String) -> void:
 			if not _tutorial_shown_recast_tip:
 				_tutorial_shown_recast_tip = true
 				TutorialManager.show_popup(
-					"Drowned Surge is ready again. Use it on the ranged creep to finish it off, so you can go "
-					+ "back to focusing entirely on the melee creeps."
+					"Drowned Surge is ready again. Use it on the ranged enemy to finish it off, so you can go "
+					+ "back to focusing entirely on the melee enemies."
 				)
 		"stage_cleared":
 			_battle_over = true
@@ -18891,7 +19295,7 @@ func _advance_tutorial_stage2_step(step_id: String) -> void:
 			TutorialManager.show_popup(
 				"Kaelen Varr is level 5, but already taken a beating. He is deep into this zone's hardest stage, and "
 				+ "critically low on HP and mana, with no potions in reserve. You're right on top of the "
-				+ "melee creeps here - go ahead and attack, but keep an eye on that health bar."
+				+ "melee enemies here - go ahead and attack, but keep an eye on that health bar."
 			)
 		"must_flee":
 			TutorialManager.set_allowed_actions(["flee"])
@@ -18948,7 +19352,7 @@ func _advance_tutorial_stage3_step(step_id: String) -> void:
 		"attack_to_level_up":
 			TutorialManager.set_allowed_actions(["attack"])
 			TutorialManager.show_popup(
-				"Better. Now attack the melee creeps - one more kill should push you to level 6."
+				"Better. Now attack the melee enemies - one more kill should push you to level 6."
 			)
 		"attack_before_reinforcements":
 			TutorialManager.set_allowed_actions(["attack"])
@@ -18974,22 +19378,20 @@ func _advance_tutorial_stage3_step(step_id: String) -> void:
 				"Mana's topped up - go ahead and cast The Sunken One."
 			)
 		"mop_up":
+			# No popup: the cast is meant to end the fight outright, so this
+			# only keeps attack as the one allowed action in case anything
+			# survived it.
 			TutorialManager.set_allowed_actions(["attack"])
-			TutorialManager.show_popup(
-				"That should have thinned the crowd out considerably - finish off whatever's still "
-				+ "standing."
-			)
 		"zone_cleared":
 			_battle_over = true
 			TutorialManager.set_allowed_actions([])
 			_update_action_buttons()
-			TutorialManager.show_popup(
-				"That's every stage of your home zone cleared. From here the world is yours to explore. "
-				+ "Other lost souls wander its ruins, each carrying their own scars, secrets, and reasons to fight.\n"
-				+ "Some may be looking for you already.\n"
-				+ "The forgotten world is waiting.",
-				TutorialManager.exit_tutorial
-			)
+			# No closing popup here - the Map tour takes over from this point,
+			# after a beat to watch the last enemies fall.
+			await get_tree().create_timer(3.0).timeout
+			if TutorialManager.is_active and TutorialManager.current_stage == 3:
+				TutorialManager.start_stage4()
+			return
 
 	_apply_tutorial_gate()
 

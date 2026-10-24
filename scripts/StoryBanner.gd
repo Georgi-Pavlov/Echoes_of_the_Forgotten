@@ -30,6 +30,8 @@ const CREAM := Color(1.0, 0.93, 0.8)
 
 var _title_text: String
 var _body_text: String
+var _title_size := 36
+var _title_bold := false
 var _root: Control
 var _title: Label
 var _rule: Control
@@ -41,11 +43,14 @@ var _skipped := false
 
 
 ## Shows `title` over `body` on top of everything in `host`'s scene.
+## `title_size` / `title_bold` make the title bigger and heavier.
 ## Await the returned banner's `finished` to know when it's gone.
-static func play(host: Node, title: String, body: String) -> StoryBanner:
+static func play(host: Node, title: String, body: String, title_size: int = 36, title_bold: bool = false) -> StoryBanner:
 	var banner := StoryBanner.new()
 	banner._title_text = title
 	banner._body_text = body
+	banner._title_size = title_size
+	banner._title_bold = title_bold
 	banner.layer = 50
 	host.add_child(banner)
 	return banner
@@ -113,7 +118,12 @@ func _ready() -> void:
 	column.position = Vector2(view.x * 0.14, view.y * 0.25)
 	_root.add_child(column)
 
-	_title = _story_label(_title_text, GOLD, 36)
+	_title = _story_label(_title_text, GOLD, _title_size)
+	if _title_bold:
+		var bold := FontVariation.new()
+		bold.base_font = _title.get_theme_default_font()
+		bold.variation_embolden = 0.9
+		_title.add_theme_font_override("font", bold)
 	_title.modulate.a = 0.0
 	column.add_child(_title)
 
@@ -128,6 +138,8 @@ func _ready() -> void:
 	# Lay out the whole text up front, so the lines don't re-wrap (and
 	# the block doesn't jump) as it types in.
 	_body.visible_characters_behavior = TextServer.VC_CHARS_AFTER_SHAPING
+	# A title-only banner (empty body) doesn't leave a blank line under it.
+	_body.visible = _body_text != ""
 	column.add_child(_body)
 
 	_run()

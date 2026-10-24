@@ -1937,9 +1937,9 @@ var zones: Dictionary = {
 						"type": "ultimate",
 						"description": "Ultimate: Lunara plunges the battlefield into a supernatural eclipse. For the duration, lunar beams rain down upon random enemies within a radius around her, following her movements until every beam has struck.",
 						"levels": [
-							{"beams": 4, "damage": 98, "radius": 2, "mana_cost": 200, "cooldown": 9},
-							{"beams": 6, "damage": 132, "radius": 3, "mana_cost": 275, "cooldown": 10},
-							{"beams": 8, "damage": 173, "radius": 4, "mana_cost": 350, "cooldown": 11}
+							{"beams": 4, "damage": 115, "radius": 2, "mana_cost": 200, "cooldown": 9},
+							{"beams": 6, "damage": 150, "radius": 3, "mana_cost": 275, "cooldown": 10},
+							{"beams": 8, "damage": 200, "radius": 4, "mana_cost": 350, "cooldown": 11}
 						]
 					},
 				],
@@ -2534,6 +2534,40 @@ func get_hero_by_id(hero_id: String) -> Dictionary:
 			if hero.get("id", "") == hero_id:
 				return hero
 	return {}
+
+
+# ------------------------------------------------------------------
+# Echoes in the world: every hero holds one to begin with (a rival is born
+# with it; the player's awakens on clearing their home zone), so there are
+# exactly as many Echoes in a game as there are heroes. The final stage
+# opens to the player once they hold at least ECHOES_REQUIRED_SHARE of
+# them; counts are shown as "held/required", and keep counting past it.
+# ------------------------------------------------------------------
+
+const ECHOES_REQUIRED_SHARE := 0.5
+
+
+## How many Echoes exist in a game - one per hero across every zone.
+func get_total_echoes() -> int:
+	var hero_ids := {}
+	for zone_id in zones.keys():
+		for hero in zones[zone_id].get("heroes", []):
+			var hero_id: String = hero.get("id", "")
+			if hero_id != "":
+				hero_ids[hero_id] = true
+	return hero_ids.size()
+
+
+## How many Echoes the player needs to open the final stage: half of all of
+## them (ECHOES_REQUIRED_SHARE), rounded up.
+func get_echoes_required() -> int:
+	return int(ceil(get_total_echoes() * ECHOES_REQUIRED_SHARE))
+
+
+## `count` Echoes as shown to the player: "held/required" (e.g. "3/9") -
+## the held side keeps counting past the requirement ("11/9").
+func format_echoes(count: int) -> String:
+	return "%d/%d" % [count, get_echoes_required()]
 
 
 ## Which zone a given hero id originally belongs to (i.e. shows up in

@@ -6,10 +6,12 @@ extends Control
 
 func _ready() -> void:
 	AudioManager.play_menu_music()
+	# Depth from tilting the phone (or moving the mouse) - see MainMenu.gd.
+	TiltParallax.attach(self, [[$Background, 1.0], [$MenuAtmosphere, 0.8]])
 	$WelcomeLabel.text = "Welcome, " + PlayerManager.current_player
 	$ButtonsContainer/NewGameButton.pressed.connect(_on_new_game_pressed)
 	$ButtonsContainer/ContinueButton.pressed.connect(_on_continue_pressed)
-	$ButtonsContainer/ExtraButtons/HighScoresButton.pressed.connect(_on_high_scores_pressed)
+	$ButtonsContainer/ExtraButtons/AchievementsButton.pressed.connect(_on_achievements_pressed)
 	$ButtonsContainer/ExtraButtons/HowToPlayButton.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/HowToPlay.tscn"))
 	$ButtonsContainer/ExtraButtons/IntroButton.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Intro.tscn"))
 	$LogOutButton.pressed.connect(_on_log_out_pressed)
@@ -78,7 +80,5 @@ func _on_log_out_pressed() -> void:
 	PlayerManager.current_player = ""
 	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
-func _on_high_scores_pressed() -> void:
-	# TODO: high score screen goes here - PlayerManager.get_high_score()
-	# already has the data ready for it.
-	print("High Scores - coming soon")
+func _on_achievements_pressed() -> void:
+	Achievements.open(get_tree(), "res://scenes/PostLogin.tscn")

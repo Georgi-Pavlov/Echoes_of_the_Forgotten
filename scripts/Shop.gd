@@ -52,6 +52,10 @@ var _message_tween: Tween
 # once, so this tracks both tweens for _tutorial_clear_glow() to kill.
 var _tutorial_glow_tweens: Array = []
 
+# Which beat of the shop tutorial is running: "" (none), "take_mana" (the
+# forgotten Mana Potion must be taken out of the Backpack), or "buy_health".
+var _tutorial_step: String = ""
+
 
 func _ready() -> void:
 	back_button.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Map.tscn"))
@@ -72,7 +76,8 @@ func _ready() -> void:
 	# Health/Mana) builds as disabled, using whatever _allowed_actions
 	# was left over from wherever the player was before this scene.
 	if TutorialManager.is_active and TutorialManager.current_stage == 2:
-		TutorialManager.set_allowed_actions(["buy:health", "buy:mana"])
+		_tutorial_step = "take_mana"
+		TutorialManager.set_allowed_actions(["backpack:slot"])
 
 	_initialize_stock()
 	_refresh_page()
@@ -89,17 +94,16 @@ func _ready() -> void:
 		sell_button.disabled = true
 		prev_page_button.disabled = true
 		next_page_button.disabled = true
-		_tutorial_glow_forced_items()
+		_tutorial_glow_backpack_slots(true)
 		TutorialManager.show_popup(
-			"You've got exactly enough gold for one Health Potion and one Mana Potion - buy both "
-			+ "before heading back out."
+			"Oh look, you already had a mana potion in your back pack! Lets take it out so you can use it in the fight."
 		)
 
 
-## Gives both the Health and Mana Potion cards - and the details panel's
-## own Buy button - the same glowing treatment every other forced button
-## during the tutorial uses (see TutorialManager.make_glow_style()). All
-## three glow at once, since either potion can be bought first here, and
+## Gives the Health Potion card - and the details panel's own Buy button -
+## the same glowing treatment every other forced button during the
+## tutorial uses (see TutorialManager.make_glow_style()). Both glow at
+## once, since
 ## the actual purchase only happens once the player clicks Buy AFTER
 ## selecting one - without its own glow, a player who'd only ever seen
 ## the icon glow before this point had nothing marking the button that
@@ -111,7 +115,7 @@ func _ready() -> void:
 ## once _cards is actually populated (_refresh_page() has to have run
 ## already - see its own call site).
 func _tutorial_glow_forced_items() -> void:
-	for item_id in ["health", "mana"]:
+	for item_id in ["health"]:
 		if not _cards.has(item_id):
 			continue
 		var button: Button = _cards[item_id]["button"]
@@ -127,11 +131,11 @@ func _tutorial_glow_forced_items() -> void:
 	_tutorial_glow_tweens.append(TutorialManager.start_glow_pulse(buy_glow_style, self))
 
 
-## Undoes _tutorial_glow_forced_items() once both potions are bought -
+## Undoes _tutorial_glow_forced_items() once the potion is bought -
 ## called from _tutorial_check_progress() right before it opens the
 ## checkpoint.
 func _tutorial_clear_glow() -> void:
-	for item_id in ["health", "mana"]:
+	for item_id in ["health"]:
 		if _cards.has(item_id):
 			var button: Button = _cards[item_id]["button"]
 			button.remove_theme_stylebox_override("normal")
@@ -145,17 +149,76 @@ func _tutorial_clear_glow() -> void:
 	_tutorial_glow_tweens.clear()
 
 
-## Polled after every successful purchase - once both potions are in
+## Marks (or unmarks) every Backpack slot as the thing to look at - the
+## same glow as a forced button, but purely visual: whether a slot can be
+## clicked is _refresh_backpack()'s own call. Reapplied by
+## _refresh_backpack() whenever it rebuilds the slots.
+func _tutorial_glow_backpack_slots(on: bool) -> void:
+	_tutorial_backpack_glow = on
+	_apply_backpack_glow()
+
+
+func _apply_backpack_glow() -> void:
+	for tween in _tutorial_backpack_tweens:
+		if tween:
+			tween.kill()
+	_tutorial_backpack_tweens.clear()
+	for slot in backpack_slots_box.get_children():
+		if slot is Button and not slot.is_queued_for_deletion():
+			slot.remove_theme_stylebox_override("normal")
+			slot.remove_theme_stylebox_override("hover")
+			slot.remove_theme_stylebox_override("disabled")
+			if _tutorial_backpack_glow and (_tutorial_step != "take_mana" or not slot.disabled):
+				var style: StyleBoxFlat = TutorialManager.make_glow_style()
+				slot.add_theme_stylebox_override("normal", style)
+				slot.add_theme_stylebox_override("hover", style)
+				slot.add_theme_stylebox_override("disabled", style)
+				_tutorial_backpack_tweens.append(TutorialManager.start_glow_pulse(style, self))
+
+
+var _tutorial_backpack_glow: bool = false
+var _tutorial_backpack_tweens: Array = []
+
+
+## The Mana Potion is out of the Backpack: explain the inventory, then the
+## Backpack itself, then hand over to the forced Health Potion purchase.
+func _tutorial_mana_taken() -> void:
+	_tutorial_step = "explain_inventory"
+	_tutorial_glow_backpack_slots(false)
+	TutorialManager.show_popup(
+		"When you buy items they go to your inventory. The inventory is available during combat, "
+		+ "adding your items bonuses or allowing you to drink your potions.",
+		func():
+			_tutorial_step = "explain_backpack"
+			_tutorial_glow_backpack_slots(true)
+			TutorialManager.show_popup(
+				"The backpack is useful when you don't have space in your inventory. The items in your "
+				+ "backpack are not available in combat. Now get the health potion and get back to the fight.",
+				_tutorial_begin_buy_health
+			)
+	)
+
+
+func _tutorial_begin_buy_health() -> void:
+	_tutorial_step = "buy_health"
+	_tutorial_glow_backpack_slots(false)
+	TutorialManager.set_allowed_actions(["buy:health"])
+	for item_id in _cards.keys():
+		_refresh_item_card(item_id)
+	_tutorial_glow_forced_items()
+
+
+## Polled after every successful purchase - once the Health Potion is in
 ## the inventory, opens the "continue to the final tutorial stage, or
-## stop here" checkpoint and lifts every restriction _apply_tutorial_
-## restrictions() put in place.
+## stop here" checkpoint and lifts every restriction put in place.
 func _tutorial_check_progress() -> void:
 	if not TutorialManager.is_active or TutorialManager.current_stage != 2:
 		return
 
 	var inventory: Dictionary = PlayerManager.get_inventory()
-	if inventory.get("health", 0) <= 0 or inventory.get("mana", 0) <= 0:
+	if inventory.get("health", 0) <= 0:
 		return
+	_tutorial_step = ""
 
 	back_button.disabled = false
 	sell_button.disabled = false
@@ -518,7 +581,10 @@ func _refresh_backpack() -> void:
 			slot_button.pressed.connect(_on_backpack_slot_pressed.bind(item_id))
 		else:
 			slot_button.disabled = true
+		if not TutorialManager.is_action_allowed("backpack:slot"):
+			slot_button.disabled = true
 		backpack_slots_box.add_child(slot_button)
+	_apply_backpack_glow()
 
 
 func _on_backpack_slot_pressed(item_id: String) -> void:
@@ -553,6 +619,7 @@ func _on_backpack_slot_pressed(item_id: String) -> void:
 	if take_button.disabled:
 		take_button.tooltip_text = "Inventory full"
 	take_button.pressed.connect(_on_backpack_take.bind(item_id))
+	var forced_take: bool = _tutorial_step == "take_mana"
 
 	var sell_price: int = _sell_price_for(item_id)
 	var sell_btn := Button.new()
@@ -575,6 +642,16 @@ func _on_backpack_slot_pressed(item_id: String) -> void:
 	add_child(popup)
 	_backpack_popup = popup
 
+	# Tutorial: Take is the only way out of this popup.
+	if forced_take:
+		sell_btn.disabled = true
+		close_btn.disabled = true
+		var glow_style: StyleBoxFlat = TutorialManager.make_glow_style()
+		take_button.add_theme_stylebox_override("normal", glow_style)
+		take_button.add_theme_stylebox_override("hover", glow_style)
+		TutorialManager.start_glow_pulse(glow_style, take_button)
+		TutorialManager.set_allowed_actions(["backpack:take"])
+
 	# Centered above the backpack panel once its size is known.
 	popup.reset_size()
 	var panel_rect: Rect2 = backpack_panel.get_global_rect()
@@ -591,13 +668,19 @@ func _close_backpack_popup() -> void:
 
 
 func _on_backpack_take(item_id: String) -> void:
+	if not TutorialManager.is_action_allowed("backpack:take"):
+		return
 	_close_backpack_popup()
 	if not PlayerManager.take_from_backpack(item_id):
 		_show_message("Inventory full")
 		return
+	if _tutorial_step == "take_mana":
+		TutorialManager.set_allowed_actions([])
 	_refresh_backpack()
 	_refresh_details_panel()
 	_show_message("Took %s from the Backpack" % GameManager.get_item(item_id).get("name", "item"))
+	if _tutorial_step == "take_mana":
+		_tutorial_mana_taken()
 
 
 func _on_backpack_sell(item_id: String) -> void:

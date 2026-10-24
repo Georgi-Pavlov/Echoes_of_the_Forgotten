@@ -90,10 +90,9 @@ func start_tutorial(return_scene: String = "res://scenes/HowToPlay.tscn") -> voi
 const STAGE2_TARGET_LEVEL := 5
 const STAGE2_LOW_HP_FRACTION := 0.1
 const STAGE2_LOW_MANA_FRACTION := 0.05
-# Exactly enough for one Health Potion (100 gold) and one Mana Potion
-# (60 gold) - see GameManager.items - so the shop stage's gold alone
-# already rules out affording anything else.
-const STAGE2_GOLD := 160
+# Exactly enough for one Health Potion (100 gold) - see GameManager.items -
+# so the shop stage's gold alone already rules out affording anything else.
+const STAGE2_GOLD := 100
 
 func start_stage2() -> void:
 	current_stage = 2
@@ -117,14 +116,14 @@ func start_stage2() -> void:
 	PlayerManager.add_gold(STAGE2_GOLD)
 
 	# recruit_hero() seeds every hero with one free Health Potion and one
-	# Mana Potion (see PlayerManager.recruit_hero()) - strip those back
-	# out so this scenario actually starts "without potions" as scripted,
-	# rather than the shop stage secretly topping up an existing stack.
-	# use_item() only removes the inventory entry; it doesn't apply the
-	# heal/mana-restore effect, so this can't disturb the HP/mana values
-	# just set above.
+	# Mana Potion (see PlayerManager.recruit_hero()). The Health Potion is
+	# stripped out so the shop stage has something to buy; the Mana Potion
+	# is left forgotten in the Backpack, for the shop stage to teach taking
+	# it out. use_item() only removes the inventory entry; it doesn't apply
+	# the heal/mana-restore effect, so this can't disturb the HP/mana
+	# values just set above.
 	PlayerManager.use_item("health")
-	PlayerManager.use_item("mana")
+	PlayerManager.move_to_backpack("mana")
 
 	show_popup(
 		"Second tutorial stage!\n\nThis time you're picking up mid-run: Kaelen Varr is "
@@ -206,6 +205,49 @@ func start_stage3() -> void:
 	)
 
 
+## Called when stage 3's last enemy falls (see battle.gd's "zone_cleared"
+## step). No checkpoint or closing popup: the home zone counts as cleared
+## and the hero gets their first Echo, a few rivals are set up in the
+## sandbox for the World Status to show, and the tutorial walks the
+## player around the Map (Map.gd and WorldStatus.gd drive the steps,
+## tracked in current_step: 0 = Map intro, 1 = World Status open,
+## 2 = back on the Map for the closing message).
+const STAGE4_RIVAL_ECHOES_SHORT := 2
+
+func start_stage4() -> void:
+	current_stage = 4
+	current_step = 0
+	_allowed_actions = []
+
+	PlayerManager.set_zone_cleared(GameManager.selected_zone)
+	PlayerManager.add_echoes(1 - PlayerManager.get_echoes())
+
+	# Lunara is two Echoes short of the requirement; every other rival is
+	# either dead or at a lower level than she is.
+	var own_id: String = PlayerManager.get_recruited_hero().get("id", "")
+	var index := 0
+	for zone_id in GameManager.zones.keys():
+		for hero in GameManager.zones[zone_id].get("heroes", []):
+			var hero_id: String = hero.get("id", "")
+			if hero_id == "" or hero_id == own_id:
+				continue
+			index += 1
+			if hero_id == "lunara":
+				# The background simulation may have killed her during the fights.
+				PlayerManager.revive_hero(hero_id)
+				PlayerManager.set_npc_level(hero_id, 16)
+				PlayerManager.set_npc_field(hero_id, "echoes", str(GameManager.get_echoes_required() - STAGE4_RIVAL_ECHOES_SHORT))
+			elif index % 3 == 0:
+				PlayerManager.mark_hero_defeated(hero_id)
+				PlayerManager.set_npc_field(hero_id, "echoes", "0")
+			else:
+				PlayerManager.set_npc_level(hero_id, 4 + (index * 7) % 10)
+	# Defeats queue kill notifications for the Map to pop up - not wanted here.
+	PlayerManager.clear_queued_events()
+
+	get_tree().change_scene_to_file("res://scenes/Map.tscn")
+
+
 ## Ends the tutorial from wherever it currently is (an explicit "Exit
 ## Tutorial" checkpoint, or finishing the last stage) and returns to
 ## wherever it was started from (see start_tutorial()). Always safe to call even if a stage left the player
@@ -245,8 +287,10 @@ func get_allowed_actions() -> Array:
 
 
 ## Single-button explanatory pop-up.
-func show_popup(text: String, on_continue: Callable = Callable(), continue_label: String = "Continue") -> void:
-	_overlay.show_message(text, continue_label, on_continue)
+## `dimmed` false leaves the screen undarkened (still click-blocking), for
+## popups that point at something highlighted behind them.
+func show_popup(text: String, on_continue: Callable = Callable(), continue_label: String = "Continue", dimmed: bool = true) -> void:
+	_overlay.show_message(text, continue_label, on_continue, dimmed)
 
 
 ## Two-button "continue to the next stage, or stop here" checkpoint.

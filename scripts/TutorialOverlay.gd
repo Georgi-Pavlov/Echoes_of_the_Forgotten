@@ -15,6 +15,8 @@ extends CanvasLayer
 @onready var exit_button: Button = $Dim/PopupPanel/Margin/VBox/ButtonRow/ExitButton
 @onready var exit_corner_button: Button = $ExitCornerButton
 
+const DIM_ALPHA := 0.55   # matches Dim's color in TutorialOverlay.tscn
+
 var _on_continue: Callable = Callable()
 var _on_exit: Callable = Callable()
 
@@ -45,7 +47,8 @@ func set_exit_button_visible(value: bool) -> void:
 ## Single-button popup: explains something and gets acknowledged.
 ## on_continue may be an empty Callable if nothing needs to happen
 ## beyond dismissing it.
-func show_message(text: String, continue_label: String, on_continue: Callable) -> void:
+func show_message(text: String, continue_label: String, on_continue: Callable, dimmed: bool = true) -> void:
+	dim.color.a = DIM_ALPHA if dimmed else 0.0
 	message_label.text = text
 	continue_button.text = continue_label
 	continue_button.visible = true
@@ -58,6 +61,7 @@ func show_message(text: String, continue_label: String, on_continue: Callable) -
 ## Two-button popup for the "continue to the next tutorial stage, or
 ## stop here" checkpoints between stages.
 func show_choice(text: String, continue_label: String, exit_label: String, on_continue: Callable, on_exit: Callable) -> void:
+	dim.color.a = DIM_ALPHA
 	message_label.text = text
 	continue_button.text = continue_label
 	continue_button.visible = true

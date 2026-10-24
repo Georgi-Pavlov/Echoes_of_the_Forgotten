@@ -94,11 +94,11 @@ layout_mode = 2
 theme_override_constants/separation = 12
 alignment = 1
 
-[node name="HighScoresButton" type="Button" parent="ButtonsContainer/ExtraButtons" unique_id=723863277]
+[node name="AchievementsButton" type="Button" parent="ButtonsContainer/ExtraButtons" unique_id=723863277]
 custom_minimum_size = Vector2(150, 38)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "High Scores"
+text = "Achievements"
 
 [node name="HowToPlayButton" type="Button" parent="ButtonsContainer/ExtraButtons" unique_id=434628330]
 custom_minimum_size = Vector2(150, 38)

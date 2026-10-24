@@ -572,8 +572,9 @@ const KNOWN_ACTIVE_SKILL_IDS: Array[String] = [
 # post-roll percentage), ending the moment that Attack lands.
 # Lunara's Moonfall Lance is single-target with its own flat damage, same
 # shape as Mark of Stillness's/Drowned Surge's own sim copies - stunning whichever
-# enemy the hero would attack anyway. Eternal Eclipse fires ETERNAL_ECLIPSE_BEAMS_PER_
-# TURN beams per turn, each independently picking ONE random living
+# enemy the hero would attack anyway. Eternal Eclipse fires one beam on the
+# cast, then ETERNAL_ECLIPSE_BEAMS_PER_TURN beams per turn (the casting turn
+# included), each independently picking ONE random living
 # enemy from `living` with NO cap on how many beams the same one can
 # take (see _run_stage_fight()'s own "Eternal Eclipse" block for where the
 # actual firing happens, mirroring the Imperial Guard attack
@@ -807,7 +808,7 @@ func _try_npc_zone_mate_fight(hero_id: String, hero_static: Dictionary) -> void:
 		PlayerManager.add_npc_gold(hero_id, fight["gold_gained"])
 
 	if fight["result"] == "win":
-		PlayerManager.mark_hero_defeated(opponent_id)
+		PlayerManager.mark_hero_defeated(opponent_id, hero_id)
 		award_npc_xp(hero_id, hero_static, get_hero_kill_bounty(opponent_id))
 
 	# A loss/stalemate here has no other persisted penalty - current_
@@ -912,7 +913,7 @@ func _try_npc_invasion_duel(hero_id: String, hero_static: Dictionary, target_id:
 		PlayerManager.add_npc_gold(hero_id, fight["gold_gained"])
 
 	if fight["result"] == "win":
-		PlayerManager.mark_hero_defeated(target_id)
+		PlayerManager.mark_hero_defeated(target_id, hero_id)
 		award_npc_xp(hero_id, hero_static, get_hero_kill_bounty(target_id))
 		# The target is gone - clear it so the next tick commits to a
 		# fresh one rather than re-fighting a hero that no longer exists.
@@ -939,6 +940,33 @@ func get_all_npc_hero_ids(exclude_hero_id: String) -> Array:
 	return ids
 
 
+# The rivals' own way out: a rival holding enough Echoes (the same number the
+# player needs for the vortex - GameManager.get_echoes_required()) opens the
+# final stage. It is a coin flip for now: win and the world ends with "A
+# Fading Echo" (Endings.FADING_ECHO, played by the Map the next time the
+# player is there); lose and every Echo the rival held is gone.
+const RIVAL_FINAL_STAGE_WIN_CHANCE := 0.5
+
+
+## Sends `hero_id` into the final stage if it holds enough Echoes. Returns
+## true if that ended the game (so the pass over the other rivals can stop).
+func _try_rival_final_stage(hero_id: String) -> bool:
+	if PlayerManager.get_pending_ending() != "":
+		return true
+	if PlayerManager.get_npc_echoes(hero_id) < GameManager.get_echoes_required():
+		return false
+
+	var hero_name: String = GameManager.get_hero_by_id(hero_id).get("name", hero_id)
+	if randf() < RIVAL_FINAL_STAGE_WIN_CHANCE:
+		PlayerManager.set_pending_ending(Endings.FADING_ECHO)
+		PlayerManager.queue_event(hero_name + " has opened the final stage.\nThe world will not be the same.")
+		return true
+
+	PlayerManager.set_npc_field(hero_id, "echoes", "0")
+	PlayerManager.queue_event(hero_name + " has opened the final stage and failed.\nEvery Echo they held is lost.")
+	return false
+
+
 ## Runs tick_npc_hero() for every hero in the game except the
 ## player's own and anyone already defeated. Call this once per
 ## player Battle-scene load (see battle.gd's _ready()) - "every
@@ -955,7 +983,14 @@ func tick_all_npc_heroes(player_hero_id: String) -> void:
 	for hero_id in get_all_npc_hero_ids(player_hero_id):
 		if PlayerManager.is_hero_defeated(hero_id):
 			continue
+		# A rival that has gathered enough Echoes goes for the final stage
+		# before anything else; if it wins, the game is over.
+		if _try_rival_final_stage(hero_id):
+			break
 		tick_npc_hero(hero_id, GameManager.get_hero_by_id(hero_id))
+		# Fights in this tick may have handed it the Echoes it needed.
+		if _try_rival_final_stage(hero_id):
+			break
 	PlayerManager.flush_player_data()
 
 
@@ -1187,7 +1222,6 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		_tick_npc_leeching_hunger(state["leeching_hunger"])
 		_tick_npc_depthsveil(state["depthsveil"])
 		_tick_npc_ambush_strike(state["ambush_strike"])
-		_tick_npc_eternal_eclipse(state["eternal_eclipse"])
 		_tick_npc_wildbond(state["wildbond"])
 		_tick_npc_beast_of_the_elderwild(state["beast_of_the_elderwild"])
 		_tick_npc_veil_of_the_forgotten(state["veil_of_the_forgotten"])
@@ -1407,9 +1441,9 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 				result = "win"
 				break
 
-		# --- Lunara's Eternal Eclipse (if active and past its own casting turn -
-		# see _tick_npc_eternal_eclipse()'s own "duration_pending_start" skip)
-		# also fires automatically: up to ETERNAL_ECLIPSE_BEAMS_PER_TURN beams
+		# --- Lunara's Eternal Eclipse (if active - its casting turn included,
+		# right after the cast's own first beam, same as battle.gd's own
+		# copy) also fires automatically: up to ETERNAL_ECLIPSE_BEAMS_PER_TURN beams
 		# this turn, each independently picking ONE random living enemy
 		# from `living`, with NO cap on how many beams the same one can
 		# take - mirroring battle.gd's own _tick_eternal_eclipse()/_tick_enemy_
@@ -1420,7 +1454,7 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 		# turn, the same reasoning the Imperial Guard block just above
 		# already follows). A beam with nothing left to hit still counts
 		# against the total, same as the real fight's own copy. ---
-		if state["eternal_eclipse"]["active"] and not state["eternal_eclipse"]["duration_pending_start"]:
+		if state["eternal_eclipse"]["active"]:
 			var eternal_eclipse_damage_per_beam: float = float(state["eternal_eclipse"]["damage_per_beam"])
 			for i in range(ETERNAL_ECLIPSE_BEAMS_PER_TURN):
 				if int(state["eternal_eclipse"]["beams_remaining"]) <= 0:
@@ -1560,7 +1594,7 @@ func _new_npc_combat_state() -> Dictionary:
 		"imperial_guard": {"active": false, "guard_count": 0, "damage_pct": 0.0, "turns_remaining": 0, "duration_pending_start": false},
 		"might_of_the_deep_attack_count": 0,
 		"ambush_strike": {"active": false, "bonus_damage_pct": 0.0, "turns_remaining": 0, "duration_pending_start": false},
-		"eternal_eclipse": {"active": false, "damage_per_beam": 0.0, "beams_remaining": 0, "duration_pending_start": false},
+		"eternal_eclipse": {"active": false, "damage_per_beam": 0.0, "beams_remaining": 0},
 		"moonbound_might_bonus_pct": 0.0,
 	}
 
@@ -1924,6 +1958,10 @@ func _cast_skill(hero_id: String, hero_static: Dictionary, skill_id: String, coo
 				beam_target["stun_turns_left"] = int(level_data.get("stun_turns", 0))
 		"eternal_eclipse":
 			_activate_npc_eternal_eclipse(state["eternal_eclipse"], level_data)
+			# Same as battle.gd's own copy: the first beam strikes on the
+			# casting turn - its kill (if any) is credited by the caller,
+			# same as Kiss the Wastes' own first shot just above.
+			_fire_npc_eternal_eclipse_beam(state["eternal_eclipse"], living)
 
 
 func _get_npc_skill_level_data(hero_id: String, hero_static: Dictionary, skill_id: String) -> Dictionary:
@@ -2400,21 +2438,25 @@ func _activate_npc_eternal_eclipse(ec: Dictionary, level_data: Dictionary) -> vo
 	ec["active"] = true
 	ec["damage_per_beam"] = float(level_data.get("damage", 0))
 	ec["beams_remaining"] = int(level_data.get("beams", 0))
-	ec["duration_pending_start"] = true
 
 
-func _tick_npc_eternal_eclipse(ec: Dictionary) -> void:
-	if not ec["active"]:
+## One beam onto a random living enemy of `living` (spent even with nothing
+## to hit) - the casting turn's own beam. Ends the eclipse once its last
+## beam has fallen.
+func _fire_npc_eternal_eclipse_beam(ec: Dictionary, living: Array) -> void:
+	if int(ec["beams_remaining"]) <= 0:
 		return
-	if ec["duration_pending_start"]:
-		ec["duration_pending_start"] = false
+	ec["beams_remaining"] -= 1
+	if not living.is_empty():
+		_apply_damage_to_enemy(living[randi() % living.size()], float(ec["damage_per_beam"]))
+	if int(ec["beams_remaining"]) <= 0:
+		_end_npc_eternal_eclipse(ec)
 
 
 func _end_npc_eternal_eclipse(ec: Dictionary) -> void:
 	ec["active"] = false
 	ec["damage_per_beam"] = 0.0
 	ec["beams_remaining"] = 0
-	ec["duration_pending_start"] = false
 
 
 # ------------------------------------------------------------------

@@ -197,7 +197,7 @@ func _apply_tutorial_restrictions() -> void:
 	TutorialManager.start_glow_pulse(glow_style, self)
 
 	TutorialManager.show_popup(
-		"Kaelen Varr needs Drowned Surge to safely deal with the ranged creep in this zone before it can "
+		"Kaelen Varr needs Drowned Surge to safely deal with the ranged enemy in this zone before it can "
 		+ "peck away at him from a distance. Pick it, then press Accept."
 	)
 
@@ -406,7 +406,12 @@ func _on_accept_button_pressed() -> void:
 
 	PlayerManager.recruit_hero(_current_hero, _selected_skill)
 	print("Recruited: ", _current_hero.get("name", ""), " with ", _selected_skill.get("name", ""))
-	get_tree().change_scene_to_file("res://scenes/Battle.tscn")
+	# The dream sequence plays once, right after the hero is locked in, then
+	# hands over to the hero's home zone battle. The tutorial skips it.
+	if TutorialManager.is_active:
+		get_tree().change_scene_to_file("res://scenes/Battle.tscn")
+		return
+	HeroPickDream.play("res://assets/cutscenes/hero_pick_dream/", "res://scenes/Battle.tscn")
 
 
 func _on_back_button_pressed() -> void:

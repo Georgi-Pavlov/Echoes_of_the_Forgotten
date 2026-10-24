@@ -3903,6 +3903,13 @@ static func _lunara_basic_attack_modifier(context: Dictionary) -> float:
 	return score
 
 
+# A score at or below this is a hard "never" - such a candidate is dropped
+# before selection rather than compared (see pick_best_skill()). Modifiers
+# signal it with -1000, well below so the base score and situational
+# bonuses added on top can't lift it back over.
+const NEVER_PICK_SCORE := -500.0
+
+
 # ------------------------------------------------------------------
 # Selection: highest score wins outright; scores within
 # CLOSE_SCORE_THRESHOLD of each other are resolved by a score-weighted
@@ -3916,11 +3923,14 @@ static func _lunara_basic_attack_modifier(context: Dictionary) -> float:
 ## `scored` is empty (caller's own basic-attack fallback takes over).
 ## `hero_label` is only for the debug print below.
 static func pick_best_skill(archetype: String, scored: Array, hero_label: String = "") -> String:
-	if scored.is_empty():
+	# A modifier's "never" verdict (see NEVER_PICK_SCORE) rules a candidate
+	# out entirely - being the only one left doesn't make it worth casting.
+	var viable: Array = scored.filter(func(entry) -> bool: return float(entry["score"]) > NEVER_PICK_SCORE)
+	if viable.is_empty():
 		_debug_print(hero_label, scored, "")
 		return ""
 
-	var ranked: Array = scored.duplicate()
+	var ranked: Array = viable.duplicate()
 	ranked.sort_custom(func(a, b): return a["score"] > b["score"])
 
 	var top_score: float = ranked[0]["score"]
