@@ -17,6 +17,10 @@ extends Control
 ## last scene's finale, fading away over PostLogin (see _flash_out()).
 
 const NEXT_SCENE := "res://scenes/PostLogin.tscn"
+## Trailer capture (see Trailer.gd): end after this scene (1-based; 0 = tell
+## the whole story) and call trailer_after instead of going on to PostLogin.
+static var trailer_last := 0
+static var trailer_after := Callable()
 const BURN_SHADER := preload("res://shaders/intro_burn.gdshader")
 
 ## Each scene: its image, optionally "effects" - a script whose node is
@@ -363,6 +367,9 @@ func _hold(duration: float) -> void:
 ## Moves on from the current scene - `ended` when its narration has run
 ## to the end, rather than the player tapping past it.
 func _next_scene(ended := false) -> void:
+	if trailer_last > 0 and _index + 1 >= trailer_last:
+		_finish(FADE_OUT_TIME)
+		return
 	if _index + 1 >= SCENES.size() and not loop_scene:
 		# The story told to the end goes out in a flash; tapped past, it
 		# just fades to black.
@@ -491,6 +498,9 @@ func _finish(fade_time: float) -> void:
 	var tween := create_tween()
 	tween.tween_property(_fade, "color:a", 1.0, fade_time)
 	await tween.finished
+	if trailer_after.is_valid():
+		trailer_after.call()
+		return
 	get_tree().change_scene_to_file(NEXT_SCENE)
 
 

@@ -114,6 +114,10 @@ func _ready() -> void:
 				EnemyHeroManager.clear_player_challenge(challenger_id)
 				GameManager.pending_challenger_id = challenger_id
 				GameManager.select_zone(PlayerManager.get_home_zone_id())
+			elif _zone_data.get("heroes", []).is_empty():
+				# Nothing to fight in a zone that has no heroes yet.
+				_show_empty_zone()
+				return
 			get_tree().change_scene_to_file("res://scenes/Battle.tscn")
 		else:
 			# Hero died and hasn't been cleared yet (that only happens
@@ -129,39 +133,7 @@ func _ready() -> void:
 
 	_heroes = _zone_data.get("heroes", [])
 	if _heroes.is_empty():
-		# No heroes here yet: nothing is known of these lands - no lore,
-		# just the name and, in the middle of the mist, the message. And
-		# nothing that only makes sense with a hero to recruit.
-		description_label.visible = false
-		$TextScrim.visible = false
-		# The name moves from its usual corner to just above the message.
-		title_label.anchor_left = 0.0
-		title_label.anchor_right = 1.0
-		title_label.anchor_top = 0.5
-		title_label.anchor_bottom = 0.5
-		title_label.offset_left = 120.0
-		title_label.offset_right = -120.0
-		title_label.offset_top = -95.0
-		title_label.offset_bottom = -45.0
-		hero_name_label.text = ""
-		hero_range_type.text = ""
-		hero_main_stat.text = ""
-		prev_hero_button.visible = false
-		next_hero_button.visible = false
-		$StatsPanel.visible = false
-		$SkillsPanel.visible = false
-		skill_error_label.visible = false
-		accept_button.visible = false
-		# The shared mist-drowned background (and its effects) unless the
-		# zone has art of its own.
-		var background_path: String = _zone_data.get("background", "")
-		if background_path == "":
-			background_path = EMPTY_ZONE_BACKGROUND
-		background.texture = load(background_path)
-		atmosphere.show_for_background(background_path)
-		no_echo_label.visible = true
-		no_echo_label.modulate.a = 0.0
-		create_tween().tween_property(no_echo_label, "modulate:a", 1.0, NO_ECHO_FADE_TIME).set_delay(0.4)
+		_show_empty_zone()
 		return
 
 	# No point showing arrows when there's only one hero to look at.
@@ -200,6 +172,42 @@ func _apply_tutorial_restrictions() -> void:
 		"Kaelen Varr needs Drowned Surge to safely deal with the ranged enemy in this zone before it can "
 		+ "peck away at him from a distance. Pick it, then press Accept."
 	)
+
+
+## A zone with no heroes yet: nothing is known of these lands - no lore,
+## just the name and, in the middle of the mist, the message. And
+## nothing that only makes sense with a hero to recruit.
+func _show_empty_zone() -> void:
+	description_label.visible = false
+	$TextScrim.visible = false
+	# The name moves from its usual corner to just above the message.
+	title_label.anchor_left = 0.0
+	title_label.anchor_right = 1.0
+	title_label.anchor_top = 0.5
+	title_label.anchor_bottom = 0.5
+	title_label.offset_left = 120.0
+	title_label.offset_right = -120.0
+	title_label.offset_top = -95.0
+	title_label.offset_bottom = -45.0
+	hero_name_label.text = ""
+	hero_range_type.text = ""
+	hero_main_stat.text = ""
+	prev_hero_button.visible = false
+	next_hero_button.visible = false
+	$StatsPanel.visible = false
+	$SkillsPanel.visible = false
+	skill_error_label.visible = false
+	accept_button.visible = false
+	# The shared mist-drowned background (and its effects) unless the
+	# zone has art of its own.
+	var background_path: String = _zone_data.get("background", "")
+	if background_path == "":
+		background_path = EMPTY_ZONE_BACKGROUND
+	background.texture = load(background_path)
+	atmosphere.show_for_background(background_path)
+	no_echo_label.visible = true
+	no_echo_label.modulate.a = 0.0
+	create_tween().tween_property(no_echo_label, "modulate:a", 1.0, NO_ECHO_FADE_TIME).set_delay(0.4)
 
 
 func _show_hero(index: int) -> void:
