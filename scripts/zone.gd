@@ -364,6 +364,8 @@ func _on_skill_button_pressed(skill: Dictionary) -> void:
 	if radius_hint != "":
 		description_text += " " + radius_hint
 	skill_desc_label.text = description_text + "\n\n" + stats_summary
+	if str(skill.get("type", "")).to_lower() != "ultimate":
+		skill_desc_label.text += "\n\nLearning this will put it at level 1."
 
 	skill_desc_panel.visible = true
 

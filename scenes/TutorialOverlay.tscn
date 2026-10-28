@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/TutorialOverlay.gd" id="1"]
 
@@ -13,6 +13,60 @@ corner_radius_top_left = 10
 corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="ExitButtonNormal"]
+bg_color = Color(0.2902, 0.0275, 0.0745, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.4, 0.22, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 20.0
+content_margin_top = 9.0
+content_margin_right = 20.0
+content_margin_bottom = 9.0
+shadow_color = Color(0, 0, 0, 0.6)
+shadow_size = 4
+shadow_offset = Vector2(0, 3)
+
+[sub_resource type="StyleBoxFlat" id="ExitButtonHover"]
+bg_color = Color(0.4157, 0.051, 0.1137, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.85, 0.66, 0.35, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 20.0
+content_margin_top = 9.0
+content_margin_right = 20.0
+content_margin_bottom = 9.0
+shadow_color = Color(0, 0, 0, 0.6)
+shadow_size = 4
+shadow_offset = Vector2(0, 3)
+
+[sub_resource type="StyleBoxFlat" id="ExitButtonPressed"]
+bg_color = Color(0.1882, 0.0157, 0.0471, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.42, 0.3, 0.165, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 20.0
+content_margin_top = 9.0
+content_margin_right = 20.0
+content_margin_bottom = 9.0
 
 [node name="TutorialOverlay" type="CanvasLayer"]
 script = ExtResource("1")
@@ -71,6 +125,12 @@ text = "Continue"
 [node name="ExitButton" type="Button" parent="Dim/PopupPanel/Margin/VBox/ButtonRow"]
 layout_mode = 2
 visible = false
+theme_override_colors/font_color = Color(0.94, 0.867, 0.722, 1)
+theme_override_colors/font_hover_color = Color(1, 0.953, 0.839, 1)
+theme_override_colors/font_pressed_color = Color(0.847, 0.773, 0.624, 1)
+theme_override_styles/normal = SubResource("ExitButtonNormal")
+theme_override_styles/hover = SubResource("ExitButtonHover")
+theme_override_styles/pressed = SubResource("ExitButtonPressed")
 text = "Exit Tutorial"
 
 [node name="ExitCornerButton" type="Button" parent="."]
@@ -84,5 +144,10 @@ offset_right = -282.0
 offset_bottom = 60.0
 grow_horizontal = 0
 theme_override_font_sizes/font_size = 14
-theme_override_colors/font_color = Color(1, 0.85, 0.85, 1)
+theme_override_colors/font_color = Color(0.94, 0.867, 0.722, 1)
+theme_override_colors/font_hover_color = Color(1, 0.953, 0.839, 1)
+theme_override_colors/font_pressed_color = Color(0.847, 0.773, 0.624, 1)
+theme_override_styles/normal = SubResource("ExitButtonNormal")
+theme_override_styles/hover = SubResource("ExitButtonHover")
+theme_override_styles/pressed = SubResource("ExitButtonPressed")
 text = "Exit Tutorial"
