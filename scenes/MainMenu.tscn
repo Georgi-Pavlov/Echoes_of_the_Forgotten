@@ -49,15 +49,10 @@ custom_minimum_size = Vector2(220, 44)
 layout_mode = 2
 text = "New Player"
 
-[node name="LogInButton" type="Button" parent="ButtonsContainer" unique_id=318490511]
+[node name="LoadButton" type="Button" parent="ButtonsContainer" unique_id=318490511]
 custom_minimum_size = Vector2(220, 44)
 layout_mode = 2
-text = "Log In"
-
-[node name="AchievementsButton" type="Button" parent="ButtonsContainer" unique_id=982788300]
-custom_minimum_size = Vector2(220, 44)
-layout_mode = 2
-text = "Achievements"
+text = "Load"
 
 [node name="SettingsButton" type="TextureButton" parent="." unique_id=1828072414]
 layout_mode = 1

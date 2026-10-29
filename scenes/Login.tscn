@@ -1,6 +1,6 @@
-[gd_scene format=3 uid="uid://dw6hev63d7230"]
+[gd_scene format=3 uid="uid://o5nkbtppxqyq"]
 
-[ext_resource type="Script" uid="uid://dl6i6fwswluem" path="res://scripts/Login.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/Login.gd" id="1"]
 [ext_resource type="Texture2D" uid="uid://dy2uw1ofbmwxm" path="res://assets/menu_bg.jpg" id="2"]
 
 [node name="Login" type="Control" unique_id=1452185416]

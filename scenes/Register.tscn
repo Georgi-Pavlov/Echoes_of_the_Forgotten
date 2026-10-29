@@ -33,7 +33,7 @@ anchor_bottom = 0.5
 offset_left = -193.0
 offset_top = -92.0
 offset_right = 180.0
-offset_bottom = 162.0
+offset_bottom = 100.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -49,16 +49,6 @@ horizontal_alignment = 1
 [node name="NameEdit" type="LineEdit" parent="Panel/VBoxContainer" unique_id=262711148]
 layout_mode = 2
 placeholder_text = "Name"
-
-[node name="PasswordEdit" type="LineEdit" parent="Panel/VBoxContainer" unique_id=387585762]
-layout_mode = 2
-placeholder_text = "Password"
-secret = true
-
-[node name="RepeatPasswordEdit" type="LineEdit" parent="Panel/VBoxContainer" unique_id=1007379170]
-layout_mode = 2
-placeholder_text = "Repeat Password"
-secret = true
 
 [node name="ErrorLabel" type="Label" parent="Panel/VBoxContainer" unique_id=1366244180]
 modulate = Color(1, 0.4, 0.4, 1)

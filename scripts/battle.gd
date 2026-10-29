@@ -3159,32 +3159,17 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 	_mark_turn_used()
 
 
-## Veyrik's Barbed Lunge: leaps `level_data.distance` columns toward the
-## nearest enemy - overriding the hero's normal speed-based move
-## distance - and stops early if it lands on an enemy's column along
-## the way. That enemy takes a standard attack and gets stunned for
-## `level_data.stun_turns` of its own turns (see the "stun_turns_left"
-## counter checked at the top of each enemy's turn in _enemy_turn()).
-## Returns false (leaving position/turn untouched) if there's no
-## enemy anywhere to leap toward.
+## Veyrik's Barbed Lunge: leaps `level_data.distance` columns in the
+## direction he's facing (hero_image.flip_h) - overriding the hero's
+## normal speed-based move distance - and stops early if it lands on an
+## enemy's column along the way. That enemy takes a standard attack and
+## gets stunned for `level_data.stun_turns` of its own turns (see the
+## "stun_turns_left" counter checked at the top of each enemy's turn in
+## _enemy_turn()). With no enemy in the way he just covers the distance,
+## which doubles as an escape. Returns false (leaving position/turn
+## untouched) only if there's no room to leap at all.
 func _cast_barbed_lunge(level_data: Dictionary) -> bool:
-	if _enemies.is_empty():
-		_show_message_over_hero("No target for Barbed Lunge")
-		return false
-
-	var nearest: Dictionary = {}
-	var nearest_distance: int = GRID_COLUMNS + 1
-	for enemy in _enemies:
-		var d: int = _distance(enemy["pos_index"], _hero_pos_index)
-		if d < nearest_distance:
-			nearest_distance = d
-			nearest = enemy
-
-	var direction: int = _step_toward(_hero_pos_index, nearest["pos_index"])
-	if direction == 0:
-		# Already sharing the enemy's column - still leap somewhere
-		# rather than doing nothing.
-		direction = 1
+	var direction: int = -1 if hero_image.flip_h else 1
 
 	var move_distance: int = int(level_data.get("distance", 2))
 	var pos: int = _hero_pos_index
@@ -3212,6 +3197,10 @@ func _cast_barbed_lunge(level_data: Dictionary) -> bool:
 	if _probing_reach:
 		_probe_found = not hit_enemy.is_empty()
 		return _probe_found
+
+	if pos == _hero_pos_index:
+		_show_message_over_hero("No room to leap")
+		return false
 
 	_hero_pos_index = pos
 	_update_hero_position()

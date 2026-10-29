@@ -1,7 +1,7 @@
 extends Node
 # ------------------------------------------------------------------
 # PlayerManager (autoload / singleton)
-# Handles the "players" file (username|password, one per line) and a
+# Handles the "players" file (one username per line) and a
 # separate per-player data file where hero/level/stats will live later.
 #
 # Files live under user:// which is a real writable folder on disk:
@@ -67,16 +67,16 @@ func player_exists(username: String) -> bool:
 	f.close()
 	return false
 
-## Adds "username|password" to players.txt and creates that player's
-## own data file (for hero / level / stats you'll add later).
-## Returns false if the name was already taken.
-func register_player(username: String, password: String) -> bool:
+## Adds the username to players.txt and creates that player's own data
+## file (for hero / level / stats you'll add later). Returns false if the
+## name was already taken.
+func register_player(username: String) -> bool:
 	if player_exists(username):
 		return false
 
 	var f := FileAccess.open(PLAYERS_FILE, FileAccess.READ_WRITE)
 	f.seek_end()
-	f.store_line(username + "|" + password)
+	f.store_line(username)
 	f.close()
 
 	var pf := FileAccess.open(PLAYER_DATA_DIR + username + ".txt", FileAccess.WRITE)
@@ -112,21 +112,56 @@ func clear_tutorial_pending() -> void:
 	_write_player_data(current_player, data)
 	flush_player_data()
 
-## Checks username + password against players.txt
-func validate_login(username: String, password: String) -> bool:
+## Every registered player name, in registration order.
+func get_player_names() -> Array:
+	var names: Array = []
 	var f := FileAccess.open(PLAYERS_FILE, FileAccess.READ)
 	if f == null:
-		return false
+		return names
 	while not f.eof_reached():
 		var line := f.get_line()
 		if line.strip_edges() == "":
 			continue
-		var parts := line.split("|")
-		if parts.size() >= 2 and parts[0] == username and parts[1] == password:
-			f.close()
-			return true
+		names.append(line.split("|")[0])
 	f.close()
-	return false
+	return names
+
+
+## The players the Load menu offers: those whose hero is still alive, plus
+## those who haven't picked a hero yet. Each entry is {name, has_hero,
+## hero_name, level, echoes} - the last three only meaningful when
+## has_hero. Read straight from disk, so it's safe with no current player
+## set.
+func get_active_players() -> Array:
+	var players: Array = []
+	for username: String in get_player_names():
+		var data := _read_player_data_from_disk(username)
+		var has_hero: bool = data.get("hero", "") != ""
+		if has_hero and float(data.get("hero_current_hp", "0")) <= 0:
+			continue
+		players.append({
+			"name": username,
+			"has_hero": has_hero,
+			"hero_name": data.get("hero_name", ""),
+			"level": int(data.get("level", "1")),
+			"echoes": int(data.get("echoes", "0")),
+		})
+	return players
+
+
+## Removes a player from players.txt and deletes their save file.
+func delete_player(username: String) -> void:
+	if username == current_player:
+		current_player = ""
+	var remaining: Array = []
+	for existing: String in get_player_names():
+		if existing != username:
+			remaining.append(existing)
+	var f := FileAccess.open(PLAYERS_FILE, FileAccess.WRITE)
+	for existing: String in remaining:
+		f.store_line(existing)
+	f.close()
+	DirAccess.remove_absolute(PLAYER_DATA_DIR + username + ".txt")
 
 ## Convenience helper for later: path to the current player's data file.
 func current_player_file() -> String:

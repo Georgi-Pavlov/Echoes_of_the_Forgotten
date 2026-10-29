@@ -1,0 +1,135 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/Load.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://dy2uw1ofbmwxm" path="res://assets/menu_bg.jpg" id="2"]
+
+[node name="Load" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -200.0
+offset_right = 300.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="Panel/VBoxContainer"]
+layout_mode = 2
+text = "Load Game"
+horizontal_alignment = 1
+
+[node name="PlayerTree" type="Tree" parent="Panel/VBoxContainer"]
+custom_minimum_size = Vector2(0, 240)
+layout_mode = 2
+size_flags_vertical = 3
+columns = 4
+column_titles_visible = true
+hide_root = true
+select_mode = 0
+
+[node name="EmptyLabel" type="Label" parent="Panel/VBoxContainer"]
+visible = false
+layout_mode = 2
+text = "No saved games with a living hero."
+horizontal_alignment = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 48
+alignment = 1
+
+[node name="BackButton" type="Button" parent="Panel/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(120, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Back"
+
+[node name="DeleteButton" type="Button" parent="Panel/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(120, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+disabled = true
+text = "Delete"
+
+[node name="LoadButton" type="Button" parent="Panel/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(120, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+disabled = true
+text = "Load"
+
+[node name="ConfirmDeletePopup" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -220.0
+offset_top = -90.0
+offset_right = 220.0
+offset_bottom = 90.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="ConfirmDeletePopup"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="ConfirmDeletePopup/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="ConfirmLabel" type="Label" parent="ConfirmDeletePopup/Margin/VBox"]
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Buttons" type="HBoxContainer" parent="ConfirmDeletePopup/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 48
+alignment = 1
+
+[node name="ConfirmDeleteButton" type="Button" parent="ConfirmDeletePopup/Margin/VBox/Buttons"]
+custom_minimum_size = Vector2(120, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Delete"
+
+[node name="CancelDeleteButton" type="Button" parent="ConfirmDeletePopup/Margin/VBox/Buttons"]
+custom_minimum_size = Vector2(120, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Cancel"

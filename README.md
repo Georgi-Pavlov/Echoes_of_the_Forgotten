@@ -41,8 +41,8 @@ But you're not the only one adventuring. Every rival hero on the map is simultan
 res://
 ├── scenes/
 │   ├── MainMenu.tscn       # Title screen
-│   ├── Login.tscn          # Existing-player sign in
-│   ├── Register.tscn       # New-player account creation
+│   ├── Load.tscn           # Saved players with a living hero: Load / Delete
+│   ├── Register.tscn       # New player (name only)
 │   ├── PostLogin.tscn      # Continue / New Game landing screen
 │   ├── LoadingScreen.tscn  # Reusable "loading bar" transition between scenes
 │   ├── Map.tscn            # World map, zone navigation, World Status/Shop entry points
