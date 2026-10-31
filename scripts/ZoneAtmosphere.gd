@@ -145,6 +145,9 @@ const LUNARA_BG := "res://assets/zones/the_blackbloom_lunara.jpg"
 const SOLARA_BG := "res://assets/zones/the_blackbloom_solara.jpg"
 # Lunara's Blackbloom runs in its own child too - see LunaraAtmosphere.gd.
 const LUNARA_FX := preload("res://scripts/LunaraAtmosphere.gd")
+const LAST_HORIZON_BG := "res://assets/zones/the_last_horizon.jpg"
+# Nightshroud's Last Horizon runs in its own child too - see LastHorizonAtmosphere.gd.
+const LAST_HORIZON_FX := preload("res://scripts/LastHorizonAtmosphere.gd")
 const UNKNOWN_BG := "res://assets/zones/empty_zone.jpg"
 const UNKNOWN_FX := preload("res://scripts/UnknownZoneAtmosphere.gd")
 
@@ -265,7 +268,7 @@ func _ready() -> void:
 ## Called by zone.gd after it has set the background for the shown hero.
 func show_for_background(path: String) -> void:
 	_clear()
-	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG, EVERFROST_BG, EVERFROST_SKARN_BG, ROOTMOTHER_BG, CINDER_BG, SCORCHLANDS_BG, LUNARA_BG, SOLARA_BG, LAST_EMPRESS_BG, DREADLURE_BG, UNKNOWN_BG]:
+	if _background == null or not path in [IRON_ABYSS_BG, ELDERWILD_BG, MORVAIN_BG, IRONBOUND_BG, FROSTSPIRE_BG, FROSTSPIRE_HUNGER_BG, EVERFROST_BG, EVERFROST_SKARN_BG, ROOTMOTHER_BG, CINDER_BG, SCORCHLANDS_BG, LUNARA_BG, SOLARA_BG, LAST_EMPRESS_BG, DREADLURE_BG, LAST_HORIZON_BG, UNKNOWN_BG]:
 		return
 	# Guards against a hero switch landing during the await below.
 	_build_id += 1
@@ -304,6 +307,8 @@ func show_for_background(path: String) -> void:
 		_build_last_empress("last_empress")
 	elif path == DREADLURE_BG:
 		_build_last_empress("dreadlure")
+	elif path == LAST_HORIZON_BG:
+		_build_last_horizon()
 	else:
 		_build_elderwild()
 
@@ -1070,6 +1075,15 @@ func _build_lunara(hero: String) -> void:
 	add_child(fx)
 	fx.build(self, _background, hero)
 	_zone = hero
+
+
+# --- The Last Horizon -----------------------------------------------
+
+func _build_last_horizon() -> void:
+	var fx: Control = LAST_HORIZON_FX.new()
+	add_child(fx)
+	fx.build(self, _background)
+	_zone = "last_horizon"
 
 
 # --- Zones with no heroes yet ---------------------------------------

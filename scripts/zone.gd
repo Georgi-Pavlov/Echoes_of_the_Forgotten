@@ -222,6 +222,11 @@ func _show_hero(index: int) -> void:
 	hero_main_stat.text = _current_hero.get("main_stat", "")
 	hero_main_stat.add_theme_font_size_override("font_size", 18)
 	hero_main_stat.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	# Sit the main stat a fixed gap after the range type, however wide
+	# the range type's text is ("Melee" is wider than "Range").
+	var main_stat_width: float = hero_main_stat.offset_right - hero_main_stat.offset_left
+	hero_main_stat.offset_left = hero_range_type.offset_left + hero_range_type.get_minimum_size().x + 12.0
+	hero_main_stat.offset_right = hero_main_stat.offset_left + main_stat_width
 
 	# Background now comes from the hero first (so heroes sharing a zone,
 	# like The Last Empress and Dreadlure, can each show their own art), falling

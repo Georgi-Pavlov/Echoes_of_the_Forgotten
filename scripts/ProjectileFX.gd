@@ -100,6 +100,23 @@ const STYLES := {
 		"base_duration": 0.22,
 		"per_100px_duration": 0.075,
 	},
+	# The Last Horizon range creeps: a ball of pure black, wrapped in a
+	# soft halo of shadow and dragging a thick wake of dark mist that
+	# billows out again where it lands.
+	"shadow_orb": {
+		"shape": "shadow_orb",
+		"mist": true,
+		"launch": Vector2(0.4, 0.3),
+		"length": 36.0,
+		"head_color": Color(0.0, 0.0, 0.0, 1.0),
+		"glow_color": Color(0.2, 0.08, 0.35, 0.55),
+		"trail_color": Color(0.03, 0.0, 0.07, 0.85),
+		"impact_color": Color(0.04, 0.0, 0.09, 0.9),
+		"arc": 0.08,
+		"max_arc": 35.0,
+		"base_duration": 0.22,
+		"per_100px_duration": 0.075,
+	},
 	# Ironbound Isles range creeps (the sea witch): the orb of water she
 	# holds, flung as a wobbling bubble trailing smaller ones, that bursts
 	# into a splash of droplets.
@@ -258,6 +275,8 @@ static func _fire_one(host: Node, style: Dictionary, from: Vector2, to: Vector2,
 			projectile = _build_spike(style)
 		"skull":
 			projectile = _build_skull(style)
+		"shadow_orb":
+			projectile = _build_shadow_orb(style)
 		"bubble":
 			projectile = _build_bubble(style)
 		"spear":
@@ -273,7 +292,7 @@ static func _fire_one(host: Node, style: Dictionary, from: Vector2, to: Vector2,
 	var trail := CPUParticles2D.new()
 	trail.local_coords = false
 	# Arrows and spikes trail from their tail; a skull or bubble from its middle.
-	trail.position = Vector2.ZERO if shape == "skull" or shape == "bubble" else Vector2(-float(style["length"]), 0.0)
+	trail.position = Vector2.ZERO if shape == "skull" or shape == "bubble" or shape == "shadow_orb" else Vector2(-float(style["length"]), 0.0)
 	trail.amount = 28
 	trail.lifetime = 0.28
 	trail.spread = 18.0
@@ -292,6 +311,12 @@ static func _fire_one(host: Node, style: Dictionary, from: Vector2, to: Vector2,
 		trail.spread = 180.0
 		trail.initial_velocity_min = 4.0
 		trail.initial_velocity_max = 14.0
+	if shape == "shadow_orb":
+		# A long, heavy wake: big dark puffs that linger behind the ball.
+		trail.amount = 150
+		_make_misty(trail, style["trail_color"], 0.7)
+		trail.scale_amount_min = 1.6
+		trail.scale_amount_max = 3.0
 	if shape == "bubble":
 		# A string of little bubbles left behind, drifting up.
 		trail.amount = 26
@@ -317,6 +342,13 @@ static func _fire_one(host: Node, style: Dictionary, from: Vector2, to: Vector2,
 			pos.y += sin(p * TAU * 1.5) * 5.0
 			projectile.global_position = pos
 			projectile.rotation = sin(p * TAU * 1.2) * 0.14
+			return
+		if shape == "shadow_orb":
+			# The ball rolls on a slight weave, breathing as it goes.
+			pos.y += sin(p * TAU * 2.0) * 4.0
+			projectile.global_position = pos
+			var swell: float = 1.0 + 0.08 * sin(p * TAU * 4.0)
+			projectile.scale = Vector2(swell, swell)
 			return
 		if shape == "bubble":
 			# A bubble wobbles as it flies, squashing and stretching.
@@ -766,6 +798,40 @@ static func _build_skull(style: Dictionary) -> Node2D:
 		face.add_child(tooth)
 
 	return skull
+
+
+## A ball of shadow centered on the origin: a solid black core, a soft
+## dark-violet halo around it and a faint violet edge-light. "length" is
+## its diameter.
+static func _build_shadow_orb(style: Dictionary) -> Node2D:
+	var orb := Node2D.new()
+	var r: float = float(style["length"]) * 0.5
+	var glow_color: Color = style["glow_color"]
+
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.4, 1.0])
+	g.colors = PackedColorArray([Color(0.02, 0.0, 0.05, 0.9), Color(0.04, 0.0, 0.08, 0.45), Color(0.04, 0.0, 0.08, 0.0)])
+	var halo_tex := GradientTexture2D.new()
+	halo_tex.gradient = g
+	halo_tex.fill = GradientTexture2D.FILL_RADIAL
+	halo_tex.fill_from = Vector2(0.5, 0.5)
+	halo_tex.fill_to = Vector2(1.0, 0.5)
+	halo_tex.width = 64
+	halo_tex.height = 64
+	var halo := Sprite2D.new()
+	halo.texture = halo_tex
+	halo.scale = Vector2.ONE * (r * 4.0 / 64.0)
+	orb.add_child(halo)
+
+	# A thin violet rim, additive, so the black reads against dark ground.
+	var add_mat := CanvasItemMaterial.new()
+	add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	var rim := _ellipse(Vector2.ZERO, Vector2.ONE * r * 1.12, Color(glow_color, glow_color.a * 0.5))
+	rim.material = add_mat
+	orb.add_child(rim)
+
+	orb.add_child(_ellipse(Vector2.ZERO, Vector2.ONE * r, Color(0.0, 0.0, 0.0, 1.0)))
+	return orb
 
 
 static func _ellipse(center: Vector2, radii: Vector2, color: Color) -> Polygon2D:

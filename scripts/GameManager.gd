@@ -196,6 +196,11 @@ func compute_derived_stats(hero_static: Dictionary, current_strength: float, cur
 		"intelligence":
 			current_main_value = current_intelligence
 			base_main_value = base_intelligence
+		"universal":
+			# A universal hero's damage grows from all three attributes
+			# together rather than from a single one.
+			current_main_value = current_strength + current_agility + current_intelligence
+			base_main_value = base_strength + base_agility + base_intelligence
 
 	# A hero can carry its own "damage_per_main_stat" to fine-tune how fast its
 	# damage grows without touching its attribute growth (HP, mana, armor).
@@ -2444,9 +2449,135 @@ var zones: Dictionary = {
 		That changed when new paths began appearing across the frontier.
 		Ancient roads emerged from beneath the soil. Stone markers were discovered deep within forests. Ruined structures stood in places no known civilization had ever settled. Even the oldest maps began proving incomplete.",
 		"music": "the_last_horizon",
-		"heroes": [],
+		"heroes": [
+			{
+				"id": "nightshroud",
+				"name": "Nightshroud",
+				"image": "res://assets/heroes/Nightshroud.png",
+				"background": "res://assets/zones/the_last_horizon.jpg",
+				"range_type": "Range",
+				"attack_effect": "dark_halo",
+				"main_stat": "Universal",
+				"damage_per_main_stat": 0.5,
+				"stats": {
+					"strength": 23,
+					"agility": 23,
+					"intelligence": 23,
+					"range": 425,
+					"hp": 626,
+					"mana": 351,
+					"armor": 4.83,
+					"damage": "55-61",
+					"speed": 1
+				},
+				"skills": [
+					{
+						"id": "hollowing_presence",
+						"name": "Hollowing Presence",
+						"type": "standard",
+						"description": "Nightshroud causes an instant panic to grip its enemies, weakening their defensive and offensive abilities. The victimes damage is reduced by a percentage of their maximum damage, while their armor is reduced by a flat amount for the duration.",
+						"levels": [
+							{"duration": 3, "damage_reduction_percent": 20, "armor_reduction": 2, "mana_cost": 80, "cooldown": 6},
+							{"duration": 3, "damage_reduction_percent": 25, "armor_reduction": 3, "mana_cost": 115, "cooldown": 8},
+							{"duration": 4, "damage_reduction_percent": 40, "armor_reduction": 4, "mana_cost": 180, "cooldown": 10},
+							{"duration": 4, "damage_reduction_percent": 45, "armor_reduction": 6, "mana_cost": 260, "cooldown": 12}
+						]
+					},
+					{
+						"id": "mind_devourer",
+						"name": "Mind Devourer",
+						"type": "standard",
+						"description": "Nightshroud tears a fragment of consciousness from an enemy and consumes it. The target suffers damage, while Nightshroud restores a portion of his own health based on the damage dealt.",
+						"levels": [
+							{"damage": 115, "hp_restoration_percent": 40, "range": 4, "mana_cost": 110, "cooldown": 10},
+							{"damage": 165, "hp_restoration_percent": 50, "range": 4, "mana_cost": 140, "cooldown": 12},
+							{"damage": 215, "hp_restoration_percent": 60, "range": 4, "mana_cost": 180, "cooldown": 14},
+							{"damage": 285, "hp_restoration_percent": 70, "range": 4, "mana_cost": 230, "cooldown": 16}
+						]
+					},
+					{
+						"id": "sleepless_curse",
+						"name": "Sleepless Curse",
+						"type": "standard",
+						"description": "Nightshroud traps an enemy's consciousness within a waking nightmare. The victim stays in place and suffers damage each turn while trapped in the nightmare. The curse ends if the victim receives damage from another source.",
+						"levels": [
+							{"duration": 2, "damage": 70, "range": 4, "mana_cost": 120, "cooldown": 8},
+							{"duration": 3, "damage": 95, "range": 4, "mana_cost": 160, "cooldown": 10},
+							{"duration": 4, "damage": 110, "range": 4, "mana_cost": 200, "cooldown": 12},
+							{"duration": 4, "damage": 150, "range": 4, "mana_cost": 250, "cooldown": 14}
+						]
+					},
+					{
+						"id": "the_terror_within",
+						"name": "The Terror Within",
+						"type": "ultimate",
+						"description": "Ultimate: Nightshroud reveals the enemy's greatest fear. The target suffers massive damage and is afflicted with Fear, forcing it to flee from Nightshroud. While fleeing, the target suffers additional damage each turn.",
+						"levels": [
+							{"initial_damage": 300, "fear_duration": 2, "damage_per_turn": 50, "mana_cost": 200, "cooldown": 12},
+							{"initial_damage": 400, "fear_duration": 2, "damage_per_turn": 75, "mana_cost": 250, "cooldown": 14},
+							{"initial_damage": 475, "fear_duration": 2, "damage_per_turn": 110, "mana_cost": 300, "cooldown": 16}
+						]
+					}
+				],
+				"level_up": {
+					"strength": 2.5,
+					"agility": 2.5,
+					"intelligence": 2.5
+				},
+			}
+		],
+		"enemies": [
+			{
+				"id": "the_last_horizon_melee",
+				"name": "Last Horizon melee creep",
+				"image": "res://assets/enemies/the_last_horizon_melee.png",
+				"type": "melee",
+				"main_stat": "strength",
+				"main_stat_value": 10,
+				"hp": 225,
+				"mana": 50,
+				"damage": 10,
+				"speed": 1,
+				"armor": 1.5,
+				"XP": 57,
+				"gold": "34-39"
+			},
+			{
+				"id": "the_last_horizon_melee_2",
+				"name": "Last Horizon melee creep",
+				"image": "res://assets/enemies/the_last_horizon_melee.png",
+				"type": "melee",
+				"main_stat": "strength",
+				"main_stat_value": 10,
+				"hp": 225,
+				"mana": 50,
+				"damage": 10,
+				"speed": 1,
+				"armor": 1.5,
+				"XP": 57,
+				"gold": "34-39"
+			},
+			{
+				"id": "the_last_horizon_range",
+				"name": "Last Horizon range creep",
+				"image": "res://assets/enemies/the_last_horizon_range.png",
+				"type": "range",
+				"flying": true,
+				"projectile": "shadow_orb",
+				"main_stat": "agility",
+				"main_stat_value": 10,
+				"hp": 150,
+				"mana": 50,
+				"damage": 20,
+				"speed": 1,
+				"armor": 1,
+				"XP": 57,
+				"gold": "43-52"
+			}
+		],
 		"unlocked": true,
-		"background": ""
+		"background": "res://assets/zones/the_last_horizon.jpg",
+		"battle_background": "res://assets/battle_areas/the_last_horizon_area.jpg"
 	},
 
 	"the_sunscar": {

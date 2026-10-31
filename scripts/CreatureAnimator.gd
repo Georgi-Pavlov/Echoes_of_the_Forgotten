@@ -345,6 +345,36 @@ const PROFILES := {
 		"glow_color": Color(0.4, 0.95, 0.85),
 		"edge_color": Color(0.45, 1.0, 0.85),
 	},
+	# Nightshroud: a vast, many-limbed shadow - slow, deep breaths, its thin
+	# legs and the dark tendrils over it crawling in a restless ripple, and a
+	# cold violet glow when it casts.
+	"nightshroud": {
+		"breath_amount": 0.016, "breath_speed": 1.1,
+		"sway_amount": 0.01, "sway_speed": 0.5,
+		"ripple_amount": 0.003, "ripple_freq": 7.0, "ripple_speed": 1.5,
+		"glow_color": Color(0.6, 0.45, 1.0),
+		"edge_color": Color(0.55, 0.4, 0.95),
+	},
+	# The Last Horizon's ravening beast: heavy, ragged breaths, the tendrils
+	# on its back writhing in a ripple, a dull red glow when it strikes.
+	"last_horizon_melee": {
+		"breath_amount": 0.022, "breath_speed": 2.0,
+		"sway_amount": 0.01, "sway_speed": 0.9,
+		"ripple_amount": 0.003, "ripple_freq": 8.0, "ripple_speed": 2.2,
+		"glow_color": Color(0.9, 0.3, 0.35),
+		"edge_color": Color(0.7, 0.25, 0.4),
+	},
+	# The smoke-wreathed wyvern: it flies, so it heaves and rocks more than
+	# anything standing - slow beats of the wings read as stretches of the
+	# whole body with a flutter, the smoke around it drifting - and glows
+	# violet when it strikes.
+	"last_horizon_range": {
+		"breath_amount": 0.028, "breath_speed": 2.2,
+		"sway_amount": 0.018, "sway_speed": 1.0,
+		"ripple_amount": 0.003, "ripple_freq": 5.0, "ripple_speed": 2.6,
+		"glow_color": Color(0.65, 0.5, 1.0),
+		"edge_color": Color(0.6, 0.5, 0.95),
+	},
 }
 
 const HIT_FLASH_COLOR := Color(1.0, 0.35, 0.3)
@@ -709,4 +739,6 @@ static func spawn_death_ghost(node: TextureRect, layer: Node = null) -> void:
 	ghost.global_position = node.global_position
 	var animator := attach(ghost, source.profile_id)
 	animator._mat.set_shader_parameter("time_offset", source._mat.get_shader_parameter("time_offset"))
+	# A flying creep dies where it hung, not on the ground beneath it.
+	animator._mat.set_shader_parameter("hover_offset", source._mat.get_shader_parameter("hover_offset"))
 	animator.play_death(true)

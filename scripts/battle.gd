@@ -102,12 +102,20 @@ const ANIMATED_CREATURE_PROFILES := {
 	"drowned_empire_melee": "drowned_empire_melee",
 	"drowned_empire_melee_2": "drowned_empire_melee",
 	"drowned_empire_range": "drowned_empire_range",
+	"nightshroud": "nightshroud",
+	"the_last_horizon_melee": "last_horizon_melee",
+	"the_last_horizon_melee_2": "last_horizon_melee",
+	"the_last_horizon_range": "last_horizon_range",
 	# A rival Erynd's own bear; the player's is attached in
 	# _elderwild_companion() (it isn't spawned through _spawn_enemy()).
 	"enemy_elderwild_companion": "elderwild_companion",
 }
 
 const BATTLE_ATMOSPHERE := preload("res://scripts/BattleAtmosphere.gd")
+
+# How high a "flying" creep hangs above the ground line, as a fraction of its
+# own height (see _spawn_enemy()).
+const FLYING_HOVER_FRACTION := 0.2
 
 # Holds CreatureAnimator death dissolves and ProjectileFX shots, just
 # above enemies_layer (so they draw over the creatures but under the UI).
@@ -1451,6 +1459,20 @@ var _pending_shackles_level_data: Dictionary = {}
 # clicked (_resolve_deathlight_lure_cast()).
 var _pending_deathlight_lure_level_data: Dictionary = {}
 
+# Nightshroud's Mind Devourer, held the same way until a target is clicked
+# (_resolve_mind_devourer_cast()).
+var _pending_mind_devourer_level_data: Dictionary = {}
+
+# Nightshroud's Sleepless Curse, held the same way until a target is clicked
+# (_resolve_sleepless_curse_cast()). The flag is true only while the curse's
+# own damage tick is being dealt, so that hit doesn't break the curse.
+var _pending_sleepless_curse_level_data: Dictionary = {}
+
+# Nightshroud's The Terror Within, held the same way until a target is
+# clicked (_resolve_the_terror_within_cast()).
+var _pending_the_terror_within_level_data: Dictionary = {}
+var _sleepless_curse_tick_active: bool = false
+
 # Solara's Hope of the Fallen, held the same way as every other targeted
 # skill's own pending level data above, from the moment _start_
 # hope_of_the_fallen_targeting() opens targeting until a target is actually
@@ -1786,6 +1808,7 @@ const BATTLE_PLATE_RECTS := {
 	"drowned_empire_area.png": [1536, 1024, 80, 765, 1460, 980],
 	"the_blackbloom_area.jpg": [1672, 941, 100, 720, 1580, 895],
 	"scorchlands_area.jpg": [1670, 941, 55, 685, 1615, 870],
+	"the_last_horizon_area.jpg": [1672, 941, 55, 685, 1618, 890],
 }
 
 
@@ -2182,7 +2205,11 @@ func _spawn_enemy(enemy_def: Dictionary) -> void:
 
 	var profile_id: String = ANIMATED_CREATURE_PROFILES.get(enemy_def.get("id", ""), "")
 	if profile_id != "":
-		CreatureAnimator.attach(tex_rect, profile_id)
+		var animator := CreatureAnimator.attach(tex_rect, profile_id)
+		# A flying creep hangs in the air above the ground line, wings
+		# beating (see its animation profile), instead of standing on it.
+		if enemy_def.get("flying", false):
+			animator.set_hover(target_size.y * FLYING_HOVER_FRACTION)
 
 	_refresh_enemy_overhead_labels()
 
@@ -2541,6 +2568,56 @@ func _build_bar_styles() -> void:
 	xp_bar.add_theme_stylebox_override("background", bg_style)
 
 
+## Below this share of max HP the hero's HP bar pulses and beats like a heart.
+const LOW_HP_FRACTION := 0.3
+## Seconds between the two quick beats, and the pause before the next pair.
+const HEARTBEAT_GAP := 0.35
+const HEARTBEAT_PAUSE := 0.85
+
+var _heartbeat_tween: Tween
+var _heartbeat_pulse: Tween
+
+
+## Purely cosmetic: while the hero is alive but low on HP, the HP bar flashes
+## red and swells with a double heartbeat - two quick "hearth" thumps, a
+## pause, two more. Called from _refresh_bars(), so it starts the moment HP
+## drops under LOW_HP_FRACTION and stops as soon as it climbs back (or the
+## battle ends).
+func _update_heartbeat() -> void:
+	var low: bool = not _battle_over and hp_bar.max_value > 0.0 \
+		and hp_bar.value > 0.0 and hp_bar.value / hp_bar.max_value <= LOW_HP_FRACTION
+	var running: bool = _heartbeat_tween != null and _heartbeat_tween.is_valid()
+	if low and not running:
+		_heartbeat_tween = hp_bar.create_tween().set_loops()
+		_heartbeat_tween.tween_callback(_heartbeat_beat.bind(1.0))
+		_heartbeat_tween.tween_interval(HEARTBEAT_GAP)
+		_heartbeat_tween.tween_callback(_heartbeat_beat.bind(0.7))
+		_heartbeat_tween.tween_interval(HEARTBEAT_PAUSE)
+	elif not low and running:
+		_heartbeat_tween.kill()
+		_heartbeat_tween = null
+		if _heartbeat_pulse != null:
+			_heartbeat_pulse.kill()
+		hp_bar.modulate = Color.WHITE
+		hp_bar.scale = Vector2.ONE
+
+
+## One thump: the sound and a quick red flash and swell of the HP bar.
+func _heartbeat_beat(strength: float) -> void:
+	if _battle_over or not is_instance_valid(hp_bar):
+		return
+	AudioManager.play_event("hearth", -6.0 if strength < 1.0 else -3.0, 0.03)
+	hp_bar.pivot_offset = hp_bar.size / 2.0
+	if _heartbeat_pulse != null:
+		_heartbeat_pulse.kill()
+	_heartbeat_pulse = hp_bar.create_tween()
+	_heartbeat_pulse.set_parallel()
+	hp_bar.modulate = Color.WHITE.lerp(Color(1.7, 0.7, 0.7), strength)
+	_heartbeat_pulse.tween_property(hp_bar, "modulate", Color.WHITE, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	hp_bar.scale = Vector2.ONE * (1.0 + 0.05 * strength)
+	_heartbeat_pulse.tween_property(hp_bar, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
 func _refresh_bars() -> void:
 	# Re-read from PlayerManager each time so bars always reflect the
 	# saved values, even if damage/xp were applied elsewhere.
@@ -2553,6 +2630,7 @@ func _refresh_bars() -> void:
 	hp_bar.max_value = _hero_max_hp()
 	hp_bar.value = _recruited.get("current_hp", 0)
 	hp_value_label.text = str(int(hp_bar.value)) + "/" + str(int(hp_bar.max_value))
+	_update_heartbeat()
 
 	mana_bar.max_value = float(stats.get("mana", 1))
 	mana_bar.value = _recruited.get("current_mana", 0)
@@ -2915,6 +2993,34 @@ func _on_skill_pressed(skill: Dictionary) -> void:
 			# above - the mana/cooldown/turn spend happens once the
 			# click resolves (_resolve_deathlight_lure_cast), not here.
 			return
+		"the_terror_within":
+			if not _start_the_terror_within_targeting(level_data):
+				# No enemy in range - nothing happened, same as above.
+				return
+			# Same deferred-spend pattern as every other targeted skill
+			# above - the mana/cooldown/turn spend happens once the
+			# click resolves (_resolve_the_terror_within_cast), not here.
+			return
+		"sleepless_curse":
+			if not _start_sleepless_curse_targeting(level_data):
+				# No enemy in range - nothing happened, same as above.
+				return
+			# Same deferred-spend pattern as every other targeted skill
+			# above - the mana/cooldown/turn spend happens once the
+			# click resolves (_resolve_sleepless_curse_cast), not here.
+			return
+		"mind_devourer":
+			if not _start_mind_devourer_targeting(level_data):
+				# No enemy in range - nothing happened, same as above.
+				return
+			# Same deferred-spend pattern as every other targeted skill
+			# above - the mana/cooldown/turn spend happens once the
+			# click resolves (_resolve_mind_devourer_cast), not here.
+			return
+		"hollowing_presence":
+			if not _cast_hollowing_presence(level_data):
+				# No enemies in range - same as above, no-op.
+				return
 		"shackles":
 			if not _start_shackles_targeting(level_data):
 				# No enemy in range - nothing happened, same as above.
@@ -4663,6 +4769,265 @@ func _refresh_luring_gaze_trances() -> void:
 		if _bear.get("luring_gaze_entranced", false) and int(_bear.get("stun_turns_left", 0)) <= 0:
 			_bear["luring_gaze_entranced"] = false
 		LuringGazeFX.set_trance(_bear.get("node"), bool(_bear.get("luring_gaze_entranced", false)), rival)
+
+
+## Nightshroud's Hollowing Presence: hits every enemy within the hero's
+## normal attack range at once. Each loses `armor_reduction` armor (the
+## shared per-instance armor_reduction field, stacking additively) and is
+## marked with enemy["hollowing_damage_reduction_pct"], which cuts every hit
+## it deals by that share of its own max damage (see _hollowing_damage_cut()).
+## Both ride on armor_reduction_turns_left, so they expire together (see
+## _tick_enemy_turn_start_effects()). Deals no damage of its own. An
+## invisible rival is debuffed like any other enemy but NOT revealed - hence
+## no _is_target_hidden() skip here. Returns false (no mana/turn/cooldown
+## spent) if nothing is in range.
+func _cast_hollowing_presence(level_data: Dictionary) -> bool:
+	var col_range: int = _hero_attack_column_range()
+	var targets: Array = []
+	for enemy in _enemies:
+		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
+			targets.append(enemy)
+
+	if targets.is_empty():
+		_show_message_over_hero("No enemies in range")
+		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
+
+	var armor_reduction: float = float(level_data.get("armor_reduction", 0))
+	var damage_reduction_pct: float = float(level_data.get("damage_reduction_percent", 0.0)) / 100.0
+	var duration: int = int(level_data.get("duration", 0))
+	for enemy in targets:
+		enemy["armor_reduction"] = float(enemy.get("armor_reduction", 0.0)) + armor_reduction
+		enemy["hollowing_damage_reduction_pct"] = damage_reduction_pct
+		enemy["armor_reduction_turns_left"] = duration
+		var node: Variant = enemy.get("node")
+		if is_instance_valid(node) and node is TextureRect and not _is_target_hidden(enemy):
+			_sprite_flash(node, 1.05, Color(0.45, 0.35, 0.7, 1.0))
+			ShadowDripFX.attach(enemy, node)
+
+	_show_message_over_hero("Hollowing Presence!")
+	return true
+
+
+## Nightshroud's Mind Devourer target picking: same highlight mechanism as
+## every other targeted skill, using this level's own `range` (4 columns).
+func _start_mind_devourer_targeting(level_data: Dictionary) -> bool:
+	_cancel_targeting()
+
+	var col_range: int = int(level_data.get("range", 4))
+	for enemy in _enemies:
+		if _is_target_hidden(enemy):
+			continue
+		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
+			_valid_targets.append(enemy)
+
+	if _valid_targets.is_empty():
+		_show_message_over_hero("No enemy in range")
+		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
+
+	_targeting_mode = true
+	_targeting_purpose = "mind_devourer"
+	_pending_mind_devourer_level_data = level_data
+	_highlight_valid_targets()
+	return true
+
+
+## Resolves a Mind Devourer cast on `target`: deals this level's flat
+## `damage` (reduced by armor like any other skill hit) and heals Nightshroud for `hp_restoration_percent` of the damage that
+## actually landed.
+func _resolve_mind_devourer_cast(target: Dictionary, level_data: Dictionary) -> void:
+	var generation_before: int = _stage_generation
+
+	var dealt: float = _deal_fixed_damage_to_enemy(target, float(level_data.get("damage", 0)))
+	var restore: float = dealt * float(level_data.get("hp_restoration_percent", 0.0)) / 100.0
+	if restore > 0.0:
+		heal(restore)
+
+	var node: Variant = target.get("node")
+	if is_instance_valid(node) and node is TextureRect:
+		_sprite_flash(node, 1.05, Color(0.6, 0.3, 0.8, 1.0))
+		# A shadow torn out of the target streaks to the hero, then the
+		# lifesteal motes flow after it; the hero flashes as it sinks in.
+		if is_instance_valid(hero_image) and is_instance_valid(_fx_layer):
+			var from_pos: Vector2 = node.global_position + node.size * 0.5
+			var to_pos: Vector2 = hero_image.global_position + hero_image.size * 0.5
+			ShadowSiphonFX.play(_fx_layer, from_pos, to_pos, func() -> void:
+				if is_instance_valid(hero_image):
+					_sprite_flash(hero_image, 1.05, Color(0.6, 0.3, 0.8, 1.0))
+			)
+			if restore > 0.0:
+				get_tree().create_timer(0.15).timeout.connect(func() -> void:
+					if is_instance_valid(node) and is_instance_valid(hero_image):
+						_play_lifesteal_effect(node, hero_image)
+				)
+	_show_message_over_hero("Mind Devourer!")
+
+	var mana_cost: float = float(level_data.get("mana_cost", 0))
+	spend_mana(mana_cost)
+	_skill_cooldowns["mind_devourer"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("mind_devourer", _skill_cooldowns["mind_devourer"])
+	_refresh_skill_cooldown_labels()
+
+	if _battle_over or _stage_generation != generation_before:
+		return
+
+	_mark_turn_used()
+
+
+## Nightshroud's Sleepless Curse target picking: same highlight mechanism as
+## every other targeted skill, using this level's own `range` (4 columns).
+func _start_sleepless_curse_targeting(level_data: Dictionary) -> bool:
+	_cancel_targeting()
+
+	var col_range: int = int(level_data.get("range", 4))
+	for enemy in _enemies:
+		if _is_target_hidden(enemy):
+			continue
+		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
+			_valid_targets.append(enemy)
+
+	if _valid_targets.is_empty():
+		_show_message_over_hero("No enemy in range")
+		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
+
+	_targeting_mode = true
+	_targeting_purpose = "sleepless_curse"
+	_pending_sleepless_curse_level_data = level_data
+	_highlight_valid_targets()
+	return true
+
+
+## Resolves a Sleepless Curse cast on `target`: roots it in place and
+## deals `damage` at the start of each of its turns, both for `duration`
+## turns (see _tick_enemy_turn_start_effects()). Any other damage the victim
+## takes ends it early (see _deal_fixed_damage_to_enemy()). Deals no damage
+## on the cast itself.
+func _resolve_sleepless_curse_cast(target: Dictionary, level_data: Dictionary) -> void:
+	var generation_before: int = _stage_generation
+
+	var duration: int = int(level_data.get("duration", 0))
+	target["sleepless_curse_turns_left"] = duration
+	target["sleepless_curse_damage"] = float(level_data.get("damage", 0))
+	target["root_turns_left"] = duration
+
+	var node: Variant = target.get("node")
+	if is_instance_valid(node) and node is TextureRect:
+		_sprite_flash(node, 1.05, Color(0.35, 0.3, 0.7, 1.0))
+		ShadowTentacleFX.attach(target, node)
+	_show_message_over_hero("Sleepless Curse!")
+
+	var mana_cost: float = float(level_data.get("mana_cost", 0))
+	spend_mana(mana_cost)
+	_skill_cooldowns["sleepless_curse"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("sleepless_curse", _skill_cooldowns["sleepless_curse"])
+	_refresh_skill_cooldown_labels()
+
+	if _battle_over or _stage_generation != generation_before:
+		return
+
+	_mark_turn_used()
+
+
+## Nightshroud's The Terror Within target picking: same highlight mechanism
+## as Three Cheers, reaching as far as the hero's own normal attack does.
+func _start_the_terror_within_targeting(level_data: Dictionary) -> bool:
+	_cancel_targeting()
+
+	var col_range: int = _hero_attack_column_range()
+	for enemy in _enemies:
+		if _is_target_hidden(enemy):
+			continue
+		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
+			_valid_targets.append(enemy)
+
+	if _valid_targets.is_empty():
+		_show_message_over_hero("No enemy in range")
+		return false
+	if _probing_reach:
+		_probe_found = true
+		return true
+
+	_targeting_mode = true
+	_targeting_purpose = "the_terror_within"
+	_pending_the_terror_within_level_data = level_data
+	_highlight_valid_targets()
+	return true
+
+
+## Resolves a The Terror Within cast on `target`: deals this level's
+## `initial_damage`, then (if it survived) afflicts it with Fear for
+## `fear_duration` turns. A feared enemy takes `damage_per_turn` at the
+## start of each of its turns (see _tick_enemy_turn_start_effects()) and
+## spends each of those turns running a step away from the hero instead of
+## acting (see _enemy_fear_flee()).
+func _resolve_the_terror_within_cast(target: Dictionary, level_data: Dictionary) -> void:
+	var generation_before: int = _stage_generation
+
+	# The air round the victim goes black and eyes open in it, to a chorus of
+	# voices. Placed before the damage in case the hit kills the victim.
+	var victim_node: Variant = target.get("node")
+	if is_instance_valid(victim_node) and victim_node is Control and is_instance_valid(_fx_layer):
+		TerrorDarknessFX.play(_fx_layer, victim_node.global_position + victim_node.size * 0.5, maxf(victim_node.size.x * 1.3, 220.0), 2.0)
+	AudioManager.play_event_for("voices", 2.0, 0.4)
+
+	_deal_fixed_damage_to_enemy(target, float(level_data.get("initial_damage", 0)))
+	if target.get("current_hp", 0) > 0:
+		target["fear_turns_left"] = int(level_data.get("fear_duration", 0))
+		target["fear_damage"] = float(level_data.get("damage_per_turn", 0))
+		var node: Variant = target.get("node")
+		if is_instance_valid(node) and node is TextureRect:
+			_sprite_flash(node, 1.08, Color(0.5, 0.2, 0.6, 1.0))
+	_show_message_over_hero("The Terror Within!")
+
+	var mana_cost: float = float(level_data.get("mana_cost", 0))
+	spend_mana(mana_cost)
+	_skill_cooldowns["the_terror_within"] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown("the_terror_within", _skill_cooldowns["the_terror_within"])
+	_refresh_skill_cooldown_labels()
+
+	if _battle_over or _stage_generation != generation_before:
+		return
+
+	_mark_turn_used()
+
+
+## A feared enemy's whole turn: one step directly away from the hero (the
+## side with more room if it shares his column), unless rooted. Consumes one
+## turn of Fear (and of any root, mirroring _enemy_turn()'s own handling).
+## Returns true if the enemy was feared, i.e. its turn is spent.
+func _enemy_fear_flee(enemy: Dictionary) -> bool:
+	if enemy.get("fear_turns_left", 0) <= 0:
+		return false
+	enemy["fear_turns_left"] -= 1
+
+	var rooted: bool = _is_enemy_rooted(enemy) or _is_column_frostbound_rupture_blocked(enemy["pos_index"])
+	if enemy.get("root_turns_left", 0) > 0:
+		enemy["root_turns_left"] -= 1
+	if not rooted:
+		var step: int = -_step_toward(enemy["pos_index"], _hero_pos_index)
+		if step == 0:
+			step = -1 if enemy["pos_index"] >= GRID_COLUMNS / 2 else 1
+		var next_pos: int = enemy["pos_index"] + step
+		if next_pos >= 0 and next_pos < GRID_COLUMNS and not _is_column_frostbound_rupture_blocked(next_pos):
+			_move_enemy(enemy, next_pos)
+	return true
+
+
+## How much flat damage Hollowing Presence currently shaves off each hit
+## `enemy` deals: its marked share of the enemy's own max damage.
+func _hollowing_damage_cut(enemy: Dictionary) -> float:
+	var pct: float = float(enemy.get("hollowing_damage_reduction_pct", 0.0))
+	if pct <= 0.0:
+		return 0.0
+	return pct * float(enemy["static"].get("damage", 0))
 
 
 ## Purely cosmetic: Deathlight Lure's cast - the lure on `from_node`
@@ -7951,6 +8316,7 @@ func _tick_enemy_turn_start_effects(enemy: Dictionary) -> void:
 		if enemy.get("armor_reduction_turns_left", 0) <= 0:
 			enemy["armor_reduction"] = 0.0
 			enemy["deathlight_lure_bonus_pct"] = 0.0
+			enemy["hollowing_damage_reduction_pct"] = 0.0
 
 	# Kiss the Wastes' burn: re-armed (both damage and turns_left) by
 	# every shot that catches this enemy, main target or splash (see
@@ -7970,6 +8336,30 @@ func _tick_enemy_turn_start_effects(enemy: Dictionary) -> void:
 		var thornbind_dot: float = float(enemy.get("thornbind_dot_damage", 0))
 		if thornbind_dot > 0.0:
 			_deal_fixed_damage_to_enemy(enemy, thornbind_dot, false, false)
+			if _battle_over or enemy.get("current_hp", 0) <= 0:
+				return
+
+	# Nightshroud's Sleepless Curse: its own tick is flagged so
+	# _deal_fixed_damage_to_enemy() doesn't mistake it for "another source"
+	# and break the curse it belongs to. The matching root
+	# (root_turns_left) is consumed by the enemy's own turn after this.
+	if enemy.get("sleepless_curse_turns_left", 0) > 0:
+		enemy["sleepless_curse_turns_left"] -= 1
+		var sleepless_dot: float = float(enemy.get("sleepless_curse_damage", 0))
+		if sleepless_dot > 0.0:
+			_sleepless_curse_tick_active = true
+			_deal_fixed_damage_to_enemy(enemy, sleepless_dot, false, false)
+			_sleepless_curse_tick_active = false
+			if _battle_over or enemy.get("current_hp", 0) <= 0:
+				return
+
+	# The Terror Within's Fear: damage lands at the start of each turn it's
+	# afflicted; the counter itself is consumed by _enemy_fear_flee() when
+	# the enemy actually spends the turn fleeing.
+	if enemy.get("fear_turns_left", 0) > 0:
+		var fear_dot: float = float(enemy.get("fear_damage", 0))
+		if fear_dot > 0.0:
+			_deal_fixed_damage_to_enemy(enemy, fear_dot, false, false)
 			if _battle_over or enemy.get("current_hp", 0) <= 0:
 				return
 
@@ -11427,6 +11817,9 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 	var drowned_surge_level_data: Dictionary = _pending_drowned_surge_level_data
 	var undertow_level_data: Dictionary = _pending_undertow_level_data
 	var deathlight_lure_level_data: Dictionary = _pending_deathlight_lure_level_data
+	var mind_devourer_level_data: Dictionary = _pending_mind_devourer_level_data
+	var sleepless_curse_level_data: Dictionary = _pending_sleepless_curse_level_data
+	var the_terror_within_level_data: Dictionary = _pending_the_terror_within_level_data
 	var hope_of_the_fallen_level_data: Dictionary = _pending_hope_of_the_fallen_level_data
 	var moonfall_lance_level_data: Dictionary = _pending_moonfall_lance_level_data
 	var shackles_level_data: Dictionary = _pending_shackles_level_data
@@ -11458,6 +11851,12 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 		_resolve_undertow_cast(enemy, undertow_level_data)
 	elif purpose == "deathlight_lure":
 		_resolve_deathlight_lure_cast(enemy, deathlight_lure_level_data)
+	elif purpose == "the_terror_within":
+		_resolve_the_terror_within_cast(enemy, the_terror_within_level_data)
+	elif purpose == "sleepless_curse":
+		_resolve_sleepless_curse_cast(enemy, sleepless_curse_level_data)
+	elif purpose == "mind_devourer":
+		_resolve_mind_devourer_cast(enemy, mind_devourer_level_data)
 	elif purpose == "hope_of_the_fallen":
 		_resolve_hope_of_the_fallen_cast(enemy, hope_of_the_fallen_level_data)
 	elif purpose == "moonfall_lance":
@@ -11690,6 +12089,12 @@ func _deal_damage_to_enemy(target: Dictionary) -> void:
 ## attack (_bear_turn()), and another creep piling onto a The Hunger
 ## Calls target (_enemy_turn()'s own curse redirect).
 func _deal_fixed_damage_to_enemy(target: Dictionary, amount: float, is_critical: bool = false, is_hero_action: bool = true) -> float:
+	# Sleepless Curse ends the moment its victim takes damage from anything
+	# but the curse itself, freeing it from the root too.
+	if target.get("sleepless_curse_turns_left", 0) > 0 and not _sleepless_curse_tick_active:
+		target["sleepless_curse_turns_left"] = 0
+		target["root_turns_left"] = 0
+
 	# Dreadlure's Deathlight Lure: boosts every hit THIS specific marked
 	# target takes from the hero's own attacks/skills by this level's
 	# own bonus_damage_pct - applied to the RAW amount, before armor
@@ -12902,7 +13307,7 @@ func _maybe_auto_skip_player_turn() -> void:
 const REACH_SKILL_IDS := [
 	"abyssal_spasm", "barbed_lunge", "chainfire", "charge", "cinderbomb",
 	"deathlight_lure", "double_trouble", "drowned_surge", "eternal_eclipse",
-	"fallen_grace", "frostbound_rupture", "glacier_breaker", "hope_of_the_fallen",
+	"fallen_grace", "frostbound_rupture", "glacier_breaker", "hollowing_presence", "hope_of_the_fallen", "mind_devourer", "sleepless_curse", "the_terror_within",
 	"kiss_the_wastes", "luring_gaze", "maddening_roar", "mark_of_stillness",
 	"moonfall_lance", "paralytic_venom", "return_to_the_void", "rimecleaver",
 	"sanguine_bloom", "shackles", "sweep", "the_hollow_cold", "the_hunger_calls",
@@ -13056,6 +13461,10 @@ func _enemy_turn() -> void:
 			enemy["stun_turns_left"] = stun_turns_left - 1
 			continue
 
+		# Afflicted by The Terror Within: the whole turn is spent fleeing.
+		if _enemy_fear_flee(enemy):
+			continue
+
 		var enemy_static: Dictionary = enemy["static"]
 
 		if enemy_static.get("is_hero_fight_boss", false):
@@ -13063,7 +13472,7 @@ func _enemy_turn() -> void:
 			continue
 
 		var enemy_type: String = enemy_static.get("type", "")
-		var enemy_damage: float = float(enemy_static.get("damage", 0))
+		var enemy_damage: float = maxf(0.0, float(enemy_static.get("damage", 0)) - _hollowing_damage_cut(enemy))
 		# Dreadlure's own Deathlight Lure (see _can_enemy_see_hero()'s own
 		# comment) overrides this - true sight lets him keep fighting a
 		# hidden player normally, stealth notwithstanding.
@@ -13586,7 +13995,7 @@ func _roll_enemy_hero_damage(enemy: Dictionary, extra_bonus: float = 0.0) -> flo
 	if moonbound_might_bonus_pct > 0.0:
 		total += total * moonbound_might_bonus_pct
 
-	return total
+	return maxf(0.0, total - _hollowing_damage_cut(enemy))
 
 
 ## The rival's current max hp: base + Beast of the Elderwild's bonus hp
@@ -18840,6 +19249,10 @@ func _play_hero_attack_effect(hero_static: Dictionary, caster: TextureRect, targ
 			# "attack_projectile" (Solara's arrow).
 			_deferred_hit_node = target_node
 			ProjectileFX.fire(_fx_layer, hero_static.get("attack_projectile", "arrow"), from, to, on_hit)
+		"dark_halo":
+			# A halo of darkness dropping over the target's head.
+			_deferred_hit_node = target_node
+			DarkHaloFX.play(_fx_layer, target_node, on_hit)
 		"chakram":
 			_deferred_hit_node = target_node
 			ChakramFX.play(_fx_layer, from, to, on_hit)

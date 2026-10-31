@@ -63,11 +63,11 @@ static func _stat_weight(stat_key: String, main_stat: String, mana_dependence: f
 		"damage":
 			return VALUE_PER_DAMAGE
 		"strength":
-			return GameManager.HP_PER_STRENGTH * VALUE_PER_HP + HP_REGEN_PER_STRENGTH * VALUE_PER_HP_REGEN + (main_damage if main_stat == "strength" else 0.0)
+			return GameManager.HP_PER_STRENGTH * VALUE_PER_HP + HP_REGEN_PER_STRENGTH * VALUE_PER_HP_REGEN + (main_damage if main_stat == "strength" or main_stat == "universal" else 0.0)
 		"agility":
-			return GameManager.ARMOR_PER_AGILITY * VALUE_PER_ARMOR + (main_damage if main_stat == "agility" else 0.0)
+			return GameManager.ARMOR_PER_AGILITY * VALUE_PER_ARMOR + (main_damage if main_stat == "agility" or main_stat == "universal" else 0.0)
 		"intelligence":
-			return (GameManager.MANA_PER_INTELLIGENCE * VALUE_PER_MANA + MANA_REGEN_PER_INTELLIGENCE * VALUE_PER_MANA_REGEN) * mana_dependence + (main_damage if main_stat == "intelligence" else 0.0)
+			return (GameManager.MANA_PER_INTELLIGENCE * VALUE_PER_MANA + MANA_REGEN_PER_INTELLIGENCE * VALUE_PER_MANA_REGEN) * mana_dependence + (main_damage if main_stat == "intelligence" or main_stat == "universal" else 0.0)
 		"armor":
 			return VALUE_PER_ARMOR
 		"max_hp":
@@ -85,7 +85,7 @@ static func _stat_weight(stat_key: String, main_stat: String, mana_dependence: f
 ## What `item` is worth to `hero_static`, in the value currency above.
 static func item_value(item: Dictionary, hero_static: Dictionary) -> float:
 	var main_stat: String = str(hero_static.get("main_stat", "")).strip_edges().to_lower()
-	var mana_dependence: float = 1.0 if main_stat == "intelligence" else OFF_STAT_MANA_DEPENDENCE
+	var mana_dependence: float = 1.0 if main_stat == "intelligence" or main_stat == "universal" else OFF_STAT_MANA_DEPENDENCE
 	var bonuses: Dictionary = item_bonuses(item)
 	var total: float = 0.0
 	for key in bonuses.keys():
