@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Echoes of the Forgotten"
-run/main_scene="res://scenes/LoadingScreen.tscn"
+run/main_scene="res://scenes/StudioIntro.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 config/icon="res://assets/icon/icon.png"
 
