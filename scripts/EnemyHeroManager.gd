@@ -1209,9 +1209,25 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 	# 1-based turn count battle.gd's own _turn_count tracks.
 	var next_reinforcement_turn: int = GameManager.get_reinforcement_interval(stage) if allow_flee else HERO_FIGHT_REINFORCEMENT_INTERVAL
 
+	# Zone hazard (see TERRAIN_DESIGN.md). The sim has no columns, so each bloom
+	# simply exposes a hero away from home with the zone's sim_exposure_chance;
+	# the exposed hero is poisoned for the next turn only. Same rules as
+	# battle.gd: creeps are never affected, a hero is immune at home, and
+	# poison only ever makes attacks / enemy-targeting skills miss.
+	var hazard: Dictionary = GameManager.get_zone_hazard(zone_id)
+	var hazard_applies: bool = not hazard.is_empty() and GameManager.get_zone_id_for_hero(hero_id) != zone_id
+	var hazard_interval: int = int(hazard.get("interval", 4))
+	var poison_miss_chance: float = float(hazard.get("miss_chance", 0.0))
+	var poison_exposed: bool = false
+	var poisoned: bool = false
+
 	var turns_taken: int = 0
 	for turn_index in range(MAX_SIMULATED_TURNS):
 		turns_taken = turn_index + 1
+		poisoned = poison_exposed
+		poison_exposed = false
+		if hazard_applies and (turn_index + 1) % hazard_interval == 0 and randf() < float(hazard.get("sim_exposure_chance", 0.0)):
+			poison_exposed = true
 		if turn_index + 1 >= next_reinforcement_turn:
 			_spawn_npc_reinforcements(enemies, zone_id, stage, allow_flee, turn_index, PlayerManager.get_npc_level(hero_id))
 			next_reinforcement_turn += GameManager.get_reinforcement_repeat(stage) if allow_flee else HERO_FIGHT_REINFORCEMENT_REPEAT_INTERVAL
@@ -1307,7 +1323,13 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 				current_mana -= _npc_skill_mana_cost(hero_id, hero_static, "whisper_of_the_veil")
 				acted_with = "whisper_of_the_veil"
 			elif ready_skill_id != "":
-				_cast_skill(hero_id, hero_static, ready_skill_id, cooldowns, damage_range, living, state)
+				if poisoned and GameManager.POISON_MISSABLE_SKILLS.has(ready_skill_id) and randf() < poison_miss_chance:
+					# Missed: the cooldown and mana are spent, the effect is not.
+					var missed_skill: Dictionary = _find_skill(hero_static, ready_skill_id)
+					var missed_level: int = PlayerManager.get_npc_skill_level(hero_id, ready_skill_id)
+					cooldowns[ready_skill_id] = int(GameManager.get_skill_level_data(missed_skill, missed_level).get("cooldown", 0))
+				else:
+					_cast_skill(hero_id, hero_static, ready_skill_id, cooldowns, damage_range, living, state)
 				current_mana -= _npc_skill_mana_cost(hero_id, hero_static, ready_skill_id)
 				acted_with = ready_skill_id
 			elif _has_unaffordable_ready_skill(hero_id, hero_static, cooldowns, current_mana, state) and PlayerManager.get_npc_potion_count(hero_id, "mana") > 0:
@@ -1343,16 +1365,21 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 					dmg += dmg * ambush_bonus_pct
 				if not might_level_data.is_empty():
 					dmg += dmg * float(might_level_data.get("bonus_damage_pct", 0.0))
-				var mitigated: float = _apply_damage_to_enemy(target, dmg)
-				current_hp = minf(effective_max_hp, current_hp + _apply_npc_leeching_hunger_steal(state["leeching_hunger"], mitigated))
-				_apply_npc_mark_of_the_mist_stack(hero_id, hero_static, target, turn_index)
-				if not pull_of_the_abyss_level_data.is_empty():
-					_apply_npc_pull_of_the_abyss_cleave(target, dmg, pull_of_the_abyss_level_data, living)
-				var lunar_ricochet_level_data: Dictionary = _get_npc_lunar_ricochet_level_data(hero_id, hero_static)
-				if not lunar_ricochet_level_data.is_empty():
-					_apply_npc_lunar_ricochet_bounces(target, dmg, lunar_ricochet_level_data, living)
-				_apply_npc_frostbound_fangs_attack(state["frostbound_fangs"])
-				current_hp = minf(effective_max_hp, current_hp + _npc_wildbond_lifesteal(state["wildbond"], mitigated) + mitigated * mask_lifesteal_pct)
+				# Poisoned: the swing can miss - no damage and no on-hit
+				# effects, but any stealth/stack buff above is still spent.
+				var attack_missed: bool = poisoned and randf() < poison_miss_chance
+				var mitigated: float = 0.0
+				if not attack_missed:
+					mitigated = _apply_damage_to_enemy(target, dmg)
+					current_hp = minf(effective_max_hp, current_hp + _apply_npc_leeching_hunger_steal(state["leeching_hunger"], mitigated))
+					_apply_npc_mark_of_the_mist_stack(hero_id, hero_static, target, turn_index)
+					if not pull_of_the_abyss_level_data.is_empty():
+						_apply_npc_pull_of_the_abyss_cleave(target, dmg, pull_of_the_abyss_level_data, living)
+					var lunar_ricochet_level_data: Dictionary = _get_npc_lunar_ricochet_level_data(hero_id, hero_static)
+					if not lunar_ricochet_level_data.is_empty():
+						_apply_npc_lunar_ricochet_bounces(target, dmg, lunar_ricochet_level_data, living)
+					_apply_npc_frostbound_fangs_attack(state["frostbound_fangs"])
+					current_hp = minf(effective_max_hp, current_hp + _npc_wildbond_lifesteal(state["wildbond"], mitigated) + mitigated * mask_lifesteal_pct)
 				acted_with = "attack"
 
 				if ambush_active:

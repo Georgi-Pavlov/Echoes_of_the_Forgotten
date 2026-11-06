@@ -272,6 +272,37 @@ func get_reinforcement_interval(stage: int) -> int:
 func get_reinforcement_repeat(stage: int) -> int:
 	return int(STAGE_REINFORCEMENT_REPEAT.get(stage, 10))
 
+
+# ---- Zone hazards (see TERRAIN_DESIGN.md) ----
+# One entry per hazardous zone, shared by the real fight (battle.gd) and the
+# background simulation (EnemyHeroManager) so both read the same numbers.
+#   interval:        turns between blooms; the hint shows on turn interval-1
+#                    and the effect on turn interval (3/4, 7/8, ...).
+#   miss_chance:     chance a poisoned hero's attack/targeted skill misses.
+#   sim_exposure_chance: background sim only - chance a hero away from home
+#                    ends up exposed to each bloom (the sim has no columns).
+const ZONE_HAZARDS: Dictionary = {
+	"the_blackbloom": {"interval": 4, "miss_chance": 0.4, "sim_exposure_chance": 0.25},
+}
+
+## Skills that pick a single enemy to hit (battle.gd's _targeting_purpose,
+## which is also the skill id) - poisoned makes these miss. AoE skills,
+## skills with no target and skills that hit what lies in a path or around
+## the caster are deliberately NOT here.
+const POISON_MISSABLE_SKILLS: Array = [
+	"thornbind", "whisper_of_the_veil", "drowned_surge", "undertow", "deathlight_lure",
+	"mind_devourer", "sleepless_curse", "the_terror_within", "hope_of_the_fallen",
+	"moonfall_lance", "shackles", "chainfire", "cinderbomb", "three_cheers",
+	"kiss_the_wastes", "mark_of_stillness", "the_hollow_cold", "touch_of_the_first_cold",
+	"return_to_the_void", "maddening_roar", "the_hunger_calls", "rimecleaver",
+	"winters_grip", "frostbound_rupture", "charge", "glacier_breaker", "sanguine_bloom",
+]
+
+
+## The hazard of a zone, or an empty Dictionary if it has none.
+func get_zone_hazard(zone_id: String) -> Dictionary:
+	return ZONE_HAZARDS.get(zone_id, {})
+
 # hp/damage bonus each stage adds ON TOP OF the enemy's base stats -
 # and, like gold below, it's cumulative: each stage contributes its
 # own increment on top of whatever the previous stage already added

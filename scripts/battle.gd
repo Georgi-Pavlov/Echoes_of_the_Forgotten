@@ -1690,6 +1690,29 @@ var _last_hero_pos_index: int = -1
 # overwrite that by unconditionally marking the turn as used.
 var _stage_generation: int = 0
 
+# ---- Zone hazard: The Blackbloom's bloom (see TERRAIN_DESIGN.md) ----
+# Every HAZARD_INTERVAL turns a random column gets a flower: the turn before
+# it blooms is a visual hint only, then the flower releases a purple mist
+# that stays until the enemies act. A hero in the mist (or passing through
+# it) is poisoned on their next turn: POISON_MISS_CHANCE to miss an attack
+# or a skill that targets an enemy; it wears off at the end of that turn.
+# Creeps are never affected, and a hero is immune in their own home zone.
+# "Turn" is the player-facing round number: _turn_count + 1.
+# The zone, interval, miss chance and missable-skill list live in
+# GameManager (ZONE_HAZARDS, POISON_MISSABLE_SKILLS) so the background
+# simulation uses the same numbers.
+const POISON_TEXT_COLOR := Color(0.78, 0.5, 1.0, 1.0)
+## 0 = nothing, 1 = flower hint (visual only), 2 = mist is out.
+var _hazard_stage: int = 0
+var _hazard_column: int = -1
+var _hazard_fx: BloomHazardFX = null
+## Exposed this turn -> poisoned for the whole of the next one.
+var _player_poison_exposed: bool = false
+var _player_poisoned: bool = false
+var _rival_poison_exposed: bool = false
+var _rival_poisoned: bool = false
+var _poison_status_icon: PanelContainer = null
+
 
 
 func _process(_delta: float) -> void:
@@ -2040,6 +2063,7 @@ func _update_hero_position() -> void:
 
 	var from_index: int = _last_hero_pos_index if _last_hero_pos_index >= 0 else _hero_pos_index
 	_last_hero_pos_index = _hero_pos_index
+	_hazard_on_hero_moved(from_index, _hero_pos_index)
 	_try_collect_hero_echo(from_index, _hero_pos_index)
 	
 
@@ -11841,6 +11865,11 @@ func _on_enemy_clicked(enemy: Dictionary) -> void:
 	var sanguine_bloom_level_data: Dictionary = _pending_sanguine_bloom_level_data
 	_cancel_targeting()
 
+	# Poisoned (The Blackbloom's mist): a skill aimed at an enemy may miss.
+	if GameManager.POISON_MISSABLE_SKILLS.has(purpose) and _player_poison_makes_miss():
+		_resolve_poisoned_skill_miss(purpose)
+		return
+
 	if purpose == "thornbind":
 		_resolve_thornbind_cast(enemy, thornbind_level_data)
 	elif purpose == "whisper_of_the_veil":
@@ -11918,6 +11947,11 @@ func _on_hero_image_clicked() -> void:
 
 
 func _apply_hero_attack(target: Dictionary) -> void:
+	# Poisoned (The Blackbloom's mist): the swing may simply miss.
+	if _player_poison_makes_miss():
+		_resolve_poisoned_attack_miss(target)
+		return
+
 	var generation_before: int = _stage_generation
 
 	# A ranged hero turns to face whoever he's shooting (art faces right
@@ -12657,6 +12691,7 @@ func _advance_to_next_stage() -> void:
 	_current_stage += 1
 	_stage_generation += 1
 	_interrupt_battlefield_skills()
+	_hazard_reset()
 	_update_stage_label()
 	_show_message_over_hero("Stage %d!" % _current_stage)
 
@@ -12740,6 +12775,7 @@ func _start_hero_fight(hero_static: Dictionary) -> void:
 	_hero_fight_target_id = hero_static.get("id", "")
 	_stage_generation += 1
 	_interrupt_battlefield_skills()
+	_hazard_reset()
 
 	_update_stage_label()
 	# An invasion gets its own banner instead (see _ready()).
@@ -13108,22 +13144,239 @@ func _schedule_end_turn() -> void:
 	)
 
 
+## The player's own home zone (the zone their recruited hero comes from).
+func _player_hazard_immune() -> bool:
+	return GameManager.get_zone_id_for_hero(_recruited.get("id", "")) == GameManager.selected_zone
+
+
+## The rival currently being fought is at home in this zone.
+func _rival_hazard_immune() -> bool:
+	return GameManager.get_zone_id_for_hero(_enemy_hero_id) == GameManager.selected_zone
+
+
+## Whether the hazard runs in this fight at all: only in The Blackbloom, and
+## only if someone in it can actually be affected - the player away from
+## home, or a rival hero away from home. A fight where both are at home (or
+## only creeps face a player who is at home) shows nothing, since nothing
+## could happen.
+func _hazard_enabled() -> bool:
+	if TutorialManager.is_active or GameManager.get_zone_hazard(GameManager.selected_zone).is_empty():
+		return false
+	if not _player_hazard_immune():
+		return true
+	return _in_hero_fight and not _get_hero_fight_boss().is_empty() and not _rival_hazard_immune()
+
+
+## A fresh encounter (next stage, hero fight) starts the hazard cycle over.
+func _hazard_reset() -> void:
+	if _hazard_fx != null and is_instance_valid(_hazard_fx):
+		_hazard_fx.queue_free()
+	_hazard_fx = null
+	_hazard_stage = 0
+	_hazard_column = -1
+	_player_poison_exposed = false
+	_player_poisoned = false
+	_rival_poison_exposed = false
+	_rival_poisoned = false
+	_refresh_poison_icon()
+
+
+## Called as a new turn opens (after _turn_count went up). Poison earned last
+## turn starts now, then the hint / bloom for this turn is staged.
+func _hazard_on_new_turn() -> void:
+	if _battle_over:
+		return
+	_player_poisoned = _player_poison_exposed
+	_rival_poisoned = _rival_poison_exposed
+	_player_poison_exposed = false
+	_rival_poison_exposed = false
+	_refresh_poison_icon()
+	if _player_poisoned:
+		_show_message_over_hero("Poisoned!")
+	if _rival_poisoned:
+		var boss: Dictionary = _get_hero_fight_boss()
+		if not boss.is_empty():
+			_show_rising_message_over(boss.get("node"), "Poisoned!", POISON_TEXT_COLOR)
+
+	if not _hazard_enabled():
+		_hazard_clear()
+		return
+	var turn: int = _turn_count + 1
+	var interval: int = int(GameManager.get_zone_hazard(GameManager.selected_zone).get("interval", 4))
+	var phase: int = turn % interval
+	if phase == interval - 1:
+		_hazard_show_hint()
+	elif phase == 0 and _hazard_stage == 1:
+		_hazard_bloom()
+
+
+func _hazard_show_hint() -> void:
+	_hazard_column = randi() % GRID_COLUMNS
+	_hazard_stage = 1
+	var view: Vector2 = get_viewport_rect().size
+	var feet_y: float = _creature_y() + view.y / 4.0
+	var column_height: float = view.y * 0.4
+	_hazard_fx = BloomHazardFX.new()
+	_hazard_fx.name = "BloomHazardFX"
+	add_child(_hazard_fx)
+	move_child(_hazard_fx, enemies_layer.get_index())
+	_hazard_fx.setup(Rect2(_index_to_x(_hazard_column), feet_y - column_height, _grid_unit(), column_height))
+	_hazard_fx.show_hint()
+
+
+func _hazard_bloom() -> void:
+	_hazard_stage = 2
+	if _hazard_fx != null and is_instance_valid(_hazard_fx):
+		_hazard_fx.bloom()
+	# Whoever is standing in the column as it blooms breathes it in.
+	if not _player_hazard_immune() and _hero_pos_index == _hazard_column:
+		_player_poison_exposed = true
+	var boss: Dictionary = _get_hero_fight_boss()
+	if not boss.is_empty() and not _rival_hazard_immune() and int(boss["pos_index"]) == _hazard_column:
+		_rival_poison_exposed = true
+
+
+## The mist is gone as soon as the enemies start acting.
+func _hazard_end_mist() -> void:
+	if _hazard_stage == 2:
+		_hazard_clear()
+
+
+## Removes the flower/mist (whichever stage it is in) with a fade.
+func _hazard_clear() -> void:
+	if _hazard_stage == 0:
+		return
+	_hazard_stage = 0
+	_hazard_column = -1
+	if _hazard_fx != null and is_instance_valid(_hazard_fx):
+		_hazard_fx.fade_out()
+	_hazard_fx = null
+
+
+## Called whenever the hero changes column (see _update_hero_position()): a
+## move that crosses the mist, or ends in it, poisons them next turn - even if
+## it carries them out the other side.
+func _hazard_on_hero_moved(from_pos: int, to_pos: int) -> void:
+	if _hazard_stage != 2 or _player_hazard_immune():
+		return
+	if _hazard_column >= mini(from_pos, to_pos) and _hazard_column <= maxi(from_pos, to_pos):
+		_player_poison_exposed = true
+
+
+## This zone's chance for a poisoned hero's attack to miss.
+func _poison_miss_chance() -> float:
+	return float(GameManager.get_zone_hazard(GameManager.selected_zone).get("miss_chance", 0.4))
+
+
+## Rolls the poison miss for one of the hero's attacks/skills that targets an
+## enemy. False while not poisoned.
+func _player_poison_makes_miss() -> bool:
+	return _player_poisoned and randf() < _poison_miss_chance()
+
+
+## Same roll for the rival hero being fought.
+func _rival_poison_makes_miss() -> bool:
+	return _rival_poisoned and randf() < _poison_miss_chance()
+
+
+## The green raindrop badge next to the health bar while the hero is
+## poisoned - built on first use in the same row, with the same look, as the
+## frost/curse/root badges (see _refresh_status_effects()).
+func _refresh_poison_icon() -> void:
+	if _poison_status_icon == null:
+		if not _player_poisoned:
+			return
+		_poison_status_icon = PanelContainer.new()
+		_poison_status_icon.custom_minimum_size = Vector2(30, 30)
+		_poison_status_icon.visible = false
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color(0.1, 0.3, 0.14, 1.0)
+		style.set_border_width_all(2)
+		style.border_color = Color(0.55, 0.95, 0.5, 1.0)
+		style.set_corner_radius_all(15)
+		_poison_status_icon.add_theme_stylebox_override("panel", style)
+		var drop := Control.new()
+		drop.custom_minimum_size = Vector2(30, 30)
+		drop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		drop.draw.connect(func() -> void:
+			# A teardrop: a point at the top widening into a round belly.
+			var c := Vector2(15.0, 18.0)
+			var pts := PackedVector2Array([Vector2(15.0, 5.0)])
+			for deg in range(35, 326, 15):
+				var theta: float = deg_to_rad(float(deg))
+				pts.append(c + Vector2(sin(theta), -cos(theta)) * 7.0)
+			drop.draw_colored_polygon(pts, Color(0.45, 0.95, 0.4, 1.0))
+			drop.draw_circle(Vector2(12.5, 17.0), 1.8, Color(0.85, 1.0, 0.8, 0.8))
+		)
+		_poison_status_icon.add_child(drop)
+		$BarsBox/HPRow/StatusIconRow.add_child(_poison_status_icon)
+	_set_status_icon_visible(_poison_status_icon, _player_poisoned)
+
+
+## The hero's basic attack missed because of the poison: the swing happens,
+## nothing lands, and the turn is still spent.
+func _resolve_poisoned_attack_miss(target: Dictionary) -> void:
+	var generation_before: int = _stage_generation
+	var target_pos: int = int(target.get("pos_index", _hero_pos_index))
+	if _is_ranged_hero() and target_pos != _hero_pos_index:
+		hero_image.flip_h = target_pos < _hero_pos_index
+	var hero_animator := CreatureAnimator.of(hero_image)
+	if hero_animator != null:
+		var attack_direction: float = signf(float(target_pos - _hero_pos_index))
+		if attack_direction == 0.0:
+			attack_direction = -1.0 if hero_image.flip_h else 1.0
+		hero_animator.play_attack(attack_direction, not _is_ranged_hero())
+	_show_message_over_hero("Missed! (poisoned)")
+	if _battle_over or _stage_generation != generation_before:
+		return
+	_mark_turn_used()
+
+
+## A targeted skill missed because of the poison: it is cast and wasted, so
+## the mana, cooldown and turn are all spent, but it has no effect.
+func _resolve_poisoned_skill_miss(skill_id: String) -> void:
+	var generation_before: int = _stage_generation
+	var skill: Dictionary = {}
+	for candidate in _hero_static.get("skills", []):
+		if candidate.get("id", "") == skill_id:
+			skill = candidate
+			break
+	var level_data: Dictionary = {}
+	if not skill.is_empty():
+		level_data = GameManager.get_skill_level_data(skill, PlayerManager.get_skill_level(skill_id))
+	_show_message_over_hero("Missed! (poisoned)")
+	spend_mana(float(level_data.get("mana_cost", skill.get("mana_cost", 0))))
+	_skill_cooldowns[skill_id] = int(level_data.get("cooldown", 0))
+	PlayerManager.set_skill_cooldown(skill_id, _skill_cooldowns[skill_id])
+	_refresh_skill_cooldown_labels()
+	if _battle_over or _stage_generation != generation_before:
+		return
+	_mark_turn_used()
+
+
 func _end_turn() -> void:
 	if _battle_over:
 		return
 
 	_cancel_targeting()
+	# The poison lasts until the end of the player's turn; the mist is gone
+	# the moment the enemies start acting.
+	_player_poisoned = false
+	_refresh_poison_icon()
+	_hazard_end_mist()
 	_stun_before_enemy_phase = _player_stun_turns_left
 	_bear_turn()
 	_guards_turn()
 	_enemy_guards_turn()
 	_enemy_turn()
+	_rival_poisoned = false
 
 	if _recruited.get("current_hp", 0) <= 0:
 		_handle_defeat()
 		return
 
 	_turn_count += 1
+	_hazard_on_new_turn()
 	# Only turns with an enemy still alive count toward reinforcements -
 	# once they're all down and only the Echo is left to collect, the
 	# countdown holds where it is.
@@ -13915,6 +14168,10 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 		attack_damage += attack_damage * float(might_level_data.get("bonus_damage_pct", 0.0))
 	_play_hero_attack_effect(_enemy_hero_static, enemy.get("node"), hero_image, _enemy_beast_of_the_elderwild_active)
 	var rival_missed: bool = _enemy_attack_misses_hero()
+	# The rival is poisoned by The Blackbloom's mist too, when away from home.
+	if not rival_missed and _rival_poison_makes_miss():
+		rival_missed = true
+		_show_rising_message_over(enemy.get("node"), "Missed! (poisoned)", POISON_TEXT_COLOR)
 	var mitigated: float = 0.0 if rival_missed else _try_redirect_hit_to_guard(attack_damage)
 	if not rival_missed and mitigated < 0.0:
 		mitigated = apply_damage(attack_damage)
@@ -14660,7 +14917,15 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 	_enemy_whisper_of_the_veil_self = whisper_of_the_veil_self
 	_enemy_skill_on_bear = not whisper_of_the_veil_self and ENEMY_BEAR_TARGETABLE_SKILLS.has(skill_id) and _choose_enemy_skill_on_bear(enemy, skill_id)
 
-	match skill_id:
+	# Poisoned by The Blackbloom's mist: a skill aimed at an enemy may miss.
+	# It is still cast (mana, cooldown and the turn are spent above) but has
+	# no effect - the empty id below matches none of the cases.
+	var effect_skill_id: String = skill_id
+	if not whisper_of_the_veil_self and GameManager.POISON_MISSABLE_SKILLS.has(skill_id) and _rival_poison_makes_miss():
+		effect_skill_id = ""
+		_show_rising_message_over(enemy.get("node"), "Missed! (poisoned)", POISON_TEXT_COLOR)
+
+	match effect_skill_id:
 		"abyssal_spasm":
 			_cast_enemy_abyssal_spasm(enemy, level_data)
 		"barbed_lunge":
