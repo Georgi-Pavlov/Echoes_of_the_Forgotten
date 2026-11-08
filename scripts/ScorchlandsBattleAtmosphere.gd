@@ -11,14 +11,11 @@ extends Control
 #   - flames dancing in the braziers, each flickering on its own, with
 #     sparks and a little smoke rising off them
 #   - smoke rising from the stacks on the cliff and the far tower
-#   - a sandstorm: dust banks rolling across the dunes and the arena,
-#     with streaks of blown sand that rush past in gusts
+#   - a breeze of blown sand: yellow streaks that rush past in gusts
 #
 # Positions of art features are given in pixels of the 1670x941 source
 # image, so they stay on target whatever the screen size.
 # ------------------------------------------------------------------
-
-const FOG_SHADER := preload("res://shaders/fog_drift.gdshader")
 
 # The painted UI panel starts below this (image UV y).
 const FLOOR_UV := 0.68
@@ -45,19 +42,13 @@ const SMOKE_COUNT := 30
 const SMOKE_LIFE := Vector2(8.0, 12.0)
 const SMOKE_COLOR := Color(0.17, 0.13, 0.11)
 
-# Dust banks (image UV): over the far dunes, across the arena floor, and
-# a thin low one that keeps rolling over the whole width.
-const DUST_RECT_UV := Rect2(0.0, 0.25, 1.0, 0.3)
-const DUST_LOW_RECT_UV := Rect2(0.0, 0.42, 1.0, 0.26)
-const DUST_COLOR := Color(0.95, 0.72, 0.45)
-
 # Blown sand: how many streaks, the region they cross (image UV) and the
-# gust rhythm.
+# gust rhythm. No dust banks - just the yellow streaks.
 const SAND_COUNT := 90
 const SAND_RECT_UV := Rect2(0.0, 0.2, 1.0, 0.48)
+const SAND_COLOR := Color(1.0, 0.8, 0.52)
 const GUST_EVERY := Vector2(6.0, 12.0)
 const GUST_TIME := 4.5
-const SAND_COLOR := Color(1.0, 0.8, 0.52)
 
 var _atm: Control
 var _background: TextureRect
@@ -79,10 +70,9 @@ var _smoke_layer: Control
 
 var _gust := 0.0
 var _gust_t := -1.0
-var _next_gust := 0.0
-var _dust_mats: Array[ShaderMaterial] = []
 var _sand: Array[Dictionary] = []
 var _sand_layer: Control
+var _next_gust := 0.0
 
 
 ## `atm` is the owning BattleAtmosphere - its image mapping helpers are
@@ -105,28 +95,13 @@ func build(atm: Control, background: TextureRect) -> void:
 
 	_sun = _glow(SUN_PX, SUN_DIAMETER, SUN_COLOR)
 
-	# Smoke, behind the dust and the flames.
+	# Smoke, behind the flames.
 	_smoke_layer = _new_layer(false)
 	_smoke_layer.draw.connect(_draw_smoke)
 	for i in 450:
 		_update_smoke(1.0 / 30.0)
 
-	# The dust banks.
-	_dust_mats.clear()
-	_add_dust(DUST_RECT_UV, {
-		"density": 0.3, "speed": 0.05, "scale": 2.6,
-		"band_center": 0.5, "band_height": 0.55,
-		"fog_color": DUST_COLOR,
-		"edge_fade": Vector4(0.02, 0.35, 0.02, 0.35),
-	})
-	_add_dust(DUST_LOW_RECT_UV, {
-		"density": 0.26, "speed": 0.08, "scale": 3.8,
-		"band_center": 0.5, "band_height": 0.5,
-		"fog_color": DUST_COLOR,
-		"edge_fade": Vector4(0.02, 0.4, 0.02, 0.45),
-	})
-
-	# The braziers' fire, over the dust so it burns through it.
+	# The braziers' fire.
 	_fires.clear()
 	for f in FIRES:
 		_add_fire(f["px"], float(f["size"]))
@@ -139,9 +114,9 @@ func build(atm: Control, background: TextureRect) -> void:
 			"alpha": _rng.randf_range(0.25, 0.6), "drift": _rng.randf_range(-0.01, 0.04),
 		})
 	_next_gust = _rng.randf_range(2.0, 5.0)
+
 	_sand_layer = _new_layer(true)
 	_sand_layer.draw.connect(_draw_sand)
-
 	set_process(true)
 
 
@@ -173,27 +148,6 @@ func _new_layer(additive: bool) -> Control:
 		layer.material = _atm._additive()
 	add_child(layer)
 	return layer
-
-
-## A fog_drift.gdshader layer over `rect_uv` of the image; its density is
-## remembered so gusts can thicken it.
-func _add_dust(rect_uv: Rect2, params: Dictionary) -> void:
-	var a: Vector2 = _atm._image_to_local(rect_uv.position)
-	var b: Vector2 = _atm._image_to_local(rect_uv.end)
-	var mat := ShaderMaterial.new()
-	mat.shader = FOG_SHADER
-	mat.set_shader_parameter("aspect", (b.x - a.x) / (b.y - a.y))
-	for key in params:
-		mat.set_shader_parameter(key, params[key])
-	var fog := ColorRect.new()
-	fog.material = mat
-	fog.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fog.position = a
-	fog.size = b - a
-	add_child(fog)
-	_dust_mats.append(mat)
-	mat.set_meta("base_density", float(params["density"]))
-	mat.set_meta("base_speed", float(params["speed"]))
 
 
 ## A brazier: a flickering glow under a column of flame particles, with
@@ -282,16 +236,10 @@ func _update_gust(delta: float) -> void:
 		if _gust_t >= GUST_TIME:
 			_gust_t = -1.0
 	_gust = sin(clampf(_gust_t / GUST_TIME, 0.0, 1.0) * PI) if _gust_t >= 0.0 else 0.0
-	# A gust thickens the dust banks and speeds them up.
-	for mat in _dust_mats:
-		mat.set_shader_parameter("density", float(mat.get_meta("base_density")) * (1.0 + 0.7 * _gust))
-		mat.set_shader_parameter("speed", float(mat.get_meta("base_speed")) * (1.0 + 1.2 * _gust))
 
 
 func _update_sun() -> void:
 	var b: float = 0.62 + 0.12 * sin(_time * 0.7) + 0.05 * sin(_time * 1.9)
-	# The dust dims it a touch as a gust passes over.
-	b *= 1.0 - 0.15 * _gust
 	_sun.modulate = Color(b, b, b, 1.0)
 	_sun.scale = Vector2.ONE * (0.95 + 0.08 * sin(_time * 0.5))
 
@@ -334,7 +282,7 @@ func _update_smoke(delta: float) -> void:
 		var p: Dictionary = _smoke[i]
 		p["age"] += delta
 		p["pos"].y -= float(p["rise"]) * delta
-		# The wind carries the smoke the same way the sand blows.
+		# The wind carries the smoke along.
 		p["pos"].x += (float(p["drift"]) * (1.0 + 1.5 * _gust) + float(p["wobble"]) * sin(_time * 0.8 + float(p["wobble_phase"]))) * delta
 		if p["age"] >= p["life"]:
 			_smoke.remove_at(i)
@@ -352,6 +300,7 @@ func _draw_smoke() -> void:
 		var d: float = (float(p["size"]) + float(p["grow"]) * age) * _s
 		var size := Vector2(d, d * 0.85)
 		_smoke_layer.draw_texture_rect(_glow_tex, Rect2(_pl(p["pos"]) - size * 0.5, size), false, Color(SMOKE_COLOR, 0.42 * fade))
+
 
 
 func _draw_sand() -> void:

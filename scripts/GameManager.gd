@@ -281,9 +281,46 @@ func get_reinforcement_repeat(stage: int) -> int:
 #   miss_chance:     chance a poisoned hero's attack/targeted skill misses.
 #   sim_exposure_chance: background sim only - chance a hero away from home
 #                    ends up exposed to each bloom (the sim has no columns).
+#   flower:          which BloomHazardFX style is drawn ("lotus", "bell" or "sand").
+#   text_color:      colour of the "Poisoned!" / "Missed!" / "Blinded!" text.
+#   effect:          "poison" (default) - attacks and targeted skills may miss
+#                    (miss_chance); "blind" - the hero only sees the adjacent
+#                    columns, so attacks and targeted skills can only pick
+#                    targets there.
+#                    "mist_wall" - the column becomes a wall of mist that
+#                    blocks sight (no affliction): see battle.gd's
+#                    _vision_between().
+#   column_height:   optional, fraction of the screen height the hazard's
+#                    column FX stands (default 0.4; the mist wall is taller).
+#   sim_skip_chance: blind / mist wall zones, background sim only - chance an
+#                    invading rival skips its whole turn on each effect turn
+#                    (4, 8, ...).
 const ZONE_HAZARDS: Dictionary = {
-	"the_blackbloom": {"interval": 4, "miss_chance": 0.4, "sim_exposure_chance": 0.25},
+	"drowned_empire": {"interval": 4, "effect": "blind", "sim_skip_chance": 0.3, "flower": "ink", "column_height": 0.55, "text_color": Color(0.4, 0.8, 0.78, 1.0)},
+	"kingdom_of_morvain": {"interval": 4, "effect": "mist_wall", "sim_skip_chance": 0.2, "flower": "mist", "column_height": 0.55, "text_color": Color(0.85, 0.89, 0.94, 1.0)},
+	"the_blackbloom": {"interval": 4, "miss_chance": 0.4, "sim_exposure_chance": 0.25, "flower": "lotus", "text_color": Color(0.78, 0.5, 1.0, 1.0)},
+	"the_verdant_scar": {"interval": 4, "miss_chance": 0.4, "sim_exposure_chance": 0.25, "flower": "bell", "text_color": Color(1.0, 0.45, 0.42, 1.0)},
+	"scorchlands": {"interval": 4, "effect": "blind", "sim_skip_chance": 0.3, "flower": "sand", "text_color": Color(0.95, 0.78, 0.45, 1.0)},
 }
+
+# What each hazard `effect` means for the rules shared by every hazard. A new
+# effect only has to be listed here (anything unlisted behaves like "poison"):
+#   afflicts: standing in / crossing the hazard afflicts a hero next turn
+#             (poison, blind). False for effects that only change the field.
+#   avoid:    how a rival hero keeps clear of the hazard on its own moves
+#             (battle.gd's _rival_avoids_hazard_column()):
+#               "cross" - never end in the hinted column, never cross or end
+#                         in it while the effect is up;
+#               "end"   - only never end a move in the hinted/active column
+#                         (passing through is harmless);
+#               "none"  - no avoidance.
+# A zone's ZONE_HAZARDS entry may override either key.
+const HAZARD_EFFECT_RULES: Dictionary = {
+	"poison": {"afflicts": true, "avoid": "cross"},
+	"blind": {"afflicts": true, "avoid": "cross"},
+	"mist_wall": {"afflicts": false, "avoid": "end"},
+}
+
 
 ## Skills that pick a single enemy to hit (battle.gd's _targeting_purpose,
 ## which is also the skill id) - poisoned makes these miss. AoE skills,
@@ -302,6 +339,16 @@ const POISON_MISSABLE_SKILLS: Array = [
 ## The hazard of a zone, or an empty Dictionary if it has none.
 func get_zone_hazard(zone_id: String) -> Dictionary:
 	return ZONE_HAZARDS.get(zone_id, {})
+
+
+## One rule of a zone's hazard ("afflicts" or "avoid"): the zone's own
+## override if it has one, else its effect's default (HAZARD_EFFECT_RULES).
+func get_hazard_rule(zone_id: String, rule: String) -> Variant:
+	var hazard: Dictionary = get_zone_hazard(zone_id)
+	if hazard.has(rule):
+		return hazard[rule]
+	var defaults: Dictionary = HAZARD_EFFECT_RULES.get(str(hazard.get("effect", "poison")), HAZARD_EFFECT_RULES["poison"])
+	return defaults.get(rule)
 
 # hp/damage bonus each stage adds ON TOP OF the enemy's base stats -
 # and, like gold below, it's cumulative: each stage contributes its

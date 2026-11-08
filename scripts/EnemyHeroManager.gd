@@ -1220,12 +1220,18 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 	var poison_miss_chance: float = float(hazard.get("miss_chance", 0.0))
 	var poison_exposed: bool = false
 	var poisoned: bool = false
+	# Blind zones (the Scorchlands' sandstorm): the sim has no columns to lose
+	# sight across, so on each effect turn the invading hero simply has a
+	# chance to lose its whole turn.
+	var skip_chance: float = float(hazard.get("sim_skip_chance", 0.0))
+	var skip_turn: bool = false
 
 	var turns_taken: int = 0
 	for turn_index in range(MAX_SIMULATED_TURNS):
 		turns_taken = turn_index + 1
 		poisoned = poison_exposed
 		poison_exposed = false
+		skip_turn = hazard_applies and (turn_index + 1) % hazard_interval == 0 and randf() < skip_chance
 		if hazard_applies and (turn_index + 1) % hazard_interval == 0 and randf() < float(hazard.get("sim_exposure_chance", 0.0)):
 			poison_exposed = true
 		if turn_index + 1 >= next_reinforcement_turn:
@@ -1309,6 +1315,9 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 			# same way for the duration; its immunity/heal-per-turn
 			# already run via _tick_npc_the_test_of_time() and the
 			# retaliation guard below regardless of what this turn does.
+			pass
+		elif skip_turn:
+			# Lost in the sandstorm: no potion, skill, attack or movement.
 			pass
 		elif current_hp <= effective_max_hp * LOW_HP_POTION_THRESHOLD and PlayerManager.get_npc_potion_count(hero_id, "health") > 0:
 			PlayerManager.set_npc_potion_count(hero_id, "health", PlayerManager.get_npc_potion_count(hero_id, "health") - 1)

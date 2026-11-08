@@ -1702,9 +1702,14 @@ var _stage_generation: int = 0
 # GameManager (ZONE_HAZARDS, POISON_MISSABLE_SKILLS) so the background
 # simulation uses the same numbers.
 const POISON_TEXT_COLOR := Color(0.78, 0.5, 1.0, 1.0)
+## "Poisoned!" / "Missed!" text takes the zone's mist colour (ZONE_HAZARDS).
+func _poison_text_color() -> Color:
+	return GameManager.get_zone_hazard(GameManager.selected_zone).get("text_color", POISON_TEXT_COLOR)
 ## 0 = nothing, 1 = flower hint (visual only), 2 = mist is out.
 var _hazard_stage: int = 0
 var _hazard_column: int = -1
+# Set while Undertow's teleport runs: the one skill move that ignores the mist.
+var _hazard_move_ignored: bool = false
 var _hazard_fx: BloomHazardFX = null
 ## Exposed this turn -> poisoned for the whole of the next one.
 var _player_poison_exposed: bool = false
@@ -2064,6 +2069,7 @@ func _update_hero_position() -> void:
 	var from_index: int = _last_hero_pos_index if _last_hero_pos_index >= 0 else _hero_pos_index
 	_last_hero_pos_index = _hero_pos_index
 	_hazard_on_hero_moved(from_index, _hero_pos_index)
+	_refresh_blind_vision()
 	_try_collect_hero_echo(from_index, _hero_pos_index)
 	
 
@@ -2182,7 +2188,12 @@ func _spawn_enemy(enemy_def: Dictionary) -> void:
 	var pos_index: int
 	var visual_offset: float
 
-	if enemy_type == "range":
+	# A summon can name its own column (the rival's bear appears on its owner's)
+	# instead of the default spawn edge.
+	if enemy_def.has("spawn_pos_index"):
+		pos_index = clampi(int(enemy_def["spawn_pos_index"]), 0, GRID_COLUMNS - 1)
+		visual_offset = 0.0
+	elif enemy_type == "range":
 		pos_index = 8
 		visual_offset = _enemy_count_of_type("range") * 16.0
 	else:
@@ -4216,7 +4227,9 @@ func _resolve_undertow_teleport() -> void:
 
 	var from_pos: Vector2 = hero_image.position
 	_hero_pos_index = target["pos_index"]
+	_hazard_move_ignored = true
 	_update_hero_position()
+	_hazard_move_ignored = false
 	_show_message_over_hero("Undertow!")
 	_play_undertow_dive(hero_image, from_pos)
 
@@ -4256,7 +4269,7 @@ func _cast_the_sunken_one(level_data: Dictionary) -> bool:
 		if pos >= span.x and pos <= span.y:
 			hit_targets.append(enemy)
 	if hit_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -4842,13 +4855,13 @@ func _start_mind_devourer_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = int(level_data.get("range", 4))
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -4910,13 +4923,13 @@ func _start_sleepless_curse_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = int(level_data.get("range", 4))
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -4967,13 +4980,13 @@ func _start_the_terror_within_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = _hero_attack_column_range()
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -5535,13 +5548,13 @@ func _start_kiss_the_wastes_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = _hero_attack_column_range()
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -10931,7 +10944,7 @@ func _resolve_melee_attack() -> void:
 		if not rival_guard.is_empty():
 			_attack_enemy_guard(rival_guard)
 			return
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return
 	_apply_hero_attack(target)
 
@@ -10971,13 +10984,13 @@ func _start_ranged_targeting() -> void:
 
 	var col_range: int = _hero_attack_column_range()
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return
 
 	_targeting_mode = true
@@ -10995,13 +11008,13 @@ func _start_thornbind_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = _hero_attack_column_range()
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11036,7 +11049,7 @@ func _start_whisper_of_the_veil_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = int(level_data.get("range", WHISPER_OF_THE_VEIL_RANGE))
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
@@ -11075,13 +11088,13 @@ func _start_drowned_surge_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = int(level_data.get("range", 3))
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11103,13 +11116,13 @@ func _start_undertow_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = int(level_data.get("range", 2))
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11131,13 +11144,13 @@ func _start_deathlight_lure_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = int(level_data.get("range", 4))
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11162,13 +11175,13 @@ func _start_hope_of_the_fallen_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = int(level_data.get("range", 4))
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11190,13 +11203,13 @@ func _start_moonfall_lance_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = int(level_data.get("range", 4))
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11219,13 +11232,13 @@ func _start_shackles_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = int(level_data.get("range", 3))
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11247,13 +11260,13 @@ func _start_chainfire_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = int(level_data.get("range", 3))
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11277,13 +11290,13 @@ func _start_cinderbomb_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = int(level_data.get("range", 5))
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11305,13 +11318,13 @@ func _start_mark_of_stillness_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = int(level_data.get("range", 2))
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11340,13 +11353,13 @@ func _start_the_hollow_cold_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= THE_HOLLOW_COLD_RANGE:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11371,13 +11384,13 @@ func _start_touch_of_the_first_cold_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = _hero_attack_column_range()
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11400,12 +11413,12 @@ func _start_return_to_the_void_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11429,13 +11442,13 @@ func _start_maddening_roar_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = _hero_attack_column_range()
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11458,13 +11471,13 @@ func _start_the_hunger_calls_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = _hero_attack_column_range()
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11486,13 +11499,13 @@ func _start_rimecleaver_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = _hero_attack_column_range()
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11516,13 +11529,13 @@ func _start_three_cheers_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = _hero_attack_column_range()
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11544,13 +11557,13 @@ func _start_winters_grip_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = _hero_attack_column_range()
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11574,13 +11587,13 @@ func _start_frostbound_rupture_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = int(level_data.get("range", 0))
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11602,13 +11615,13 @@ func _start_charge_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = int(level_data.get("range", 0))
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11630,13 +11643,13 @@ func _start_glacier_breaker_targeting(level_data: Dictionary) -> bool:
 	_cancel_targeting()
 
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if enemy["pos_index"] == _hero_pos_index:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -11659,13 +11672,13 @@ func _start_sanguine_bloom_targeting(level_data: Dictionary) -> bool:
 
 	var col_range: int = int(level_data.get("range", 0))
 	for enemy in _enemies:
-		if _is_target_hidden(enemy):
+		if _is_target_hidden(enemy) or _is_target_blinded(enemy):
 			continue
 		if _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 			_valid_targets.append(enemy)
 
 	if _valid_targets.is_empty():
-		_show_message_over_hero("No enemy in range")
+		_show_message_over_hero(_no_target_message())
 		return false
 	if _probing_reach:
 		_probe_found = true
@@ -13192,11 +13205,11 @@ func _hazard_on_new_turn() -> void:
 	_rival_poison_exposed = false
 	_refresh_poison_icon()
 	if _player_poisoned:
-		_show_message_over_hero("Poisoned!")
+		_show_message_over_hero(_hazard_afflicted_text())
 	if _rival_poisoned:
 		var boss: Dictionary = _get_hero_fight_boss()
 		if not boss.is_empty():
-			_show_rising_message_over(boss.get("node"), "Poisoned!", POISON_TEXT_COLOR)
+			_show_rising_message_over(boss.get("node"), _hazard_afflicted_text(), _poison_text_color())
 
 	if not _hazard_enabled():
 		_hazard_clear()
@@ -13215,12 +13228,12 @@ func _hazard_show_hint() -> void:
 	_hazard_stage = 1
 	var view: Vector2 = get_viewport_rect().size
 	var feet_y: float = _creature_y() + view.y / 4.0
-	var column_height: float = view.y * 0.4
+	var column_height: float = view.y * float(GameManager.get_zone_hazard(GameManager.selected_zone).get("column_height", 0.4))
 	_hazard_fx = BloomHazardFX.new()
 	_hazard_fx.name = "BloomHazardFX"
 	add_child(_hazard_fx)
 	move_child(_hazard_fx, enemies_layer.get_index())
-	_hazard_fx.setup(Rect2(_index_to_x(_hazard_column), feet_y - column_height, _grid_unit(), column_height))
+	_hazard_fx.setup(Rect2(_index_to_x(_hazard_column), feet_y - column_height, _grid_unit(), column_height), str(GameManager.get_zone_hazard(GameManager.selected_zone).get("flower", "lotus")))
 	_hazard_fx.show_hint()
 
 
@@ -13228,6 +13241,9 @@ func _hazard_bloom() -> void:
 	_hazard_stage = 2
 	if _hazard_fx != null and is_instance_valid(_hazard_fx):
 		_hazard_fx.bloom()
+	_refresh_blind_vision()
+	if not _hazard_afflicts():
+		return
 	# Whoever is standing in the column as it blooms breathes it in.
 	if not _player_hazard_immune() and _hero_pos_index == _hazard_column:
 		_player_poison_exposed = true
@@ -13251,16 +13267,43 @@ func _hazard_clear() -> void:
 	if _hazard_fx != null and is_instance_valid(_hazard_fx):
 		_hazard_fx.fade_out()
 	_hazard_fx = null
+	_refresh_blind_vision()
 
 
 ## Called whenever the hero changes column (see _update_hero_position()): a
 ## move that crosses the mist, or ends in it, poisons them next turn - even if
 ## it carries them out the other side.
 func _hazard_on_hero_moved(from_pos: int, to_pos: int) -> void:
-	if _hazard_stage != 2 or _player_hazard_immune():
+	if _hazard_stage != 2 or _hazard_move_ignored or _player_hazard_immune() or not _hazard_afflicts():
 		return
 	if _hazard_column >= mini(from_pos, to_pos) and _hazard_column <= maxi(from_pos, to_pos):
 		_player_poison_exposed = true
+
+
+## Called whenever an enemy changes column (see _move_enemy()): the rival
+## hero breathes the mist in if its move crosses or ends in it, same as the
+## player's (see _hazard_on_hero_moved()). Creeps are immune.
+func _hazard_on_enemy_moved(enemy: Dictionary, from_pos: int, to_pos: int) -> void:
+	if _hazard_stage != 2 or _hazard_move_ignored or _rival_hazard_immune() or not _hazard_afflicts():
+		return
+	if not enemy["static"].get("is_hero_fight_boss", false):
+		return
+	if _hazard_column >= mini(from_pos, to_pos) and _hazard_column <= maxi(from_pos, to_pos):
+		_rival_poison_exposed = true
+
+
+## The rival won't make a move that would poison it: ending in the column
+## marked by the hint (it blooms before the rival's next action), or crossing
+## or ending in the column while the mist is up.
+func _rival_avoids_hazard_column(from_pos: int, to_pos: int) -> bool:
+	if _rival_hazard_immune() or _hazard_stage == 0:
+		return false
+	var mode: String = str(GameManager.get_hazard_rule(GameManager.selected_zone, "avoid"))
+	if mode == "none":
+		return false
+	if _hazard_stage == 1 or mode == "end":
+		return to_pos == _hazard_column
+	return _hazard_column >= mini(from_pos, to_pos) and _hazard_column <= maxi(from_pos, to_pos)
 
 
 ## This zone's chance for a poisoned hero's attack to miss.
@@ -13268,21 +13311,171 @@ func _poison_miss_chance() -> float:
 	return float(GameManager.get_zone_hazard(GameManager.selected_zone).get("miss_chance", 0.4))
 
 
+## Which affliction this zone's hazard causes: "poison" (misses) or "blind"
+## (see GameManager.ZONE_HAZARDS). _player_poisoned / _rival_poisoned mean
+## "afflicted" whichever it is.
+func _hazard_effect() -> String:
+	return str(GameManager.get_zone_hazard(GameManager.selected_zone).get("effect", "poison"))
+
+
+## False for the mist wall: it only blocks sight, nobody is poisoned or
+## blinded for passing through it (see _vision_between()).
+func _hazard_afflicts() -> bool:
+	return bool(GameManager.get_hazard_rule(GameManager.selected_zone, "afflicts"))
+
+
+## What the status message over an afflicted hero says.
+func _hazard_afflicted_text() -> String:
+	return "Blinded!" if _hazard_effect() == "blind" else "Poisoned!"
+
+
 ## Rolls the poison miss for one of the hero's attacks/skills that targets an
 ## enemy. False while not poisoned.
 func _player_poison_makes_miss() -> bool:
-	return _player_poisoned and randf() < _poison_miss_chance()
+	return _player_poisoned and _hazard_effect() == "poison" and randf() < _poison_miss_chance()
 
 
 ## Same roll for the rival hero being fought.
 func _rival_poison_makes_miss() -> bool:
-	return _rival_poisoned and randf() < _poison_miss_chance()
+	return _rival_poisoned and _hazard_effect() == "poison" and randf() < _poison_miss_chance()
+
+
+## Blinded by the sandstorm: a hero sees only the columns next to theirs (and
+## their own), so attacks and targeted skills can't pick anyone further off.
+const BLIND_VISION := 1
+
+
+func _player_blind() -> bool:
+	return _player_poisoned and _hazard_effect() == "blind"
+
+
+func _rival_blind_out_of_sight(distance_to_hero: int) -> bool:
+	return _rival_poisoned and _hazard_effect() == "blind" and distance_to_hero > BLIND_VISION
+
+
+var _blind_fx: BlindVisionFX = null
+
+
+## While the player is blind only their vision window is shown: a dark
+## overlay (above the fighters, below the UI) hides everything outside it.
+## Called whenever the blind state or the hero's column changes.
+func _refresh_blind_vision() -> void:
+	_refresh_mist_vision()
+	var has_fx: bool = _blind_fx != null and is_instance_valid(_blind_fx)
+	if not _player_blind():
+		if has_fx:
+			_blind_fx.fade_out()
+		_blind_fx = null
+		return
+	if not has_fx:
+		_blind_fx = BlindVisionFX.new()
+		_blind_fx.name = "BlindVisionFX"
+		add_child(_blind_fx)
+		move_child(_blind_fx, enemies_layer.get_index() + 1)
+		_blind_fx.setup(get_viewport_rect().size)
+	# An ellipse around the hero: wide enough to reach the adjacent columns,
+	# but short enough that the top and bottom of those columns fade out too.
+	var center := hero_image.position + hero_image.size * 0.5
+	_blind_fx.set_window(center, Vector2(_grid_unit() * 1.5, hero_image.size.y * 1.1))
+
+
+## True if the blinded hero can't see this enemy to attack or target it.
+## Only the targeting checks call this - AoE and path skills ignore sight.
+func _is_target_blinded(target: Dictionary) -> bool:
+	if _player_blind() and _distance(target["pos_index"], _hero_pos_index) > BLIND_VISION:
+		return true
+	return _player_vision_of(int(target["pos_index"])) == VISION_NONE
+
+
+## The message when a targeted attack/skill finds nobody to pick.
+func _no_target_message() -> String:
+	return "No target" if _player_blind() or _mist_wall_up() else "No enemy in range"
+
+
+# ---- The mist wall (Kingdom of Morvain) ----
+# While the wall stands (stage 2) it splits the field. A viewer on one side
+# sees their own side clearly, the wall's column and the one column right
+# behind it through fog, and nothing past that. A viewer standing IN the wall
+# sees only the adjacent columns, through fog. Fogged columns are visible -
+# attacks and targeted skills can pick targets there.
+const VISION_CLEAR := 0
+const VISION_FOG := 1
+const VISION_NONE := 2
+
+
+func _mist_wall_up() -> bool:
+	return _hazard_stage == 2 and _hazard_column >= 0 and _hazard_effect() == "mist_wall"
+
+
+## How well someone standing in column `viewer` sees column `target`.
+func _vision_between(viewer: int, target: int) -> int:
+	if viewer == target or not _mist_wall_up():
+		return VISION_CLEAR
+	var wall: int = _hazard_column
+	if viewer == wall:
+		return VISION_FOG if absi(target - viewer) <= BLIND_VISION else VISION_NONE
+	var target_side: int = signi(target - wall)
+	if target_side == 0:
+		return VISION_FOG
+	if target_side == signi(viewer - wall):
+		return VISION_CLEAR
+	return VISION_FOG if absi(target - wall) == 1 else VISION_NONE
+
+
+## The player's sight of a column. Someone at home in the zone knows it well
+## enough not to be hindered.
+func _player_vision_of(column: int) -> int:
+	if _player_hazard_immune():
+		return VISION_CLEAR
+	return _vision_between(_hero_pos_index, column)
+
+
+## The rival can't make out the player through the wall either.
+func _rival_wall_blocked(rival_column: int) -> bool:
+	return not _rival_hazard_immune() and _vision_between(rival_column, _hero_pos_index) == VISION_NONE
+
+
+var _mist_fx: MistVisionFX = null
+
+
+## Shows what the player sees around the wall - fog and shadow over the
+## fighters (see MistVisionFX). Called whenever the wall, or the hero's
+## column, changes.
+func _refresh_mist_vision() -> void:
+	var has_fx: bool = _mist_fx != null and is_instance_valid(_mist_fx)
+	if not _mist_wall_up() or _player_hazard_immune():
+		if has_fx:
+			_mist_fx.fade_out()
+		_mist_fx = null
+		return
+	if not has_fx:
+		_mist_fx = MistVisionFX.new()
+		_mist_fx.name = "MistVisionFX"
+		add_child(_mist_fx)
+		move_child(_mist_fx, enemies_layer.get_index() + 1)
+		_mist_fx.setup(get_viewport_rect().size)
+	var unit: float = _grid_unit()
+	var wall_x: float = _index_to_x(_hazard_column)
+	var big := 4000.0
+	if _hero_pos_index == _hazard_column:
+		var hero_x: float = _index_to_x(_hero_pos_index)
+		var center := hero_image.position + hero_image.size * 0.5
+		_mist_fx.set_inside(
+			Vector2(hero_x, hero_x + unit),
+			Vector2(hero_x - unit, hero_x),
+			Vector2(hero_x + unit, hero_x + unit * 2.0),
+			center, Vector2(unit * 1.5, hero_image.size.y * 1.1))
+	elif _hero_pos_index < _hazard_column:
+		_mist_fx.set_outside(Vector2(-big, wall_x), Vector2(wall_x, wall_x + unit * 2.0))
+	else:
+		_mist_fx.set_outside(Vector2(wall_x + unit, big), Vector2(wall_x - unit, wall_x + unit))
 
 
 ## The green raindrop badge next to the health bar while the hero is
 ## poisoned - built on first use in the same row, with the same look, as the
 ## frost/curse/root badges (see _refresh_status_effects()).
 func _refresh_poison_icon() -> void:
+	_refresh_blind_vision()
 	if _poison_status_icon == null:
 		if not _player_poisoned:
 			return
@@ -13290,27 +13483,47 @@ func _refresh_poison_icon() -> void:
 		_poison_status_icon.custom_minimum_size = Vector2(30, 30)
 		_poison_status_icon.visible = false
 		var style := StyleBoxFlat.new()
-		style.bg_color = Color(0.1, 0.3, 0.14, 1.0)
+		var blind: bool = _hazard_effect() == "blind"
+		style.bg_color = Color(0.32, 0.22, 0.08, 1.0) if blind else Color(0.1, 0.3, 0.14, 1.0)
 		style.set_border_width_all(2)
-		style.border_color = Color(0.55, 0.95, 0.5, 1.0)
+		style.border_color = Color(0.95, 0.78, 0.45, 1.0) if blind else Color(0.55, 0.95, 0.5, 1.0)
 		style.set_corner_radius_all(15)
 		_poison_status_icon.add_theme_stylebox_override("panel", style)
 		var drop := Control.new()
 		drop.custom_minimum_size = Vector2(30, 30)
 		drop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		drop.draw.connect(func() -> void:
-			# A teardrop: a point at the top widening into a round belly.
-			var c := Vector2(15.0, 18.0)
-			var pts := PackedVector2Array([Vector2(15.0, 5.0)])
-			for deg in range(35, 326, 15):
-				var theta: float = deg_to_rad(float(deg))
-				pts.append(c + Vector2(sin(theta), -cos(theta)) * 7.0)
-			drop.draw_colored_polygon(pts, Color(0.45, 0.95, 0.4, 1.0))
-			drop.draw_circle(Vector2(12.5, 17.0), 1.8, Color(0.85, 1.0, 0.8, 0.8))
-		)
+		if blind:
+			drop.draw.connect(func() -> void:
+				# A closed eye: a downward curve with lashes.
+				var sand := Color(0.97, 0.86, 0.6, 1.0)
+				var curve := PackedVector2Array()
+				for i in 9:
+					var t: float = float(i) / 8.0
+					curve.append(Vector2(6.0 + 18.0 * t, 13.0 + sin(t * PI) * 5.0))
+				drop.draw_polyline(curve, sand, 2.0, true)
+				for i in 5:
+					var lx: float = 9.0 + 3.0 * float(i)
+					drop.draw_line(Vector2(lx, 17.5 + sin((lx - 6.0) / 18.0 * PI) * 2.0), Vector2(lx - 1.0 + 0.5 * float(i), 22.0), sand, 1.4, true)
+			)
+		else:
+			_connect_poison_drop(drop)
 		_poison_status_icon.add_child(drop)
 		$BarsBox/HPRow/StatusIconRow.add_child(_poison_status_icon)
 	_set_status_icon_visible(_poison_status_icon, _player_poisoned)
+
+
+## The raindrop drawn on the poison badge.
+func _connect_poison_drop(drop: Control) -> void:
+	drop.draw.connect(func() -> void:
+		# A teardrop: a point at the top widening into a round belly.
+		var c := Vector2(15.0, 18.0)
+		var pts := PackedVector2Array([Vector2(15.0, 5.0)])
+		for deg in range(35, 326, 15):
+			var theta: float = deg_to_rad(float(deg))
+			pts.append(c + Vector2(sin(theta), -cos(theta)) * 7.0)
+		drop.draw_colored_polygon(pts, Color(0.45, 0.95, 0.4, 1.0))
+		drop.draw_circle(Vector2(12.5, 17.0), 1.8, Color(0.85, 1.0, 0.8, 0.8))
+	)
 
 
 ## The hero's basic attack missed because of the poison: the swing happens,
@@ -13359,17 +13572,17 @@ func _end_turn() -> void:
 		return
 
 	_cancel_targeting()
-	# The poison lasts until the end of the player's turn; the mist is gone
-	# the moment the enemies start acting.
+	# The poison lasts until the end of the player's turn; the mist stays up
+	# through the enemies' turn and is gone once they are done.
 	_player_poisoned = false
 	_refresh_poison_icon()
-	_hazard_end_mist()
 	_stun_before_enemy_phase = _player_stun_turns_left
 	_bear_turn()
 	_guards_turn()
 	_enemy_guards_turn()
 	_enemy_turn()
 	_rival_poisoned = false
+	_hazard_end_mist()
 
 	if _recruited.get("current_hp", 0) <= 0:
 		_handle_defeat()
@@ -13594,7 +13807,7 @@ func _player_attack_can_reach() -> bool:
 	if _is_ranged_hero():
 		var col_range: int = _hero_attack_column_range()
 		for enemy in _enemies:
-			if not _is_target_hidden(enemy) and _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
+			if not _is_target_hidden(enemy) and not _is_target_blinded(enemy) and _distance(enemy["pos_index"], _hero_pos_index) <= col_range:
 				return true
 		return false
 	return not _get_enemy_at(_hero_pos_index).is_empty() or not _enemy_guard_at(_hero_pos_index).is_empty()
@@ -13793,7 +14006,7 @@ func _enemy_turn() -> void:
 				# all if the flee spot itself is walled off, same as any
 				# other blocked destination.
 				var flee_pos: int = _get_flee_position(enemy)
-				if not _is_column_frostbound_rupture_blocked(flee_pos):
+				if not _is_column_frostbound_rupture_blocked(flee_pos) and not _rival_avoids_hazard_column(enemy["pos_index"], flee_pos):
 					_move_enemy(enemy, flee_pos)
 				continue
 
@@ -13949,7 +14162,9 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 	if _enemy_undertow_pending:
 		_enemy_undertow_pending = false
 		var from_pos: Vector2 = enemy["node"].position
+		_hazard_move_ignored = true
 		_move_enemy(enemy, _hero_pos_index)
+		_hazard_move_ignored = false
 		_show_message_over_hero("Undertow!")
 		_play_undertow_dive(enemy["node"], from_pos)
 
@@ -13961,6 +14176,11 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 	# comment) overrides this - true sight lets him keep fighting a
 	# hidden player normally, stealth notwithstanding.
 	var hero_hidden: bool = not _can_enemy_see_hero()
+	# Blinded by the sandstorm, the rival can't attack or target a player
+	# further than BLIND_VISION columns off - but still knows where he is, so it
+	# keeps walking toward him (hero_hidden, which stops all movement, is not
+	# touched).
+	var hero_unseen: bool = hero_hidden or _rival_blind_out_of_sight(hero_distance) or _rival_wall_blocked(int(enemy["pos_index"]))
 	# Frostbound Rupture (the player's own, cast on this rival's turn) freezes
 	# movement exactly like a root does - see _enemy_turn()'s own
 	# comment for the full reasoning - so it's folded into the same
@@ -13999,21 +14219,39 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 	# closing_for_beast below), so once the player is within its reach it is
 	# cast regardless of what the scorer thinks of it at his current HP - it's
 	# his best skill. The one thing allowed to go first is a missing companion.
-	if not silenced and not hero_hidden and hero_distance <= EnemySkillRange.BEAST_OF_THE_ELDERWILD_REACH 			and _is_enemy_skill_ready("beast_of_the_elderwild", enemy_type, hero_distance, enemy):
+	if not silenced and not hero_unseen and hero_distance <= EnemySkillRange.BEAST_OF_THE_ELDERWILD_REACH			and _is_enemy_skill_ready("beast_of_the_elderwild", enemy_type, hero_distance, enemy):
 		var companion_first: bool = _get_enemy_elderwild_companion().is_empty() 				and _is_enemy_skill_ready("elderwild_companion", enemy_type, hero_distance, enemy)
 		if not companion_first:
 			_cast_enemy_skill(enemy, "beast_of_the_elderwild")
 			return
 
+	# A ranged rival with a bear out stays behind it so the bear tanks in front:
+	# if he is no further from the player than the bear, he steps back (away from
+	# the player) - unless his ultimate is ready, which needs him in melee reach.
+	if enemy_type == "range" and not rooted and not hero_hidden:
+		var bear: Dictionary = _get_enemy_elderwild_companion()
+		if not bear.is_empty() \
+				and _distance(enemy["pos_index"], _hero_pos_index) <= _distance(bear["pos_index"], _hero_pos_index) \
+				and not _is_enemy_skill_ready("beast_of_the_elderwild", enemy_type, hero_distance, enemy, true):
+			var back_dir: int = -_step_toward(enemy["pos_index"], _hero_pos_index)
+			if back_dir == 0:
+				back_dir = 1
+			var back_pos: int = enemy["pos_index"] + back_dir
+			if back_pos >= 0 and back_pos < GRID_COLUMNS \
+					and not _is_column_frostbound_rupture_blocked(back_pos) \
+					and not _rival_avoids_hazard_column(enemy["pos_index"], back_pos):
+				_move_enemy(enemy, back_pos)
+				return
+
 	if not silenced:
-		_enemy_ai_hero_hidden = hero_hidden
+		_enemy_ai_hero_hidden = hero_unseen
 		var skill_id: String = _pick_enemy_ready_skill(enemy, enemy_type, hero_distance)
 		if skill_id != "":
 			_cast_enemy_skill(enemy, skill_id)
 			_enemy_ai_hero_hidden = false
 			return
 		_enemy_ai_hero_hidden = false
-		if not hero_hidden and _enemy_has_unaffordable_ready_skill(enemy_type, hero_distance, enemy) and _enemy_potion_mana_count > 0:
+		if not hero_unseen and _enemy_has_unaffordable_ready_skill(enemy_type, hero_distance, enemy) and _enemy_potion_mana_count > 0:
 			_drink_enemy_mana_potion()
 			return
 
@@ -14035,11 +14273,11 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 				_move_enemy(enemy, flee_pos)
 			return
 
-		if hero_distance <= _enemy_attack_range(enemy) and not hero_hidden:
+		if hero_distance <= _enemy_attack_range(enemy) and not hero_unseen:
 			_resolve_enemy_hero_attack(enemy)
 			return
 	else:  # "melee"
-		if hero_distance <= 0 and not hero_hidden:
+		if hero_distance <= 0 and not hero_unseen:
 			_resolve_enemy_hero_attack(enemy)
 			return
 
@@ -14054,6 +14292,8 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 				var instinct_distance: int = 1 + _enemy_hunting_instinct_bonus_movement
 				var instinct_result: Dictionary = _enemy_hunting_instinct_move_target(enemy["pos_index"], step, instinct_distance)
 				var landing_pos: int = int(instinct_result["pos"])
+				if _rival_avoids_hazard_column(enemy["pos_index"], landing_pos):
+					landing_pos = enemy["pos_index"]
 				if landing_pos != enemy["pos_index"]:
 					var rival_node: TextureRect = enemy["node"]
 					rival_node.flip_h = step < 0
@@ -14066,7 +14306,7 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 					apply_damage(charge_damage)
 			else:
 				var next_pos: int = enemy["pos_index"] + step
-				if not _is_column_frostbound_rupture_blocked(next_pos):
+				if not _is_column_frostbound_rupture_blocked(next_pos) and not _rival_avoids_hazard_column(enemy["pos_index"], next_pos):
 					_move_enemy(enemy, next_pos)
 
 
@@ -14171,7 +14411,7 @@ func _resolve_enemy_hero_attack(enemy: Dictionary) -> void:
 	# The rival is poisoned by The Blackbloom's mist too, when away from home.
 	if not rival_missed and _rival_poison_makes_miss():
 		rival_missed = true
-		_show_rising_message_over(enemy.get("node"), "Missed! (poisoned)", POISON_TEXT_COLOR)
+		_show_rising_message_over(enemy.get("node"), "Missed! (poisoned)", _poison_text_color())
 	var mitigated: float = 0.0 if rival_missed else _try_redirect_hit_to_guard(attack_damage)
 	if not rival_missed and mitigated < 0.0:
 		mitigated = apply_damage(attack_damage)
@@ -14923,7 +15163,7 @@ func _cast_enemy_skill(enemy: Dictionary, skill_id: String) -> void:
 	var effect_skill_id: String = skill_id
 	if not whisper_of_the_veil_self and GameManager.POISON_MISSABLE_SKILLS.has(skill_id) and _rival_poison_makes_miss():
 		effect_skill_id = ""
-		_show_rising_message_over(enemy.get("node"), "Missed! (poisoned)", POISON_TEXT_COLOR)
+		_show_rising_message_over(enemy.get("node"), "Missed! (poisoned)", _poison_text_color())
 
 	match effect_skill_id:
 		"abyssal_spasm":
@@ -15947,9 +16187,11 @@ func _summon_enemy_elderwild_companion(level_data: Dictionary) -> void:
 	_despawn_enemy_elderwild_companion()
 
 	# Its health and damage are a share of the rival's own.
-	var rival_static: Dictionary = _get_hero_fight_boss().get("static", {})
+	var rival_boss: Dictionary = _get_hero_fight_boss()
+	var rival_static: Dictionary = rival_boss.get("static", {})
 
 	_spawn_enemy({
+		"spawn_pos_index": int(rival_boss.get("pos_index", 7)),
 		"id": "enemy_elderwild_companion",
 		"name": "Elderwild Companion",
 		"image": ELDERWILD_COMPANION_IMAGE_PATH,
@@ -19254,6 +19496,7 @@ func _move_enemy(enemy: Dictionary, new_pos: int) -> void:
 	var old_pos: int = enemy["pos_index"]
 	var old_x: float = enemy["node"].position.x
 	enemy["pos_index"] = clampi(new_pos, 0, GRID_COLUMNS - 1)
+	_hazard_on_enemy_moved(enemy, old_pos, enemy["pos_index"])
 	enemy["node"].position = Vector2(_index_to_x(enemy["pos_index"]), _creature_top_y(enemy["node"].size.y))
 	var animator := CreatureAnimator.of(enemy["node"])
 	if animator != null and not is_equal_approx(old_x, enemy["node"].position.x):
