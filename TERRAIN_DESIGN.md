@@ -35,7 +35,7 @@ Zone: `the_blackbloom`. One hazard: the **bloom**.
 ## Implementation status (first slice, untested in play)
 Built in `scripts/battle.gd` (`_hazard_*`, `_player_poison_*`, `_rival_poison_*`) and `scripts/BloomHazardFX.gd` (a dark purple lotus that opens into a purple mist; the mist is always shown, whether or not anyone is in the column).
 - Cycle runs off `_turn_count + 1` (hint on turns 3, 7, 11, bloom on 4, 8, 12); it restarts for every stage and hero fight.
-- The hazard only runs in zones listed in `GameManager.ZONE_HAZARDS` (The Blackbloom, The Verdant Scar, The Scorchlands, Kingdom of Morvain, The Drowned Empire), and only if someone in the fight can be affected (the player away from home, or a rival away from home).
+- The hazard only runs in zones listed in `GameManager.ZONE_HAZARDS` (The Blackbloom, The Verdant Scar, The Scorchlands, Kingdom of Morvain, The Drowned Empire, The Ironbound Isles, The Elderwild), and only if someone in the fight can be affected (the player away from home, or a rival away from home).
 - Exposure: standing in the column as it blooms, or any hero movement that crosses or ends in it (hooked into `_update_hero_position`, so lunges and teleports count too).
 - Poisoned: set at the start of the next turn (`Poisoned!` message over the hero and a green raindrop badge next to the health bar), cleared at the end of that turn. Basic attacks and click-targeted skills (`POISON_MISSABLE_SKILLS`) miss 40% of the time; a missed skill still spends mana, cooldown and the turn.
 - Rival: exposed if standing in the column at the bloom, or if any of its moves (`_move_enemy()`) crosses or ends in the mist while it is up; its basic attack and its `POISON_MISSABLE_SKILLS` can miss while poisoned.
@@ -93,3 +93,18 @@ Zone: `drowned_empire`. Uses the blind effect exactly as in the Scorchlands (`ef
 - **Stage 1:** a dark teal octopus rises out of the floor of the chosen column and rests there, arms spread (mottled skin, amber slit-pupil eyes, tapering arms with suckers, faint glowing spots).
 - **Stage 2:** it jets up the column (arms streaming behind it) leaving a black ink cloud that fills the column below it; at the top the octopus fades out, the ink stays until the enemies are done.
 - Drawn entirely in code (`_draw_octopus()`, `_draw_ink()`), untested in play. Tuning: `OCTO_*` colours, `_octo_scale()`, swim time (1.3 s) in `bloom()`.
+
+## Sixth zone: The Ironbound Isles (disarm, waves)
+Zone: `the_ironbound_isles`. Same cycle, exposure, mist-timing and avoidance rules as the poison zones, with `effect: "disarm"` and 25-30% `sim_exposure_chance` (30%).
+- **Stage 1:** small waves wash toward the screen along the floor of the chosen column (`BloomHazardFX` style `"wave"`, `_draw_wash()`).
+- **Stage 2:** a big wave washes over toward the screen (`_draw_big_wave()`): it starts far back and small, grows and surges forward, peaks, then breaks - crest tumbling toward the viewer - and spreads into a foaming sheet over the foreground that stays until the enemies are done.
+- **Disarmed** (message "Disarmed!", red broken-sword badge `_connect_broken_sword()`): no normal attacks for **2** of the hero's own turns (`turns: 2` in `GameManager.HAZARD_EFFECT_RULES`; `_player_afflict_left` / `_rival_afflict_left` count them down, re-exposure resets to 2). Skills, moving, items and fleeing still work. The Attack button is disabled and shows "Disarmed!" if forced; with nothing else to do the turn auto-skips as usual (`_player_attack_can_reach()` is false while disarmed).
+- **Rival:** a disarmed rival skips its basic attack (`_rival_disarmed()` in `_enemy_hero_turn()`) but still casts skills and walks toward the player.
+- **Background simulation:** `sim_exposure_chance` exposes an invading rival on each effect turn; for 2 turns it takes no basic attack (skills and potions still happen).
+- Untested in play. The number of turns is now a general per-effect rule (`turns`, default 1) so other effects can last longer too.
+
+## Seventh zone: The Elderwild (disarm, bees)
+Zone: `the_elderwild`. Same rules as The Ironbound Isles: `effect: "disarm"` (2 turns, "Disarmed!", broken-sword badge), 30% `sim_exposure_chance`, rivals avoid the column the same way. Only the visuals differ (`BloomHazardFX` style `"bees"`):
+- **Stage 1:** a few bees (6) fly lazy loops around the lower part of the column (`_draw_loose_bees()`).
+- **Stage 2:** the bees pull together into a swarm: a drifting golden-brown haze with 40 bees circling inside it (`_draw_bee_swarm()`, `BEE_SWARM_COUNT`), staying until the enemies are done.
+- Drawn in code (`_draw_bee()`), untested in play. Tuning: `STYLES["bees"]` colours, bee size (`size.x * 0.05`), swarm time (0.9 s) in `bloom()`.

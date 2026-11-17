@@ -1714,6 +1714,9 @@ var _hazard_fx: BloomHazardFX = null
 ## Exposed this turn -> poisoned for the whole of the next one.
 var _player_poison_exposed: bool = false
 var _player_poisoned: bool = false
+# Own turns of the affliction still to go (see HAZARD_EFFECT_RULES "turns").
+var _player_afflict_left: int = 0
+var _rival_afflict_left: int = 0
 var _rival_poison_exposed: bool = false
 var _rival_poisoned: bool = false
 var _poison_status_icon: PanelContainer = null
@@ -10924,6 +10927,10 @@ func _on_attack_pressed() -> void:
 	if _the_test_of_time_active:
 		return
 
+	if _player_disarmed():
+		_show_message_over_hero("Disarmed!")
+		return
+
 	if _kiss_the_wastes_active:
 		_show_message_over_hero("Focused on Kiss the Wastes!")
 		return
@@ -13189,8 +13196,10 @@ func _hazard_reset() -> void:
 	_hazard_column = -1
 	_player_poison_exposed = false
 	_player_poisoned = false
+	_player_afflict_left = 0
 	_rival_poison_exposed = false
 	_rival_poisoned = false
+	_rival_afflict_left = 0
 	_refresh_poison_icon()
 
 
@@ -13199,14 +13208,21 @@ func _hazard_reset() -> void:
 func _hazard_on_new_turn() -> void:
 	if _battle_over:
 		return
-	_player_poisoned = _player_poison_exposed
-	_rival_poisoned = _rival_poison_exposed
+	var player_hit: bool = _player_poison_exposed
+	var rival_hit: bool = _rival_poison_exposed
+	var afflict_turns: int = int(GameManager.get_hazard_rule(GameManager.selected_zone, "turns"))
+	if player_hit:
+		_player_afflict_left = afflict_turns
+	if rival_hit:
+		_rival_afflict_left = afflict_turns
+	_player_poisoned = _player_afflict_left > 0
+	_rival_poisoned = _rival_afflict_left > 0
 	_player_poison_exposed = false
 	_rival_poison_exposed = false
 	_refresh_poison_icon()
-	if _player_poisoned:
+	if player_hit:
 		_show_message_over_hero(_hazard_afflicted_text())
-	if _rival_poisoned:
+	if rival_hit:
 		var boss: Dictionary = _get_hero_fight_boss()
 		if not boss.is_empty():
 			_show_rising_message_over(boss.get("node"), _hazard_afflicted_text(), _poison_text_color())
@@ -13326,7 +13342,21 @@ func _hazard_afflicts() -> bool:
 
 ## What the status message over an afflicted hero says.
 func _hazard_afflicted_text() -> String:
-	return "Blinded!" if _hazard_effect() == "blind" else "Poisoned!"
+	match _hazard_effect():
+		"blind":
+			return "Blinded!"
+		"disarm":
+			return "Disarmed!"
+	return "Poisoned!"
+
+
+## Disarmed (The Ironbound Isles): no normal attacks, skills still work.
+func _player_disarmed() -> bool:
+	return _player_poisoned and _hazard_effect() == "disarm"
+
+
+func _rival_disarmed() -> bool:
+	return _rival_poisoned and _hazard_effect() == "disarm"
 
 
 ## Rolls the poison miss for one of the hero's attacks/skills that targets an
@@ -13484,9 +13514,10 @@ func _refresh_poison_icon() -> void:
 		_poison_status_icon.visible = false
 		var style := StyleBoxFlat.new()
 		var blind: bool = _hazard_effect() == "blind"
-		style.bg_color = Color(0.32, 0.22, 0.08, 1.0) if blind else Color(0.1, 0.3, 0.14, 1.0)
+		var disarm: bool = _hazard_effect() == "disarm"
+		style.bg_color = Color(0.32, 0.22, 0.08, 1.0) if blind else (Color(0.26, 0.06, 0.07, 1.0) if disarm else Color(0.1, 0.3, 0.14, 1.0))
 		style.set_border_width_all(2)
-		style.border_color = Color(0.95, 0.78, 0.45, 1.0) if blind else Color(0.55, 0.95, 0.5, 1.0)
+		style.border_color = Color(0.95, 0.78, 0.45, 1.0) if blind else (Color(0.9, 0.22, 0.2, 1.0) if disarm else Color(0.55, 0.95, 0.5, 1.0))
 		style.set_corner_radius_all(15)
 		_poison_status_icon.add_theme_stylebox_override("panel", style)
 		var drop := Control.new()
@@ -13505,11 +13536,42 @@ func _refresh_poison_icon() -> void:
 					var lx: float = 9.0 + 3.0 * float(i)
 					drop.draw_line(Vector2(lx, 17.5 + sin((lx - 6.0) / 18.0 * PI) * 2.0), Vector2(lx - 1.0 + 0.5 * float(i), 22.0), sand, 1.4, true)
 			)
+		elif disarm:
+			_connect_broken_sword(drop)
 		else:
 			_connect_poison_drop(drop)
 		_poison_status_icon.add_child(drop)
 		$BarsBox/HPRow/StatusIconRow.add_child(_poison_status_icon)
 	_set_status_icon_visible(_poison_status_icon, _player_poisoned)
+
+
+## A red broken sword on the disarmed badge: hilt and crossguard at the
+## bottom left, a blade that snaps off in a jagged edge, and the loose tip
+## floating a little beyond the break.
+func _connect_broken_sword(icon: Control) -> void:
+	icon.draw.connect(func() -> void:
+		var red := Color(0.95, 0.24, 0.22, 1.0)
+		var bright := Color(1.0, 0.55, 0.5, 1.0)
+		var dark := Color(0.55, 0.1, 0.1, 1.0)
+		# Grip and pommel.
+		icon.draw_line(Vector2(8.0, 22.0), Vector2(11.5, 18.5), dark, 3.0, true)
+		icon.draw_circle(Vector2(7.0, 23.0), 2.2, red)
+		# Crossguard.
+		icon.draw_line(Vector2(9.0, 15.5), Vector2(14.5, 21.0), red, 2.6, true)
+		# The stump of the blade, ending in a jagged break.
+		var stump := PackedVector2Array([
+			Vector2(12.2, 17.2), Vector2(14.4, 19.4), Vector2(19.0, 14.8),
+			Vector2(17.4, 13.4), Vector2(18.4, 12.4), Vector2(16.2, 11.2),
+		])
+		icon.draw_colored_polygon(stump, red)
+		icon.draw_line(Vector2(13.6, 17.0), Vector2(16.4, 14.2), bright, 1.0, true)
+		# The loose tip, tilted off the line of the blade.
+		var tip := PackedVector2Array([
+			Vector2(19.4, 10.2), Vector2(21.6, 11.6), Vector2(25.5, 5.0),
+		])
+		icon.draw_colored_polygon(tip, red)
+		icon.draw_line(Vector2(21.0, 9.6), Vector2(24.0, 6.4), bright, 0.9, true)
+	)
 
 
 ## The raindrop drawn on the poison badge.
@@ -13574,14 +13636,16 @@ func _end_turn() -> void:
 	_cancel_targeting()
 	# The poison lasts until the end of the player's turn; the mist stays up
 	# through the enemies' turn and is gone once they are done.
-	_player_poisoned = false
+	_player_afflict_left = maxi(0, _player_afflict_left - 1)
+	_player_poisoned = _player_afflict_left > 0
 	_refresh_poison_icon()
 	_stun_before_enemy_phase = _player_stun_turns_left
 	_bear_turn()
 	_guards_turn()
 	_enemy_guards_turn()
 	_enemy_turn()
-	_rival_poisoned = false
+	_rival_afflict_left = maxi(0, _rival_afflict_left - 1)
+	_rival_poisoned = _rival_afflict_left > 0
 	_hazard_end_mist()
 
 	if _recruited.get("current_hp", 0) <= 0:
@@ -13804,6 +13868,8 @@ func _player_can_act() -> bool:
 ## the Attack button itself makes (_start_ranged_targeting()/
 ## _resolve_melee_attack()).
 func _player_attack_can_reach() -> bool:
+	if _player_disarmed():
+		return false
 	if _is_ranged_hero():
 		var col_range: int = _hero_attack_column_range()
 		for enemy in _enemies:
@@ -14273,11 +14339,11 @@ func _enemy_hero_turn(enemy: Dictionary) -> void:
 				_move_enemy(enemy, flee_pos)
 			return
 
-		if hero_distance <= _enemy_attack_range(enemy) and not hero_unseen:
+		if hero_distance <= _enemy_attack_range(enemy) and not hero_unseen and not _rival_disarmed():
 			_resolve_enemy_hero_attack(enemy)
 			return
 	else:  # "melee"
-		if hero_distance <= 0 and not hero_unseen:
+		if hero_distance <= 0 and not hero_unseen and not _rival_disarmed():
 			_resolve_enemy_hero_attack(enemy)
 			return
 
@@ -19831,7 +19897,7 @@ func _update_action_buttons() -> void:
 	var locked: bool = _battle_over or _has_acted_this_turn or _rival_fx_in_flight or _player_stun_turns_left > 0 or _the_test_of_time_active or _kiss_the_wastes_active
 	move_left_button.disabled = locked
 	move_right_button.disabled = locked
-	attack_button.disabled = locked
+	attack_button.disabled = locked or _player_disarmed()
 
 	# Fleeing is free at any time in a real playthrough - never gated by
 	# turn-lock/stun/cooldown here, so unlike the buttons above it never

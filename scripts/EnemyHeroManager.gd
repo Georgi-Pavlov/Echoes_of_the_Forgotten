@@ -1220,6 +1220,11 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 	var poison_miss_chance: float = float(hazard.get("miss_chance", 0.0))
 	var poison_exposed: bool = false
 	var poisoned: bool = false
+	# Which affliction this zone's hazard causes ("poison" by default) and how
+	# many of the hero's turns it lasts (GameManager.HAZARD_EFFECT_RULES).
+	var hazard_effect: String = str(hazard.get("effect", "poison"))
+	var afflict_turns: int = int(GameManager.get_hazard_rule(zone_id, "turns")) if not hazard.is_empty() else 1
+	var afflict_left: int = 0
 	# Blind zones (the Scorchlands' sandstorm): the sim has no columns to lose
 	# sight across, so on each effect turn the invading hero simply has a
 	# chance to lose its whole turn.
@@ -1229,8 +1234,14 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 	var turns_taken: int = 0
 	for turn_index in range(MAX_SIMULATED_TURNS):
 		turns_taken = turn_index + 1
-		poisoned = poison_exposed
+		# An exposure lasts the zone's affliction length (2 turns for disarm).
+		if poison_exposed:
+			afflict_left = afflict_turns
 		poison_exposed = false
+		var afflicted: bool = afflict_left > 0
+		afflict_left = maxi(0, afflict_left - 1)
+		poisoned = afflicted and hazard_effect == "poison"
+		var disarmed: bool = afflicted and hazard_effect == "disarm"
 		skip_turn = hazard_applies and (turn_index + 1) % hazard_interval == 0 and randf() < skip_chance
 		if hazard_applies and (turn_index + 1) % hazard_interval == 0 and randf() < float(hazard.get("sim_exposure_chance", 0.0)):
 			poison_exposed = true
@@ -1344,6 +1355,9 @@ func _run_stage_fight(hero_id: String, hero_static: Dictionary, enemies: Array, 
 			elif _has_unaffordable_ready_skill(hero_id, hero_static, cooldowns, current_mana, state) and PlayerManager.get_npc_potion_count(hero_id, "mana") > 0:
 				PlayerManager.set_npc_potion_count(hero_id, "mana", PlayerManager.get_npc_potion_count(hero_id, "mana") - 1)
 				current_mana = minf(max_mana, current_mana + float(GameManager.get_item("mana").get("value", 0)))
+			elif disarmed:
+				# Disarmed: no skill was usable, and a plain attack isn't allowed.
+				pass
 			else:
 				var target: Dictionary = _lowest_hp_enemy(living)
 				var shadow_bonus: float = state["depthsveil"]["bonus_damage"] if state["depthsveil"]["active"] else 0.0

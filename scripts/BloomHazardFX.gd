@@ -47,6 +47,16 @@ const STYLES := {
 		"core": Color(0.96, 0.98, 1.0, 1.0),
 		"puff": Color(0.9, 0.93, 0.96, 1.0),
 	},
+	"wave": {
+		"mist": Color(0.1, 0.36, 0.5, 1.0),
+		"core": Color(0.93, 0.98, 1.0, 1.0),
+		"puff": Color(0.26, 0.64, 0.74, 1.0),
+	},
+	"bees": {
+		"mist": Color(0.42, 0.3, 0.07, 1.0),
+		"core": Color(1.0, 0.82, 0.2, 1.0),
+		"puff": Color(0.7, 0.5, 0.12, 1.0),
+	},
 	"ink": {
 		"mist": Color(0.03, 0.05, 0.09, 1.0),
 		"core": Color(0.35, 0.85, 0.8, 1.0),
@@ -59,6 +69,7 @@ const OCTO_LIGHT := Color(0.13, 0.42, 0.43, 1.0)
 const OCTO_DARK := Color(0.025, 0.1, 0.12, 1.0)
 const GRAIN_COUNT := 46
 const WALL_PUFF_COUNT := 34
+const BEE_SWARM_COUNT := 40
 
 var _style: String = "lotus"
 var _mist_color: Color = STYLES["lotus"]["mist"]
@@ -115,6 +126,15 @@ func show_hint() -> void:
 
 func bloom() -> void:
 	var tween := create_tween()
+	if _style == "wave":
+		# The big wave surges toward the screen, breaks and spreads out, then
+		# churns as a foaming sheet until it is cleared.
+		tween.tween_property(self, "_mist", 1.0, 1.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+		return
+	if _style == "bees":
+		# The loose bees pull together into the swarm cloud.
+		tween.tween_property(self, "_mist", 1.0, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		return
 	if _style == "ink":
 		# The octopus jets up the column (_mist = how far up it is), then
 		# fades at the top; the ink it left behind stays.
@@ -141,6 +161,18 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	if _style == "wave":
+		if _rise > 0.0:
+			_draw_wash(clampf(1.0 - _mist * 3.0, 0.0, 1.0))
+		if _mist > 0.0:
+			_draw_big_wave()
+		return
+	if _style == "bees":
+		if _rise > 0.0 and _mist < 1.0:
+			_draw_loose_bees()
+		if _mist > 0.0:
+			_draw_bee_swarm()
+		return
 	if _style == "ink":
 		var octopus_y: float = _octopus_origin_y()
 		if _mist > 0.0:
@@ -211,6 +243,120 @@ func _draw_sandstorm() -> void:
 		var gy: float = size.y * grain["y"] + sin(_time * 3.0 + grain["phase"]) * size.y * 0.02
 		var length: float = size.x * grain["len"]
 		draw_line(Vector2(gx, gy), Vector2(gx + length, gy - length * 0.18), Color(_core_color.r, _core_color.g, _core_color.b, 0.6 * _mist), 1.6, true)
+
+
+## The hint: small waves wash toward the screen along the floor of the
+## column. Each starts far back (higher up, narrow and low), grows as it
+## comes forward and thins out into a sheet of foam on the near edge.
+func _draw_wash(strength: float) -> void:
+	if strength <= 0.0:
+		return
+	for k in 2:
+		var phase: float = fposmod(_time * 0.42 + 0.5 * float(k), 1.0)
+		var grow: float = lerpf(0.45, 1.05, phase)
+		var y: float = lerpf(size.y - size.x * 0.34, size.y - size.x * 0.02, phase)
+		var half: float = size.x * 0.5 * grow
+		var fade: float = sin(phase * PI) * _rise * strength
+		var cx: float = size.x * 0.5
+		# The sheet of water running up the floor: a flat, soft ellipse.
+		var sheet := PackedVector2Array()
+		for i in 25:
+			var a: float = TAU * float(i) / 25.0
+			sheet.append(Vector2(cx + cos(a) * half * 1.1, y + sin(a) * size.x * 0.07 * grow))
+		draw_colored_polygon(sheet, Color(_mist_color.r, _mist_color.g, _mist_color.b, 0.28 * fade))
+		# The small wave riding its front: a low rolling mound with foam on it.
+		var hump := PackedVector2Array()
+		var steps := 18
+		for i in steps + 1:
+			var t: float = float(i) / float(steps)
+			var hx: float = cx + (t - 0.5) * 2.0 * half
+			var hh: float = size.x * 0.16 * grow * pow(maxf(sin(PI * t), 0.0), 0.8) * (0.85 + 0.15 * sin(_time * 3.0 + t * 8.0 + float(k)))
+			hump.append(Vector2(hx, y - hh))
+		var body := PackedVector2Array(hump)
+		body.append(Vector2(cx + half, y + size.x * 0.02))
+		body.append(Vector2(cx - half, y + size.x * 0.02))
+		draw_colored_polygon(body, Color(_puff_color.r, _puff_color.g, _puff_color.b, 0.4 * fade))
+		for i in steps + 1:
+			var fr: float = size.x * 0.035 * grow * (0.8 + 0.4 * sin(float(i) * 2.3 + _time * 2.0))
+			draw_circle(hump[i], fr, Color(_core_color.r, _core_color.g, _core_color.b, 0.5 * fade))
+
+
+## Stage 2: a big wave that washes over toward the screen. `_mist` runs 0 -> 1
+## through its whole journey: it starts far back (small, narrow, standing
+## higher on the ground), grows and surges forward as it comes at the viewer,
+## peaks, then breaks - the crest tumbling forward and the water spreading out
+## over the foreground as a foaming sheet that stays until it is cleared.
+## Sides and top are curves, never straight.
+func _draw_big_wave() -> void:
+	var p: float = _mist
+	var forward: float = smoothstep(0.0, 1.0, p)
+	var rise: float = smoothstep(0.0, 0.5, p)
+	var collapse: float = smoothstep(0.5, 1.0, p)
+	var height: float = size.y * 0.85 * rise * (1.0 - 0.68 * collapse)
+	if height < 3.0:
+		return
+	var scale_x: float = lerpf(0.6, 1.25, forward)
+	var base_y: float = lerpf(size.y * 0.8, size.y + size.x * 0.08, forward)
+	var cx: float = size.x * 0.5
+	var half: float = size.x * 0.64 * scale_x
+	var steps := 30
+	var outline := PackedVector2Array()
+	var tops: Array = []
+	for i in steps + 1:
+		var t: float = float(i) / float(steps)
+		var h: float = height * pow(maxf(sin(PI * t), 0.0), 0.5) * (0.92 + 0.08 * sin(_time * 2.2 + t * 9.0))
+		var pt := Vector2(cx + (t - 0.5) * 2.0 * half, base_y - h)
+		outline.append(pt)
+		tops.append(pt)
+	draw_colored_polygon(outline, Color(_mist_color.r, _mist_color.g, _mist_color.b, 0.56))
+	# A lighter inner swell and rolling streaks give the water depth.
+	var inner := PackedVector2Array()
+	for i in steps + 1:
+		var t2: float = float(i) / float(steps)
+		inner.append(Vector2(cx + (t2 - 0.5) * 2.0 * half * 0.92, base_y - height * 0.72 * pow(maxf(sin(PI * t2), 0.0), 0.6)))
+	draw_colored_polygon(inner, Color(_puff_color.r, _puff_color.g, _puff_color.b, 0.26))
+	for s in 5:
+		var fs: float = float(s)
+		var line_y: float = base_y - height * (0.15 + 0.14 * fs)
+		var streak := PackedVector2Array()
+		for i in 12:
+			var t3: float = float(i) / 11.0
+			streak.append(Vector2(cx + (t3 - 0.5) * 2.0 * half * 0.85, line_y + sin(_time * 1.6 + t3 * 6.0 + fs * 1.4) * size.x * 0.03))
+		draw_polyline(streak, Color(_core_color.r, _core_color.g, _core_color.b, 0.18), 2.0, true)
+	# The crest: foam along the top edge. As the wave breaks it tumbles
+	# forward and down, toward the screen.
+	var tumble: float = collapse * height * 0.55
+	var foam_in: float = minf(1.0, p * 4.0)
+	for i in tops.size():
+		var tc: float = float(i) / float(steps)
+		var fr: float = size.x * (0.05 + 0.05 * fposmod(float(i) * 0.57, 1.0)) * foam_in * scale_x
+		var wob := Vector2(sin(_time * 2.5 + float(i)) * 2.0, cos(_time * 2.0 + float(i) * 1.7) * 3.0)
+		var spot: Vector2 = tops[i] + wob + Vector2(0.0, tumble * sin(PI * tc))
+		draw_circle(spot, fr, Color(_core_color.r, _core_color.g, _core_color.b, 0.62 * sin(PI * tc) + 0.1))
+		draw_circle(spot + Vector2(0.0, fr * 0.9), fr * 0.8, Color(_core_color.r, _core_color.g, _core_color.b, 0.3 * sin(PI * tc)))
+	# Spray flung up and forward off the crest while it is still climbing.
+	var spray: float = rise * (1.0 - collapse)
+	for i in 16:
+		var fi: float = float(i)
+		var life: float = fposmod(_time * 0.7 + fi * 0.37, 1.0)
+		var u: float = 0.1 + 0.8 * fposmod(fi * 0.618, 1.0)
+		var crest_y: float = base_y - height * pow(maxf(sin(PI * u), 0.0), 0.5)
+		var sx: float = cx + (u - 0.5) * 2.0 * half
+		var sy: float = crest_y - sin(life * PI) * size.x * 0.35 * rise + life * life * size.x * 0.12
+		draw_circle(Vector2(sx, sy), 1.5 + 1.8 * (1.0 - life), Color(_core_color.r, _core_color.g, _core_color.b, 0.75 * (1.0 - life) * spray))
+	# The foaming sheet it leaves spread over the foreground.
+	if collapse > 0.0:
+		var sheet := PackedVector2Array()
+		for i in 25:
+			var a: float = TAU * float(i) / 25.0
+			sheet.append(Vector2(cx + cos(a) * half * 1.15, base_y + size.x * 0.03 + sin(a) * size.x * 0.13 * collapse))
+		draw_colored_polygon(sheet, Color(_puff_color.r, _puff_color.g, _puff_color.b, 0.34 * collapse))
+	# Foam churning along the foot of the wave.
+	for i in 14:
+		var fb: float = float(i)
+		var bx: float = cx + (fposmod(fb * 0.381 + 0.1, 1.0) - 0.5) * 2.0 * half + sin(_time * 1.3 + fb) * size.x * 0.04
+		var by: float = base_y + size.x * 0.02 * collapse - size.x * (0.02 + 0.05 * fposmod(fb * 0.73, 1.0)) + sin(_time * 2.0 + fb * 2.0) * 2.0
+		draw_circle(Vector2(bx, by), size.x * (0.05 + 0.04 * fposmod(fb * 0.29, 1.0)) * scale_x, Color(_core_color.r, _core_color.g, _core_color.b, 0.4 * foam_in))
 
 
 ## Drawing scale of the octopus: its local coordinates are about 110 units
@@ -398,6 +544,76 @@ func _soft_puff(at: Vector2, radius: float, color: Color, alpha: float) -> void:
 	for l in layers:
 		var t: float = float(l) / float(layers)
 		draw_circle(at, radius * (1.0 - 0.8 * t), Color(color.r, color.g, color.b, alpha / float(layers) * 1.6))
+
+
+## Where bee `i` is at time `t` while flying loose near the ground (the hint):
+## a lazy looping path over the lower part of the column.
+func _bee_loose_pos(i: int, t: float) -> Vector2:
+	var fi: float = float(i)
+	var fx: float = fposmod(fi * 0.618 + 0.1, 1.0)
+	var fy: float = fposmod(fi * 0.381 + 0.2, 1.0)
+	var speed: float = 0.8 + 0.6 * fposmod(fi * 0.73, 1.0)
+	var x: float = size.x * (0.5 + (fx - 0.5) * 0.7) + sin(t * speed + fi * 2.1) * size.x * 0.22
+	var y: float = size.y * (0.55 + 0.4 * fy) + cos(t * speed * 1.3 + fi * 1.3) * size.y * 0.07
+	return Vector2(x, y)
+
+
+## Where bee `i` is at time `t` while circling inside the swarm cloud.
+func _bee_swarm_pos(i: int, t: float) -> Vector2:
+	var fi: float = float(i)
+	var spread: float = fposmod(fi * 0.618 + 0.05, 1.0)
+	var speed: float = (0.9 + 1.1 * fposmod(fi * 0.37, 1.0)) * (1.0 if i % 2 == 0 else -1.0)
+	var angle: float = fi * 2.4 + t * speed
+	var center := Vector2(size.x * 0.5, size.y * 0.55)
+	var rx: float = size.x * 0.62 * _mist * (0.25 + 0.75 * spread)
+	var ry: float = size.y * 0.36 * _mist * (0.25 + 0.75 * spread)
+	return center + Vector2(cos(angle) * rx, sin(angle * 1.3) * ry) + Vector2(sin(t * 3.0 + fi), cos(t * 2.6 + fi * 1.7)) * size.x * 0.02
+
+
+## One bee: striped body, dark head, two blurry wings that flap. `dir` is the
+## way it is flying (it faces that way).
+func _draw_bee(at: Vector2, dir: Vector2, s: float, alpha: float, phase: float) -> void:
+	if alpha <= 0.0:
+		return
+	var d: Vector2 = dir.normalized() if dir.length() > 0.001 else Vector2.RIGHT
+	var side := Vector2(-d.y, d.x)
+	var flap: float = 0.55 + 0.45 * sin(_time * 40.0 + phase)
+	var wing := Color(0.9, 0.96, 1.0, 0.55 * alpha)
+	draw_circle(at - d * s * 0.1 + side * s * 0.55 * flap, s * 0.55, wing)
+	draw_circle(at - d * s * 0.1 - side * s * 0.55 * flap, s * 0.55, wing)
+	draw_circle(at - d * s * 0.55, s * 0.62, Color(0.98, 0.78, 0.12, alpha))
+	draw_circle(at + d * s * 0.2, s * 0.68, Color(0.98, 0.78, 0.12, alpha))
+	draw_circle(at - d * s * 0.2, s * 0.4, Color(0.12, 0.08, 0.04, alpha))
+	draw_circle(at + d * s * 0.85, s * 0.42, Color(0.12, 0.08, 0.04, alpha))
+
+
+## The hint: a few bees flying lazily around near the ground.
+func _draw_loose_bees() -> void:
+	var count := 6
+	var s: float = size.x * 0.05
+	for i in count:
+		var p: Vector2 = _bee_loose_pos(i, _time)
+		var dir: Vector2 = _bee_loose_pos(i, _time + 0.05) - p
+		_draw_bee(p, dir, s, _rise, float(i) * 1.9)
+
+
+## Stage 2: the bees gather into a swarm - a drifting golden-brown haze with
+## many bees circling inside it. It grows with _mist and stays until cleared.
+func _draw_bee_swarm() -> void:
+	var fade_in: float = minf(1.0, _mist * 2.0)
+	var center := Vector2(size.x * 0.5, size.y * 0.55)
+	for i in 14:
+		var fi: float = float(i)
+		var speed: float = 0.3 + 0.3 * fposmod(fi * 0.73, 1.0)
+		var angle: float = fi * 2.4 + _time * speed
+		var at: Vector2 = center + Vector2(cos(angle) * size.x * 0.45, sin(angle * 1.2) * size.y * 0.25) * _mist
+		var radius: float = size.x * (0.3 + 0.2 * fposmod(fi * 0.47, 1.0)) * (0.4 + 0.6 * _mist)
+		_soft_puff(at, radius, _mist_color.lerp(_puff_color, fposmod(fi * 0.29, 1.0)), 0.5 * fade_in)
+	var s: float = size.x * 0.045
+	for i in BEE_SWARM_COUNT:
+		var p: Vector2 = _bee_swarm_pos(i, _time)
+		var dir: Vector2 = _bee_swarm_pos(i, _time + 0.05) - p
+		_draw_bee(p, dir, s, fade_in, float(i) * 1.3)
 
 
 func _draw_mist() -> void:

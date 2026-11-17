@@ -287,6 +287,8 @@ func get_reinforcement_repeat(stage: int) -> int:
 #                    (miss_chance); "blind" - the hero only sees the adjacent
 #                    columns, so attacks and targeted skills can only pick
 #                    targets there.
+#                    "disarm" - the hero can't make normal attacks for the
+#                    affliction's turns (2); skills still work;
 #                    "mist_wall" - the column becomes a wall of mist that
 #                    blocks sight (no affliction): see battle.gd's
 #                    _vision_between().
@@ -296,6 +298,8 @@ func get_reinforcement_repeat(stage: int) -> int:
 #                    invading rival skips its whole turn on each effect turn
 #                    (4, 8, ...).
 const ZONE_HAZARDS: Dictionary = {
+	"the_elderwild": {"interval": 4, "effect": "disarm", "sim_exposure_chance": 0.3, "flower": "bees", "column_height": 0.5, "text_color": Color(1.0, 0.8, 0.25, 1.0)},
+	"the_ironbound_isles": {"interval": 4, "effect": "disarm", "sim_exposure_chance": 0.3, "flower": "wave", "column_height": 0.5, "text_color": Color(1.0, 0.4, 0.38, 1.0)},
 	"drowned_empire": {"interval": 4, "effect": "blind", "sim_skip_chance": 0.3, "flower": "ink", "column_height": 0.55, "text_color": Color(0.4, 0.8, 0.78, 1.0)},
 	"kingdom_of_morvain": {"interval": 4, "effect": "mist_wall", "sim_skip_chance": 0.2, "flower": "mist", "column_height": 0.55, "text_color": Color(0.85, 0.89, 0.94, 1.0)},
 	"the_blackbloom": {"interval": 4, "miss_chance": 0.4, "sim_exposure_chance": 0.25, "flower": "lotus", "text_color": Color(0.78, 0.5, 1.0, 1.0)},
@@ -315,10 +319,12 @@ const ZONE_HAZARDS: Dictionary = {
 #                         (passing through is harmless);
 #               "none"  - no avoidance.
 # A zone's ZONE_HAZARDS entry may override either key.
+#   turns:    how many of the hero's own turns the affliction lasts (default 1).
 const HAZARD_EFFECT_RULES: Dictionary = {
-	"poison": {"afflicts": true, "avoid": "cross"},
-	"blind": {"afflicts": true, "avoid": "cross"},
-	"mist_wall": {"afflicts": false, "avoid": "end"},
+	"poison": {"afflicts": true, "avoid": "cross", "turns": 1},
+	"blind": {"afflicts": true, "avoid": "cross", "turns": 1},
+	"disarm": {"afflicts": true, "avoid": "cross", "turns": 2},
+	"mist_wall": {"afflicts": false, "avoid": "end", "turns": 1},
 }
 
 
